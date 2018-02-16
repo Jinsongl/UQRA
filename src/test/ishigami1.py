@@ -80,7 +80,8 @@ def lasso_model_selection(X,y):
 
 
 dist_x = cp.J(cp.Uniform(-np.pi, np.pi), cp.Uniform(-np.pi, np.pi), cp.Uniform(-np.pi, np.pi))
-samp_x = dist_x.sample(2000,'S')
+samp_x = dist_x.sample(2000,'R')
+print(samp_x[:3,:])
 Y = ishigami(samp_x.T)
 
 scoring = ['neg_mean_squared_error','r2']
@@ -224,7 +225,7 @@ ax1.set_yscale('log')
 plt.grid(True)
 plt.axis('tight')
 # plt.show()
-plt.savefig('SparsePCE.eps')
+plt.savefig('SparsePCE4.eps')
 
 
 # reg =linear_model.Lars()
