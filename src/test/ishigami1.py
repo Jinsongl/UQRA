@@ -104,7 +104,7 @@ n_samples = []
 rel_err = []
 n_features = []
 
-for p in range(3,14,2):
+for p in range(13,14,2):
     poly,norm = cp.orth_ttr(p, dist_x, retall=True)
     N = 3*len(poly)
     n_samples.append(N)
@@ -144,16 +144,16 @@ for p in range(3,14,2):
     # err =  mse(y_pred, y_test)/np.std(y_test)**2
     # print('AIC MSE for p={:2d}:  {:.2e}'.format(p,err)) 
     
-    model_cv = linear_model.LassoCV(cv=5).fit(X_train,y_train)
-    model_cv.fit(X_train, y_train)
-    # alpha_aic_ = model_aic.alpha_
-    y_pred = model_cv.predict(X_test)
-    err =  mse(y_pred, y_test)/np.std(y_test)**2
-    print('Lasso CD for p={:2d}:  {:.2e}'.format(p,err)) 
+    # model_cv = linear_model.LassoCV(cv=5).fit(X_train,y_train)
+    # model_cv.fit(X_train, y_train)
+    # # alpha_aic_ = model_aic.alpha_
+    # y_pred = model_cv.predict(X_test)
+    # err =  mse(y_pred, y_test)/np.std(y_test)**2
+    # print('Lasso CD for p={:2d}:  {:.2e}'.format(p,err)) 
 
-    err_.append(err)
-    n_features_.append(sum(model_cv.coef_!=0))
-    print(sum(model_cv.coef_!=0))
+    # err_.append(err)
+    # n_features_.append(sum(model_cv.coef_!=0))
+    # print(sum(model_cv.coef_!=0))
 
 
     model_lars_cv = linear_model.LassoLarsCV(cv=5).fit(X_train,y_train)
@@ -184,9 +184,9 @@ for p in range(3,14,2):
     # err =  mse(y_pred, y_test)/np.std(y_test)
     # print('sparse OLS MSE for p={:2d}:  {:.2e}'.format(p,err)) 
 
-    rel_err.append(err_)
-    n_features.append(n_features_)
-    print('-'*30)
+    # rel_err.append(err_)
+    # n_features.append(n_features_)
+    # print('-'*30)
 
     # model_aic, model_bic, model_cv, model_lars_cv = lasso_model_selection(X,y)
     # regressors['lasso_aic'] = linear_model.Lasso(alpha=model_aic.alpha_)
@@ -205,27 +205,27 @@ for p in range(3,14,2):
         # print('p ==%2d: %.2e' %(p, test_mse_avg/(np.std(y)**2)))
         # mse_test[key].append(test_mse_avg)
 
-rel_err = np.array(rel_err)
-fig1 = plt.figure()
-ax1 = fig1.add_subplot(111)
-number_of_plots=10
+# rel_err = np.array(rel_err)
+# fig1 = plt.figure()
+# ax1 = fig1.add_subplot(111)
+# number_of_plots=10
 
-lineObjects = ax1.plot(n_samples, rel_err, '-o')
-labels = ('Full PCE', 'SPCE (Lasso CD)', 'SPCE (Lasso Lars)')
-plt.legend(iter(lineObjects), labels)
-for i in range(len(n_samples)):
-    ax1.text(n_samples[i],rel_err[i,0], str(n_features[i][0]), va='bottom')
-    ax1.text(n_samples[i],rel_err[i,1], str(n_features[i][1]), va='center')
-    ax1.text(n_samples[i],rel_err[i,2], str(n_features[i][2]), va='top' )
-# ymin, ymax = plt.ylim()
-# plt.vlines(xx, ymin, ymax, linestyle='dashed')
-plt.xlabel('Number of model evaluations')
-plt.ylabel('Relative MSE')
-ax1.set_yscale('log')
-plt.grid(True)
-plt.axis('tight')
-# plt.show()
-plt.savefig('SparsePCE4.eps')
+# lineObjects = ax1.plot(n_samples, rel_err, '-o')
+# labels = ('Full PCE', 'SPCE (Lasso CD)', 'SPCE (Lasso Lars)')
+# plt.legend(iter(lineObjects), labels)
+# for i in range(len(n_samples)):
+    # ax1.text(n_samples[i],rel_err[i,0], str(n_features[i][0]), va='bottom')
+    # ax1.text(n_samples[i],rel_err[i,1], str(n_features[i][1]), va='center')
+    # ax1.text(n_samples[i],rel_err[i,2], str(n_features[i][2]), va='top' )
+# # ymin, ymax = plt.ylim()
+# # plt.vlines(xx, ymin, ymax, linestyle='dashed')
+# plt.xlabel('Number of model evaluations')
+# plt.ylabel('Relative MSE')
+# ax1.set_yscale('log')
+# plt.grid(True)
+# plt.axis('tight')
+# # plt.show()
+# plt.savefig('SparsePCE4.eps')
 
 
 # reg =linear_model.Lars()
