@@ -10,5 +10,26 @@
 
 """
 
+import numpy as np
+import numpy.random as nrand
+import numpy.linalg as nla
+import matplotlib.pyplot as plt
+from doe_quasi_optimal import get_quasi_optimal
+from test_func import gaussian_peak 
+from test_func import plot_func
 
-def 
+def test_f(a, *args):
+    c = args[0]
+    print(c)
+
+a = 1
+b = [1,2]
+test_f(a,b)
+# subset_size_= np.arange(21,110,5)
+# error = np.load('gaussian_peak.npy')
+# print(error.shape)
+
+# fig = plt.figure()
+# plt.semilogy(subset_size_, error,'-*')
+# plt.legend(['Averaged MC','Quasi MC', 'Quasi Optimal Design','All'])
+# plt.show()
