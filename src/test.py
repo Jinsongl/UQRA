@@ -41,7 +41,7 @@ dist = cp.Iid(cp.Normal(0,1),2)
 cor, w = cp.generate_quadrature(8,dist,rule='G')
 
 solves = np.array([model_solver(c) for c in cor.T ])
-print solves
+# print solves
 
 
 for order in xrange(1,10):

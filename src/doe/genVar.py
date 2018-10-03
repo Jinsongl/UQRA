@@ -17,7 +17,7 @@ import os
 
 def genVar(schemePt, simParams, metaParams):
     """
-    Generating samples from zeta space  underlying random variables for selected Wiener-Askey polynomial.
+    Generating samples from zeta space (underlying random variables for selected Wiener-Askey polynomial).
         simParams: simParameter() object, scheme, schemePt, rule will be provided
 
             (QUAD, schemePt, rule): 
