@@ -43,7 +43,8 @@ def get_quasi_optimal(m,A,I=None,is_orth=False):
     print('\t>>>','*'*40)
     print("\tNumber of design point:\t{:2d} \n\tNumber of samples:\t{:2d} \n\tNumber of features:\t{:2d}".format(m,A.shape[0],A.shape[1]))
     print('\t>>>','*'*40)
-    (Q,R) = (A, _ )if is_orth else nla.qr(A, mode='complete')
+    # (Q,R) = (A, _ )if is_orth else nla.qr(A, mode='complete')
+    (Q,R) = (A, _ )if is_orth else nla.qr(A)
     print('\tComplete QR factorization of Design matrix A. \n\t  Q.shape = {0}, R.shape={1}'.format(Q.shape, R.shape))
     print('\t>>>','*'*40)
     print('\tSearching for design points based on S-value')
@@ -55,11 +56,11 @@ def get_quasi_optimal(m,A,I=None,is_orth=False):
     # pbar = progressbar.ProgressBar(widgets=widgets)
 
     # for ipbar in pbar((i for i in range(m-m1))):
-    print('\tProcessed #:{:5d} out of {:5d}'.format(len(I), m), '\tSelected: {:5d}'.format(I[-1]))
+    print('\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
     while m1 < m:
         i = find_next(I,Q)
         I.append(i)
-        print('\tProcessed #:{:5d} out of {:5d}'.format(len(I), m), '\tSelected: {:5d}'.format(I[-1]))
+        print('\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
         m1 = m1 + 1
     I = sorted(I)
     print('\tQuasi-Optimal Experiment design done!')
@@ -82,20 +83,26 @@ def find_next(I,Q):
 ##  Find the index candidate set to chose from (remove those in I from all (0-M))
     I_candi = list(set(range(Q.shape[0])).difference(set(I)))
     Q_candi = Q[np.array(I_candi, dtype=np.int32),:]
-    Q_selec = Q[np.array(I, dtype=np.int32),:]
+    Q_selec = Q[np.array(I,       dtype=np.int32),:]
     
     svalues = cal_svalue(Q_candi,Q_selec)
     assert(svalues.shape[0] == len(I_candi))
     # I_candi_sorted = list(map(lambda i: I_candi[i], np.argsort(svalues)))
     # print('\tSorted S-value indices (increasing)', I_candi_sorted)
     i = I_candi[np.argmax(svalues)]
-
     return i
 
 
 def cal_svalue(R,A):
     """
-    Calculate the S-values of new matrix [A;r], where r is each row of R
+    Calculate the S-values of new matrix [A;r.T], where r is each row of R
+    
+    Arguments:
+    R: Matrix where each row vector will be added to matrix A to calculate the its Svalue
+    A: Matrix composed of selected vectors from all candidates, (number of selected, number of polynomial functions)
+
+    Return:
+    ndarray (n,) containing s-values from each row of R
     
     """
     k,p = A.shape
@@ -110,26 +117,26 @@ def cal_svalue(R,A):
 
 def cal_logsvalue_over(R,A):
     """
-    Calculate the S value (without determinant) of a candidate vector w.r.t selected subsets
+    Calculate the S value (without determinant) of candidate vectors w.r.t selected subsets
     when the current selection k >= p (eqn. 3.16)
 
     Arguments:
-    r -- candidate row vector of shape(p,1)
-    Q -- selected subsets matrix of shape (k,p)
+    R -- candidate row vector of shape (number of candidates,p)
+    A -- selected subsets matrix of shape (k,p)
 
     Return:
     d -- log svalue without determinant (eqn. 3.16)
 
     """
     AAinv = nla.inv(np.dot(A.T,A))
-    A_l2 = nla.norm(A, axis=0)
+    A_l2 = nla.norm(A, axis=0).reshape(-1,1)
     svalues_log = np.zeros(R.shape[0])
     for i, r in enumerate(R):
         r = r.reshape((len(r),1))
         assert(len(r) == A.shape[1])
         with np.errstate(invalid='ignore'):
             d1 = np.log(1 + np.dot(r.T, np.dot(AAinv, r)))
-            d2 = np.log(np.prod(A_l2**2 + r**2))
+            d2 = np.log(np.prod(A_l2**2 + r.T**2))
         svalues_log[i] = d1 - d2
     return svalues_log
 
@@ -140,7 +147,7 @@ def cal_logsvalue_under(R,A):
     when the current selection k < p (eqn. 3.18)
 
     Arguments:
-    R -- candidate row vector of shape(R,p)
+    R -- candidate row vector of shape(number of candidates,p)
     A -- selected subsets matrix of shape (k,p)
 
     Return:
@@ -152,7 +159,8 @@ def cal_logsvalue_under(R,A):
     R = copy.copy(R[:,0:k+1])
     svalues_log = np.zeros(R.shape[0])
     AAinv = nla.inv(np.dot(A.T,A))
-    A_l2 = nla.norm(A, axis=0)
+    A_l2 = nla.norm(A, axis=0).reshape(-1,1)
+
 
     for i, r in enumerate(R):
         c = r[0:k].reshape((k,1))
@@ -168,7 +176,7 @@ def cal_logsvalue_under(R,A):
         a = np.squeeze(np.dot(a1,np.dot(a2,a3)))
         with np.errstate(invalid='ignore'):
             d1 = np.log(np.squeeze(1 + np.dot(r.T, b)))
-            d2 = np.sum(np.log(A_l2**2 + r**2))
+            d2 = np.sum(np.log(A_l2**2 + r.T**2))
             d3 = np.log(np.squeeze(np.dot(c.T,c) + gamma**2 - a))
             d4 = np.log(np.squeeze(np.dot(c.T,c) + gamma**2))
 

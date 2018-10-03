@@ -25,7 +25,8 @@ def dist_Uw(isTrunc=False,bnd=[3,25]):
 # Marginal distribution of 10-meter wind speed
     a_u, b_u = 2.029, 9.409
     if isTrunc:
-        dist = cp.Truncweibull(bnd[0],bnd[1],a_u, b_u)
+        pass
+        # dist = cp.Truncweibull(bnd[0],bnd[1],a_u, b_u)
     else:
         dist = cp.Weibull(a_u, b_u)
     return dist
@@ -47,7 +48,7 @@ def distC_Tp(*var):
     Conditional distribution of Tp given Hs & Tp
     len(var) == 2, Tp|(Uw,Hs)
     """
-    print var
+    # print(var)
     if len(var) == 2:
         theta, gamma = -0.255, 1.0
         e1, e2, e3 = 8.0, 1.938, 0.486
@@ -61,7 +62,8 @@ def distC_Tp(*var):
         niu_Tp = k1 + k2 * np.exp(h*k3)
 
         mu_Tp = Tp_bar * (1 + theta * ((Uw - u_bar)/u_bar)**gamma)
-
+        # print('{:.2f}, {:.2f}, {:.2f}'.format(Uw,h, mu_Tp))
+        # assert mu_Tp / (np.sqrt(1 + niu_Tp**2)) >0, 'Corresponding sea states: {:.2f}, {:.2f}'.format(Uw, h)
         mu_lnTp = np.log(mu_Tp / (np.sqrt(1 + niu_Tp**2)))
         sigma_lnTp = np.sqrt(np.log(niu_Tp**2 + 1))
 

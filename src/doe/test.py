@@ -22,9 +22,9 @@ def test_f(a, *args):
     c = args[0]
     print(c)
 
-a = 1
-b = [1,2]
-test_f(a,b)
+# a = 1
+# b = [1,2]
+# test_f(a,b)
 # subset_size_= np.arange(21,110,5)
 # error = np.load('gaussian_peak.npy')
 # print(error.shape)
@@ -33,3 +33,11 @@ test_f(a,b)
 # plt.semilogy(subset_size_, error,'-*')
 # plt.legend(['Averaged MC','Quasi MC', 'Quasi Optimal Design','All'])
 # plt.show()
+
+
+l = '4341534353331332254433'
+l1 ='........4....42......4' 
+for a,b in enumerate(l1):
+    if b is not '.':
+        print(a+1, 'correct:', l[a])
+    

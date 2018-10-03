@@ -21,9 +21,9 @@ import numpy as np
 # from mpl_toolkits.mplot3d import Axes3D
 # from matplotlib import cm
 
-def dist_Hs(key, value):
+def dist_Hs(value, key='phy'):
     """
-    Return Hs distribution based on given quantile or H
+    Return Hs distribution based on given quantile or physical value
     """
     h0          = 5.0
     mu_LHM      = 0.871
