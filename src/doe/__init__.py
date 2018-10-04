@@ -17,4 +17,6 @@ Reference:
 ===============================
 """
 
+import doe_generator
+
 

@@ -12,7 +12,6 @@
 import chaospy as cp
 import numpy as np
 import envi.environment as envi
-import sampling.genVar as spl 
 import solver.SDOF as slv 
 import utility.dataIO as dataIO
 # import utility.getStats as getStats
@@ -30,7 +29,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 def main():
     
-    # # # Underlying random variables for selected Wiener-Askey polynomial.
+    # # # Underlying random variables from selected Wiener-Askey polynomial.
     dist_zeta   = [cp.Exponential(1), cp.Exponential(1)] 
     data = np.genfromtxt("validateData.csv", delimiter=',') 
     valiData = Data(data[:,:2],data[:,-1])

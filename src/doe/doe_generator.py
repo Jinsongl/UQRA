@@ -13,7 +13,6 @@
 import itertools
 import chaospy as cp
 import numpy as np
-import os
 
 
 def samplegen(doe_method, order, domain, rule=None, antithetic=None,
@@ -96,7 +95,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         rule = 'e' if rule is None else rule ## Default 
         print('************************************************************')
         print('Design of experiment with Quadrature method')
-        print('Rule : {:s}, Number of quadrature points (1d): {:d}}'.format(rule, order))
+        print('Rule : {:s}, Number of quadrature points (1d): {:d}'.format(rule, order))
         coord, weights= cp.generate_quadrature(order, domain, rule=rule) 
         doe_samples = np.array([coord,weights])
         print('Design of experiment done with {:d} quadrature points'.format(len(weights)))
@@ -108,7 +107,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         rule = 'R' if rule is None else rule
         print('************************************************************')
         print('Design of experiment with Monte Carlo method')
-        print('Rule : {:s}, Number of monte carlo points (1d): {:d}}'.format(rule, order))
+        print('Rule : {:s}, Number of monte carlo points (1d): {:d}'.format(rule, order))
         # print("Generating Monte Carlo samples...")
         
         doe_samples = domain.sample(order,rule=rule)

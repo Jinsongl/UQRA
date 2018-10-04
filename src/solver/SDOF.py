@@ -57,22 +57,19 @@ def TransferFun(f,f_n=0.15, zeta=0.1):
     y = 1./y 
     return y
 
-def SDOF(params, *args):
+def SDOF(Hs, Tp, T=int(1e3), dt=0.1, seed=[0,100]):
     """
-    Response of SDOF with given inputs: Hs, Tp
+    Dynamics of deterministic SDOF system with given inputs: Hs, Tp
     (Hs,Tp): Environment variables
     T: Simulation duration in seconds
     dt: Simulation time step, default=0.1
     seed=[bool, int], if seed[0]==True, seed is fixed with seed[1]
     """
-    T,dt,seed = params.T, params.dT, params.seed
     if seed[0]:
         np.random.seed(int(seed[1]))
     else:
         pass
 
-    # print args
-    Hs,Tp = args 
     # print ">>> Single DOF system with linear wave: Hs=", Hs, ", Tp=", Tp
     numPts_T = int(nextpow2(T/dt)) ## Number of points in Time domain
     # numPts_F = int(numPts_T/2+1)

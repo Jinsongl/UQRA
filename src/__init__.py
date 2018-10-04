@@ -8,8 +8,8 @@ quantification of FOWT based on chaospy
 # import sys, os
 # sys.path.append(os.getcwd())
 import envi
+import doe
 import meta
 import solver
-import sampling
 import utility
 import MUSEPlot
