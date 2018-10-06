@@ -103,7 +103,7 @@ class environment(object):
             distcur = distFun[idist](*phy[:idist])
             distC.append(distcur)
             if key == "ppf":
-                # if vals is (ndim-1,) then the last physical variable value is appended as nan 
+    # if vals is (ndim-1,) then the last physical variable value is appended as nan 
                 phy.append(float(distcur.inv(vals[idist])) if idist < len(vals) else np.nan)
         phy = np.array(phy)
         assert len(distC) == len(distFun), \
@@ -122,14 +122,12 @@ class environment(object):
         Return:
         vals: ndarray  of shape (ndim, nsamples)
         """
+        qs = np.asfarray(qs)
+        vals = np.empty(qs.shape)
 
-        vals = []
-
-        for q in qs.T:
+        for i, q in enumerate (qs.T):
             _,val = self.getdistC(q, key='ppf') 
-            vals.append(val)
-        vals = np.array(vals).T
-
+            vals[:,i] = val 
         return vals
 
     def phy2norm(self, vals):
@@ -169,6 +167,8 @@ class environment(object):
         """
         Transform variables from zeta domain (selected underlying random 
         variable for polynomial chaos) to physical domain
+        dist_zeta are assumed to be same for all random variables for NOW. It 
+        should accept different distributions from Wiener-Askey scheme
 
         Arguments:
             dist_zeta: list of zeta distributions
@@ -177,20 +177,13 @@ class environment(object):
         Returns:
 
         """
-        vals = []
+        zeta = np.asfarray(zeta)
+        vals = np.empty(zeta.shape)
 
-        for val in zeta.T:
-            q = np.array([dist.cdf(val[i]) for i, dist in enumerate(dist_zeta)])
-            vals.append(self.get_invcdf(q, key='ppf'))
-        vals = np.array(vals).T
-        # if zeta.ndim == 1:
-            # ppf = np.array([dist.cdf(zeta[i]) for i, dist in enumerate(dist_zeta)])
-            # vals = self.get_invcdf(ppf)
-        # else:
-            # for val in zeta.T:
-                # ppf = np.array([dist.cdf(val[i]) for i, dist in enumerate(dist_zeta)])
-                # vals.append(self.get_invcdf(ppf))
-            # vals = np.array(vals).T
+        for i, val in enumerate (zeta.T):
+            q = [dist.cdf(val[i]) for i, dist in enumerate(dist_zeta)]
+            vals[:,i] = self.get_invcdf(q, key='ppf')
+        assert vals.shape == zeta.shape
         return vals
 
 

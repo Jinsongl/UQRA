@@ -18,12 +18,19 @@ import os
 def up_crossing(data, axis=0):
     pass
 
-def getStats(data, stats=[1,1,1,1,1,1,0]):
+def get_stats(data, stats=[1,1,1,1,1,1,0]):
     """ Calculate the statistics of data
-        data: file type or array-like (m x n), each row is a time series
-            if is a file, file full name must given, including extension
-        stats: list, indicator of statistics to be calculated, [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
-        Return: ndarray (m,sum(stats)) 
+        data: file type or array-like (ndim/ntime_series, nsamples/nqois)
+            > file: file full name must given, including extension
+            > array-like:
+                nsamples/nqois: number of samples realized or number of QoIs to
+                    be analyzed.
+                ndim/ntime_series: each column is either a full time series or
+                    a full relization of each sample
+
+        stats: list, indicator of statistics to be calculated, 
+            [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
+        Return: ndarray (nstats, nsamples/nqois) 
     """
     if isinstance(data,str):
         if data[-3:] =="csv":
@@ -32,8 +39,7 @@ def getStats(data, stats=[1,1,1,1,1,1,0]):
             deli = None 
         data = np.genfromtxt(data, delimiter=deli)
     else:
-        data = np.array(data)
-    # data = data[rows2use,:].T
+        data = np.asfarray(data)
     res = []
     if stats[0] == 1:
         res.append(np.mean(data, axis=0))
@@ -48,11 +54,11 @@ def getStats(data, stats=[1,1,1,1,1,1,0]):
     if stats[5] == 1:
         res.append(np.min(abs(data), axis=0))
     if stats[6] == 1:
-        res.append(up_crossing(data,axis=0))
-    res = np.asarray(res).T
+        res.append(up_crossing(data, axis=0))
+    res = np.asfarray(res)
     return res
 
-# def getStats_files(filelist,stats=[1,1,1,1,1,1,0], outputNames=None):
+# def get_stats_files(filelist,stats=[1,1,1,1,1,1,0], outputNames=None):
     # """ 
         # filelist: list of file names 
         # stats: list, indicator of statistics to be calculated, [mean, std, skewness, kurtosis, absmin, absmax, up_crossing]
@@ -60,42 +66,42 @@ def getStats(data, stats=[1,1,1,1,1,1,0]):
     # """
     # if outputNames is None:
         # outputNames = []
-        # for i in range(len(rows2use)):
+        # for i in range(len(qoi2analysis)):
             # outputNames.append('output'+str(i)+'.csv')
 
-    # rows2usetats = [[]]  # each element store the statistics for one row 
-    # for i in range(len(rows2use)-1):
-        # rows2usetats.append([])
+    # qoi2analysistats = [[]]  # each element store the statistics for one row 
+    # for i in range(len(qoi2analysis)-1):
+        # qoi2analysistats.append([])
     
     # indicator_steps = int(len(filelist)/10)
     # for i, filename in enumerate(filelist):
         # if i % indicator_steps == 0:
             # print "processing file number:  ", i 
-        # filestats = getStats(filename,rows2use,stats)
-        # for j in range(len(rows2usetats)):
-            # rows2usetats[j].append(filestats[j,:])
-            # # print rows2usetats[1]
+        # filestats = get_stats(filename,qoi2analysis,stats)
+        # for j in range(len(qoi2analysistats)):
+            # qoi2analysistats[j].append(filestats[j,:])
+            # # print qoi2analysistats[1]
 
 
-    # # print len(rows2usetats[0])
-    # for i in range(len(rows2use)):
+    # # print len(qoi2analysistats[0])
+    # for i in range(len(qoi2analysis)):
         # with open(outputNames[i],'wb') as fileid:
             # writer = csv.writer(fileid)
-            # writer.writerows(rows2usetats[i])
+            # writer.writerows(qoi2analysistats[i])
 
-# def main(rows2use, stats=[1,1,1,1,1,1,0]):
+def main(stats=[1,1,1,1,1,1,0]):
 
-    # cwd = os.getcwd()
-    # filelist = [f for f in os.listdir(cwd) if f.startswith("SDOF")] 
-    # print "Number of files: " , len(filelist)
-    # getStats_files(filelist,rows2use)
-    # # d = getStats('SDOF1.csv',rows2use, stats)
-    # # print d
+    cwd = os.getcwd()
+    filelist = [f for f in os.listdir(cwd) if f.startswith("SDOF")] 
+    print("Number of files: {:d}".format(len(filelist)))
+    # get_stats(filelist,qoi2analysis)
+    d = get_stats('SDOF1.csv', stats)
+    # print d
 
 
 
-# if __name__ == "__main__":
-    # main([1,2])
+if __name__ == "__main__":
+    main()
 
 
 

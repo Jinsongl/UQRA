@@ -57,20 +57,21 @@ def TransferFun(f,f_n=0.15, zeta=0.1):
     y = 1./y 
     return y
 
-def SDOF(Hs, Tp, T=int(1e3), dt=0.1, seed=[0,100]):
+def deterministic_lin_sdof(Hs, Tp, T=int(1e2), dt=0.1, seed=[0,100]):
     """
-    Dynamics of deterministic SDOF system with given inputs: Hs, Tp
+    Dynamics of deterministic linear sdof system with given inputs: Hs, Tp
     (Hs,Tp): Environment variables
     T: Simulation duration in seconds
     dt: Simulation time step, default=0.1
     seed=[bool, int], if seed[0]==True, seed is fixed with seed[1]
     """
     if seed[0]:
+        print('\tFixed seed with {:d}'.format(seed[1]))
         np.random.seed(int(seed[1]))
     else:
-        pass
+        print('\tRunning with random seed')
 
-    # print ">>> Single DOF system with linear wave: Hs=", Hs, ", Tp=", Tp
+    print ("\tSingle DOF system with linear wave: Hs={:6.2f}, Tp={:6.2f}".format(Hs,Tp))
     numPts_T = int(nextpow2(T/dt)) ## Number of points in Time domain
     # numPts_F = int(numPts_T/2+1)
     numPts_F= numPts_T
@@ -91,7 +92,7 @@ def SDOF(Hs, Tp, T=int(1e3), dt=0.1, seed=[0,100]):
     etat= np.fft.ifft(etaf).real * numPts_F
     y   = np.fft.ifft(yf).real * numPts_F 
 
-    # print ">>> System response Done!" 
+    print("\tSystem response Done!")
     # print "  > Significant wave height check:"
     # print "     Area(S(f))/Hs: ",'{:04.2f}'.format(4 * np.sqrt(JS_area) /Hs)    
     # print "     4*std/Hs:      ",'{:04.2f}'.format(4 * np.std(etat[int(100.0/dt):])/Hs)
@@ -103,77 +104,79 @@ def SDOF(Hs, Tp, T=int(1e3), dt=0.1, seed=[0,100]):
     # return t, etat, y 
     return res
 
-def main(Hs=12.5,Tp=15.3,T=int(1e3)):
-    T=1000
+def main(Hs=12.5,Tp=15.3,T=int(1e2)):
+    T=100
     dt = 0.01
     seed = [1,100]
-    t, eta, y= SDOF(Hs,Tp,T,dt,seed=seed)
-    # print t.shape, eta.shape
-    numPts_T = int(nextpow2(T/dt)) ## Number of points in Time domain
-    numPts_F = int(numPts_T/2+1)
-    df = 1.0/(numPts_T * dt)
-    f = np.arange(1,numPts_F) * df
-    JS = JONSWAP(Hs,Tp,f)
-    JS_area = np.sum(JS*df)
+    y = deterministic_lin_sdof(Hs,Tp,T,dt,seed=seed)
+    # print(y.shape)
+    # # t, eta, y= deterministic_lin_sdof(Hs,Tp,T,dt,seed=seed)
+    # # print t.shape, eta.shape
+    # numPts_T = int(nextpow2(T/dt)) ## Number of points in Time domain
+    # numPts_F = int(numPts_T/2+1)
+    # df = 1.0/(numPts_T * dt)
+    # f = np.arange(1,numPts_F) * df
+    # JS = JONSWAP(Hs,Tp,f)
+    # JS_area = np.sum(JS*df)
 
-    # H = np.ones(f.shape)
-    H = TransferFun(f)
-
-    # f, JS = JONSWAP(Hs,Tp,1.0/dt, 1.0/T)
+    # # H = np.ones(f.shape)
     # H = TransferFun(f)
+
+    # # f, JS = JONSWAP(Hs,Tp,1.0/dt, 1.0/T)
+    # # H = TransferFun(f)
     
-    ## Truncate time series
-    tStart = int(100.0/dt)
-    t = t[tStart:]
-    eta = eta[tStart:]
-    y = y[tStart:]
+    # ## Truncate time series
+    # tStart = int(100.0/dt)
+    # t = t[tStart:]
+    # eta = eta[tStart:]
+    # y = y[tStart:]
 
-    nperseg = int(len(eta)/5.0) # Determine length of each segment, ref to matlab pwelch
-    nfft = nextpow2(len(eta))
-    f_eta, psd_eta = sig.welch(eta, 1.0/dt,nperseg = nperseg, nfft=nfft)
-    f_y, psd_y = sig.welch(y, 1.0/dt,nperseg = nperseg,nfft=nfft)
+    # nperseg = int(len(eta)/5.0) # Determine length of each segment, ref to matlab pwelch
+    # nfft = nextpow2(len(eta))
+    # f_eta, psd_eta = sig.welch(eta, 1.0/dt,nperseg = nperseg, nfft=nfft)
+    # f_y, psd_y = sig.welch(y, 1.0/dt,nperseg = nperseg,nfft=nfft)
 
-    plt.clf()
-    fig = plt.figure()
+    # plt.clf()
+    # fig = plt.figure()
 
-    ax1 = fig.add_subplot(221)
-    ln1 = ax1.plot(f, JS,'-b', label='JONSWAP $S(f)$')
-    ax2 = ax1.twinx()
-    ln2 = ax2.plot(f, H,'-g', label='Transfer function $H(f)$')
-    lns = ln1+ln2
-    labs = [l.get_label() for l in lns]
-    ax1.legend(lns, labs, loc=0, fontsize="xx-small")
+    # ax1 = fig.add_subplot(221)
+    # ln1 = ax1.plot(f, JS,'-b', label='JONSWAP $S(f)$')
+    # ax2 = ax1.twinx()
+    # ln2 = ax2.plot(f, H,'-g', label='Transfer function $H(f)$')
+    # lns = ln1+ln2
+    # labs = [l.get_label() for l in lns]
+    # ax1.legend(lns, labs, loc=0, fontsize="xx-small")
+    # # ax1.set_xlabel("Frequencey f(Hz)")
+    # plt.xlim((0,0.3))
+    # # ax1.set_ylabel(r"$S(f), m^2/Hz$")
+    # # ax2.set_ylabel(r"$H(f), m^2/Hz$")
+    # plt.title("Spectrum")
+
+
+    # ax = fig.add_subplot(222)
+    # ax.plot(t,eta)
+    # plt.title('Wave Elevation $\eta(t)$')
+    # plt.xlim((100,400))
+
+
+    # ax1 = fig.add_subplot(223)
+    # ln1 = ax1.plot(f_eta, psd_eta,'-b', label='Wave elevation')
+    # ax2 = ax1.twinx()
+    # ln2 = ax2.plot(f_y, psd_y,'-g', label='System response')
+    # lns = ln1 + ln2
+    # labs = [l.get_label() for l in lns]
+    # ax1.legend(lns, labs, loc=0, fontsize="small")
     # ax1.set_xlabel("Frequencey f(Hz)")
-    plt.xlim((0,0.3))
-    # ax1.set_ylabel(r"$S(f), m^2/Hz$")
-    # ax2.set_ylabel(r"$H(f), m^2/Hz$")
-    plt.title("Spectrum")
+    # plt.xlim((0,0.3))
+    # # plt.title("Power spectrum density")
 
-
-    ax = fig.add_subplot(222)
-    ax.plot(t,eta)
-    plt.title('Wave Elevation $\eta(t)$')
-    plt.xlim((100,400))
-
-
-    ax1 = fig.add_subplot(223)
-    ln1 = ax1.plot(f_eta, psd_eta,'-b', label='Wave elevation')
-    ax2 = ax1.twinx()
-    ln2 = ax2.plot(f_y, psd_y,'-g', label='System response')
-    lns = ln1 + ln2
-    labs = [l.get_label() for l in lns]
-    ax1.legend(lns, labs, loc=0, fontsize="small")
-    ax1.set_xlabel("Frequencey f(Hz)")
-    plt.xlim((0,0.3))
-    # plt.title("Power spectrum density")
-
-    ax = fig.add_subplot(224)
-    ax.plot(t,y)
-    ax.set_xlabel(r"time (sec)")
-    plt.title('Response $y(t)$')
-    plt.xlim((100,400))
-    #plt.savefig('../Figures/SDOF.eps')
-    plt.show()
+    # ax = fig.add_subplot(224)
+    # ax.plot(t,y)
+    # ax.set_xlabel(r"time (sec)")
+    # plt.title('Response $y(t)$')
+    # plt.xlim((100,400))
+    # #plt.savefig('../Figures/deterministic_lin_sdof.eps')
+    # plt.show()
 
 
 if __name__ == "__main__":

@@ -19,62 +19,69 @@ class simParameter(object):
     Define general settings to simulation running and post data analysis. Solver parameters will be different between solver and solver
 
     General options:
-        T,dT: total simulation time, time step
+        T,dt: total simulation time, time step
         stats: list, indicator of statistics to be calculated, [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
-        outfileName, outdirName: string, file name and directory used to save output data.  
+        outfile_name, outdir_name: string, file name and directory used to save output data.  
 
-        numRows: list, rows of the output data from solver to be analyzed. 
+        qoi2analysis: list, rows of the output data from solver to be analyzed. 
         pts: int or a list of percentiles for QUANT
     """
-    def __init__(self,site,doe_method,pts,T=1000,dT=0.1,stats=[1,1,1,1,1,1,0]):
+    def __init__(self,site,doe_method,doe_order,time_start=0,time_ramp=0,time_max=1000,dt=0.1,stats=[1,1,1,1,1,1,0]):
         self.site       = site
-        self.T          = T
-        self.dT         = dT
+        self.time_start = time_start
+        self.time_ramp  = time_ramp 
+        self.time_max   = time_max
+        self.dt         = dt
         self.stats      = stats
-        self.rule       = None ## Need to be specific which rule ? sampling? quadrature? etc..
         self.seed       = [0,100]
-        self.numRows    = 100
-        self.doe_method     = doe_method 
-        if self.doe_method == 'QUANT':
-            self.doe_methodPts = pts
-        elif self.doe_method == 'MC':
-            self.nsamplesNeed = int(pts)
-            self.doe_methodPts = xrange(self.nsamplesNeed)
-        elif self.doe_method == 'QUAD' or self.doe_method == 'ED':
-            self.doe_methodPts = [pts,]
-        else:
-            raise ValueError('doe_method not defined')
-        self.nsamplesDone = 0
-        # self.nsamplesNeed = 0
-        self.outdirName = ''
-        self.outfileName= ''
+        self.doe_method = doe_method 
+        self.doe_order  = doe_order ## SHOULD be designed accepting array
+        self.qoi2analysis = []  ## default should be all
+        self.nsamples_done = 0
+        self.outdir_name = ''
+        self.outfile_name= ''
 
-    def setRule(self,newrule):
-        self.rule = newrule
+        # self.rule       = None ## Need to be specific which rule ? sampling? quadrature? etc..
+        # self.nsamples_need = 0
+        # if self.doe_method.upper() in ['QUAD','GQ']:
+            
+        # if self.doe_method == 'QUANT':
+            # self.doe_order = doe_order
+        # elif self.doe_method == 'MC':
+            # self.nsamples_need = int(doe_order)
+            # self.doe_order = xrange(self.nsamples_need)
+        # elif self.doe_method == 'QUAD' or self.doe_method == 'ED':
+            # self.doe_order = [doe_order,]
+        # else:
+            # raise ValueError('doe_method not defined')
+    # def set_rule(self,newrule):
+        # ## Need to be specific which rule ? sampling? quadrature? etc..
+        # self.rule = newrule
 
-    def setScheme(self,doe_method):
+    def set_doe_method(self,doe_method):
         self.doe_method = doe_method
 
-    def setSchemePts(self,p):
-        self.doe_methodPts = p
+    def set_doe_order(self,p):
+        self.doe_order = p
 
-    def AddSamplesDoneNum(self,n):
-        self.nsamplesDone += n
+    def add_nsamples_done(self,n):
+        self.nsamples_done += n
 
-    def setSeed(self, s):
+    def set_seed(self, s):
         self.seed = s
 
-    def updateFilename(self,filename):
-        self.outfileName = filename
+    def update_filename(self,filename):
+        self.outfile_name = filename
 
-    def updateDir(self, newDir):
-        self.outdirName = newDir
+    def update_dir(self, newDir):
+        self.outdir_name = newDir
 
-    def setNumOutputs(self, n):
-        self.numRows = n
+    def set_qoi2analysis(self, qois):
+        # what is thsi??
+        self.qoi2analysis = qois
 
-    def setNsamplesNeed(self, n):
-        self.nsamplesNeed= n
-        self.doe_method = xrange(self.nsamplesNeed)
+    def set_nsamples_need(self, n):
+        self.nsamples_need= n
+        self.doe_method = xrange(self.nsamples_need)
 
 

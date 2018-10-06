@@ -21,7 +21,7 @@ class metaModel(object):
             surrogate model classes to be used, e.g. PCE, aPCE or Gaussian Process (GP) etc 
         metaOrder:
             Accept only one number for now. ///ndarray or list (something iterable), the highest order of plolynomal terms ???
-        doe_scheme: 
+        doe_method: 
             For PCE model, based on experimental design methods, proper projection or regression fitting will be implemented
             For aPCE model, 
             For GP model,
@@ -29,7 +29,7 @@ class metaModel(object):
         dist: list, marginal distributions of underlying random variables from selected Wiener-Askey polynomial, mutually independent
         orthPoly, norms: orthogonal polynomial basis and their corresponding normalization constant. E[Phi_i, Phi_i] = nomrs[i]
     """
-    def __init__(self, model_class, metaOrder, doe_scheme, dist):
+    def __init__(self, model_class, metaOrder, doe_method, dist):
         self.model_class     = model_class
         if isinstance(metaOrder, int):
             self.metaOrder = [metaOrder,]
@@ -69,7 +69,7 @@ class metaModel(object):
             if not self.orthPoly:
                 self.getOrthPoly()
             for i, poly in enumerate(self.orthPoly):
-                if self.doe_scheme.upper() == 'QUAD' or self.doe_scheme.upper == 'GQ':
+                if self.doe_method.upper() == 'QUAD' or self.doe_method.upper == 'GQ':
                     assert w is not None
                     assert poly.dim == x.shape[0]
                     print('\t\tFitting PCE of order {:d} with quadrature'.format(self.metaOrder[i]))
