@@ -30,7 +30,8 @@ class metaModel(object):
         orthPoly, norms: orthogonal polynomial basis and their corresponding normalization constant. E[Phi_i, Phi_i] = nomrs[i]
     """
     def __init__(self, model_class, meta_orders, doe_method, dist):
-        self.model_class     = model_class
+        self.model_class= model_class
+        self.doe_method = doe_method
         if isinstance(meta_orders, int):
             self.meta_orders = [meta_orders,]
         else:
@@ -40,7 +41,7 @@ class metaModel(object):
         self.orthPoly   = []
         self.norms      = [] 
         self.fit_l2error= []
-        self.cv_l2error = []
+        self.cv_l2errors= []
         self.f_hats     = []
 
     def get_orth_poly(self):
@@ -54,27 +55,36 @@ class metaModel(object):
         """
         Fit specified meta model with given observations (x,y, w for quadrature)
 
-        x: array-like of shape(ndim, nsamples)
-        y: array-like of shape(nsamples,ndim), each row is a full observation(e.g. time serie)
-            easy to implement for [foo(i) for i in x]
+
+        x: list of length len(doe_order), number of sample sets
+            each element contains input sample variables both in zeta and physical space of shape (ndim, nsamples), each column includes [zeta_0,...zeta_n]        
+        y: list of length len(doe_order), number of observation sets
+            each element contains (nsamples,)
         w: array-like of shape(nsamples), weight for quadrature 
         """
-        x = np.asfarray(x)
-        y = np.asfarray(y)
-        w = np.asfarray(w) if not w else w
-        y = y.T if y.shape[1] == x.shape[1] else y
+        print('************************************************************')
+        print('Building {:d} models with {:d} sample sets and meta model orders {}'.format(len(self.meta_orders) * len(x), len(x), self.meta_orders))
 
-        if self.model_class.upper() == 'PCE':
-           f_hats, l2_ers = self.__build_pce_model(x,y,w) 
-        elif self.model_class.upper() == "GP":
-            print("Not implemented yet")
-        elif self.model_class.upper() == 'APCE':
-            print("Not implemented yet")
-        else:
-            pass
+        for i in range(len(x)):
+            print('>>> Building surrogate model with sample sets: {:d}'.format(i+1))
+            datax = np.array(x[i])
+            datay = np.array(y[i])
+            dataw = np.array(w[i]) if w else w
+                
+            # dataw = np.array(w[i]) if not w else w
+            # datay = datay.T if datay.shape[1] == datax.shape[1] else datay
 
-        self.f_hats = f_hats
-        self.fit_l2error = l2_ers
+            if self.model_class.upper() == 'PCE':
+               f_hat, l2_er = self.__build_pce_model(datax,datay,dataw) 
+            elif self.model_class.upper() == "GP":
+                print("Not implemented yet")
+            elif self.model_class.upper() == 'APCE':
+                print("Not implemented yet")
+            else:
+                pass
+
+            self.f_hats.append(f_hat)
+            self.fit_l2error.append(l2_er)
 
     def cross_validate(self, x, y):
         """
@@ -82,19 +92,20 @@ class metaModel(object):
         """
         if not self.f_hats:
             raise ValueError('No meta model exists')
-        f_cv = []
-        for i, f in enumerate(self.f_hats):
+        for _, f_hats in enumerate(self.f_hats):
+            _cv_l2error = []
             print('\t\tCross validation {:s} metamodel of order \
                     {:d}'.format(self.model_class, max([sum(order) for order in f.keys])))
-            f_fit = [f(*val) for val in x.T]
-            f_cv.append(f_fit)
-            cvError = np.sqrt(np.mean((np.asfarray(f_fit) - y)**2),axis=0)
-            self.cv_l2error.append(cvError)
-        return np.asfarray(f_cv)
+            for _, f in enumerate(f_hats):
+                f_fit = [f(*val) for val in x.T]
+                f_cv.append(f_fit)
+                cv_l2error = np.sqrt(np.mean((np.asfarray(f_fit) - y)**2),axis=0)
+                _cv_l2error.append(cv_l2error)
+            self.cv_l2errors.append(_cv_l2error)
 
 
 
-    def predict(self, sample_size, rule='R', R=1):
+    def predict(self, sample_size, models_chosen=None, rule='R', R=1):
         """
         predict using metaModel
 
@@ -108,23 +119,34 @@ class metaModel(object):
 
         # sampling from joint distribution
         rand_samples = self.distJ.sample(sample_size,rule=rule)
+
+        if models_chosen is not None:
+            f_hats = [self.f_hats[i][j] for i, j in models_chosen]
+        else:
+            f_hats = self.f_hats
+
         # run one model to get the size of return y, could return one value or
         # a time series(response evolve with time)
-        f = self.f_hats[0]
-        y = f(*rand_samples.T[0])
-        if len(y) == 1:
-            f_pred = np.empty([R, len(self.f_hats), sample_size])
-        else:
-            f_pred = np.empty([R, len(self.f_hats), sample_size, len(y)])
-
-        for r in xrange(int(R)):
-            for i, f in enumerate(self.f_hats):
-                print('\t\tPredicting with {:s} of order {:d} for {:d} samples, \
-                        repeated {:d} / {:d} times'.format(self.model_class,  \
-                            self.meta_orders[i], sample_size,r, R))
+        # f = self.f_hats[0][0]
+        # y = f(*rand_samples.T[0])
+        # if isinstance(y, float):
+            # print('here')
+            # f_pred = np.empty([R, len(self.f_hats), sample_size])
+        # else:
+            # f_pred = np.empty([R, len(self.f_hats), sample_size, len(y)])
+        print('************************************************************')
+        print('Predicting with {:d} {:s} surrogate models with {:d} samples'.format(len(f_hats), self.model_class, int(sample_size)))
+        f_pred = []
+        for i, f in enumerate(f_hats):
+            print('>>> Predicting with {:}th order {:s} surrogate model'.format(self.meta_orders[i], self.model_class))
+            _f_pred = []
+            for r in range(int(R)):
+                print('\r\tRepeated: {:d} / {:d}'.format(r+1, R),end='')
                 y = [f(*val) for val in rand_samples.T]
-                f_pred[r,i,:] = np.asfarray(y) 
-        return f_pred
+                _f_pred.append(y)
+            print('\n')
+            f_pred.append(_f_pred)
+        return np.array(f_pred)
 
     def __build_pce_model(self, x, y, w=None):
         """
@@ -142,7 +164,6 @@ class metaModel(object):
             f_hats: list of surrogate models
             l2_ers: list of l2 error between observed Y responses and fitted value at input samples
         """
-        print('\tBuilding PCE surrogate model')
         f_hats = []
         l2_ers = []
         if not self.orthPoly:
@@ -151,10 +172,10 @@ class metaModel(object):
             if self.doe_method.upper() == 'QUAD' or self.doe_method.upper == 'GQ':
                 assert w is not None
                 assert poly.dim == x.shape[0]
-                print('\t\tFitting PCE of order {:d} with quadrature'.format(self.meta_orders[i]))
+                print('\tBuilding PCE surrogate model of order {:d} with quadrature'.format(self.meta_orders[i]))
                 f_hat = cp.fit_quadrature(poly, x, w, y, norms=self.norms[i])
             else:
-                print('\t\tFitting PCE of order {:d} with regression'.format(self.meta_orders[i]))
+                print('\tBuilding PCE surrogate model of order {:d} with regression'.format(self.meta_orders[i]))
                 f_hat = cp.fit_regression(poly, x, y)
             f_fit = np.array([f_hat(*val) for val in x.T])
             fit_error = np.sqrt(((f_fit-y)**2).mean(axis=0))

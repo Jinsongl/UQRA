@@ -24,7 +24,7 @@ def run_sim(siteEnvi, solver_func, simParams, metaParams):
         simParams: simParameter class object
         solver: solver. Return [nChannel, nTimeSample] array. Each row is a time series for specified channel
     Return:
-        for different doe_order, sample size would change, so return list
+        zafor different doe_order, sample size would change, so return list
 
         f_obsx: list of length len(doe_order)
             each element contains input sample variables both in zeta and physical space
@@ -64,7 +64,7 @@ def run_sim(siteEnvi, solver_func, simParams, metaParams):
         for i, iphyrvs in enumerate(phyrvs.T):
             if_obs   = solver_wrapper(solver_func, simParams, *iphyrvs)
             if_stats = get_stats(if_obs[:,qoi2analysis], stats=simParams.stats)
-            _f_obsy.append(if_obs)
+            _f_obsy.append(if_obs[:,qoi2analysis])
             _f_obsy_stats.append(if_stats)
             # idoe_order_stats[i,:,:] = if_stats
             print('\r\tRunning solver: {:s}, {:d} out of {:d}'\
