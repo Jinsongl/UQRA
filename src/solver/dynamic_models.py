@@ -20,11 +20,12 @@ import scipy.signal as sig
 def nextpow2(x):
     return 2**(int(x)-1).bit_length()
 
-def JONSWAP(Hs,Tp,f):
+
+def spec_jonswap(Hs,Tp,f):
     """ JONSWAP wave spectrum, IEC 61400-3
     Hs: significant wave height, m
     Tp: wave peak period, sec
-    f: frequencies to be sampled, hz 
+    f: frequencies to be sampled at, hz 
     """
 
     f = np.asarray(f)
@@ -41,9 +42,43 @@ def JONSWAP(Hs,Tp,f):
     JS2 = np.exp(-1.25*fr**-4) * (1-0.287*np.log(gamma))
     JS3 = gamma**(np.exp(-0.5*(fr-1)**2/sigma**2))
     JS = JS1 * JS2 * JS3
-    return JS 
+    return (f, JS)
 
-def TransferFun(f,f_n=0.15, zeta=0.1):
+spectrum_collection = {
+        'JONSWAP': spec_jonswap,
+        'JW':spec_jonswap
+        }
+def gen_surfwave(spectrum_name, *args):
+    """
+    Generate surface wave time series with given spectrum at specified args parameters
+    
+    Arguments:
+        specturm: string, spectral function name 
+        args: arguments needed to return spectrum density
+
+    Return:
+        t: time start with 1, need to multiply by delta_t 
+        etat: surface wave time series
+        psd_f: frequencies of spectral density 
+        psd_eta: surface wave power spectral denstiy
+    """
+    spectrum_func = spectrum_collection[spectrum_name.upper()]
+    psd_f, psd_pxx = spectrum_func(*args)
+    df      = psd_f[1] - psd_f[0]
+    ampf    = np.sqrt(2*psd_pxx*df) # amplitude
+    theta   = np.random.uniform(-np.pi, np.pi, len(psd_f))
+    psd_eta = ampf * np.exp(1j*theta)
+    etat    = np.fft.ifft(psd_eta).real * len(psd_f)
+    t       = np.arange(1, len(psd_f))
+
+    return (t, etat, psd_f, psd_eta)
+
+def gen_ts_from_spectrum():
+    """
+    Generate time series from specified power spectrum
+    """
+
+def transfer_func(f,f_n=0.15, zeta=0.1):
     """
     Transfer function of single degree freedom system.
     f_n: natural frequency, Hz
@@ -56,7 +91,6 @@ def TransferFun(f,f_n=0.15, zeta=0.1):
     y = np.sqrt(y1 + y2)
     y = 1./y 
     return y
-
 def deterministic_lin_sdof(Hs, Tp, T=int(1e2), dt=0.1, seed=[0,100]):
     """
     Dynamics of deterministic linear sdof system with given inputs: Hs, Tp
@@ -71,25 +105,18 @@ def deterministic_lin_sdof(Hs, Tp, T=int(1e2), dt=0.1, seed=[0,100]):
         np.random.seed() 
 
     numPts_T = int(nextpow2(T/dt)) ## Number of points in Time domain
-    # numPts_F = int(numPts_T/2+1)
-    numPts_F= numPts_T
+    numPts_F = numPts_T
     df      = 1.0/(numPts_T * dt)
     f       = np.arange(1,numPts_F) * df
-    t       = np.arange(1,numPts_F) * dt
-    JS      = JONSWAP(Hs,Tp,f)
-    JS_area = np.sum(JS*df)
+    # JS_area = np.sum(JS*df)
 
     # H = np.ones(f.shape)
-    H = TransferFun(f)
-
-    ampf= np.sqrt(2*JS*df) # amplitude
-    theta = np.random.uniform(-np.pi, np.pi, len(f))
-    # print "  > Random phases:\n  ", theta[0:5],'...'
-    etaf= ampf * np.exp(1j*theta)
-    yf  = etaf * H 
-    etat= np.fft.ifft(etaf).real * numPts_F
-    y   = np.fft.ifft(yf).real * numPts_F 
-
+    H = transfer_func(f)
+    t, etat, psd_f, psd_eta = gen_surfwave('jonswap', Hs, Tp, f)
+    t = t * dt
+    assert np.array_equal(f, psd_f)
+    psd_y  = psd_eta * H 
+    y   = np.fft.ifft(psd_y).real * numPts_F 
     # print("\tSystem response Done!")
     # print "  > Significant wave height check:"
     # print "     Area(S(f))/Hs: ",'{:04.2f}'.format(4 * np.sqrt(JS_area) /Hs)    
@@ -118,10 +145,10 @@ def main(Hs=12.5,Tp=15.3,T=int(1e2)):
     # JS_area = np.sum(JS*df)
 
     # # H = np.ones(f.shape)
-    # H = TransferFun(f)
+    # H = transfer_func(f)
 
     # # f, JS = JONSWAP(Hs,Tp,1.0/dt, 1.0/T)
-    # # H = TransferFun(f)
+    # # H = transfer_func(f)
     
     # ## Truncate time series
     # tStart = int(100.0/dt)
@@ -134,9 +161,15 @@ def main(Hs=12.5,Tp=15.3,T=int(1e2)):
     # f_eta, psd_eta = sig.welch(eta, 1.0/dt,nperseg = nperseg, nfft=nfft)
     # f_y, psd_y = sig.welch(y, 1.0/dt,nperseg = nperseg,nfft=nfft)
 
+    # numPts_T = int(nextpow2(T/dt)) ## Number of points in Time domain
+    # numPts_F = numPts_T
+    # df      = 1.0/(numPts_T * dt)
+    # f       = np.arange(1,numPts_F) * df
+
+    # H = transfer_func(f)
+    # f, JS = spec_jonswap(Hs,Tp,f)
     # plt.clf()
     # fig = plt.figure()
-
     # ax1 = fig.add_subplot(221)
     # ln1 = ax1.plot(f, JS,'-b', label='JONSWAP $S(f)$')
     # ax2 = ax1.twinx()
@@ -151,8 +184,9 @@ def main(Hs=12.5,Tp=15.3,T=int(1e2)):
     # plt.title("Spectrum")
 
 
+    
     # ax = fig.add_subplot(222)
-    # ax.plot(t,eta)
+    # ax.plot(y[:,0],y[:,1])
     # plt.title('Wave Elevation $\eta(t)$')
     # plt.xlim((100,400))
 
@@ -169,7 +203,7 @@ def main(Hs=12.5,Tp=15.3,T=int(1e2)):
     # # plt.title("Power spectrum density")
 
     # ax = fig.add_subplot(224)
-    # ax.plot(t,y)
+    # ax.plot(y[:,0],y)
     # ax.set_xlabel(r"time (sec)")
     # plt.title('Response $y(t)$')
     # plt.xlim((100,400))

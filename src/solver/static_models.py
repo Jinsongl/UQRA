@@ -7,9 +7,10 @@
 # Distributed under terms of the GNU-License license.
 
 """
-Ishigami function
+
 """
 
 
-def Ishigami(param, *args):
+def ishigami(*args):
+
 
