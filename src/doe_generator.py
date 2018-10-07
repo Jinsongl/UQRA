@@ -90,7 +90,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
     """
     doe_method = doe_method.upper()
     
-    if doe_method == 'GQ':
+    if doe_method == 'GQ' or doe_method == 'QUAD':
         ## Return samples in 
         rule = 'e' if rule is None else rule ## Default 
         print('************************************************************')

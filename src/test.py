@@ -2,57 +2,81 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2017 Jinsong Liu <jinsongliu@utexas.edu>
+# Copyright © 2018 Jinsong Liu <jinsongliu@utexas.edu>
 #
 # Distributed under terms of the GNU-License license.
 
 """
 
 """
+
+
 import chaospy as cp
 import numpy as np
-import numpy.random as rn
-import scipy as sp
-from scipy.stats import norm
-from scipy.stats import gamma
+from environment import environment
+from metaModel import metaModel
+from simParams import simParameter
+# import environment as envi
+from run_sim import run_sim
+from solver.SDOF import deterministic_lin_sdof as solver_func 
+# import utility.dataIO as dataIO
+# import utility.getStats as getStats
+# from meta.metaModel import *
+# from solver.collec import *
+import sys
+sys.path.append("/MUSEUQ/src/")
+
 import matplotlib.pyplot as plt
-from sklearn import svm
-import os.path
-# import Norway5 as envi
-# from SDOF import * 
-# from genVar import *
-# from getStats import *
-# import csv
-# from mpl_toolkits.mplot3d import Axes3D
+from statsmodels.distributions.empirical_distribution import ECDF
+import matplotlib.cm as cm
+from mpl_toolkits.mplot3d import Axes3D
 
-# data = np.genfromtxt("Norway5EC2D_HT_50.csv",delimiter=',')
-# with open("testData.csv", 'wb') as fileid:
-    # writer = csv.writer(fileid)
-    # for hstp in data:
-        # f_obs = SDOF(hstp[0],hstp[1], 1000, seed=[1,1000])
-        # f_stats = getStats(f_obs, outputs=[1,2], stats=[1,1,1,1,1,1,0])
-        # f_stats = np.array(f_stats)
-        # v = [hstp[0],hstp[1],f_stats[1,4]]
-        # writer.writerow(['{:8.4e}'.format(float(x)) for x in v])
+def main():
 
-def model_solver(q):
-    return [q[0]*q[1], q[0]**3-q[1]+1]
-dist = cp.Iid(cp.Normal(0,1),2)
-cor, w = cp.generate_quadrature(8,dist,rule='G')
+    dist_zeta   = [cp.Exponential(1), cp.Exponential(1)] 
+    qoi2analysis = [0,1,2] 
+    ## ------------------------------------------------------------------- ###
+    ##  Define simulation parameters  ###
+    ## ------------------------------------------------------------------- ###
+    quad_simparam = simParameter('Norway5_2','QUAD', [2,3], qoi2analysis)
+    # quad_simparam.setNumOutputs(3)
+    quad_simparam.set_seed([1,100])
+    #### ------------------------------------------------------------------- ###
+    #### Define meta model parameters  ###
+    #### ------------------------------------------------------------------- ###
+    quad_metamodel   = metaModel('PCE', [5,6], quad_simparam.doe_method, dist_zeta)
+    # ## ------------------------------------------------------------------- ###
+    # ## Define environmental conditions ###
+    # ## ------------------------------------------------------------------- ###
+    siteEnvi = environment(quad_simparam.site)
+    # ## ------------------------------------------------------------------- ###
+    # ## Run Simulations for training data  ###
+    # ## ------------------------------------------------------------------- ###
+    f_obsX, f_obsY, f_obsYstats = run_sim(siteEnvi, solver_func, quad_simparam, quad_metamodel)
+    for f_obsx in f_obsX:
+        print(f_obsx.shape) 
+    for f in f_obsY:
+        print(f.shape)
+    for f in f_obsYstats:
+        print(f.shape)
+    # ## ------------------------------------------------------------------- ###
+    # ## Fitting meta model  ###
+    # ## ------------------------------------------------------------------- ###
+    QoI = [2,4] ## The fifth statistics (max(abs)) of the third output
+    quad_metamodel.fit_model(f_obsX[:len(dist_zeta)], f_obsYstats[5])
+    # ## ------------------------------------------------------------------- ###
+    # ## Cross Validation  ###
+    # ## ------------------------------------------------------------------- ###
+    # quad_metamodel.crossValidate(valiData)
+    # print ('    Fitting Error:', quad_metamodel.fitError)
+    # print ('    Cross Validation Error:', quad_metamodel.CVError)
 
-solves = np.array([model_solver(c) for c in cor.T ])
-# print solves
+    # ### ------------------------------------------------------------------- ###
+    # ### Prediction  ###
+    # ### ------------------------------------------------------------------- ###
+    # quad_metamodel.predict(1E6,quad_simparam,R=10)
 
 
-for order in xrange(1,10):
-
-    orthPoly,norms = cp.orth_ttr(order,dist,retall=True)
-    f_hat = cp.fit_quadrature(orthPoly,cor, w,solves[:,1],norms=norms)
-# print cp.decompose(f_hat)
-    f_fit = []
-    for c in cor.T:
-        f_fit.append(f_hat(*c))
-    f_fit = np.array(f_fit) 
-    print 'order:', order, np.sqrt(np.mean((f_fit - solves[:,1])**2))
-        # f_fit.append(f.tolist())
+if __name__ == '__main__':
+    main()
 

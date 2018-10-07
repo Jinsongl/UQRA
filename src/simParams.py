@@ -11,8 +11,6 @@
 """
 import chaospy as cp
 import numpy as np
-import utility.dataIO as dataIO
-import utility.getStats as getStats
 ## Define parameters class
 class simParameter(object):
     """
@@ -26,7 +24,7 @@ class simParameter(object):
         qoi2analysis: list, rows of the output data from solver to be analyzed. 
         pts: int or a list of percentiles for QUANT
     """
-    def __init__(self,site,doe_method,doe_order,time_start=0,time_ramp=0,time_max=1000,dt=0.1,stats=[1,1,1,1,1,1,0]):
+    def __init__(self,site,doe_method,doe_order,qoi2analysis,time_start=0,time_ramp=0,time_max=1000,dt=0.1,stats=[1,1,1,1,1,1,0]):
         self.site       = site
         self.time_start = time_start
         self.time_ramp  = time_ramp 
@@ -35,8 +33,8 @@ class simParameter(object):
         self.stats      = stats
         self.seed       = [0,100]
         self.doe_method = doe_method 
-        self.doe_order  = doe_order ## SHOULD be designed accepting array
-        self.qoi2analysis = []  ## default should be all
+        self.doe_order  = [doe_order,] if isinstance(doe_order, int) else doe_order 
+        self.qoi2analysis = qoi2analysis  ## default should be all
         self.nsamples_done = 0
         self.outdir_name = ''
         self.outfile_name= ''

@@ -58,36 +58,6 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
     res = np.asfarray(res)
     return res
 
-# def get_stats_files(filelist,stats=[1,1,1,1,1,1,0], outputNames=None):
-    # """ 
-        # filelist: list of file names 
-        # stats: list, indicator of statistics to be calculated, [mean, std, skewness, kurtosis, absmin, absmax, up_crossing]
-        # outputNames: list of names of each row, used for output file names. If not specified, output0, output1,... will be used 
-    # """
-    # if outputNames is None:
-        # outputNames = []
-        # for i in range(len(qoi2analysis)):
-            # outputNames.append('output'+str(i)+'.csv')
-
-    # qoi2analysistats = [[]]  # each element store the statistics for one row 
-    # for i in range(len(qoi2analysis)-1):
-        # qoi2analysistats.append([])
-    
-    # indicator_steps = int(len(filelist)/10)
-    # for i, filename in enumerate(filelist):
-        # if i % indicator_steps == 0:
-            # print "processing file number:  ", i 
-        # filestats = get_stats(filename,qoi2analysis,stats)
-        # for j in range(len(qoi2analysistats)):
-            # qoi2analysistats[j].append(filestats[j,:])
-            # # print qoi2analysistats[1]
-
-
-    # # print len(qoi2analysistats[0])
-    # for i in range(len(qoi2analysis)):
-        # with open(outputNames[i],'wb') as fileid:
-            # writer = csv.writer(fileid)
-            # writer.writerows(qoi2analysistats[i])
 
 def main(stats=[1,1,1,1,1,1,0]):
 

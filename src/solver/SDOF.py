@@ -66,12 +66,10 @@ def deterministic_lin_sdof(Hs, Tp, T=int(1e2), dt=0.1, seed=[0,100]):
     seed=[bool, int], if seed[0]==True, seed is fixed with seed[1]
     """
     if seed[0]:
-        print('\tFixed seed with {:d}'.format(seed[1]))
         np.random.seed(int(seed[1]))
     else:
-        print('\tRunning with random seed')
+        np.random.seed() 
 
-    print ("\tSingle DOF system with linear wave: Hs={:6.2f}, Tp={:6.2f}".format(Hs,Tp))
     numPts_T = int(nextpow2(T/dt)) ## Number of points in Time domain
     # numPts_F = int(numPts_T/2+1)
     numPts_F= numPts_T
@@ -92,7 +90,7 @@ def deterministic_lin_sdof(Hs, Tp, T=int(1e2), dt=0.1, seed=[0,100]):
     etat= np.fft.ifft(etaf).real * numPts_F
     y   = np.fft.ifft(yf).real * numPts_F 
 
-    print("\tSystem response Done!")
+    # print("\tSystem response Done!")
     # print "  > Significant wave height check:"
     # print "     Area(S(f))/Hs: ",'{:04.2f}'.format(4 * np.sqrt(JS_area) /Hs)    
     # print "     4*std/Hs:      ",'{:04.2f}'.format(4 * np.std(etat[int(100.0/dt):])/Hs)

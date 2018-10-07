@@ -46,7 +46,7 @@ class environment(object):
         self.isTurnc = isTrunc
         self.bnd = bnd
         
-    def getdistFun(self):
+    def get_distfuncs(self):
         """
         Return a list of functions, each function take given arguments to return 
         a distribution
@@ -55,15 +55,15 @@ class environment(object):
             return [norway2.dist_Hs, norway2.distC_Tp]
         if self.site == 'Norway5_3':
             return [norway3.dist_Uw, norway3.distC_Hs, norway3.distC_Tp]
-    def getdistC(self, vals, key='phy'):
+    def get_cdists(self, vals, key='phy'):
         """
         Return a list of conditional distributions in predefined priority order.
         based on given vals (either percentile q or physical values phy) 
         Only for one set!
-        distC[0] <-- phy[0] <=> vals[0]  # the first one defined based on either physical or percentile value
-        distC[1] <-- phy[0] # From the second, conditional distributions are defined based solely on physical values 
-        distC[2] <-- phy[0,1]
-        distC[3] <-- phy[0,1,2]
+        cdists[0] <-- phy[0] <=> vals[0]  # the first one defined based on either physical or percentile value
+        cdists[1] <-- phy[0] # From the second, conditional distributions are defined based solely on physical values 
+        cdists[2] <-- phy[0,1]
+        cdists[3] <-- phy[0,1,2]
         ...
 
         Arguments:
@@ -71,27 +71,27 @@ class environment(object):
         key: string,  'ppf' or 'phy'
 
         Returns:
-        distC: list of conditional distribution 
+        cdists: list of conditional distribution 
         phy: if key == 'phy', return vals. if key == 'ppf', return physical values 
                 corresponding to those ppf.
         """
-        distFun = self.getdistFun()
+        dist_funcs = self.get_distfuncs()
 
-        assert len(distFun) == len(vals) or len(distFun) == len(vals)+1,\
+        assert len(dist_funcs) == len(vals) or len(dist_funcs) == len(vals)+1,\
                 'Dimension of distributions(ndim:{0:3d}) and random variables(ndim:{1:3d}) not correct'\
-                .format(len(distFun), len(vals))
+                .format(len(dist_funcs), len(vals))
         
-        distC   = []
+        cdists   = []
         phy     = [] # All conditional distributions except the first one are defined based on physical variables
         if self.site == 'Norway5_2': 
             # Hs distribution is pievewise 
-            distcur = distFun[0](vals[0], key=key)
+            distcur = dist_funcs[0](vals[0], key=key)
         elif self.site == 'Norway5_3':
-            distcur = distFun[0](self.isTurnc, self.bnd)
+            distcur = dist_funcs[0](self.isTurnc, self.bnd)
         else:
             raise ValueError("Site not defined")
 
-        distC.append(distcur)
+        cdists.append(distcur)
         if key == "ppf":
             phy.append(float(distcur.inv(vals[0])))
         elif key =="phy":
@@ -99,35 +99,37 @@ class environment(object):
         else:
             raise ValueError("key is not defined") 
 
-        for idist in range(1,len(distFun)):
-            distcur = distFun[idist](*phy[:idist])
-            distC.append(distcur)
+        for idist in range(1,len(dist_funcs)):
+            distcur = dist_funcs[idist](*phy[:idist])
+            cdists.append(distcur)
             if key == "ppf":
     # if vals is (ndim-1,) then the last physical variable value is appended as nan 
                 phy.append(float(distcur.inv(vals[idist])) if idist < len(vals) else np.nan)
         phy = np.array(phy)
-        assert len(distC) == len(distFun), \
-                'Expecting {:3d} conditional distributions, {:3d} returned'.format(len(distFun), len(distC))
+        assert len(cdists) == len(dist_funcs), \
+                'Expecting {:3d} conditional distributions, {:3d} returned'.format(len(dist_funcs), len(cdists))
 
-        return distC, phy
+        return cdists, phy
 
 
-    def get_invcdf(self,qs):
+    def get_invcdf(self,qs, key='phy'):
         """
         Return inverse cdf (samples based on given percentiles )
 
         Arguments:
-        qs: ndarray  of shape (ndim, nsamples) 
+        qs: array-like of shape (ndim, nsamples) 
 
         Return:
         vals: ndarray  of shape (ndim, nsamples)
         """
         qs = np.asfarray(qs)
         vals = np.empty(qs.shape)
-
-        for i, q in enumerate (qs.T):
-            _,val = self.getdistC(q, key='ppf') 
-            vals[:,i] = val 
+        if qs.ndim == 1:
+            _,vals = self.get_cdists(qs, key=key) 
+        else:
+            for i, q in enumerate (qs.T):
+                _,val = self.get_cdists(q, key=key) 
+                vals[:,i] = val 
         return vals
 
     def phy2norm(self, vals):
@@ -146,8 +148,8 @@ class environment(object):
         invalid = []
         for val in vals.T:
             v = []
-            distC,_ = self.getdistC(val, key='phy')
-            for i, dist in enumerate(distC):
+            cdists,_ = self.get_cdists(val, key='phy')
+            for i, dist in enumerate(cdists):
                 q = float(dist.cdf(val[i]))
                 # print(q)
                 try:
@@ -171,7 +173,7 @@ class environment(object):
         should accept different distributions from Wiener-Askey scheme
 
         Arguments:
-            dist_zeta: list of zeta distributions
+            dist_zeta: list of marginal zeta distributions
             zeta: variables in zeta domain to be transformed
 
         Returns:
@@ -179,9 +181,9 @@ class environment(object):
         """
         zeta = np.asfarray(zeta)
         vals = np.empty(zeta.shape)
-
+        assert len(dist_zeta) == zeta.shape[0]
         for i, val in enumerate (zeta.T):
-            q = [dist.cdf(val[i]) for i, dist in enumerate(dist_zeta)]
+            q = list(map(lambda dist, x: float(dist.cdf(x)), dist_zeta, val))
             vals[:,i] = self.get_invcdf(q, key='ppf')
         assert vals.shape == zeta.shape
         return vals
@@ -225,8 +227,8 @@ class environment(object):
         uw_hs_grid = np.array(list(itertools.product(uw,hs)))
         invalid = []
         for i, val in enumerate(uw_hs_grid):
-            distC,_ = self.getdistC(val, key='phy')
-            tp_ = float(distC[-1].inv(0.5))
+            cdists,_ = self.get_cdists(val, key='phy')
+            tp_ = float(cdists[-1].inv(0.5))
             if np.isnan(tp_):
                 print('Invalid sea states: Uw = {:.2f}, Hs = {:.2f}'.format(val[0], val[1]))
                 invalid.append(i)
@@ -271,11 +273,11 @@ def main():
     u10 = uw/(133.5/10)**0.1
     hs = np.arange(0.5, 14, 0.5)
     # hs = np.array([5])
-    # distC,_ = test.getdistC(np.array([2.31512,5]), key='phy')
-    # print(dist_norm.inv(distC[0].cdf(2.31512)))
-    # print(distC[1].cdf(5))
-    # print(dist_norm.inv(distC[1].cdf(5)))
-    # print(distC[2])
+    # cdists,_ = test.get_cdists(np.array([2.31512,5]), key='phy')
+    # print(dist_norm.inv(cdists[0].cdf(2.31512)))
+    # print(cdists[1].cdf(5))
+    # print(dist_norm.inv(cdists[1].cdf(5)))
+    # print(cdists[2])
     var_phy,invalid = test.get_tp(u10,hs)
     # uw_hs = np.column_stack((uw_hs_grid, tp)).T
     var_norm,_ = test.phy2norm(var_phy)

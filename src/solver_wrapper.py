@@ -9,7 +9,7 @@
 """
 
 """
-
+import numpy as np
 
 def solver_wrapper(solver_func, simParams, *args):
     """
@@ -32,9 +32,21 @@ def solver_wrapper(solver_func, simParams, *args):
         Tmax    = simParams.time_max
         dt      = simParams.dt
         seed    = simParams.seed
+        # isDisplay = 0
+        # if not isDisplay: 
+            # if seed[0]:
+                # print('\tFixed seed with {:d}'.format(seed[1]))
+                # np.random.seed(int(seed[1]))
+            # else:
+                # print('\tRunning with random seed')
+            # print ("\tRunning deterministic SDOF system ")
+            # isDisplay = 1
+
         y = solver_func(Hs,Tp,Tmax,dt,seed)
     else:
         pass
+    
+    return y
 
 
     

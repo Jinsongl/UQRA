@@ -11,11 +11,13 @@
 """
 import chaospy as cp
 import numpy as np
-import envi.environment as envi
-import solver.SDOF as slv 
+from environment import environment
+from metaModel import metaModel
+# import environment as envi
+import solver.SDOF as solver_func 
 import utility.dataIO as dataIO
 # import utility.getStats as getStats
-from meta.metaModel import *
+# from meta.metaModel import *
 from solver.collec import *
 import sys
 sys.path.append("/MUSEUQ/src/")
@@ -52,7 +54,7 @@ def main():
     # ## ------------------------------------------------------------------- ###
     # ## Run Simulations for training data  ###
     # ## ------------------------------------------------------------------- ###
-    f_obsX, f_obsY = RunSim(siteEnvi,slv.SDOF,QuadParams,  QuadModel)
+    f_obsX, f_obsY = RunSim(siteEnvi,solver_func.SDOF,QuadParams,  QuadModel)
     # ## ------------------------------------------------------------------- ###
     # ## Fitting meta model  ###
     # ## ------------------------------------------------------------------- ###
@@ -99,7 +101,7 @@ def main():
     # ## ------------------------------------------------------------------- ###
     # ## Run Simulations for training data  ###
     # ## ------------------------------------------------------------------- ###
-    # # f_obsX, f_obsY = RunSim(siteEnvi,slv.SDOF,QuantParams, QuantModel)
+    # # f_obsX, f_obsY = RunSim(siteEnvi,solver_func.SDOF,QuantParams, QuantModel)
     # ## ------------------------------------------------------------------- ###
     # ## Fitting meta model  ###
     # ## ------------------------------------------------------------------- ###
@@ -139,7 +141,7 @@ def main():
     # # # ## ------------------------------------------------------------------- ###
     # # # ## Run Simulations for training data  ###
     # # # ## ------------------------------------------------------------------- ###
-    # f_obsX, f_obsY = RunSim(siteEnvi,slv.SDOF,MCParams,    MCModel)
+    # f_obsX, f_obsY = RunSim(siteEnvi,solver_func.SDOF,MCParams,    MCModel)
     # # # ## ------------------------------------------------------------------- ###
     # # # ## Fitting meta model  ###
     # # # ## ------------------------------------------------------------------- ###
@@ -181,7 +183,7 @@ def main():
     # # ## ------------------------------------------------------------------- ###
     # # ## Run Simulations for training data  ###
     # # ## ------------------------------------------------------------------- ###
-    # f_obsX, f_obsY = RunSim(siteEnvi,slv.SDOF,EDParams,    EDModel)
+    # f_obsX, f_obsY = RunSim(siteEnvi,solver_func.SDOF,EDParams,    EDModel)
     # # ## ------------------------------------------------------------------- ###
     # # ## Fitting meta model  ###
     # # ## ------------------------------------------------------------------- ###
