@@ -24,7 +24,7 @@ class simParameter(object):
         qoi2analysis: list, rows of the output data from solver to be analyzed. 
         pts: int or a list of percentiles for QUANT
     """
-    def __init__(self,site,doe_method,doe_order,qoi2analysis,time_start=0,time_ramp=0,time_max=1000,dt=0.1,stats=[1,1,1,1,1,1,0]):
+    def __init__(self,site,doe_method,doe_order,qoi2analysis=[0,],time_start=0,time_ramp=0,time_max=1000,dt=0.1,stats=[1,1,1,1,1,1,0]):
         self.site       = site
         self.time_start = time_start
         self.time_ramp  = time_ramp 
@@ -33,29 +33,17 @@ class simParameter(object):
         self.stats      = stats
         self.seed       = [0,100]
         self.doe_method = doe_method 
-        self.doe_order  = [doe_order,] if isinstance(doe_order, int) else doe_order 
-        self.qoi2analysis = qoi2analysis  ## default should be all
+        self.doe_order  = []
+        if not isinstance(doe_order, list):
+            self.doe_order.append(int(doe_order))
+        else:
+            self.doe_order = list(int(x) for x in doe_order)
+
+        self.qoi2analysis = qoi2analysis  ## default for single output solver
         self.nsamples_done = 0
         self.outdir_name = ''
         self.outfile_name= ''
-
-        # self.rule       = None ## Need to be specific which rule ? sampling? quadrature? etc..
-        # self.nsamples_need = 0
-        # if self.doe_method.upper() in ['QUAD','GQ']:
-            
-        # if self.doe_method == 'QUANT':
-            # self.doe_order = doe_order
-        # elif self.doe_method == 'MC':
-            # self.nsamples_need = int(doe_order)
-            # self.doe_order = xrange(self.nsamples_need)
-        # elif self.doe_method == 'QUAD' or self.doe_method == 'ED':
-            # self.doe_order = [doe_order,]
-        # else:
-            # raise ValueError('doe_method not defined')
-    # def set_rule(self,newrule):
-        # ## Need to be specific which rule ? sampling? quadrature? etc..
-        # self.rule = newrule
-
+ 
     def set_doe_method(self,doe_method):
         self.doe_method = doe_method
 

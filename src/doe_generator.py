@@ -111,7 +111,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         # print("Generating Monte Carlo samples...")
         
         doe_samples = domain.sample(order,rule=rule)
-        print('Design of experiment done with {:d} quadrature points'.format(order))
+        print('Design of experiment done with {:d} Monte Carlo points'.format(order))
         print('------------------------------------------------------------')
         
     else:

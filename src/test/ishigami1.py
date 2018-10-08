@@ -60,11 +60,6 @@ def plot_ic_criterion(model, name, color):
 
 
 def lasso_model_selection(X,y):
-    # Normalization of X
-    # X -= np.mean(X, axis=0)
-    # X /= np.sqrt(np.sum(X**2, axis=0))
-    
-    
     model_bic = linear_model.LassoLarsIC(criterion='bic')
     model_bic.fit(X, y)
     # alpha_bic_ = model_bic.alpha_

@@ -18,31 +18,28 @@ def solver_wrapper(solver_func, simParams, *args):
     Arguments:
         solver_func: callable object
         simParams: general settings for simulation. simParameter class obj
-        **kwargs: dictionary containing arguments for the solver
+        *args: containing arguments for the solver
     Return:
         return results from one solver_func run
+        of shape(nsample, nqoi), each column represents a full time series
+        or just a number for single output solvers
 
     """
     assert (callable(solver_func)), '{:s} not callable'.format(solver_func.__name__)
-    
-    # kwargs = {key.upper(): value for key, value in kwargs.items()}
+
     if solver_func.__name__.upper() == 'DETERMINISTIC_LIN_SDOF':
         assert len(args) == 2
         Hs,Tp   = args
         Tmax    = simParams.time_max
         dt      = simParams.dt
         seed    = simParams.seed
-        # isDisplay = 0
-        # if not isDisplay: 
-            # if seed[0]:
-                # print('\tFixed seed with {:d}'.format(seed[1]))
-                # np.random.seed(int(seed[1]))
-            # else:
-                # print('\tRunning with random seed')
-            # print ("\tRunning deterministic SDOF system ")
-            # isDisplay = 1
-
         y = solver_func(Hs,Tp,Tmax,dt,seed)
+    elif solver_func.__name__.upper() == 'ISHIGAMI':
+        x,p = args if len(args) == 2 else (args[0], None)
+        y = solver_func(x, p=p)
+    elif solver_func.__name__.upper() == 'POLY5':
+        x = args[0]
+        y = solver_func(x)
     else:
         pass
     

@@ -22,11 +22,9 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
     """ Calculate the statistics of data
         data: file type or array-like (ndim/ntime_series, nsamples/nqois)
             > file: file full name must given, including extension
-            > array-like:
-                nsamples/nqois: number of samples realized or number of QoIs to
-                    be analyzed.
-                ndim/ntime_series: each column is either a full time series or
-                    a full relization of each sample
+            > array-like of shape (nsampes, m,n) or (nsample,)
+                m,n: format for one solver simulation
+                nsamples: number of simulations run
 
         stats: list, indicator of statistics to be calculated, 
             [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
@@ -39,39 +37,33 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
             deli = None 
         data = np.genfromtxt(data, delimiter=deli)
     else:
-        data = np.asfarray(data)
-    res = []
-    if stats[0] == 1:
-        res.append(np.mean(data, axis=0))
-    if stats[1] == 1:
-        res.append(np.std(data, axis=0))
-    if stats[2] == 1:
-        res.append(scistats.skew(data, axis=0))
-    if stats[3] == 1:
-        res.append(scistats.kurtosis(data, axis=0))
-    if stats[4] == 1:
-        res.append(np.max(abs(data), axis=0))
-    if stats[5] == 1:
-        res.append(np.min(abs(data), axis=0))
-    if stats[6] == 1:
-        res.append(up_crossing(data, axis=0))
-    res = np.asfarray(res)
+        data = np.array(data)
+    # if data is just a column or row vector (samples, ), get the stats for that vector
+    # return would be of shape (nstats,)
+    if data.ndim == 1:
+        res = np.array(np.mean(data), np.std(data), scistats.skew(data), scistats.kurtosis(data), np.max(abs(data)), np.min(abs(data)), up_crossing(data))
+        # use filter to select stats
+        res = [istat for i, istat in enumerate(res) if stats[i]]
+    else:
+        assert data.ndim == int(3)
+
+        res = np.empty(data.shape[0], int(sum(stats)), data.shape[2])
+        if stats[0] == 1:
+            res = np.append(res, np.mean(data, axis=1), axis=1)
+        if stats[1] == 1:
+            res = np.append(res, np.std(data, axis=1), axis=1)
+        if stats[2] == 1:
+            res = np.append(res, scistats.skew(data, axis=1), axis=1)
+        if stats[3] == 1:
+            res = np.append(res, scistats.kurtosis(data, axis=1), axis=1)
+        if stats[4] == 1:
+            res = np.append(res, np.max(abs(data), axis=1), axis=1)
+        if stats[5] == 1:
+            res = np.append(res, np.min(abs(data), axis=1), axis=1)
+        if stats[6] == 1:
+            res = append(res, up_crossing(data, axis=1), axis=1)
+    
     return res
-
-
-def main(stats=[1,1,1,1,1,1,0]):
-
-    cwd = os.getcwd()
-    filelist = [f for f in os.listdir(cwd) if f.startswith("SDOF")] 
-    print("Number of files: {:d}".format(len(filelist)))
-    # get_stats(filelist,qoi2analysis)
-    d = get_stats('SDOF1.csv', stats)
-    # print d
-
-
-
-if __name__ == "__main__":
-    main()
 
 
 

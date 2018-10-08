@@ -17,6 +17,9 @@ class metaModel(object):
     """
     Meta model class object 
     General options:
+    """
+    def __init__(self, model_class, meta_orders, doe_method, distlist):
+        """
         model_class: 
             surrogate model classes to be used, e.g. PCE, aPCE or Gaussian Process (GP) etc 
         meta_orders:
@@ -26,18 +29,21 @@ class metaModel(object):
             For aPCE model, 
             For GP model,
 
-        dist: list, marginal distributions of underlying random variables from selected Wiener-Askey polynomial, mutually independent
+        distlist: list, marginal distributions of underlying random variables from selected Wiener-Askey polynomial, mutually independent
         orthPoly, norms: orthogonal polynomial basis and their corresponding normalization constant. E[Phi_i, Phi_i] = nomrs[i]
-    """
-    def __init__(self, model_class, meta_orders, doe_method, dist):
+        
+        """
         self.model_class= model_class
         self.doe_method = doe_method
-        if isinstance(meta_orders, int):
-            self.meta_orders = [meta_orders,]
+        self.meta_orders = []
+        if not isinstance(meta_orders, list):
+            self.meta_orders.append(int(meta_orders))
         else:
-            self.meta_orders = meta_orders
-        self.dist       = dist
-        self.distJ      = cp.J(*dist)
+            self.meta_orders = list(int(x) for x in meta_orders)
+            # self.meta_orders.append(int(x) for x in meta_orders)
+
+        self.distlist   = distlist
+        self.distJ      = distlist if len(distlist) == 1 else cp.J(*distlist)
         self.orthPoly   = []
         self.norms      = [] 
         self.fit_l2error= []
@@ -63,7 +69,7 @@ class metaModel(object):
         w: array-like of shape(nsamples), weight for quadrature 
         """
         print('************************************************************')
-        print('Building {:d} models with {:d} sample sets and meta model orders {}'.format(len(self.meta_orders) * len(x), len(x), self.meta_orders))
+        print('Building {:d} models with {:d} sample sets and meta model orders {}'.format(len(self.meta_orders) * len(x), len(x), [x for x in self.meta_orders]))
 
         for i in range(len(x)):
             print('>>> Building surrogate model with sample sets: {:d}'.format(i+1))
@@ -123,7 +129,7 @@ class metaModel(object):
         if models_chosen is not None:
             f_hats = [self.f_hats[i][j] for i, j in models_chosen]
         else:
-            f_hats = self.f_hats
+            f_hats = [f for sublist in self.f_hats for f in sublist]
 
         # run one model to get the size of return y, could return one value or
         # a time series(response evolve with time)
@@ -138,7 +144,7 @@ class metaModel(object):
         print('Predicting with {:d} {:s} surrogate models with {:d} samples'.format(len(f_hats), self.model_class, int(sample_size)))
         f_pred = []
         for i, f in enumerate(f_hats):
-            print('>>> Predicting with {:}th order {:s} surrogate model'.format(self.meta_orders[i], self.model_class))
+            print('>>> Predicting with {:}th order {:s} surrogate model'.format(self.meta_orders[i%len(self.f_hats[0])], self.model_class))
             _f_pred = []
             for r in range(int(R)):
                 print('\r\tRepeated: {:d} / {:d}'.format(r+1, R),end='')

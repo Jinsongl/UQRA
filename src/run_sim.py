@@ -9,18 +9,20 @@
 """
 
 """
+import chaospy as cp
 from doe_generator import samplegen
 from solver_wrapper import solver_wrapper
 from utility.get_stats import get_stats
 import numpy as np
+from environment import environment
 
 import sys
 
-def run_sim(siteEnvi, solver_func, simParams, metaParams):
+def run_sim(phyrvs_mdist, solver_func, simParams, metaParams):
     """
     Run simulation with given "solver" (real model) and predefined environment
     Inputs:
-        siteEnvi: environment class object
+        phyrvs_mdist: environment class object or a list of marginal cp.distributions
         simParams: simParameter class object
         solver: solver. Return [nChannel, nTimeSample] array. Each row is a time series for specified channel
     Return:
@@ -46,7 +48,7 @@ def run_sim(siteEnvi, solver_func, simParams, metaParams):
     f_obsx     = []
     f_obsy     = []
     f_obsy_stats = [] 
-
+    isreturnstats = 1
     for idoe_order in doe_order: 
        # ED for different selected doe_order 
         samp_zeta = samplegen(doe_method, idoe_order, metaParams.distJ)
@@ -56,22 +58,64 @@ def run_sim(siteEnvi, solver_func, simParams, metaParams):
         else:
             zeta_cor, zeta_weights = samp_zeta, None
         # Transform input sample values from zeta space to physical space
-        phyrvs = siteEnvi.zeta2phy(metaParams.dist,zeta_cor)
-        _f_obsy = []
-        _f_obsy_stats = []
-        # idoe_order_stats = np.empty((phyrvs.shape[1], sum(simParams.stats), len(simParams.qoi2analysis)))
-        # run solve for each iphyrvs(input variable in physical space) and get stats
-        for i, iphyrvs in enumerate(phyrvs.T):
-            if_obs   = solver_wrapper(solver_func, simParams, *iphyrvs)
-            if_stats = get_stats(if_obs[:,qoi2analysis], stats=simParams.stats)
-            _f_obsy.append(if_obs[:,qoi2analysis])
-            _f_obsy_stats.append(if_stats)
-            # idoe_order_stats[i,:,:] = if_stats
-            print('\r\tRunning solver: {:s}, {:d} out of {:d}'\
-                    .format(solver_func.__name__, i+1, phyrvs.shape[1]), end='')
-        print('\n')
-        f_obsy.append(np.array(_f_obsy))
-        f_obsy_stats.append(np.array(_f_obsy_stats))
+
+        if isinstance(phyrvs_mdist, environment): 
+            phyrvs = phyrvs_mdist.zeta2phy(metaParams.distlist,zeta_cor)
+        else:
+            phyrvs = transform_zeta2phy(phyrvs_mdist,metaParams.distlist, zeta_cor)
+
+        # run solver for each iphyrvs(input variable in physical space) and get stats
+
+        # if solver return is just a number or (1, nqoi) or (nsamples, 1), vectorization could be used
+        # otherwise, solver need to run for input variables one by one
+        if_obs = solver_wrapper(solver_func, simParams, phyrvs.T[0])
+        solvery_shape = None if np.isscalar(if_obs) else if_obs.shape
+        print(solvery_shape)
+
+        # isvectorization = 1 if np.isscalar(if_obs) or if_obs.shape[0] == 1 or if_obs.shape[1] == 1 else 0 
+
+        if np.isscalar(if_obs):
+            isvectorization = 1
+        else:
+            m,n = solvery_shape
+            if m == 1 or n == 1:
+                isvectorization = 1
+            else:
+                isvectorization = 0
+        if np.isscalar(if_obs):
+            isreturnstats = 0
+        else:
+            m,n = if_obs.shape
+            if n == 1:
+                isreturnstats = 0
+            else:
+                isreturnstats = 1
+
+        if isvectorization:
+            if_obs = solver_wrapper(solver_func, simParams, phyrvs)
+            if solvery_shape is None:
+                if_obs = if_obs.reshape(np.prod(if_obs.shape), 1)
+            else:
+                newshape = (phyrvs.shape[1], *solvery_shape)
+                assert np.prod(if_obs.shape) == np.prod(newshape)
+                if_obs = if_obs.reshape(newshape)
+            if isreturnstats:
+                if_stats = get_stats(if_obs[:,:, qoi2analysis], stats = simParams.stats)
+                f_obsy_stats.append(np.array(if_stats))
+            f_obsy.append(np.array(if_obs))
+        else:
+
+            _f_obsy = []
+            # return from each solver run must be full matrix of shape(ntimeseries, nqoi)
+            for i, iphyrvs in enumerate(phyrvs.T):
+                if_obs   = solver_wrapper(solver_func, simParams, *iphyrvs)
+                _f_obsy.append(if_obs[:,qoi2analysis])
+                print('\r\tRunning solver: {:s}, {:d} out of {:d}'\
+                        .format(solver_func.__name__, i+1, phyrvs.shape[1]), end='')
+            print('\n')
+            _f_obsy_stats = get_stats(_f_obsy, stats=simParams.stats)
+            f_obsy.append(np.array(_f_obsy))
+            f_obsy_stats.append(np.array(_f_obsy_stats))
         # Convert output to ndarray of dtype float
         if zeta_weights is None:
             f_obsx.append(np.vstack((zeta_cor, phyrvs)))
@@ -88,8 +132,43 @@ def run_sim(siteEnvi, solver_func, simParams, metaParams):
     # filenames = dataIO.setfilename(simParams)
     # for i in xrange(qoi2analysis):
         # dataIO.saveData(f_obsy_stats[i],filenames[i+1], simParams.outdirName)
-    assert len(f_obsx) == len(f_obsy) == len(f_obsy_stats)  == len(doe_order)
-    return (f_obsx, f_obsy, f_obsy_stats)
+    assert len(f_obsx) == len(f_obsy)  == len(doe_order)
+    assert isreturnstats == len(f_obsy_stats) 
+
+    return (f_obsx, f_obsy, f_obsy_stats) if isreturnstats else (f_obsx, f_obsy)
+
+
+def transform_zeta2phy(dist_phy, dist_zeta, zeta):
+    """
+    Transform zeta sample values from zeta space (slected Wiener-Askey scheme) to physical space
+
+    Arguments:
+        dist_phy: list of marginal distributions of physical random variables,
+            distributions must be mutually independent
+        dist_zeta: list of marginal distributions of zeta random variables
+        zeta: samples in zeta space of shape(ndim, nsamples)
+
+    Return:
+        phy: same shape as zeta, samples in physical space
+    """
+
+    print('Transforming samples from Wiener-Askey scheme to physical space')
+    print('   marginal physical distributions are assumed independent')
+    assert len(dist_phy) == len(dist_zeta)
+    if len(dist_phy) == 1:
+        dist_phy = [dist_phy,]
+        dist_zeta = [dist_zeta,]
+
+    zeta = np.asfarray(zeta)
+    vals = np.empty(zeta.shape)
+    assert len(dist_zeta) == zeta.shape[0]
+    for i, val in enumerate (zeta.T):
+        q = list(map(lambda dist, x: float(dist.cdf(x)), dist_zeta, val))
+        iphy = list(map(lambda dist, x: float(dist.inv(x)), dist_phy, q))
+        vals[:,i] = np.array(iphy) 
+    assert vals.shape == zeta.shape
+    return vals
+
 
 
 
