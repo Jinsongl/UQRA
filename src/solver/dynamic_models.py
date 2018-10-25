@@ -83,7 +83,6 @@ spectrum_collection = {
         'JS':spec_jonswap
         }
 
-
 def gen_gauss_time_series(tmax, dt, spectrum_name, *args, method='sum', sides='1side'):
     """
     Generate Gaussian time series, e.g. Gaussian wave, with given spectrum at specified args parameters
@@ -189,7 +188,6 @@ def gen_gauss_time_series(tmax, dt, spectrum_name, *args, method='sum', sides='1
         t = t.reshape((t.shape[1],))
     return t, eta
 
-
 def acf2psd(tau_max, dtau, acf):
     """
     Given auto correlation function acf_tau in [0,t] with dtau, return corresponding power spectral density function
@@ -225,6 +223,7 @@ def psd2acf(fmax, df, psd_func, spec_type='2SIDE', fmin=0):
     will force one side psd to be two side work?
     """
     N = int(fmax / df)
+    dt = 1/ (2*fmax)
 
     if spec_type.upper() == '2SIDE':
         """
@@ -233,13 +232,11 @@ def psd2acf(fmax, df, psd_func, spec_type='2SIDE', fmin=0):
         psd_pxx[1:n//2] should contain the positive-frequency terms,
         psd_pxx[n//2 + 1:] should contain the negative-frequency terms, in increasing order starting from the most negative frequency.
         """
-        psd_f = np.arange(-N, N) * df
-        fmax = psd_f[-1]
-        psd_f = np.roll(psd_f, N)
+        psd_f = np.fft.fftfreq(2*N, dt) 
+        fmax = max(abs(psd_f))
         dt = 1/ (2*fmax)
         t = np.arange(-N,N) * dt
 
-        assert callable(psd_func)
         psd_pxx, var_approx = psd_func(psd_f)
 
         ft_ifft = np.fft.ifft(psd_pxx) / dt
