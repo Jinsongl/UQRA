@@ -21,49 +21,14 @@ import matplotlib.pyplot as plt
 def nextpow2(x):
     return 2**(int(x)-1).bit_length()
 
-def spec_test1(f, c=2):
-    """
-    Test FFT and iFFT for spectrum and acf 
-    F(w) = Fourier(f(t))
-    where
-    F(w) = 2c / (c**2 + w**2)
-    f(t) = e^(-c|t|)
 
-    Arguments:
-        f: frequencies to be evaluated at (Hz)
-        c: arbitrary real constant larger than 0
-    Returns:
-        sf: psd value at specified f
-        sa: approximated area under psd curve with specified f
-        
-    """
-    f = 2 * np.pi * f
-    sf = 2*c/(c**2 + f**2)
-    df = f[1] - f[0]
-    sa = np.sum(sf*df) 
-    return sf, sa
-   
-def spec_test2(w):
-    w = 2*np.pi*w
-    dw = w[1] - w[0]
-    sw = 2 * np.sinc(w)
-    sa = np.sum(sw * dw)
-    return sw, sa
-
-def spec_test3(w):
-    w = 2*np.pi*w
-    dw = w[1] - w[0]
-    sw = abs(w)<1 
-    sa = np.sum(sw * dw)
-    return sw, sa
-def spec_jonswap(f,Hs,Tp):
+def spec_jonswap(f, Hs, Tp):
     """ JONSWAP wave spectrum, IEC 61400-3
     f: frequencies to be sampled at, hz 
     Hs: significant wave height, m
     Tp: wave peak period, sec
     """
 
-    f = np.asarray(f)
     # print "sample frequency: \n", f
     fp = 1.0/Tp
     fr = f/fp
@@ -73,170 +38,221 @@ def spec_jonswap(f,Hs,Tp):
     # print "fp:", fp
     # print "sigma: ", sigma
     
+    assert f[0] >= 0 ,'Single side power spectrum start with frequency greater or eqaul to 0, f[0]={:4.2f}'.format(f[0])
+
+    # if fr[0] == 0:
+        # fr[0] = 1/np.inf
     JS1 = 0.3125 * Hs**2 * Tp * fr**-5
     JS2 = np.exp(-1.25*fr**-4) * (1-0.287*np.log(gamma))
     JS3 = gamma**(np.exp(-0.5*(fr-1)**2/sigma**2))
     JS = JS1 * JS2 * JS3
-    return JS
+    JS[np.isnan(JS)] = 0
+
+    return f, JS
+
+
+def single_psd2double_psd(f,sf):
+    """
+    Convert single side psd to double side
+    """
+    assert f[0] >= 0 and f[-1] >0
+    df  = f[1] - f[0]
+    N   = len(np.arange(f[-1], 0, -df))
+    sff = np.zeros(2*N+1)
+    ff  = np.zeros(2*N+1)
+    # print(ff.shape, sff.shape)
+   
+    # Positive frequencies part
+    N0 = len(np.arange(f[0]-df, 0, -df))
+    # print(N0)
+    sff[0:N0] = 0
+    sff[N0:N+1] = sf/2
+    ff[1:N+1] = np.flip(np.arange(f[-1], 0, -df))
+
+    # Negative frequencies part
+    sff[N+1:] = np.flip(sf[1:]/2) 
+    ff[N+1:] = -np.arange(f[-1], 0, -df)
+    
+    sff = np.roll(sff, N)
+    ff = np.roll(ff, N)
+
+    return ff, sff
 
 spectrum_collection = {
         'JONSWAP': spec_jonswap,
-        'JW':spec_jonswap
+        'JS':spec_jonswap
         }
 
-def acf_test1(t,c=2):
-    """
-    f(t) corresponding to spec_test1
-    """
-    return np.exp(-c*abs(t)) 
-def acf_test2(t):
-    return abs(t)<=1
-def acf_test3(t):
-    return np.sinc(t)/np.pi
 
-def gen_surfwave(spectrum_name, *args):
+def gen_gauss_time_series(tmax, dt, spectrum_name, *args, method='sum', sides='1side'):
     """
-    Generate surface wave time series with given spectrum at specified args parameters
+    Generate Gaussian time series, e.g. Gaussian wave, with given spectrum at specified args parameters
     
     Arguments:
-        psd_f: frequency in Hz to be sampled at
+        tmax: maximum time duration
+        dt: time step
         specturm: string, spectral function name 
+        method:
+            sum: sum(A_i*cos(w_i*t + theta_i))
+                for 1side psd, i =  0 to N, A_i = sqrt(2 * S(f) * df)
+                for 2side psd, i = -N to N, A_i = sqrt(S(f)*df), note: theta(f) = -theta(-f)
+            ifft: ifft(A_i * exp(j*theta_i)), A_i = sqrt(S(f)*df), theta(f) = -theta(-f)
+        sides:
+            1side or 2side psd 
         args: arguments needed to return spectrum density
 
     Return:
-        t: time start with 1, need to multiply by delta_t 
+        t: time index, start 0 to tmax 
         etat: surface wave time series
         psd_f: frequencies of spectral density 
-        psd_eta: surface wave power spectral denstiy
+        eta_fft_coeffs: surface wave power spectral denstiy
     """
+    # ---------------------------------------------------------
+    #                   |   Range       |   delta step
+    # Time domain       | [-tmax, tmax] | dt = given
+    # Frequency domain  | [-fmax, fmax] | df = 1/(2(tmax))  
+    #                   | fmax = 1/(2*dt)
+    # ---------------------------------------------------------
+    methods = {'SUM':'Direct summation',
+            'IFFT':'Inverse Fourier Transform'}
+    N = int(tmax/dt)
+    t = np.arange(-N,N+1) * dt
+    tmax = t[-1]
+    df = 0.5/tmax
     spectrum_func = spectrum_collection[spectrum_name.upper()]
-    psd_f, psd_pxx = spectrum_func(*args)
-    df      = psd_f[1] - psd_f[0]
-    ampf    = np.sqrt(2*psd_pxx*df) # amplitude
-    theta   = np.random.uniform(-np.pi, np.pi, len(psd_f))
-    psd_eta = ampf * np.exp(1j*theta)
-    etat    = np.fft.ifft(psd_eta).real * len(psd_f)
-    t       = np.arange(1, len(psd_f))
+    print('\tGenerating Gaussian time series in [0, {:4.2}] with dt={:4.2}'.format(tmax, dt))
+    print('\t>>> Power spectrum: {}'.format(spectrum_func.__name__))
+    print('\t>>> Method: {}'.format(methods[method.upper()]))
 
-    return (t, etat, psd_f, psd_eta)
 
-def acf2psd(tau, acf):
+    if sides.upper() in['1','1SIDE','SINGLE','1SIDES']:
+        f= np.arange(N+1) * df
+        theta = np.random.uniform(-np.pi, np.pi, len(f))
+        psd_f, psd_pxx = spectrum_func(f, *args)
+        if method.upper() == 'SUM':
+            # Direct sum with single side psd
+            ampf = np.sqrt(2*psd_pxx*(psd_f[1] - psd_f[0])) # amplitude
+
+            # Reshape to matrix operation format
+            ampf  = np.reshape(ampf,  (N+1,1))
+            psd_f = np.reshape(psd_f, (N+1,1))
+            theta = np.reshape(theta, (N+1,1))
+            t     = np.reshape(t,     (1, 2*N+1))
+
+            eta = np.sum(ampf * np.cos(2*np.pi*psd_f*t + theta),axis=0)
+
+        elif method.upper() == 'IFFT':
+            # To use IFFT method, need to create IFFT coefficients for negative frequencies
+            # Single side psd need to be divide by 2 to create double side psd, S1(f) = S1(-f) = S2(f)/2
+            # Phase: theta(f) = -theta(-f) 
+            theta = np.hstack((-np.flip(theta[1:]),theta))
+            psd_f, psd_pxx = single_psd2double_psd(psd_f, psd_pxx)
+            ampf    = np.sqrt(psd_pxx*(psd_f[1] - psd_f[0])) # amplitude
+
+            eta_fft_coeffs = ampf * np.exp(1j*theta)
+            eta = np.fft.ifft(np.roll(eta_fft_coeffs,N+1)) *(2*N+1)
+            eta = np.roll(eta,N).real
+        else:
+            raise ValueError('Mehtod {} not defined for one-side power spectral density function'.format(method))
+
+
+    elif sides.upper() in ['2','2SIDE','DOUBLE','2SIDES']:
+
+        f = np.arange(-N,N+1) * df
+        psd_f, psd_pxx = spectrum_func(f, *args)
+        theta = np.random.uniform(-np.pi, np.pi, N+1)
+        theta = np.hstack((-np.flip(theta[1:]),theta))
+        ampf    = np.sqrt(psd_pxx*(psd_f[1] - psd_f[0])) # amplitude
+        if method.upper() == 'SUM':
+            # Direct sum with double side psd
+            # Reshape to matrix operation format
+            ampf    = ampf.reshape(2*N+1, 1)
+            psd_f   = psd_f.reshape(2*N+1, 1)
+            t       = t.reshape(1, 2*N+1)
+            theta   = theta.reshape(2*N+1, 1)
+            eta = np.sum(ampf * np.cos(2*np.pi*psd_f*t + theta),axis=0)
+            eta = eta.reshape((eta.shape[1],))
+
+        elif method.upper() == 'IFFT':
+            # IFFT
+
+            eta_fft_coeffs = ampf * np.exp(1j*theta)
+            eta = np.fft.ifft(np.roll(eta_fft_coeffs,N+1)) *(2*N+1)
+            eta = np.roll(eta,N).real
+
+        else:
+            raise ValueError('Mehtod {} not defined for two-side power spectral density function'.format(method))
+    else:
+        raise ValueError('Power spectral density type {} not found'.format(sides))
+
+    if t.ndim == 2:
+        t = t.reshape((t.shape[1],))
+    return t, eta
+
+
+def acf2psd(tau_max, dtau, acf):
     """
-    Given auto correlation function acf_tau in [0,t] with dt, return corresponding power spectral density function
+    Given auto correlation function acf_tau in [0,t] with dtau, return corresponding power spectral density function
     Process is assumed to be stationary such that acf is just a function of tau and acf is symmetric. e.g. acf(-tau) = acf(tau)
     Arguments:
-        tau: time intervals
-        acf: autocorrelation values at specified tau or
-            callable function 
+        tau: time interval, if only [0,tmax] is specified, [-tmax,0) will be pre-appended automatically
+            Values of acf at both positive and negative lags (tau) is necessary. When applying fft(data), algorithm assumes data repeat after time interval. If only positive part provided, symmetric information of acf will not be passed ([-tmax,0] will be exactly same as [0, tmax] instead of symmetric acf(tau) = acf(-tau))
+        acf: autocorrelation function or values at specified tau 
     Returns:
-        Power spectral density function and evaluated frequencies
-        psd_f, psd_s
+        Power spectral density function
+        psd_f, psd_pxx
     """
-    tau = np.array(tau)
-    dt = tau[1]-tau[0]
-    if tau[0] < 0:
-        tau_max = max(abs(tau))
-    else:
-        assert tau[0] == 0
-        assert tau[-1] == max(tau)
-        tau_max = tau[-1]
-    N = int(tau_max/dt)
-    tau = np.arange(-N,N)*dt
+    N = int(tau_max/dtau)
+    tau = np.arange(-N,N)*dtau
 
     # Create acf values at tau if not given
-    if callable(acf):
-        acf_tau = acf(tau)
-    else:
-        acf_tau = acf
-    # acf_tau must be symmetric and include negative parts
-    # acf_tau = np.hstack((np.flip(acf_tau,axis=0)[0:-1], acf_tau))
-    acf_fft = np.fft.fft(acf_tau)
-    psd_f = np.fft.fftfreq(acf_tau.shape[-1],d=dt)
-    psd_s = np.sqrt(acf_fft.real**2 + acf_fft.imag**2) * dt  
-    psd_s= np.array([x for _,x in sorted(zip(psd_f,psd_s))])
+    assert callable(acf)
+    acf_tau = acf(tau)
+    acf_fft = np.fft.fft(np.roll(acf_tau,N))
+
+    psd_f = np.fft.fftfreq(acf_tau.shape[-1],d=dtau)
+    # Since we know acf function is even, fft of acf_tau should only contain real parts
+    # psd_pxx = np.sqrt(acf_fft.real**2 + acf_fft.imag**2) * dtau
+    psd_pxx = acf_fft.real * dtau
+    
+    # reorder frequency from negative to positive ascending order
+    psd_pxx= np.array([x for _,x in sorted(zip(psd_f,psd_pxx))])
     psd_f= np.array([x for _,x in sorted(zip(psd_f,psd_f))])
-    return psd_f, psd_s
+    return psd_f, psd_pxx
 
-
-def twoside_psd2acf(psd_f,spectrum):
+def psd2acf(fmax, df, psd_func, spec_type='2SIDE', fmin=0):
     """
     will force one side psd to be two side work?
-    The input psd_s should be ordered in the same way as is returned by fft, i.e.,
-        psd_s[0] should contain the zero frequency term,
-        psd_s[1:n//2] should contain the positive-frequency terms,
-        psd_s[n//2 + 1:] should contain the negative-frequency terms, in increasing order starting from the most negative frequency.
     """
-    psd_f = np.array(psd_f)
-    assert psd_f[0] == 0
-    df = psd_f[1] - psd_f[0]
-    if psd_f[-1] < 0:
-        fmax = max(abs(psd_f))
-    else:
-        assert psd_f[-1] == max(psd_f)
-        fmax = psd_f[-1]
     N = int(fmax / df)
-    psd_f = np.arange(-N, N) * df
-    psd_f = np.roll(psd_f, N)
 
-    dt = 1/ (2*fmax)
+    if spec_type.upper() == '2SIDE':
+        """
+        The input psd_pxx should be ordered in the same way as is returned by fft, i.e.,
+        psd_pxx[0] should contain the zero frequency term,
+        psd_pxx[1:n//2] should contain the positive-frequency terms,
+        psd_pxx[n//2 + 1:] should contain the negative-frequency terms, in increasing order starting from the most negative frequency.
+        """
+        psd_f = np.arange(-N, N) * df
+        fmax = psd_f[-1]
+        psd_f = np.roll(psd_f, N)
+        dt = 1/ (2*fmax)
+        t = np.arange(-N,N) * dt
 
-    if callable(spectrum):
-        psd_s, var_approx = spectrum(psd_f)
+        assert callable(psd_func)
+        psd_pxx, var_approx = psd_func(psd_f)
+
+        ft_ifft = np.fft.ifft(psd_pxx) / dt
+        ft = np.sqrt(ft_ifft.real**2 + ft_ifft.imag**2)
+        ft = np.roll(ft,N)
+    elif spec_type.upper() == '1SIDE':
+        pass
+        # implement here
     else:
-        psd_s = spectrum
-
-    t = np.arange(0,N) * dt
-    ft_ifft = np.fft.ifft(psd_s) / dt
-    ft = np.sqrt(ft_ifft.real**2 + ft_ifft.imag**2)[0:N]
+        raise ValueError('spec_type {:s} is not defined'.format(spec_type))
 
     return t, ft
 
-    
-
-
-
-def gen_process():
-    pass
-
-def gen_process_from_spectrum(spectrum_name, psd_order, method='SR', *args):
-    """
-    Generate one stochastic process realization (time series) with given spectrum and specified args parameters
-    
-    Arguments:
-        specturm: string, spectral function name 
-        method:
-            SR: spectral representation
-            KL: Karhunen Loeve Expansion
-        psd_order: accuracy order for selected method
-            SR: Frequency in Hz to be sampled at of shape(n,), larger n will lead to more precise estimation of psd
-            KL: Number of terms used in KL expansion 
-        args: arguments needed to return spectrum density
-
-    Return:
-        process: stochastic process indexed with time
-    """
-    spectrum_func = spectrum_collection[spectrum_name.upper()]
-    if method.upper() == 'SR':
-        psd_f = np.asarray(psd_order)
-        print('\tCreating process with spectral representation, N = {:d}'.format(len(psd_f)))
-        psd_pxx = spectrum_func(psd_f, *args)
-        df      = psd_f[1] - psd_f[0]
-        ampf    = np.sqrt(2*psd_pxx*df) # amplitude
-        theta   = np.random.uniform(-np.pi, np.pi, len(psd_f))
-        psd_eta = ampf * np.exp(1j*theta)
-        process = np.fft.ifft(psd_eta).real * len(psd_f)
-    elif method.upper() == 'KL':
-        psd_order = int(psd_order)
-        # Transform spectrum to correlation function 
-
-        # Generate process with correlation function
-        process = gen_process_from_correfunc()
-
-    return process 
-
-
-def gen_process_from_correfunc():
-    pass
 
 def transfer_func(f,f_n=0.15, zeta=0.1):
     """
@@ -272,10 +288,10 @@ def deterministic_lin_sdof(Hs, Tp, T=int(1e2), dt=0.1, seed=[0,100]):
 
     # H = np.ones(f.shape)
     H = transfer_func(f)
-    t, etat, psd_f, psd_eta = gen_surfwave('jonswap',f ,Hs, Tp)
+    t, etat, psd_f, eta_fft_coeffs = gen_surfwave('jonswap',f ,Hs, Tp)
     t = t * dt
     assert np.array_equal(f, psd_f)
-    psd_y  = psd_eta * H 
+    psd_y  = eta_fft_coeffs * H 
     y   = np.fft.ifft(psd_y).real * numPts_F 
     # print("\tSystem response Done!")
     # print "  > Significant wave height check:"
@@ -291,141 +307,41 @@ def deterministic_lin_sdof(Hs, Tp, T=int(1e2), dt=0.1, seed=[0,100]):
 
 
 def main(Hs=12.5,Tp=15.3,T=int(1e2)):
-    # T=100
-    # dt = 0.01
-    # seed = [1,100]
-    # y = deterministic_lin_sdof(Hs,Tp,T,dt,seed=seed)
+    # Test Gaussian Wave
 
-    # f, axes = plt.subplots(1,2)
-    # t_max = 20
-    # dt = 0.01
-    # t = np.arange(0,t_max,dt)
-    # ft_exp = acf_test1(t) 
-    # freq = np.fft.fftfreq(int(t_max/dt)*2, d=dt)
-    # t_sim, ft_sim = twoside_psd2acf(freq, spec_test1)
+    tmax = 100
+    dt = 0.1
+    Hs = 8
+    Tp = 6
+    fig, axes = plt.subplots(1,2)
 
-    # axes[0].plot(t,ft_exp,label='real')
-    # axes[0].plot(t_sim,ft_sim,label='sim')
-    # axes[0].legend()
+    N = int(tmax/dt)
+    t = np.arange(-N,N+1) * dt
+    df = 0.5/tmax
+    f_fft = np.arange(-N,N+1) * df
+    f_sum= np.arange(N+1) * df
 
-    # freq, amp = acf2psd(t,acf_test1) 
-    # axes[1].plot(freq, spec_test1(freq)[0],label='real')
-    # axes[1].plot(freq, amp,label='sim')
-    # axes[1].legend()
-    # plt.show()
+    f, sf = spec_jonswap(f_sum,Hs, Tp)
+    f2,sf2 = single_psd2double_psd(f, sf)
 
-    # f, axes = plt.subplots(1,2)
-    # t_max = 0.5
-    # dt = 0.001
-    # t = np.arange(0,t_max,dt)
-    # ft_exp = acf_test2(t) 
-    # freq = np.fft.fftfreq(int(t_max/dt)*2, d=dt)
-    # t_sim, ft_sim = twoside_psd2acf(freq, spec_test2)
+    np.random.seed( 10 )
+    t1, eta1 = gen_gauss_time_series(tmax, dt, 'JS',  Hs, Tp, method='sum')
+    np.random.seed( 10 )
+    t2, eta2 = gen_gauss_time_series(tmax, dt, 'JS',  Hs, Tp, method='ifft')
+    axes[0].set_xlim(0,1)
+    axes[1].plot(t1, eta1)
+    axes[1].plot(t2, eta2)
 
-    # axes[0].plot(t,ft_exp,'-o',label='real')
-    # axes[0].plot(t_sim,ft_sim,'-*', label='sim')
-    # axes[0].legend()
+    # axes[1].set_xlim(0,1)
 
-    # freq, amp = acf2psd(t,acf_test2) 
-    # axes[1].plot(freq, spec_test2(freq)[0],'-o',label='real')
-    # axes[1].plot(freq, amp,'-*',label='sim')
-    # axes[1].legend()
-    # plt.show()
+    # axes[1].plot(t, eta1)
+    # axes[1].plot(t, eta2)
+    print('std(eta1) = {:f}'.format(np.std(eta1)))
+    print('std(eta2) = {:f}'.format(np.std(eta2)))
 
-    f, axes = plt.subplots(1,2)
-    t_max = 0.5
-    dt = 0.001
-    t = np.arange(0,t_max,dt)
-    ft_exp = acf_test3(t) 
-    freq = np.fft.fftfreq(int(t_max/dt)*2, d=dt)
-    t_sim, ft_sim = twoside_psd2acf(freq, spec_test3)
-
-    axes[0].plot(t,ft_exp,label='real')
-    axes[0].plot(t_sim,ft_sim, label='sim')
-    axes[0].legend()
-
-    freq, amp = acf2psd(t,acf_test3) 
-    axes[1].plot(freq, spec_test2(freq)[0],label='real')
-    axes[1].plot(freq, amp,label='sim')
-    axes[1].legend()
     plt.show()
 
 
-    # print(y.shape)
-    # # t, eta, y= deterministic_lin_sdof(Hs,Tp,T,dt,seed=seed)
-    # # print t.shape, eta.shape
-    # numPts_T = int(nextpow2(T/dt)) ## Number of points in Time domain
-    # numPts_F = int(numPts_T/2+1)
-    # df = 1.0/(numPts_T * dt)
-    # f = np.arange(1,numPts_F) * df
-    # JS = JONSWAP(Hs,Tp,f)
-    # JS_area = np.sum(JS*df)
-
-    # # H = np.ones(f.shape)
-    # H = transfer_func(f)
-
-    # # f, JS = JONSWAP(Hs,Tp,1.0/dt, 1.0/T)
-    # # H = transfer_func(f)
-    
-    # ## Truncate time series
-    # tStart = int(100.0/dt)
-    # t = t[tStart:]
-    # eta = eta[tStart:]
-    # y = y[tStart:]
-
-    # nperseg = int(len(eta)/5.0) # Determine length of each segment, ref to matlab pwelch
-    # nfft = nextpow2(len(eta))
-    # f_eta, psd_eta = sig.welch(eta, 1.0/dt,nperseg = nperseg, nfft=nfft)
-    # f_y, psd_y = sig.welch(y, 1.0/dt,nperseg = nperseg,nfft=nfft)
-
-    # numPts_T = int(nextpow2(T/dt)) ## Number of points in Time domain
-    # numPts_F = numPts_T
-    # df      = 1.0/(numPts_T * dt)
-    # f       = np.arange(1,numPts_F) * df
-
-    # H = transfer_func(f)
-    # f, JS = spec_jonswap(Hs,Tp,f)
-    # plt.clf()
-    # fig = plt.figure()
-    # ax1 = fig.add_subplot(221)
-    # ln1 = ax1.plot(f, JS,'-b', label='JONSWAP $S(f)$')
-    # ax2 = ax1.twinx()
-    # ln2 = ax2.plot(f, H,'-g', label='Transfer function $H(f)$')
-    # lns = ln1+ln2
-    # labs = [l.get_label() for l in lns]
-    # ax1.legend(lns, labs, loc=0, fontsize="xx-small")
-    # # ax1.set_xlabel("Frequencey f(Hz)")
-    # plt.xlim((0,0.3))
-    # # ax1.set_ylabel(r"$S(f), m^2/Hz$")
-    # # ax2.set_ylabel(r"$H(f), m^2/Hz$")
-    # plt.title("Spectrum")
-
-
-    
-    # ax = fig.add_subplot(222)
-    # ax.plot(y[:,0],y[:,1])
-    # plt.title('Wave Elevation $\eta(t)$')
-    # plt.xlim((100,400))
-
-
-    # ax1 = fig.add_subplot(223)
-    # ln1 = ax1.plot(f_eta, psd_eta,'-b', label='Wave elevation')
-    # ax2 = ax1.twinx()
-    # ln2 = ax2.plot(f_y, psd_y,'-g', label='System response')
-    # lns = ln1 + ln2
-    # labs = [l.get_label() for l in lns]
-    # ax1.legend(lns, labs, loc=0, fontsize="small")
-    # ax1.set_xlabel("Frequencey f(Hz)")
-    # plt.xlim((0,0.3))
-    # # plt.title("Power spectrum density")
-
-    # ax = fig.add_subplot(224)
-    # ax.plot(y[:,0],y)
-    # ax.set_xlabel(r"time (sec)")
-    # plt.title('Response $y(t)$')
-    # plt.xlim((100,400))
-    # #plt.savefig('../Figures/deterministic_lin_sdof.eps')
-    # plt.show()
 
 
 if __name__ == "__main__":

@@ -26,6 +26,29 @@ def corrfunc(t):
     c = 2
     return np.exp(-c*abs(t))
 
+# Understand fft and ifft in numpy
+fig, axes = plt.subplots(1,3)
+dt = 0.01
+t = np.arange(950)*dt
+x = np.sin(2*np.pi*t)
+# x = np.cos(2*np.pi*t) + np.sin(2*np.pi*t)
+w = np.fft.fft(x) * dt
+f = np.fft.fftfreq(x.shape[-1],dt)
+df = f[1] - f[0]
+
+# Test Parseval's theorem: Energy in time domain Et = Energy in frequency domain Ef
+Et = np.sum(x**2) * dt
+Ef = np.sum(np.conj(w) * w) * df 
+
+print('tmax={:f}, dt={:f}, fmax={:f}, df={:f}'.format(t[-1], dt, max(abs(f)),df))
+print('Et={:f}, Ef={:f}'.format(Et, np.sqrt(Ef.real**2 + Ef.imag**2)))
+axes[0].plot(t,x)
+axes[1].plot(f,w.real)
+axes[2].plot(f,w.imag)
+plt.show()
+
+
+
 # f, axes = plt.subplots(1,2)
 # t_max = 20
 # dt = 0.01
@@ -85,25 +108,25 @@ def corrfunc(t):
 # # plt.plot(freq, sf.real)
 # # plt.show()
 
-f, axes = plt.subplots(1,2)
-T = 10
-dt = 0.1
-df = 1/(2*T)
-fmax = 1/(2*dt)
-N = fmax/df
-f1 = np.arange(-N, N) *df
-f1 = np.roll(f1,int(fmax/df))
-sf1,sa1 = sff(f1)
-ts1 = np.fft.ifft(sf1)/dt
-t = np.arange(0, N) *dt
+# f, axes = plt.subplots(1,2)
+# T = 10
+# dt = 0.1
+# df = 1/(2*T)
+# fmax = 1/(2*dt)
+# N = fmax/df
+# f1 = np.arange(-N, N) *df
+# f1 = np.roll(f1,int(fmax/df))
+# sf1,sa1 = sff(f1)
+# ts1 = np.fft.ifft(sf1)/dt
+# t = np.arange(0, N) *dt
 
-amp = np.sqrt(ts1.real **2 + ts1.imag**2)[0:len(t)] 
-# axes[0].plot(t,amp,'-o')
-axes[0].plot(t,ts1.real[0:len(t)],'-o')
+# amp = np.sqrt(ts1.real **2 + ts1.imag**2)[0:len(t)] 
+# # axes[0].plot(t,amp,'-o')
+# axes[0].plot(t,ts1.real[0:len(t)],'-o')
 
-axes[0].plot(t,corrfunc(t),'-*')
+# axes[0].plot(t,corrfunc(t),'-*')
 
-plt.show()
+# plt.show()
 
 # print(f1[0])
 # dt1 = 1/(2*fmax)

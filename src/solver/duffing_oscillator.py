@@ -11,9 +11,10 @@
 """
 
 import numpy as np
+import scipy.interpolate as interpolate
 import matplotlib.pyplot as plt
 
-def duffing_oscillator(tmax, dt, t_trans, x0, v0, zeta, omega0, mu, spectrum_hz=None,correfunc=None,init_conds=[0,0], norm=False):
+def duffing_oscillator(tmax, dt, t_trans, x0, v0, zeta, omega0, mu, f, norm=False):
     """
     One dimentinal duffing_oscillator dynamics.  Coefficients are normalized by mass: 2 zeta*omega0 = c/m, omega0^2 = k/m
     where c is damping and k is stiffness 
@@ -45,22 +46,29 @@ def duffing_oscillator(tmax, dt, t_trans, x0, v0, zeta, omega0, mu, spectrum_hz=
     x2 = [v0,]
 
     t = np.arange(int(tmax/dt)+1) * dt
-    # Evalute f
-    f = np.sin(t)
+    # Implement interpolation method for f 
+    f = np.array(f)
+    if f.shape[-1] == len(t):
+        interp_func = interpolate.interp1d(t,f,kind='cubic')
+        f = interp_func(np.arange(2*int(tmax/dt)+1) * 0.5*dt)
+    elif f.shape[-1] == 2*len(t) -1:
+        pass
+    else:
+        raise ValueError("External force array dimention doesn't match")
     # axes[0].plot(t,f)
 
     for i in np.arange(len(t)-1):
         k0 = dt *  f1( t[i], x1[i], x2[i])
-        l0 = dt * (f2( t[i], x1[i], x2[i]) + f[i])
+        l0 = dt * (f2( t[i], x1[i], x2[i]) + f[2*i])
 
         k1 = dt *  f1( t[i]+0.5*dt, x1[i]+0.5*k0, x2[i]+0.5*l0 )
-        l1 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k0, x2[i]+0.5*l0) + 0.5*(f[i] + f[i+1]))
+        l1 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k0, x2[i]+0.5*l0) + f[2*i+1])
 
         k2 = dt *  f1( t[i]+0.5*dt, x1[i]+0.5*k1, x2[i]+0.5*l1 )
-        l2 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k1, x2[i]+0.5*l1) + 0.5*(f[i] + f[i+1]))
+        l2 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k1, x2[i]+0.5*l1) + f[2*i+1])
 
         k3 = dt *  f1( t[i]+0.5*dt, x1[i]+0.5*k2, x2[i]+0.5*l2 )
-        l3 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k2, x2[i]+0.5*l2) + 0.5*(f[i] + f[i+1]))
+        l3 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k2, x2[i]+0.5*l2) + f[2*i+1])
 
         x1.append(x1[i] + 1/6 * (k0 + 2*k1 + 2*k2 + k3))
         x2.append(x2[i] + 1/6 * (l0 + 2*l1 + 2*l2 + l3))
@@ -73,23 +81,26 @@ def duffing_oscillator(tmax, dt, t_trans, x0, v0, zeta, omega0, mu, spectrum_hz=
 def main():
     fig, axes = plt.subplots(2,2)
     # Test 1: y'' -y = 0, y0= 1, y'0 = 0 =>  y = 0.5*e^-t + 0.5*e^t
-    t, x= duffing_oscillator(10,0.1,2,1,0,0,-1j,0)
+    f = np.arange(int(10/0.1)+1) * 0
+    t, x= duffing_oscillator(10,0.1,2,1,0,0,-1j,0, f)
     y = 0.5 * np.exp(-t) + 0.5 * np.exp(t)
     axes[0,0].plot(t, x, t, y )
     # axes[0,0].plot(t, abs((x-y)/y ))
 
     # Test 2: y'' +5y' +4y = 0, y(0) = 1, y'(0) = -7 => y = -e^-t + 2*e^-4t
-    t, x= duffing_oscillator(10,0.1,2,1,-7,1.25,2,0)
+    t, x= duffing_oscillator(10,0.1,2,1,-7,1.25,2,0, f)
     y =  -np.exp(-t) + 2 * np.exp(-4*t)
     axes[0,1].plot(t, x, t, y )
  
     # Test 3: y"+ 2y' +5y = 0 , y(0)= 4, y'(0) = 6 => y = 4e−t* cos 2t + 5e−t*sin 2t. 
-    t, x= duffing_oscillator(10,0.1,2,4,6,1/np.sqrt(5),np.sqrt(5),0)
+    t, x= duffing_oscillator(10,0.1,2,4,6,1/np.sqrt(5),np.sqrt(5),0, f)
     y =  4 * np.exp(-t)*np.cos(2*t) + 5*np.exp(-t) * np.sin(2*t)
     axes[1,0].plot(t, x, t, y )
 
     # Test 4: y"+ y' -2y = sinx , y(0)= 1, y'(0) = 0 => y =c1*e^x+c2*e^-2x-0.1*(cos x +3 sin x) 
-    t, x= duffing_oscillator(10,0.1,2,1,0,1/(2j*np.sqrt(2)),np.sqrt(2)*1j,0)
+
+    f = np.sin(np.arange(int(10/0.1)+1) * 0.1)
+    t, x= duffing_oscillator(10,0.1,2,1,0,1/(2j*np.sqrt(2)),np.sqrt(2)*1j,0,f)
     y =  5/6 * np.exp(t) + 4/15 * np.exp(-2*t) - 0.1* (np.cos(t) + 3 * np.sin(t))
     axes[1,1].plot(t, x, t, y )
 
