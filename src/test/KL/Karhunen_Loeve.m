@@ -1,5 +1,5 @@
 close all
-s = linspace(0,1,100);
+s = linspace(0,1,200);
 t = s;
 [ss,tt] = meshgrid(s,t);
 R = exp(-abs(ss-tt));

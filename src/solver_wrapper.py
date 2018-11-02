@@ -40,6 +40,7 @@ def solver_wrapper(solver_func, simParams, *args):
     elif solver_func.__name__.upper() == 'POLY5':
         x = args[0]
         y = solver_func(x)
+    elif solver_func.__name__.upper() == 
     else:
         pass
     
