@@ -9,11 +9,15 @@
 """
 
 """
-from dynamic_models import *
-from utilities import *
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from context import src
+from utilities.gen_gauss_time_series import *
+# from src/utilities import gen_gauss_time_series
+# from gen_gauss_time_series.py import * 
+# from dynamic_models import *
+
 
 
 def spec_test1(f, c=2):
@@ -181,7 +185,7 @@ def main():
 
     # axes[1].plot(t, eta1)
     # axes[1].plot(t, eta2)
-    print('std(eta1) = {:f}'.format(np.std(eta1)))
+    # print('std(eta1) = {:f}'.format(np.std(eta1)))
     print('std(eta2) = {:f}'.format(np.std(eta2)))
 
     plt.show()

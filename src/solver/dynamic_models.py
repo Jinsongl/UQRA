@@ -11,14 +11,11 @@ Single degree of freedom with time series external loads
 """
 
 import numpy as np
-import numpy.random as rn
-import numpy.linalg as la
-import matplotlib.pyplot as plt
-import scipy as sp
-import scipy.signal as sig
-
+# import numpy.random as rn
+# import numpy.linalg as la
+# import scipy as sp
+# import scipy.signal as sig
 from scipy import interpolate
-import matplotlib.pyplot as plt
 
 
 # def transfer_func(f,f_n=0.15, zeta=0.1):
@@ -52,7 +49,6 @@ import matplotlib.pyplot as plt
     # numPts_F = numPts_T
     # df      = 1.0/(numPts_T * dt)
     # f       = np.arange(1,numPts_F) * df
-    # # JS_area = np.sum(JS*df)
 
     # # H = np.ones(f.shape)
     # H = transfer_func(f)

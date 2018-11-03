@@ -11,13 +11,13 @@
 """
 import numpy as np
 
-def solver_wrapper(solver_func, simParams, *args):
+def solver_wrapper(solver_func, *args):
     """
     a wrapper for solvers
 
     Arguments:
         solver_func: callable object
-        simParams: general settings for simulation. simParameter class obj
+        # simParams: general settings for simulation. simParameter class obj
         *args: containing arguments for the solver
     Return:
         return results from one solver_func run
@@ -27,8 +27,8 @@ def solver_wrapper(solver_func, simParams, *args):
     """
     assert (callable(solver_func)), '{:s} not callable'.format(solver_func.__name__)
 
-    if solver_func.__name__.upper() == 'DETERMINISTIC_LIN_SDOF':
-        assert len(args) == 2
+    if solver_func.__name__.upper() == 'LIN_OSCILLATOR':
+        assert (len(args) == 8 or len(args)==9), 'Expecting 8 or 9 arguments for {:s} but {:d} were given'.format(solver_func.__name__, len(args))
         Hs,Tp   = args
         Tmax    = simParams.time_max
         dt      = simParams.dt
