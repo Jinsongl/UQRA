@@ -41,6 +41,11 @@ seeds = np.arange(1,100)
 colors = ['r','g','b','y','c']
 
 
+nquad = 7
+npoly_order = nquad-1
+nmodels = 10
+target_exceed = 1e-4
+
 ####>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ## true system evaluation
 x = np.arange(0,10,0.1)
@@ -54,11 +59,18 @@ y_minus_std = y0 #np.where((x>LO)*(x<UP),y0,0)
 y0 = 0.5*x**2 + 1 
 y_mean = y0 #np.where((x>LO)*(x<UP),y0,0)
 
-
-nquad = 7
-npoly_order = 4#nquad-1
-nmodels = 10
-target_exceed = 1e-4
+# x_target = dist_x.inv([target_exceed, 1-target_exceed])
+# plt.figure()
+# plt.plot(x, y_mean, '-k', label=r'$\mu_{y}$')
+# plt.plot(x, y_plus_std, '-.k', label=r'$\mu_{y} \pm \sigma$')
+# plt.plot(x, y_minus_std, '-.k')
+# plt.plot([x_target[0],x_target[0]],[-10,70], '-.r')
+# plt.plot([x_target[1],x_target[1]],[-10,70], '-.r',label='Limit for exceedence {:.1E}'.format(target_exceed))
+# plt.xlabel(r'$x \sim N(5,1)$')
+# plt.ylim(-10,70)
+# plt.title(r'$y=0.5(x^2+1)+\epsilon, x\sim N(5,1)$')
+# plt.legend()
+# plt.savefig(r'trueSystem.eps')
 # ####>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # #### Plot quadrature points distribution 
 # x_target = dist_x.inv([target_exceed, 1-target_exceed])
@@ -78,25 +90,25 @@ target_exceed = 1e-4
 
 
 
-# ####>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# #### Surrogate model
-# orth_poly = cp.orth_ttr(npoly_order, dist_zeta)
-# zeta_quad, zeta_weight = cp.generate_quadrature(nquad-1,dist_zeta,rule='G')
-# x_quad = dist_x.inv(dist_zeta.cdf(zeta_quad))
-# assert nquad == x_quad.shape[1]
-# y_quad = []
+####>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#### Surrogate model
+orth_poly = cp.orth_ttr(npoly_order, dist_zeta)
+zeta_quad, zeta_weight = cp.generate_quadrature(nquad-1,dist_zeta,rule='G')
+x_quad = dist_x.inv(dist_zeta.cdf(zeta_quad))
+assert nquad == x_quad.shape[1]
+y_quad = []
 
-# ###>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# ### build quadrature surrogate models
-# print('Building PCE model with {:d} quadrature points'.format(x_quad.shape[1]))
-# surrogate_models = []
-# for i in range(nmodels):
-    # print('\tSurrogate model {:d}'.format(i))
-    # evals = foo(x_quad, seed = seeds[i])
-    # y_quad.append(evals)
-    # foo_hat = cp.fit_quadrature(orth_poly, zeta_quad, zeta_weight, evals.T)
-    # surrogate_models.append(foo_hat)
-# y_quad = np.array(y_quad)
+###>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+### build quadrature surrogate models
+print('Building PCE model with {:d} quadrature points'.format(x_quad.shape[1]))
+surrogate_models = []
+for i in range(nmodels):
+    print('\tSurrogate model {:d}'.format(i))
+    evals = foo(x_quad, seed = seeds[i])
+    y_quad.append(evals)
+    foo_hat = cp.fit_quadrature(orth_poly, zeta_quad, zeta_weight, evals.T)
+    surrogate_models.append(foo_hat)
+y_quad = np.array(y_quad)
 
 # ###>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # ## Plot surrogate model
@@ -121,12 +133,13 @@ target_exceed = 1e-4
 
     # plt.plot(x_quad.T, y_quad[i,:].T,'bo', label=r'quad points')
     # plt.plot(x0, y0, label=r'realization')
-    # plt.plot(x0, f_hat, color='y',label=r'Surrogate model Q')
+    # plt.plot(x0, f_hat, color='y',label=r'label=PCE({:d},{:d})'.format(npoly_order,nquad))
     # plt.title(r'$y=0.5(x^2+1)+\epsilon, x\sim N(5,1)$')
     # plt.xlabel(r'x')
     # plt.ylim(-10,70)
     # plt.legend()
     # plt.savefig(r'./surrogates_plots/surroge_model{}_{}p_{}q.eps'.format(i,npoly_order, nquad))
+
 
 ####>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # ### Plot surrogate model with mean
@@ -148,15 +161,15 @@ target_exceed = 1e-4
 # plt.savefig(r'Surrogate_model_with_mean_{}p_{}q.eps'.format(npoly_order, nquad))
 
 
-####>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# # ### Prediction with one surrogate model
-# # ### benchmark from true sys
-# nsamples = int(1e5)
-# samples_x = dist_x.sample(nsamples)
-# samples_zeta = dist_zeta.inv(dist_x.cdf(samples_x))
-# samples_y_true = foo(samples_x)
-# data = np.array([samples_x, samples_y_true]).T
-# df = pd.DataFrame(data, columns=["x", "y"])
+###>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# ### Prediction with one surrogate model
+# ### benchmark from true sys
+nsamples = int(1e5)
+samples_x = dist_x.sample(nsamples)
+samples_zeta = dist_zeta.inv(dist_x.cdf(samples_x))
+samples_y_true = foo(samples_x)
+data = np.array([samples_x, samples_y_true]).T
+df = pd.DataFrame(data, columns=["x", "y"])
 
 # sns.jointplot(x="x", y="y", data=df, kind='reg');
 # fh = sns.lineplot(x,y_mean,color='k',linestyle='-')
@@ -164,20 +177,23 @@ target_exceed = 1e-4
 # fh.plot(x,y_plus_std,color='k',linestyle='-.')
 # plt.savefig('TrueJointPdf.eps')
 
-# y_pred = []
-# for i in range(nmodels):
-    # print('Predicting with surrogate model {}'.format(i))
-    # foo_hat = surrogate_models[i]
-    # f_hat = foo_hat(samples_zeta.T).reshape((samples_zeta.size,))
-    # y_pred.append(f_hat)
+y_pred = []
+for i in range(nmodels):
+    print('Predicting with surrogate model {}'.format(i))
+    foo_hat = surrogate_models[i]
+    f_hat = foo_hat(samples_zeta.T).reshape((samples_zeta.size,))
+    y_pred.append(f_hat)
 
-    # plt.figure()
-    # sns.distplot(f_hat,label='Surrogate model')
-    # sns.distplot(samples_y_true,label='True')
-    # plt.ylim(0,0.5)
-    # plt.xlim(-10,50)
-    # plt.legend()
-    # plt.savefig('pdf_surrogate{}_{}p{}q'.format(i, npoly_order, nquad))
+    plt.figure()
+    sns.distplot(f_hat,label=r'PCE({:d},{:d})'.format(npoly_order,nquad))
+    sns.distplot(samples_y_true,label='True')
+    plt.ylim(0,0.5)
+    plt.xlim(-10,50)
+    plt.xlabel('y')
+    plt.ylabel('$f_Y(y)$')
+    plt.title(r'PDF comparison with {:.1E} samples'.format(nsamples))
+    plt.legend()
+    plt.savefig('./pdf_surrogates/pdf_surrogate{}_{}p{}q'.format(i, npoly_order, nquad))
 
 ####>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # ### Prediction with random surrogate model
@@ -232,41 +248,41 @@ target_exceed = 1e-4
 # plt.plot(samples_x, y, 'o')
 # plt.show()
 
-######--------------------------------------------------------------------------
-####>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-#### Random field method, ref Roger Ghanem
-np.set_printoptions(precision=3,suppress=True)
-# #1. Get samples (use quadrature points instead)
+# ######--------------------------------------------------------------------------
+# ####>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# #### Random field method, ref Roger Ghanem
+# np.set_printoptions(precision=3,suppress=True)
+# # #1. Get samples (use quadrature points instead)
 
-orth_poly = cp.orth_ttr(npoly_order, dist_zeta)
-zeta_quad, zeta_weight = cp.generate_quadrature(nquad-1,dist_zeta,rule='G')
-x_quad = dist_x.inv(dist_zeta.cdf(zeta_quad))
-y_quad = np.array([foo(x_quad,seed=seeds[i],noise=True) for i in range(nmodels)])
-y_quad = np.squeeze(y_quad[:,0,:])
-y_quad_mean = np.mean(y_quad, axis=0)
-# foo_hat = cp.fit_quadrature(orth_poly, zeta_quad, zeta_weight, y_quad_mean)
-x2zeta = dist_zeta.inv(dist_x.cdf(x))
-# f_hat = foo_hat(x2zeta.T)
-# print(foo_hat.coeffs())
-# print(foo_hat)
-# print(y_quad)
-# print(y_quad_mean)
-y_quad = y_quad - y_quad_mean
-# print(y_quad)
-# plt.figure()
-# plt.plot(x_quad.T, y_quad.T, 'bo', label=r'quad')
-# plt.plot(x,f_hat, 'y',label=r'surrogate')
-# plt.title(r'$y=0.5(x^2+1)+\epsilon, x\sim N(5,1)$')
-# plt.text(6, 10, r'$0.5\xi^2 + 5\xi+ 13$' )
-# plt.xlabel(r'x')
-# plt.ylim(-10,70)
-# plt.savefig(r'deterministic_pce_{}p_{}_q.eps'.format(npoly_order, nquad))
-# plt.show()
+# orth_poly = cp.orth_ttr(npoly_order, dist_zeta)
+# zeta_quad, zeta_weight = cp.generate_quadrature(nquad-1,dist_zeta,rule='G')
+# x_quad = dist_x.inv(dist_zeta.cdf(zeta_quad))
+# y_quad = np.array([foo(x_quad,seed=seeds[i],noise=True) for i in range(nmodels)])
+# y_quad = np.squeeze(y_quad[:,0,:])
+# y_quad_mean = np.mean(y_quad, axis=0)
+# # foo_hat = cp.fit_quadrature(orth_poly, zeta_quad, zeta_weight, y_quad_mean)
+# x2zeta = dist_zeta.inv(dist_x.cdf(x))
+# # f_hat = foo_hat(x2zeta.T)
+# # print(foo_hat.coeffs())
+# # print(foo_hat)
+# # print(y_quad)
+# # print(y_quad_mean)
+# y_quad = y_quad - y_quad_mean
+# # print(y_quad)
+# # plt.figure()
+# # plt.plot(x_quad.T, y_quad.T, 'bo', label=r'quad')
+# # plt.plot(x,f_hat, 'y',label=r'surrogate')
+# # plt.title(r'$y=0.5(x^2+1)+\epsilon, x\sim N(5,1)$')
+# # plt.text(6, 10, r'$0.5\xi^2 + 5\xi+ 13$' )
+# # plt.xlabel(r'x')
+# # plt.ylim(-10,70)
+# # plt.savefig(r'deterministic_pce_{}p_{}_q.eps'.format(npoly_order, nquad))
+# # plt.show()
 
-# #2. Get the correlation function
-y_cov = np.cov(y_quad.T)
-# print(y_cov)
-# y_cov1 = np.dot(y_quad.T, y_quad)/(nmodels-1)
+# # #2. Get the correlation function
+# y_cov = np.cov(y_quad.T)
+# # print(y_cov)
+# # y_cov1 = np.dot(y_quad.T, y_quad)/(nmodels-1)
 
 
 

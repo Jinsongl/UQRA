@@ -44,6 +44,28 @@ def spec_jonswap(f, Hs, Tp):
 
     return f, JS
 
+def spec_test1(f, c=2):
+    """
+    Test FFT and iFFT for spectrum and acf 
+    F(w) = Fourier(f(t))
+    where
+    F(w) = 2c / (c**2 + w**2)
+    f(t) = e^(-c|t|)
+
+    Arguments:
+        f: frequencies to be evaluated at (Hz)
+        c: arbitrary real constant larger than 0
+    Returns:
+        sf: psd value at specified f
+        sa: approximated area under psd curve with specified f
+        
+    """
+    f = 2 * np.pi * f
+    sf = 2*c/(c**2 + f**2)
+    df = f[1] - f[0]
+    sa = np.sum(sf*df) 
+    return sf, sa
+   
 
 def single_psd2double_psd(f,sf):
     """
@@ -74,7 +96,8 @@ def single_psd2double_psd(f,sf):
 
 spectrum_collection = {
         'JONSWAP': spec_jonswap,
-        'JS':spec_jonswap
+        'JS':spec_jonswap,
+        'T1':spec_test1
         }
 
 def gen_gauss_time_series(tmax, dt, spectrum_name, *args, method='sum', sides='1side'):
@@ -180,7 +203,7 @@ def gen_gauss_time_series(tmax, dt, spectrum_name, *args, method='sum', sides='1
 
     if t.ndim == 2:
         t = t.reshape((t.shape[1],))
-    return t, eta
+    return t[N:2*N+1], eta[N:2*N+1]
 
 def acf2psd(tau_max, dtau, acf):
     """

@@ -10,15 +10,16 @@
 
 """
 import chaospy as cp
-from doe_generator import samplegen
-from solver_wrapper import solver_wrapper
-from utility.get_stats import get_stats
+import doe
+from doe.doe_generator import samplegen
+from solver.solver_wrapper import solver_wrapper
+from utilities.get_stats import get_stats
 import numpy as np
-from environment import environment
+from envi.environment import environment
 
 import sys
 
-def run_sim(phyrvs_mdist, solver_func, simParams, metaParams):
+def run_sim(solver_func, solver_params, simParams, metaParams):
     """
     Run simulation with given "solver" (real model) and predefined environment
     Inputs:

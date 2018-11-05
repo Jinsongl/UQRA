@@ -12,4 +12,6 @@ Define environmental variable distributions
 """
 
 
-import environment
+# import environment
+# import Norway5_2
+# import Norway5_3

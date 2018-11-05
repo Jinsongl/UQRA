@@ -9,14 +9,13 @@
 """
 
 """
-import Norway5_2 as norway2
-import Norway5_3 as norway3
+from envi import Norway5_2 as norway2
+from envi import Norway5_3 as norway3
+
 import numpy as np
 import chaospy as cp
-import sys, os
 import itertools
 import numpy.linalg as nla
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utility'))
 # from utility import *
 # from UQ_FOWT.utility.dataIO import *
 

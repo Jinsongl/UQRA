@@ -18,23 +18,23 @@ class metaModel(object):
     Meta model class object 
     General options:
     """
-    def __init__(self, model_class, meta_orders, doe_method, distlist):
+    def __init__(self, model_class, meta_orders, fit_method, dist_zeta_list):
         """
         model_class: 
             surrogate model classes to be used, e.g. PCE, aPCE or Gaussian Process (GP) etc 
         meta_orders:
             Accept only one number for now. ///ndarray or list (something iterable), the highest order of plolynomal terms ???
-        doe_method: 
+        fit_method: 
             For PCE model, based on experimental design methods, proper projection or regression fitting will be implemented
             For aPCE model, 
             For GP model,
 
-        distlist: list, marginal distributions of underlying random variables from selected Wiener-Askey polynomial, mutually independent
+        dist_zeta_list: list, marginal distributions of underlying random variables from selected Wiener-Askey polynomial, mutually independent
         orthPoly, norms: orthogonal polynomial basis and their corresponding normalization constant. E[Phi_i, Phi_i] = nomrs[i]
         
         """
         self.model_class= model_class
-        self.doe_method = doe_method
+        self.fit_method = fit_method
         self.meta_orders = []
         if not isinstance(meta_orders, list):
             self.meta_orders.append(int(meta_orders))
@@ -42,8 +42,8 @@ class metaModel(object):
             self.meta_orders = list(int(x) for x in meta_orders)
             # self.meta_orders.append(int(x) for x in meta_orders)
 
-        self.distlist   = distlist
-        self.distJ      = distlist if len(distlist) == 1 else cp.J(*distlist)
+        self.dist_zeta_list   = dist_zeta_list
+        self.distJ      = dist_zeta_list if len(dist_zeta_list) == 1 else cp.J(*dist_zeta_list)
         self.orthPoly   = []
         self.norms      = [] 
         self.fit_l2error= []
@@ -175,14 +175,16 @@ class metaModel(object):
         if not self.orthPoly:
             self.get_orth_poly()
         for i, poly in enumerate(self.orthPoly):
-            if self.doe_method.upper() == 'QUAD' or self.doe_method.upper == 'GQ':
+            if self.fit_method.upper() == 'SP' or self.fit_method.upper == 'GQ':
                 assert w is not None
                 assert poly.dim == x.shape[0]
                 print('\tBuilding PCE surrogate model of order {:d} with quadrature'.format(self.meta_orders[i]))
                 f_hat = cp.fit_quadrature(poly, x, w, y, norms=self.norms[i])
-            else:
+            elif self.fit_method.upper() == 'RG':
                 print('\tBuilding PCE surrogate model of order {:d} with regression'.format(self.meta_orders[i]))
                 f_hat = cp.fit_regression(poly, x, y)
+            else:
+                raise ValueError('fit method {:s} is not defined'.format(self.fit_method))
             f_fit = np.array([f_hat(*val) for val in x.T])
             fit_error = np.sqrt(((f_fit-y)**2).mean(axis=0))
             f_hats.append(f_hat)

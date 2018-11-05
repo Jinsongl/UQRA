@@ -11,13 +11,13 @@
 """
 import numpy as np
 
-def solver_wrapper(solver_func, *args):
+def solver_wrapper(solver_func, simParams, x, sys_param=None):
     """
     a wrapper for solvers
 
     Arguments:
         solver_func: callable object
-        # simParams: general settings for simulation. simParameter class obj
+        simParams: general settings for simulation. simParameter class obj
         *args: containing arguments for the solver
     Return:
         return results from one solver_func run
@@ -28,26 +28,39 @@ def solver_wrapper(solver_func, *args):
     assert (callable(solver_func)), '{:s} not callable'.format(solver_func.__name__)
 
     if solver_func.__name__.upper() == 'LIN_OSCILLATOR':
-        assert (len(args) == 8 or len(args)==9), 'Expecting 8 or 9 arguments for {:s} but {:d} were given'.format(solver_func.__name__, len(args))
-        Hs,Tp   = args
-        Tmax    = simParams.time_max
+        time_max= simParams.time_max
         dt      = simParams.dt
-        seed    = simParams.seed
-        y = solver_func(Hs,Tp,Tmax,dt,seed)
+        ## Default initial condition [0,0]
+        if sys_param:
+            x0, v0 = sys_param['x0']
+            zeta, omega0 = sys_param['c']
+        else:
+            x0, v0 = (0,0)
+            zeta, omega0 = (0.2, 1)
+
+        y = solver_func(time_max,dt,x0,v0,zeta,omega0,x)
+
     elif solver_func.__name__.upper() == 'ISHIGAMI':
-        x,p = args if len(args) == 2 else (args[0], None)
+        p = sys_param['p'] if sys_param else 2
         y = solver_func(x, p=p)
     elif solver_func.__name__.upper() == 'POLY5':
-        x = args[0]
         y = solver_func(x)
-    elif solver_func.__name__.upper() == 
+    elif solver_func.__name__.upper() ==  'DUFFING_OSCILLATOR':
+        time_max= simParams.time_max
+        dt      = simParams.dt
+        ## Default initial condition [0,0]
+        if sys_param:
+            x0, v0 = sys_param['x0']
+            zeta, omega0, mu = sys_param['c']
+        else:
+            x0, v0 = (0,0)
+            zeta, omega0, mu = (0.2, 1, 1)
+
+        y = solver_func(time_max,dt,x0,v0,zeta,omega0,mu,x)
     else:
         pass
     
     return y
-
-
-    
 
 
         

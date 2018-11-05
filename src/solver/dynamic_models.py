@@ -69,20 +69,20 @@ from scipy import interpolate
     # # return t, etat, y 
     # return res
 
-def lin_oscillator(tmax,dt,t_trans,x0,v0,zeta,omega0,f, retall=False):
+def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,sys_input):
 
-    t, x = duffing_oscillator(tmax,dt,t_trans,x0,v0,zeta,omega0,0,f)
-    Hw = lambda w: np.sqrt(1/((w**2 - omega0**2 )**2 + (2*zeta*omega0)**2 )) 
+    x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,sys_input)
+    # Hw = lambda w: np.sqrt(1/((w**2 - omega0**2 )**2 + (2*zeta*omega0)**2 )) 
 
-    return t, x, Hw if retall else t, x
+    return x
 
-def duffing_oscillator(tmax, dt, t_trans, x0, v0, zeta, omega0, mu, f, norm=False):
+def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,sys_input,norm=False):
     """
     Time domain solver for one dimentional duffing oscillator with Runge-Kutta method
     One dimentinal duffing_oscillator dynamics.  Coefficients are normalized by mass: 2 zeta*omega0 = c/m, omega0^2 = k/m
     where c is damping and k is stiffness 
         
-    x'' + 2*zeta*omega0*x' + omega0^2*x*(1+mu x^2) = f
+    x'' + 2*zeta*omega0*x' + omega0^2*x*(1+mu x^2) = sys_input
     with initial contidions
     x(0) = x'(0) = 0
 
@@ -97,7 +97,7 @@ def duffing_oscillator(tmax, dt, t_trans, x0, v0, zeta, omega0, mu, f, norm=Fals
             t[i] will prove expedient to normalize the equation of motion using nondimentional
             time: tau = omega0 * t and nondimentional displacement of y = x/sigma_x
             If norm is true, following equation is solved:
-            y'' + 2* zeta * y' + y * (1 + epsilon* y^2) = f/(sigma_x * omega0^2)
+            y'' + 2* zeta * y' + y * (1 + epsilon* y^2) = sys_input/(sigma_x * omega0^2)
             where epsilon = mu * sigma_x^2
             Initial conditions are normalized accordingly.
 
@@ -107,38 +107,40 @@ def duffing_oscillator(tmax, dt, t_trans, x0, v0, zeta, omega0, mu, f, norm=Fals
     f2 = lambda t, x1, x2 : -2 * zeta * omega0 * x2 - omega0**2 * x1 * (1+mu*x1**2) 
     x1 = [x0,]
     x2 = [v0,]
+    s0 = [sys_input[0],]
 
     t = np.arange(int(tmax/dt)+1) * dt
-    # Implement interpolation method for f 
-    f = np.array(f)
-    if f.shape[-1] == len(t):
-        interp_func = interpolate.interp1d(t,f,kind='cubic')
-        f = interp_func(np.arange(2*int(tmax/dt)+1) * 0.5*dt)
-    elif f.shape[-1] == 2*len(t) -1:
+    # Implement interpolation method for sys_input 
+    sys_input = np.array(sys_input)
+    if sys_input.shape[-1] == len(t):
+        interp_func = interpolate.interp1d(t,sys_input,kind='cubic')
+        sys_input = interp_func(np.arange(2*int(tmax/dt)+1) * 0.5*dt)
+    elif sys_input.shape[-1] == 2*len(t) -1:
         pass
     else:
-        raise ValueError("External force array dimention doesn't match")
-    # axes[0].plot(t,f)
+        raise ValueError("System input signal array dimention doesn't match")
+    # axes[0].plot(t,sys_input)
 
     for i in np.arange(len(t)-1):
         k0 = dt *  f1( t[i], x1[i], x2[i])
-        l0 = dt * (f2( t[i], x1[i], x2[i]) + f[2*i])
+        l0 = dt * (f2( t[i], x1[i], x2[i]) + sys_input[2*i])
 
         k1 = dt *  f1( t[i]+0.5*dt, x1[i]+0.5*k0, x2[i]+0.5*l0 )
-        l1 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k0, x2[i]+0.5*l0) + f[2*i+1])
+        l1 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k0, x2[i]+0.5*l0) + sys_input[2*i+1])
 
         k2 = dt *  f1( t[i]+0.5*dt, x1[i]+0.5*k1, x2[i]+0.5*l1 )
-        l2 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k1, x2[i]+0.5*l1) + f[2*i+1])
+        l2 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k1, x2[i]+0.5*l1) + sys_input[2*i+1])
 
         k3 = dt *  f1( t[i]+0.5*dt, x1[i]+0.5*k2, x2[i]+0.5*l2 )
-        l3 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k2, x2[i]+0.5*l2) + f[2*i+1])
+        l3 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k2, x2[i]+0.5*l2) + sys_input[2*i+1])
 
         x1.append(x1[i] + 1/6 * (k0 + 2*k1 + 2*k2 + k3))
         x2.append(x2[i] + 1/6 * (l0 + 2*l1 + 2*l2 + l3))
+        s0.append(sys_input[2*i])
 
     # axes[1].plot(t,x1)
     # plt.grid()
     # plt.show()
-    return t, x1
+    return np.array([t, s0, x1, x2]).T
 
 

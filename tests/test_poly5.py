@@ -10,22 +10,18 @@
 
 """
 
-
 import chaospy as cp
 import numpy as np
-from environment import environment
+import envi, doe, solver, utilities
+
+from envi import environment
 from metaModel import metaModel
 from simParams import simParameter
 from run_sim import run_sim
-from solver.dynamic_models import deterministic_lin_sdof 
+from solver.dynamic_models import lin_oscillator
+from solver.dynamic_models import duffing_oscillator
 from solver.static_models import ishigami
 from solver.static_models import poly5
-# import utility.dataIO as dataIO
-# import utility.getStats as getStats
-# from meta.metaModel import *
-# from solver.collec import *
-import sys
-sys.path.append("/MUSEUQ/src/")
 
 import matplotlib.pyplot as plt
 from statsmodels.distributions.empirical_distribution import ECDF
