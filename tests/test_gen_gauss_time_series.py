@@ -13,7 +13,6 @@ import context
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-from context import src
 from utilities.gen_gauss_time_series import *
 # from src/utilities import gen_gauss_time_series
 # from gen_gauss_time_series.py import * 
@@ -151,7 +150,7 @@ def main():
 # >>>  
 ################################################################################
 
-    tmax = 4000
+    tmax = 100
     dt = 0.1
     Hs = 8
     Tp = 6
@@ -165,19 +164,19 @@ def main():
 
     f, sf = spec_jonswap(f_sum,Hs, Tp)
     f2,sf2 = single_psd2double_psd(f, sf)
-    # start_time = time.time()
-    # np.random.seed( 10 )
-    # t1, eta1 = gen_gauss_time_series(tmax, dt, 'JS',  Hs, Tp, method='sum')
-    # elapsed_time = time.time() - start_time
-    # print('Sum:{}'.format(elapsed_time))
+    start_time = time.time()
+    np.random.seed( 10 )
+    t1, eta1 = gen_gauss_time_series(t, 'JS',  Hs, Tp, method='sum')
+    elapsed_time = time.time() - start_time
+    print('SUM elapsed time(sec) :{:.2f}'.format(elapsed_time))
 
     start_time = time.time()
     np.random.seed( 10 )
-    t2, eta2 = gen_gauss_time_series(tmax, dt, 'JS',  Hs, Tp, method='ifft')
+    t2, eta2 = gen_gauss_time_series(t, 'JS',  Hs, Tp, method='ifft')
     elapsed_time = time.time() - start_time
-    print('ifft:{}'.format(elapsed_time))
+    print('IFFT elapsed time(sec) :{:.2f}'.format(elapsed_time))
     axes[0].set_xlim(0,1)
-    # axes[1].plot(t1, eta1,label='sum')
+    axes[1].plot(t1, eta1,label='sum')
     axes[1].plot(t2, eta2,label='ifft')
     axes[1].legend()
     

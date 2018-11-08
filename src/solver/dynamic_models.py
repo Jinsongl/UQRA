@@ -19,56 +19,6 @@ from scipy import interpolate
 from scipy.integrate import odeint, quad
 from scipy.optimize import brentq
 
-# def transfer_func(f,f_n=0.15, zeta=0.1):
-    # """
-    # Transfer function of single degree freedom system.
-    # f_n: natural frequency, Hz
-    # zeta: dampling coefficient
-    # """
-    # fr = f/f_n
-    # y1 = (1-fr**2)**2
-    # y2 = (2*zeta*fr) **2
-
-    # y = np.sqrt(y1 + y2)
-    # y = 1./y 
-    # return y
-
-# def deterministic_lin_sdof(Hs, Tp, T=int(1e2), dt=0.1, seed=[0,100]):
-    # """
-    # Dynamics of deterministic linear sdof system with given inputs: Hs, Tp
-    # (Hs,Tp): Environment variables
-    # T: Simulation duration in seconds
-    # dt: Simulation time step, default=0.1
-    # seed=[bool, int], if seed[0]==True, seed is fixed with seed[1]
-    # """
-    # if seed[0]:
-        # np.random.seed(int(seed[1]))
-    # else:
-        # np.random.seed() 
-
-    # numPts_T = int(nextpow2(T/dt)) ## Number of points in Time domain
-    # numPts_F = numPts_T
-    # df      = 1.0/(numPts_T * dt)
-    # f       = np.arange(1,numPts_F) * df
-
-    # # H = np.ones(f.shape)
-    # H = transfer_func(f)
-    # t, etat, psd_f, eta_fft_coeffs = gen_surfwave('jonswap',f ,Hs, Tp)
-    # t = t * dt
-    # assert np.array_equal(f, psd_f)
-    # psd_y  = eta_fft_coeffs * H 
-    # y   = np.fft.ifft(psd_y).real * numPts_F 
-    # # print("\tSystem response Done!")
-    # # print "  > Significant wave height check:"
-    # # print "     Area(S(f))/Hs: ",'{:04.2f}'.format(4 * np.sqrt(JS_area) /Hs)    
-    # # print "     4*std/Hs:      ",'{:04.2f}'.format(4 * np.std(etat[int(100.0/dt):])/Hs)
-    # t = t[:int(T/dt)]
-    # etat = etat[:int(T/dt)]
-    # y = y[:int(T/dt)]
-    # res = np.array([t,etat, y]).T
-    # np.random.seed() 
-    # # return t, etat, y 
-    # return res
 
 def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,add_f=None,t_trans=0):
     add_f = add_f if callable(add_f) else 0
@@ -202,3 +152,54 @@ def duffing_equation(tmax, dt_per_period, x0, v0,gamma,delta,omega,alpha=1,beta=
     # # plt.grid()
     # # plt.show()
     # return np.array([t, s0, x1, x2]).T
+
+# def transfer_func(f,f_n=0.15, zeta=0.1):
+    # """
+    # Transfer function of single degree freedom system.
+    # f_n: natural frequency, Hz
+    # zeta: dampling coefficient
+    # """
+    # fr = f/f_n
+    # y1 = (1-fr**2)**2
+    # y2 = (2*zeta*fr) **2
+
+    # y = np.sqrt(y1 + y2)
+    # y = 1./y 
+    # return y
+
+# def deterministic_lin_sdof(Hs, Tp, T=int(1e2), dt=0.1, seed=[0,100]):
+    # """
+    # Dynamics of deterministic linear sdof system with given inputs: Hs, Tp
+    # (Hs,Tp): Environment variables
+    # T: Simulation duration in seconds
+    # dt: Simulation time step, default=0.1
+    # seed=[bool, int], if seed[0]==True, seed is fixed with seed[1]
+    # """
+    # if seed[0]:
+        # np.random.seed(int(seed[1]))
+    # else:
+        # np.random.seed() 
+
+    # numPts_T = int(nextpow2(T/dt)) ## Number of points in Time domain
+    # numPts_F = numPts_T
+    # df      = 1.0/(numPts_T * dt)
+    # f       = np.arange(1,numPts_F) * df
+
+    # # H = np.ones(f.shape)
+    # H = transfer_func(f)
+    # t, etat, psd_f, eta_fft_coeffs = gen_surfwave('jonswap',f ,Hs, Tp)
+    # t = t * dt
+    # assert np.array_equal(f, psd_f)
+    # psd_y  = eta_fft_coeffs * H 
+    # y   = np.fft.ifft(psd_y).real * numPts_F 
+    # # print("\tSystem response Done!")
+    # # print "  > Significant wave height check:"
+    # # print "     Area(S(f))/Hs: ",'{:04.2f}'.format(4 * np.sqrt(JS_area) /Hs)    
+    # # print "     4*std/Hs:      ",'{:04.2f}'.format(4 * np.std(etat[int(100.0/dt):])/Hs)
+    # t = t[:int(T/dt)]
+    # etat = etat[:int(T/dt)]
+    # y = y[:int(T/dt)]
+    # res = np.array([t,etat, y]).T
+    # np.random.seed() 
+    # # return t, etat, y 
+    # return res

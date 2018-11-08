@@ -36,11 +36,21 @@ def spec_jonswap(f, Hs, Tp):
 
     # if fr[0] == 0:
         # fr[0] = 1/np.inf
-    JS1 = 0.3125 * Hs**2 * Tp * fr**-5
-    JS2 = np.exp(-1.25*fr**-4) * (1-0.287*np.log(gamma))
-    JS3 = gamma**(np.exp(-0.5*(fr-1)**2/sigma**2))
-    JS = JS1 * JS2 * JS3
-    JS[np.isnan(JS)] = 0
+    with np.errstate(divide='ignore'):
+        JS1 = 0.3125 * Hs**2 * Tp * fr**-5
+        JS2 = np.exp(-1.25*fr**-4) * (1-0.287*np.log(gamma))
+        JS3 = gamma**(np.exp(-0.5*(fr-1)**2/sigma**2))
+
+        JS1[np.isinf(JS1)] = 0
+        JS2[np.isinf(JS2)] = 0
+        JS3[np.isinf(JS3)] = 0
+        # print(np.isnan(JS1).any())
+        # print(np.isnan(JS2).any())
+        # print(np.isnan(JS3).any())
+        # print(np.isinf(JS1).any())
+        # print(np.isinf(JS2).any())
+        # print(np.isinf(JS3).any())
+        JS = JS1 * JS2 * JS3
 
     return f, JS
 
@@ -100,13 +110,12 @@ spectrum_collection = {
         'T1':spec_test1
         }
 
-def gen_gauss_time_series(tmax, dt, spectrum_name, *args, method='sum', sides='1side'):
+def gen_gauss_time_series(t, spectrum_name, *args, method='sum', sides='1side'):
     """
     Generate Gaussian time series, e.g. Gaussian wave, with given spectrum at specified args parameters
     
     Arguments:
-        tmax: maximum time duration
-        dt: time step
+        t: time index 
         specturm: string, spectral function name 
         method:
             sum: sum(A_i*cos(w_i*t + theta_i))
@@ -131,9 +140,10 @@ def gen_gauss_time_series(tmax, dt, spectrum_name, *args, method='sum', sides='1
     # ---------------------------------------------------------
     methods = {'SUM':'Direct summation',
             'IFFT':'Inverse Fourier Transform'}
+    tmax,dt = t[-1], t[1]-t[0]
     N = int(tmax/dt)
     t = np.arange(-N,N+1) * dt
-    tmax = t[-1]
+    # tmax = t[-1]
     df = 0.5/tmax
     spectrum_func = spectrum_collection[spectrum_name.upper()]
     print('\tGenerating Gaussian time series in [0, {:4.2}] with dt={:4.2}'.format(tmax, dt))
