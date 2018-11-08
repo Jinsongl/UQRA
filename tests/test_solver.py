@@ -69,29 +69,34 @@ def main():
     # ### ------------------------------------------------------------------- ###
     # ### Run Simulations for training data  ###
     # ### ------------------------------------------------------------------- ###
-    f_obsY = []
-    for idoe_samples_phy in doe_samples_phy:
-        # f_obsi = run_sim(lin_oscillator, idoe_samples_phy, quad_simparam,\
+    # print(doe_samples_phy[0][0][0,1])
+    
+    f_obsi = run_sim(duffing_oscillator, doe_samples_phy[0], quad_simparam,sys_params=sys_params, psd_params=psd_params)
+    print(f_obsi.shape)
+
+    # f_obsY = []
+    # for idoe_samples_phy in doe_samples_phy:
+        # # f_obsi = run_sim(lin_oscillator, idoe_samples_phy, quad_simparam,\
+                # # sys_params=sys_params, psd_params=psd_params)
+        # f_obsi = run_sim(duffing_oscillator, idoe_samples_phy, quad_simparam,\
                 # sys_params=sys_params, psd_params=psd_params)
-        f_obsi = run_sim(duffing_oscillator, idoe_samples_phy, quad_simparam,\
-                sys_params=sys_params, psd_params=psd_params)
-        # f_obsi = run_sim(poly5, idoe_samples_phy, quad_simparam)
-        f_obsY.append(f_obsi)
-    print(np.array(f_obsY).shape)
-    f_obsY_max = np.max(f_obsY, axis=-2)
-    print(f_obsY_max)
+        # # f_obsi = run_sim(poly5, idoe_samples_phy, quad_simparam)
+        # f_obsY.append(f_obsi)
+    # print(np.array(f_obsY).shape)
+    # f_obsY_max = np.max(f_obsY, axis=-2)
+    # print(f_obsY_max)
 
     
-    # plt.figure()
-    # plt.plot(f_obsY[0][0,:,0], f_obsY[0][0,:,1:])
-    # plt.show()
+    plt.figure()
+    plt.plot(f_obsi[0,:,0], f_obsi[0,:,1])
+    plt.show()
 
 
     #### ------------------------------------------------------------------- ###
     #### Define meta model parameters  ###
     #### ------------------------------------------------------------------- ###
-    fit_method = 'SP' # SP: spectral projection, RG: regression
-    quad_metamodel   = metaModel('PCE', [5], fit_method, dist_zeta)
+    # fit_method = 'SP' # SP: spectral projection, RG: regression
+    # quad_metamodel   = metaModel('PCE', [5], fit_method, dist_zeta)
 
     
 

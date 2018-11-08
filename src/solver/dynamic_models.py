@@ -16,7 +16,8 @@ import numpy as np
 # import scipy as sp
 # import scipy.signal as sig
 from scipy import interpolate
-
+from scipy.integrate import odeint, quad
+from scipy.optimize import brentq
 
 # def transfer_func(f,f_n=0.15, zeta=0.1):
     # """
@@ -69,78 +70,135 @@ from scipy import interpolate
     # # return t, etat, y 
     # return res
 
-def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,sys_input):
-
-    x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,sys_input)
-    # Hw = lambda w: np.sqrt(1/((w**2 - omega0**2 )**2 + (2*zeta*omega0)**2 )) 
-
+def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,add_f=None,t_trans=0):
+    add_f = add_f if callable(add_f) else 0
+    x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,add_f=add_f,t_trans=t_trans)
     return x
 
-def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,sys_input,norm=False):
-    """
-    Time domain solver for one dimentional duffing oscillator with Runge-Kutta method
-    One dimentinal duffing_oscillator dynamics.  Coefficients are normalized by mass: 2 zeta*omega0 = c/m, omega0^2 = k/m
-    where c is damping and k is stiffness 
-        
-    x'' + 2*zeta*omega0*x' + omega0^2*x*(1+mu x^2) = sys_input
-    with initial contidions
-    x(0) = x'(0) = 0
 
-    Arguments:
-        zeta, omega0: parameters for the dynamic system
-        mu: nonlinearity of the system. when mu=0, system is linear
-        spectrum_hz / correfunc:
-            exciting force process is defined either with spectrum_hz or correfunc
-            spectrum_hz = Fourier(correfunc)
-        init_conds: initial conditions for the dynamic system, default start from static
-        norm: For the purpose of perfomring a parametric study of the proposed technique, 
-            t[i] will prove expedient to normalize the equation of motion using nondimentional
-            time: tau = omega0 * t and nondimentional displacement of y = x/sigma_x
-            If norm is true, following equation is solved:
-            y'' + 2* zeta * y' + y * (1 + epsilon* y^2) = sys_input/(sigma_x * omega0^2)
-            where epsilon = mu * sigma_x^2
-            Initial conditions are normalized accordingly.
+def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,add_f=None,t_trans=0,norm=False):
 
-    """
-    # fig, axes = plt.subplots(1,2)
-    f1 = lambda t, x1, x2 : x2
-    f2 = lambda t, x1, x2 : -2 * zeta * omega0 * x2 - omega0**2 * x1 * (1+mu*x1**2) 
-    x1 = [x0,]
-    x2 = [v0,]
-    s0 = [sys_input[0],]
+    delta = 2 * zeta * omega0
+    alpha = omega0**2
+    beta = omega0**2 * mu
+    dt_per_period = int(2*np.pi/omega0/dt)
+    gamma,omega = 0,1 # gamma ==0 with arbitrary omega
 
-    t = np.arange(int(tmax/dt)+1) * dt
-    # Implement interpolation method for sys_input 
-    sys_input = np.array(sys_input)
-    if sys_input.shape[-1] == len(t):
-        interp_func = interpolate.interp1d(t,sys_input,kind='cubic')
-        sys_input = interp_func(np.arange(2*int(tmax/dt)+1) * 0.5*dt)
-    elif sys_input.shape[-1] == 2*len(t) -1:
-        pass
+    t, X, dt, pstep = duffing_equation(tmax,dt_per_period,x0,v0,gamma,delta,omega,
+            t_trans=t_trans, alpha=alpha, beta = beta, add_f=add_f)
+    return t,X,dt,pstep
+
+
+def _deriv(X, t, gamma, delta, omega, alpha, beta, add_f):
+    """Return the derivatives dx/dt and d2x/dt2."""
+
+    V = lambda x: beta/4 * x**4 - alpha/2 * x**2 
+    dVdx = lambda x: beta*x**3 - alpha*x
+
+    x, xdot = X
+    if callable(add_f):
+        xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) + add_f(t)
+    elif add_f is None:
+        xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t)
     else:
-        raise ValueError("System input signal array dimention doesn't match")
-    # axes[0].plot(t,sys_input)
+        raise ValueError('Additional force function is not defined (neither callable nor None)')
 
-    for i in np.arange(len(t)-1):
-        k0 = dt *  f1( t[i], x1[i], x2[i])
-        l0 = dt * (f2( t[i], x1[i], x2[i]) + sys_input[2*i])
+    return xdot, xdotdot
 
-        k1 = dt *  f1( t[i]+0.5*dt, x1[i]+0.5*k0, x2[i]+0.5*l0 )
-        l1 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k0, x2[i]+0.5*l0) + sys_input[2*i+1])
+def duffing_equation(tmax, dt_per_period, x0, v0,gamma,delta,omega,alpha=1,beta=1,t_trans=0,add_f=None):
+    """Solve the Duffing equation for parameters gamma, delta, omega.
+    https://scipython.com/blog/the-duffing-oscillator/
+    Find the numerical solution to the Duffing equation using a suitable
+    time grid: tmax is the maximum time (s) to integrate to; t_trans is
+    the initial time period of transient behaviour until the solution
+    settles down (if it does) to some kind of periodic motion (these data
+    points are dropped) and dt_per_period is the number of time samples
+    (of duration dt) to include per period of the driving motion (frequency
+    omega).
 
-        k2 = dt *  f1( t[i]+0.5*dt, x1[i]+0.5*k1, x2[i]+0.5*l1 )
-        l2 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k1, x2[i]+0.5*l1) + sys_input[2*i+1])
+    x'' + delta x' + alpha x + beta x^3 = gamma * cos(omega t)
+    x(0) = x'(0)
 
-        k3 = dt *  f1( t[i]+0.5*dt, x1[i]+0.5*k2, x2[i]+0.5*l2 )
-        l3 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k2, x2[i]+0.5*l2) + sys_input[2*i+1])
+    Returns the time grid, t (after t_trans), position, x, and velocity,
+    xdot, dt, and step, the number of array points per period of the driving
+    motion.
 
-        x1.append(x1[i] + 1/6 * (k0 + 2*k1 + 2*k2 + k3))
-        x2.append(x2[i] + 1/6 * (l0 + 2*l1 + 2*l2 + l3))
-        s0.append(sys_input[2*i])
+    """
+    # Time point spacings and the time grid
 
-    # axes[1].plot(t,x1)
-    # plt.grid()
-    # plt.show()
-    return np.array([t, s0, x1, x2]).T
+    period = 2*np.pi/omega
+    dt = 2*np.pi/omega / dt_per_period
+    step = int(period / dt)
+    t = np.arange(0, tmax, dt)
+    # Initial conditions: x, xdot
+    X0 = [x0, v0]
+    X = odeint(_deriv, X0, t, args=(gamma, delta, omega,alpha, beta, add_f))
+    idx = int(t_trans / dt)
+    return t[idx:], X[idx:], dt, step
 
+# def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,add_f,norm=False):
+    # """
+    # Time domain solver for one dimentional duffing oscillator with Runge-Kutta method
+    # One dimentinal duffing_oscillator dynamics.  Coefficients are normalized by mass: 2 zeta*omega0 = c/m, omega0^2 = k/m
+    # where c is damping and k is stiffness 
+        
+    # x'' + 2*zeta*omega0*x' + omega0^2*x*(1+mu x^2) = add_f
+    # with initial contidions
+    # x(0) = x'(0) = 0
 
+    # Arguments:
+        # zeta, omega0: parameters for the dynamic system
+        # mu: nonlinearity of the system. when mu=0, system is linear
+        # spectrum_hz / correfunc:
+            # exciting force process is defined either with spectrum_hz or correfunc
+            # spectrum_hz = Fourier(correfunc)
+        # init_conds: initial conditions for the dynamic system, default start from static
+        # norm: For the purpose of perfomring a parametric study of the proposed technique, 
+            # t[i] will prove expedient to normalize the equation of motion using nondimentional
+            # time: tau = omega0 * t and nondimentional displacement of y = x/sigma_x
+            # If norm is true, following equation is solved:
+            # y'' + 2* zeta * y' + y * (1 + epsilon* y^2) = add_f/(sigma_x * omega0^2)
+            # where epsilon = mu * sigma_x^2
+            # Initial conditions are normalized accordingly.
+
+    # """
+    # # fig, axes = plt.subplots(1,2)
+    # f1 = lambda t, x1, x2 : x2
+    # f2 = lambda t, x1, x2 : -2 * zeta * omega0 * x2 - omega0**2 * x1 * (1+mu*x1**2) 
+    # x1 = [x0,]
+    # x2 = [v0,]
+    # s0 = [add_f[0],]
+
+    # t = np.arange(int(tmax/dt)+1) * dt
+    # # Implement interpolation method for add_f 
+    # add_f = np.array(add_f)
+    # if add_f.shape[-1] == len(t):
+        # interp_func = interpolate.interp1d(t,add_f,kind='cubic')
+        # add_f = interp_func(np.arange(2*int(tmax/dt)+1) * 0.5*dt)
+    # elif add_f.shape[-1] == 2*len(t) -1:
+        # pass
+    # else:
+        # raise ValueError("System input signal array dimention doesn't match")
+    # # axes[0].plot(t,add_f)
+
+    # for i in np.arange(len(t)-1):
+        # k0 = dt *  f1( t[i], x1[i], x2[i])
+        # l0 = dt * (f2( t[i], x1[i], x2[i]) + add_f[2*i])
+
+        # k1 = dt *  f1( t[i]+0.5*dt, x1[i]+0.5*k0, x2[i]+0.5*l0 )
+        # l1 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k0, x2[i]+0.5*l0) + add_f[2*i+1])
+
+        # k2 = dt *  f1( t[i]+0.5*dt, x1[i]+0.5*k1, x2[i]+0.5*l1 )
+        # l2 = dt * (f2( t[i]+0.5*dt, x1[i]+0.5*k1, x2[i]+0.5*l1) + add_f[2*i+1])
+
+        # k3 = dt *  f1( t[i]+dt, x1[i]+k2, x2[i]+l2 )
+        # l3 = dt * (f2( t[i]+dt, x1[i]+k2, x2[i]+l2) + add_f[2*i+1])
+
+        # x1.append(x1[i] + 1/6 * (k0 + 2*k1 + 2*k2 + k3))
+        # x2.append(x2[i] + 1/6 * (l0 + 2*l1 + 2*l2 + l3))
+        # s0.append(add_f[2*i])
+
+    # # axes[1].plot(t,x1)
+    # # plt.grid()
+    # # plt.show()
+    # return np.array([t, s0, x1, x2]).T

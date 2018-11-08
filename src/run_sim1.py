@@ -20,13 +20,14 @@ from envi.environment import environment
 
 import sys
 
-def run_sim(solver_func, vars_in, simParams, sys_params=None, psd_params=None):
+def run_sim(solver_func, sys_in, simParams, sys_params=None, psd_params=None):
     """
     Run simulation with given "solver" (real model) and predefined environment
     Inputs:
         solver_func: solver. Return [nChannel, nTimeSample] array. Each row is a time series for specified channel
-        vars_in: input variables in physical space. Will have [cor, weights] if quadrature method used,
         simParams: simParameter class object
+        sys_in: if psd_params is given, sys_in contains the parameters to generate system input time series from psd
+        else, sys_in is the system input time series. 
     Optional:
         sys_params: parameters for solver system
         solver_initconds: initial conditions
@@ -49,12 +50,13 @@ def run_sim(solver_func, vars_in, simParams, sys_params=None, psd_params=None):
 
     f_obsy     = []
 
-    if simParams.doe_method.upper() in ['QUAD', 'GQ']:
-        phy_cor, phy_weights = vars_in
-    else:
-        phy_cor = vars_in
-
     if psd_params:
+
+        if simParams.doe_method.upper() in ['QUAD', 'GQ']:
+            phy_cor, phy_weights = sys_in
+        else:
+            phy_cor = sys_in
+
         for iphy_cor in phy_cor.T:
 
             tmax, dt = simParams.time_max, simParams.dt
@@ -70,13 +72,11 @@ def run_sim(solver_func, vars_in, simParams, sys_params=None, psd_params=None):
 
             f_obsy.append(f_obs_i)
     else:
-        f_obsy = solver_wrapper(solver_func,simParams,phy_cor,\
-                sys_param=sys_params)
-
+        f_obsy = solver_wrapper(solver_func,simParams,sys_in,sys_param=sys_params)
     return np.array(f_obsy)
 
 
-    # for ivar_input in vars_in: 
+    # for ivar_input in sys_in: 
        # # ED for different selected doe_order 
 
 
