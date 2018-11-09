@@ -34,7 +34,6 @@ def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,t_trans=0,\
     beta = omega0**2 * mu
     dt_per_period = int(2*np.pi/omega0/dt)
     gamma,omega = 0,1 # gamma ==0 with arbitrary omega
-    print('h')
     t, X, dt, pstep = duffing_equation(tmax,dt_per_period,x0,v0,gamma,delta,omega, \
             t_trans=t_trans, alpha=alpha, beta = beta,\
             source_func=source_func, source_kwargs=source_kwargs, *add_f_args)

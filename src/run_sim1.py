@@ -12,16 +12,13 @@
 import numpy as np
 from solver.solver_wrapper import solver_wrapper
 
-def run_sim(solver_func, simParams, *args):
+def run_sim(solver_func, simParams,sys_source, *args):
     """
     Run simulation with given "solver" (real model) and predefined environment
-    Inputs:
+    Arguments:
         solver_func: solver. Return [nChannel, nTimeSample] array. Each row is a time series for specified channel
         simParams: simParameter class object
-        sys_in: could be one of the following three formats depending on the solver_func
-            1. if sys_source is given, sys_in contains the parameters to generate system input time series from psd
-            2. callable function taking time index t as argument to generate system input time series
-            3. input time series indexed with time t
+        args: 
     Optional:
         sys_param: parameters for solver system
         solver_initconds: initial conditions
@@ -44,26 +41,37 @@ def run_sim(solver_func, simParams, *args):
 # sys_source: contains either [source_func, *args, **kwargs] or input signal indexed with time
 # sys_param: ndarray of system parameters of shape[ndim, nsamples]
 
-    if len(args) == 2:
-        sys_source, sys_param = args
-    elif len(args) == 1:
-        sys_source, sys_param = args, None
-    else:
-        raise ValueError('1 or 2 terms expected, provided {:d}'.format(len(args)))
+    # if len(args) == 1:
+        # sys_param = args
+    # else:
+        # sys_param = None
+    sys_param = args[0] if len(args) == 1 else None
+    print('************************************************************')
+    print('Start running: {:s}, Tmax={:.1e}, dt={:.2f}'.format(solver_func.__name__,simParams.time_max, simParams.dt))
+    if sys_param is not None:
+        print('System parameters: ndim={:d}, nsets={:d}'.format(sys_param.shape[0], sys_param.shape[1]))
 
     resall = []
     if isinstance(sys_source, np.ndarray):
+        print('Source parameters: signal of shape {}'.format(sys_source.shape))
         ## only need inner loop for changing physical system
         res_inner = _run_fixsource_loop(solver_func, simParams, sys_source, sys_param)
         resall.append(*res_inner)
 
     elif isinstance(sys_source, list) and callable(sys_source[0]):
+        print('Source parameters:')
         ## First loop for different doe order sys_sources
         if len(sys_source) == 3:
             source_func, source_args, source_kwargs = sys_source
         elif len(sys_source) == 2:
             source_func, source_args, source_kwargs = sys_source, None
-
+        ndoe = len(source_args)
+        nsouce_dim = source_args[0][0].shape[0]
+        nsets_per_doe = source_args[0][0].shape[1]
+        print('   function : {:s}'.format(source_func.__name__))
+        print('   arguments: ndoe={:d}, ndim={:d}, nsets={:d}'\
+                .format(ndoe, nsouce_dim, nsets_per_doe))
+        print('   kwargs   : {}'.format(source_kwargs))
         for source_args_1doe in source_args:
             sys_source_1doe = [source_func, source_args_1doe, source_kwargs]
             y = _run_fixdoeorder_loop(solver_func, simParams, sys_source_1doe,sys_param) 

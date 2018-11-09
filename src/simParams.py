@@ -9,6 +9,7 @@
 """
 
 """
+import chaospy as cp
 import numpy as np
 from doe.doe_generator import samplegen
 ## Define parameters class
@@ -24,7 +25,7 @@ class simParameter(object):
         qoi2analysis: list, rows of the output data from solver to be analyzed. 
         pts: int or a list of percentiles for QUANT
     """
-    def __init__(self,doe_method,doe_order,dist_zeta,qoi2analysis=[0,],time_start=0,time_ramp=0,time_max=1000,dt=0.1,stats=[1,1,1,1,1,1,0]):
+    def __init__(self,doe_method,doe_order,dist_zeta,qoi2analysis=[0,],time_start=0,time_ramp=0,time_max=1000,dt=0.1,stats=[1,1,1,1,1,1,0],doe_rule='e'):
         self.time_start = time_start
         self.time_ramp  = time_ramp 
         self.time_max   = time_max
@@ -32,6 +33,7 @@ class simParameter(object):
         self.stats      = stats
         self.seed       = [0,100]
         self.doe_method = doe_method 
+        self.doe_rule   = doe_rule
         self.doe_order  = []
         self.dist_zeta  = dist_zeta
         self.distJ      = dist_zeta if len(dist_zeta) == 1 else cp.J(*dist_zeta)
@@ -86,7 +88,7 @@ class simParameter(object):
 
         for idoe_order in self.doe_order: 
            # ED for different selected doe_order 
-            samp_zeta = samplegen(self.doe_method, idoe_order, self.distJ)
+            samp_zeta = samplegen(self.doe_method, idoe_order, self.distJ,rule=self.doe_rule)
             doe_samples_zeta.append(samp_zeta)
 
             # Transform input sample values from zeta space to physical space

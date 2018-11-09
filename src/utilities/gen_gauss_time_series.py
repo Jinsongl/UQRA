@@ -154,10 +154,11 @@ def gen_gauss_time_series(t, kwargs=None, *args):
     # tmax = t[-1]
     df = 0.5/tmax
     spectrum_func = spectrum_collection[spectrum_name.upper()]
-    print('\tGenerating Gaussian time series in [0, {:4.2}] with dt={:4.2}'.format(tmax, dt))
-    print('\t>>> Power spectrum: {}'.format(spectrum_func.__name__))
-    print('\t>>> Method: {}'.format(methods[method.upper()]))
+    # print('   Generating Gaussian time series in [0, {:4.2}] with dt={:4.2}'.format(tmax, dt))
+    # print('   >>> Power spectrum: {}'.format(spectrum_func.__name__))
+    # print('   >>> Method: {}'.format(methods[method.upper()]))
 
+    print(args)
 
     if sides.upper() in['1','1SIDE','SINGLE','1SIDES']:
         f= np.arange(N+1) * df

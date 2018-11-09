@@ -13,7 +13,8 @@
 import itertools
 import chaospy as cp
 import numpy as np
-
+import numpy.polynomial as nppoly
+import itertools
 
 def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         verbose=False):
@@ -90,15 +91,31 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
     """
     doe_method = doe_method.upper()
     
+    QUAD_SHORT_NAMES = {
+        "c": "clenshaw_curtis",
+        "e": "gauss_legendre",
+        "p": "gauss_patterson",
+        "z": "genz_keister",
+        "g": "golub_welsch",
+        "j": "leja",
+        "h": "gauss_hermite",
+        }
+    chaospy_quad = ['c','e','p','z','g','j']
+    numpy_quad = ['h', 'hermite', 'legendre','lgd', 'laguerre','lgr','chebyshev','cbsv']
     if doe_method == 'GQ' or doe_method == 'QUAD':
         ## Return samples in 
-        rule = 'e' if rule is None else rule ## Default 
+        rule = 'h' if rule is None else rule ## Default gauss_legendre
         print('************************************************************')
         print('Design of experiment with Quadrature method')
-        print('Rule : {:s}, Number of quadrature points (1d): {:d}'.format(rule, order))
-        coord, weights= cp.generate_quadrature(order, domain, rule=rule) 
-        doe_samples = np.array([coord,weights])
-        print('Design of experiment done with {:d} quadrature points'.format(len(weights)))
+        print('Quadrature rule: {:s}, Number of quadrature points: {}'.format(QUAD_SHORT_NAMES[rule], [order,]*domain.length))
+        if rule in chaospy_quad:
+            doe_samples = _gen_quad_chaospy(order, domain, rule)
+        elif rule in numpy_quad:
+            doe_samples = _gen_quad_numpy(order, domain, rule)
+        else:
+            raise NotImplementedError("Quadrature rule '{:s}' not defined".format(rule))
+        # print(doe_samples)
+        print('>>> Done...')
         print('------------------------------------------------------------')
     elif doe_method == 'MC':
         """
@@ -115,7 +132,27 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         print('------------------------------------------------------------')
         
     else:
-        raise NotImplementedError("scheme not defined")
+        raise NotImplementedError("DOE method '{:s}' not defined".format(doe_method))
     return doe_samples 
 
+def _gen_quad_chaospy(order, domain, rule):
+    coord, weights= cp.generate_quadrature(order-1, domain, rule=rule) 
+    doe_samples = np.array([coord,weights])
+    return doe_samples
 
+def _gen_quad_numpy(order, domain, rule):
+    if rule in ['h', 'hermite']:
+        coord1d, weight1d = np.polynomial.hermite_e.hermegauss(order)
+        coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T
+        weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T
+        weights = np.prod(weights, axis=0)
+    elif rule in ['lgd', 'legendre']:
+        raise NotImplementedError("Quadrature method '{:s}' based on numpy hasn't been implemented yet".format(rule))
+    elif rule in ['lgr', 'laguerre']:
+        raise NotImplementedError("Quadrature method '{:s}' based on numpy hasn't been implemented yet".format(rule))
+    elif rule in ['cbsv', 'chebyshev']:
+        raise NotImplementedError("Quadrature method '{:s}' based on numpy hasn't been implemented yet".format(rule))
+    else:
+        raise NotImplementedError("Quadrature method '{:s}' is not defined".format(rule))
+    doe_samples = np.array([coord, weights])
+    return doe_samples

@@ -36,10 +36,12 @@ def main():
     ##  Define Solver parameters ###
     ## ------------------------------------------------------------------- ###
     ## Choose Wiener-Askey scheme random varaible
-    dist_zeta  = cp.Normal()
+    dist_zeta  = [cp.Normal(), cp.Normal()]
+    # dist_zeta = [cp.Uniform(-1,1),cp.Uniform(-1,1)]
     ## If transformation needed, liek Rosenblatt, need to be done here
     ## Define independent random varible in physical problems
-    dist_x = cp.Normal()
+    dist_x = [cp.Normal(), cp.Normal()]
+    # dist_x = [cp.Uniform(-1,1),cp.Uniform(-1,1)]cp.Uniform(-1,1)
     ## Define solver system properties
     # sys_params = {'c': (1,1), 'x0':(0,0)} # zeta, omega_n
     sys_params = np.array([0,0,1,1,1]).reshape(5,1) #x0,v0, zeta, omega_n, mu
@@ -51,18 +53,20 @@ def main():
     #  Define simulation parameters  ###
     # ------------------------------------------------------------------- ###
     doe_method = 'GQ'
-    doe_order = [4]
+    doe_rule = 'h'
+    doe_order = [5]
     qoi2analysis = [0,]
     time_start, time_ramp, time_max, dt = 0,0,1000,0.1
     stats = [1,1,1,1,1,0]
 
-    quad_simparam = simParameter(doe_method, doe_order, dist_zeta)
+    quad_simparam = simParameter(doe_method, doe_order, dist_zeta, doe_rule=doe_rule)
+    print(quad_simparam.doe_rule)
     # quad_simparam.setNumOutputs(3)
     quad_simparam.set_seed([1,100])
     ## Get DOE samples
     doe_samples_zeta, doe_samples_phy = quad_simparam.get_doe_samples(retphy=True,dist_phy=dist_x)
 
-    print(doe_samples_zeta[0][0].shape)
+    # print(doe_samples_zeta[0][0].shape)
     ## Generate solver system input signal
     source_kwargs= {'name': 'JONSWAP', 'method':'ifft', 'sides':'1side'}
     source_args = doe_samples_phy
