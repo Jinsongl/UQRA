@@ -23,6 +23,7 @@ from solver.dynamic_models import lin_oscillator
 from solver.dynamic_models import duffing_oscillator
 from solver.static_models import ishigami
 from solver.static_models import poly5
+from utilities.gen_gauss_time_series import gen_gauss_time_series
 
 import matplotlib.pyplot as plt
 from statsmodels.distributions.empirical_distribution import ECDF
@@ -41,7 +42,7 @@ def main():
     dist_x = cp.Normal()
     ## Define solver system properties
     # sys_params = {'c': (1,1), 'x0':(0,0)} # zeta, omega_n
-    sys_params = {'c': (1,1,1), 'x0':(0,0)} # zeta, omega_n, mu
+    sys_params = np.array([0,0,1,1,1]).reshape(5,1) #x0,v0, zeta, omega_n, mu
     # sys_params = {'p': 2} # ishigami
 
     # dist_zeta   = [cp.Exponential(1), cp.Exponential(1)] 
@@ -61,9 +62,12 @@ def main():
     ## Get DOE samples
     doe_samples_zeta, doe_samples_phy = quad_simparam.get_doe_samples(retphy=True,dist_phy=dist_x)
 
+    print(doe_samples_zeta[0][0].shape)
     ## Generate solver system input signal
-    psd_params = {'name': 'T1', 'method':'ifft', 'sides':'2side'}
-    sys_inputsim_method = 'ifft' ## corresponding to gen_gauss_time_series method,could be expaned later
+    source_kwargs= {'name': 'JONSWAP', 'method':'ifft', 'sides':'1side'}
+    source_args = doe_samples_phy
+    source_func = gen_gauss_time_series 
+    sys_source = [source_func, source_args, source_kwargs]
 
     ## Run simulation
     # ### ------------------------------------------------------------------- ###
@@ -71,7 +75,7 @@ def main():
     # ### ------------------------------------------------------------------- ###
     # print(doe_samples_phy[0][0][0,1])
     
-    f_obsi = run_sim(duffing_oscillator, doe_samples_phy[0], quad_simparam,sys_params=sys_params, psd_params=psd_params)
+    f_obsi = run_sim(duffing_oscillator, quad_simparam, sys_source, sys_params)
     print(f_obsi.shape)
 
     # f_obsY = []

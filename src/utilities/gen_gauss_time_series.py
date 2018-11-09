@@ -110,7 +110,7 @@ spectrum_collection = {
         'T1':spec_test1
         }
 
-def gen_gauss_time_series(t, spectrum_name, *args, method='sum', sides='1side'):
+def gen_gauss_time_series(t, kwargs=None, *args):
     """
     Generate Gaussian time series, e.g. Gaussian wave, with given spectrum at specified args parameters
     
@@ -140,6 +140,14 @@ def gen_gauss_time_series(t, spectrum_name, *args, method='sum', sides='1side'):
     # ---------------------------------------------------------
     methods = {'SUM':'Direct summation',
             'IFFT':'Inverse Fourier Transform'}
+    if kwargs:
+        spectrum_name   = kwargs.get('name',    'JONSWAP')
+        method          = kwargs.get('method',  'IFFT')
+        sides           = kwargs.get('sides',   '1side')
+    else:
+        spectrum_name = 'JONSWAP'
+        method        = 'IFFT'
+        sides         = '1side'
     tmax,dt = t[-1], t[1]-t[0]
     N = int(tmax/dt)
     t = np.arange(-N,N+1) * dt

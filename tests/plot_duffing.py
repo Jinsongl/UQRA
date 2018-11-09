@@ -44,20 +44,21 @@ import seaborn as sbs
 # Set up the motion for a oscillator with initial position
 # x0 and initially at rest.
 x0, v0 = 0, 0
-tmax, t_trans = 1800, 30
+tmax, t_trans = 180, 30
 omega = 1.4
 gamma, delta = 0.39, 0.1
 dt_per_period = 100
 alpha, beta = 1, 1
 # Solve the equation of motion.
-add_f =lambda t: gamma*np.cos(omega*t)
+source_func =lambda t, kwargs=None: gamma*np.cos(omega*t)
+
 t, X, dt, pstep = duffing_equation(tmax, dt_per_period, x0, v0, gamma, delta, omega, t_trans=t_trans, alpha=alpha, beta = beta)
 x, xdot = X.T
 dt = 2*np.pi/omega/dt_per_period
 omega0 = np.sqrt(alpha)
 mu = beta/alpha
 zeta = delta/(2*omega0)
-t1, X1, dt1, pstep1 = duffing_oscillator(tmax, dt, x0, v0, zeta,omega0,mu, t_trans=t_trans,add_f=add_f)
+t1, X1, dt1, pstep1 = duffing_oscillator(tmax, dt, x0, v0, zeta,omega0,mu, t_trans=t_trans,source_func=source_func)
 x1, xdot1 = X1.T
 # # The animation
 fig, ax = plt.subplots(nrows=2,ncols=2)
