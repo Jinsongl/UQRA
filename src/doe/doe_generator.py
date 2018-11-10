@@ -101,7 +101,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         "h": "gauss_hermite",
         }
     chaospy_quad = ['c','e','p','z','g','j']
-    numpy_quad = ['h', 'hermite', 'legendre','lgd', 'laguerre','lgr','chebyshev','cbsv']
+    numpy_quad = ['h', 'hermite', 'legendre','lgd', 'laguerre','lgr','chebyshev','cheb']
     if doe_method == 'GQ' or doe_method == 'QUAD':
         ## Return samples in 
         rule = 'h' if rule is None else rule ## Default gauss_legendre
@@ -150,9 +150,16 @@ def _gen_quad_numpy(order, domain, rule):
     elif rule in ['lgd', 'legendre']:
         raise NotImplementedError("Quadrature method '{:s}' based on numpy hasn't been implemented yet".format(rule))
     elif rule in ['lgr', 'laguerre']:
-        raise NotImplementedError("Quadrature method '{:s}' based on numpy hasn't been implemented yet".format(rule))
-    elif rule in ['cbsv', 'chebyshev']:
-        raise NotImplementedError("Quadrature method '{:s}' based on numpy hasn't been implemented yet".format(rule))
+        coord1d, weight1d = np.polynomial.laguerre.laggauss(order)
+        coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T
+        weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T
+        weights = np.prod(weights, axis=0)
+
+    elif rule in ['cheb', 'chebyshev']:
+        coord1d, weight1d = np.polynomial.chebyshev.chebgauss(order)
+        coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T
+        weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T
+        weights = np.prod(weights, axis=0)
     else:
         raise NotImplementedError("Quadrature method '{:s}' is not defined".format(rule))
     doe_samples = np.array([coord, weights])
