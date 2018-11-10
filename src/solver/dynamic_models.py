@@ -20,24 +20,25 @@ from scipy.integrate import odeint, quad
 from scipy.optimize import brentq
 
 
-def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *add_f_args):
+def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *source_args):
     source_func = source_func if callable(source_func) else 0
     x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,source_func=source_func,t_trans=t_trans)
     return x
 
 
-def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,t_trans=0,\
-        source_func=None, source_kwargs=None, *add_f_args):
-
+def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,\
+        *source_args, source_func=None, source_kwargs=None,t_trans=0):
     delta = 2 * zeta * omega0
     alpha = omega0**2
     beta = omega0**2 * mu
     dt_per_period = int(2*np.pi/omega0/dt)
     gamma,omega = 0,1 # gamma ==0 with arbitrary omega
-    t, X, dt, pstep = duffing_equation(tmax,dt_per_period,x0,v0,gamma,delta,omega, \
-            t_trans=t_trans, alpha=alpha, beta = beta,\
-            source_func=source_func, source_kwargs=source_kwargs, *add_f_args)
-    return t,X,dt,pstep
+    t, X, dt, pstep = duffing_equation(tmax,dt_per_period,x0,v0,gamma,delta,omega,\
+            *source_args, source_func=source_func, source_kwargs=source_kwargs,\
+            t_trans=t_trans, alpha=alpha, beta=beta)
+    t = np.reshape(t,(len(t),1))
+    res = np.concatenate((t,X),axis=1)
+    return res, dt, pstep 
 
 
 def _deriv(X, t, gamma, delta, omega, alpha, beta, source_interp):
@@ -50,11 +51,12 @@ def _deriv(X, t, gamma, delta, omega, alpha, beta, source_interp):
     if source_interp is None:
         xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) 
     else:
-        xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) + source_interp(t)
+        ## Interpolate function will return [t, value interpolated at t], need only the value
+        xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) + source_interp(t)[1]
     return xdot, xdotdot
 
-def duffing_equation(tmax, dt_per_period, x0, v0,gamma,delta,omega,alpha=1,beta=1,t_trans=0,\
-        source_func=None, source_kwargs=None, *add_f_args):
+def duffing_equation(tmax, dt_per_period, x0, v0,gamma,delta,omega,\
+        *source_args, source_func=None, source_kwargs=None,alpha=1,beta=1,t_trans=0):
     """Solve the Duffing equation for parameters gamma, delta, omega.
     https://scipython.com/blog/the-duffing-oscillator/
     Find the numerical solution to the Duffing equation using a suitable
@@ -83,7 +85,7 @@ def duffing_equation(tmax, dt_per_period, x0, v0,gamma,delta,omega,alpha=1,beta=
     X0 = [x0, v0]
     if callable(source_func):
         _t = np.arange(0, tmax+period, dt)
-        source = source_func(_t, kwargs=source_kwargs, *add_f_args)
+        source = source_func(_t, *source_args, kwargs=source_kwargs)
         source_interp = interpolate.interp1d(_t,source,kind='cubic')
     else:
         source_interp = None

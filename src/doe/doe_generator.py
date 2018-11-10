@@ -107,7 +107,8 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         rule = 'h' if rule is None else rule ## Default gauss_legendre
         print('************************************************************')
         print('Design of experiment with Quadrature method')
-        print('Quadrature rule: {:s}, Number of quadrature points: {}'.format(QUAD_SHORT_NAMES[rule], [order,]*domain.length))
+        quad_order = [order,] * domain.length if np.isscalar(order) else order
+        print('Quadrature rule: {:s}, Number of quadrature points: {}'.format(QUAD_SHORT_NAMES[rule], quad_order))
         if rule in chaospy_quad:
             doe_samples = _gen_quad_chaospy(order, domain, rule)
         elif rule in numpy_quad:

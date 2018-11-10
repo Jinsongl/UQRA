@@ -18,7 +18,7 @@ from envi import environment
 from metaModel import metaModel
 from simParams import simParameter
 
-from run_sim1 import run_sim
+from run_sim import run_sim
 from solver.dynamic_models import lin_oscillator
 from solver.dynamic_models import duffing_oscillator
 from solver.static_models import ishigami
@@ -54,13 +54,13 @@ def main():
     # ------------------------------------------------------------------- ###
     doe_method = 'GQ'
     doe_rule = 'h'
-    doe_order = [5]
+    doe_order = [2,4]
     qoi2analysis = [0,]
-    time_start, time_ramp, time_max, dt = 0,0,1000,0.1
+    time_start, time_ramp, time_max, dt = 0,0,10,0.1
     stats = [1,1,1,1,1,0]
 
-    quad_simparam = simParameter(doe_method, doe_order, dist_zeta, doe_rule=doe_rule)
-    print(quad_simparam.doe_rule)
+    quad_simparam = simParameter(doe_method, doe_order, dist_zeta, doe_rule=doe_rule,time_max=time_max,dt=dt,stats=stats,time_ramp=time_ramp)
+
     # quad_simparam.setNumOutputs(3)
     quad_simparam.set_seed([1,100])
     ## Get DOE samples
@@ -72,6 +72,7 @@ def main():
     source_args = doe_samples_phy
     source_func = gen_gauss_time_series 
     sys_source = [source_func, source_args, source_kwargs]
+    # print(source_args[0].shape)
 
     ## Run simulation
     # ### ------------------------------------------------------------------- ###
@@ -80,7 +81,9 @@ def main():
     # print(doe_samples_phy[0][0][0,1])
     
     f_obsi = run_sim(duffing_oscillator, quad_simparam, sys_source, sys_params)
-    print(f_obsi.shape)
+    print(f_obsi[0].shape)
+    print(f_obsi[1].shape)
+    # print(np.array(f_obsi).shape)
 
     # f_obsY = []
     # for idoe_samples_phy in doe_samples_phy:
@@ -95,9 +98,9 @@ def main():
     # print(f_obsY_max)
 
     
-    plt.figure()
-    plt.plot(f_obsi[0,:,0], f_obsi[0,:,1])
-    plt.show()
+    # plt.figure()
+    # plt.plot(f_obsi[0,:,0], f_obsi[0,:,1])
+    # plt.show()
 
 
     #### ------------------------------------------------------------------- ###

@@ -9,25 +9,33 @@
 """
 
 """
-import chaospy as cp
-import doe
-from doe.doe_generator import samplegen
-from solver.solver_wrapper import solver_wrapper
-from utilities.get_stats import get_stats
 import numpy as np
-from envi.environment import environment
-
-import sys
-
-def run_sim(solver_func, solver_params, simParams, metaParams):
+from solver.solver_wrapper import solver_wrapper
+NDOE_DONE=1
+NSOURCE_DONE=1
+NSYS_DONE=1
+def run_sim(solver_func, simParams,sys_source, *args):
     """
     Run simulation with given "solver" (real model) and predefined environment
-    Inputs:
-        phyrvs_mdist: environment class object or a list of marginal cp.distributions
+    Arguments:
+        solver_func: solver. Return [nChannel, nTimeSample] array. Each row is a time series for specified channel
         simParams: simParameter class object
-        solver: solver. Return [nChannel, nTimeSample] array. Each row is a time series for specified channel
+        sys_source: list containing [source_func, source_args, source_kwargs]
+
+    Optional:
+        sys_param: parameters for solver system of shape [ndim, nsamples], ndim is the number of system parameters
+
     Return:
-        zafor different doe_order, sample size would change, so return list
+        List of simulation results
+        Different doe_order, sample size would change, so return list
+
+        1. len(res) = len(doe_order)
+        2. For each element in res
+            [#source args sets, # sys parameter sets, returns from solver]
+        3. Return from solver 
+            a). [*, ndofs]
+                each column represents a time series for one dof
+            b). 
 
         f_obsx: list of length len(doe_order)
             each element contains input sample variables both in zeta and physical space
@@ -41,135 +49,125 @@ def run_sim(solver_func, solver_params, simParams, metaParams):
             each element contains (nsamples, nstats, nqois)
 
     """
-    qoi2analysis= simParams.qoi2analysis
-    doe_method  = simParams.doe_method
-    doe_order   = simParams.doe_order
-    outfile_name= simParams.outfile_name
-    outdir_name = simParams.outdir_name
-    f_obsx     = []
-    f_obsy     = []
-    f_obsy_stats = [] 
-    isreturnstats = 1
-    for idoe_order in doe_order: 
-       # ED for different selected doe_order 
-        samp_zeta = samplegen(doe_method, idoe_order, metaParams.distJ)
+# sys_source: contains either [source_func, *args, **kwargs] or input signal indexed with time
+# sys_param: ndarray of system parameters of shape[ndim, nsamples]
 
-        if doe_method.upper() in ['QUAD', 'GQ']:
-            zeta_cor, zeta_weights = samp_zeta
-        else:
-            zeta_cor, zeta_weights = samp_zeta, None
-        # Transform input sample values from zeta space to physical space
+    # if len(args) == 1:
+        # sys_param = args
+    # else:
+        # sys_param = None
+    sys_param = args[0] if len(args) == 1 else None
+    print('************************************************************')
+    print('Start running: {:s}, Tmax={:.1e}, dt={:.2f}'.format(solver_func.__name__,simParams.time_max, simParams.dt))
+    if sys_param is not None:
+        print('System parameters: ndim={:d}, nsets={:d}'.format(sys_param.shape[0], sys_param.shape[1]))
 
-        if isinstance(phyrvs_mdist, environment): 
-            phyrvs = phyrvs_mdist.zeta2phy(metaParams.distlist,zeta_cor)
-        else:
-            phyrvs = transform_zeta2phy(phyrvs_mdist,metaParams.distlist, zeta_cor)
+    resall = []
 
-        # run solver for each iphyrvs(input variable in physical space) and get stats
+    global NDOE_DONE
+    global NSOURCE_DONE
+    global NSYS_DONE
 
-        # if solver return is just a number or (1, nqoi) or (nsamples, 1), vectorization could be used
-        # otherwise, solver need to run for input variables one by one
-        if_obs = solver_wrapper(solver_func, simParams, phyrvs.T[0])
-        solvery_shape = None if np.isscalar(if_obs) else if_obs.shape
-        print(solvery_shape)
+    if isinstance(sys_source, np.ndarray):
+        print('Source parameters: signal of shape {}'.format(sys_source.shape))
+        ## only need inner loop for changing physical system
+        res_inner = _run_fixsource_loop(solver_func, simParams, sys_source, sys_param)
+        resall.append(res_inner)
 
-        # isvectorization = 1 if np.isscalar(if_obs) or if_obs.shape[0] == 1 or if_obs.shape[1] == 1 else 0 
+    elif isinstance(sys_source, list) and callable(sys_source[0]):
+        print('Source parameters:')
+        # Three loops: first loop will go through different doe orders
+        # second loop will go through different source_func arguments
+        # third loop will evaluate at given source_func argument, system response with different parameters.
 
-        if np.isscalar(if_obs):
-            isvectorization = 1
-        else:
-            m,n = solvery_shape
-            if m == 1 or n == 1:
-                isvectorization = 1
-            else:
-                isvectorization = 0
-        if np.isscalar(if_obs):
-            isreturnstats = 0
-        else:
-            m,n = if_obs.shape
-            if n == 1:
-                isreturnstats = 0
-            else:
-                isreturnstats = 1
+        ## First loop for different doe order sys_sources
+        if len(sys_source) == 3:
+            source_func, source_args, source_kwargs = sys_source
+        elif len(sys_source) == 2:
+            source_func, source_args, source_kwargs = sys_source, None
+        ndoe = len(source_args)
+        nsouce_dim = source_args[0][0].shape[0]
+        nsets_per_doe = source_args[0][0].shape[1]
+        print('   function : {:s}'.format(source_func.__name__))
+        print('   arguments: ndoe={:d}, ndim={:d}, nsets={:d}'\
+                .format(ndoe, nsouce_dim, nsets_per_doe))
+        print('   kwargs   : {}'.format(source_kwargs))
+        print('   ------------------------------------')
+        print('   Job list: [# DOE sets, # Souce args, # Sys params]')
+        print('   Target  : [{:8d}, {:8d}, {:8d}]'.format(ndoe, nsets_per_doe, sys_param.shape[1]))
+        print('   --------')
+        for i, source_args_1doe in enumerate(source_args):
+            sys_source_1doe = [source_func, source_args_1doe, source_kwargs]
+            y = _run_fixdoeorder_loop(solver_func, simParams, sys_source_1doe,sys_param) 
+            resall.append(y)
+            NDOE_DONE +=1
 
-        if isvectorization:
-            if_obs = solver_wrapper(solver_func, simParams, phyrvs)
-            if solvery_shape is None:
-                if_obs = if_obs.reshape(np.prod(if_obs.shape), 1)
-            else:
-                newshape = (phyrvs.shape[1], *solvery_shape)
-                assert np.prod(if_obs.shape) == np.prod(newshape)
-                if_obs = if_obs.reshape(newshape)
-            if isreturnstats:
-                if_stats = get_stats(if_obs[:,:, qoi2analysis], stats = simParams.stats)
-                f_obsy_stats.append(np.array(if_stats))
-            f_obsy.append(np.array(if_obs))
-        else:
+    return resall
+           
 
-            _f_obsy = []
-            # return from each solver run must be full matrix of shape(ntimeseries, nqoi)
-            for i, iphyrvs in enumerate(phyrvs.T):
-                if_obs   = solver_wrapper(solver_func, simParams, *iphyrvs)
-                _f_obsy.append(if_obs[:,qoi2analysis])
-                print('\r\tRunning solver: {:s}, {:d} out of {:d}'\
-                        .format(solver_func.__name__, i+1, phyrvs.shape[1]), end='')
-            print('\n')
-            _f_obsy_stats = get_stats(_f_obsy, stats=simParams.stats)
-            f_obsy.append(np.array(_f_obsy))
-            f_obsy_stats.append(np.array(_f_obsy_stats))
-        # Convert output to ndarray of dtype float
-        if zeta_weights is None:
-            f_obsx.append(np.vstack((zeta_cor, phyrvs)))
-        else:
-            f_obsx.append(np.vstack((zeta_cor, zeta_weights, phyrvs)))
+def _run_fixsource_loop(solver_func,simParams,sys_source_fixed,sys_param_all):
+    global NSYS_DONE
+    res = []
+    ## system parameters don't change
+    if sys_param_all is None:
+        y = solver_wrapper(solver_func,simParams,sys_source_fixed)
+        res.append(y)
+    ## different setzs of system parameters
+    else:
+        for i , isys_param in enumerate(sys_param_all.T):
+            y = solver_wrapper(solver_func,simParams,sys_source_fixed,sys_param=isys_param)
+            res.append(y)
+            NSYS_DONE = i+1
+            # print('   Target  : [{:8d}, {:8d}, {:8d}]'.format(ndoe, nsets_per_doe, sys_param.shape[1]))
+            print('   Achieved: [{:8d}, {:8d}, {:8d}]'.format(NDOE_DONE, NSOURCE_DONE, NSYS_DONE))
+    # print(np.array(res).shape)
+    return np.array(res)
 
+def _run_fixdoeorder_loop(solver_func,simParams,sys_source_1doe, sys_param_all):
+    global NSOURCE_DONE
+    res = []
+    source_func, source_args, source_kwargs = sys_source_1doe
+    if simParams.doe_method.upper() in ['QUAD', 'GQ']:
+        source_args, source_args_weights = source_args 
+    else:
+        source_args, source_args_weights = source_args, None
+    ## source_args must of shape(ndim, nsampes)
+    for i, isource_args in enumerate(source_args.T):
 
-    # Save inputs 
-    # simParams.update_filename(simParams.doe_method + 'Inputs')
-    # filenames = dataIO.setfilename(simParams)
-    # dataIO.saveData(samples_rvs, filenames[0], simParams.outdirName)
-    # # Save outputs
-    # simParams.update_filename(simParams.doe_method + 'Outputs')
-    # filenames = dataIO.setfilename(simParams)
-    # for i in xrange(qoi2analysis):
-        # dataIO.saveData(f_obsy_stats[i],filenames[i+1], simParams.outdirName)
-    assert len(f_obsx) == len(f_obsy)  == len(doe_order)
-    assert isreturnstats == len(f_obsy_stats) 
+        # print(' [{:8d}'.format(i),end='')
+        isys_source = [source_func, isource_args, source_kwargs]
+        res_inner = _run_fixsource_loop(solver_func, simParams, isys_source, sys_param_all)
+        res.append(res_inner)
+        NSOURCE_DONE +=1
 
-    return (f_obsx, f_obsy, f_obsy_stats) if isreturnstats else (f_obsx, f_obsy)
+    # print(np.array(res).shape)
+    return np.array(res)
 
 
-def transform_zeta2phy(dist_phy, dist_zeta, zeta):
-    """
-    Transform zeta sample values from zeta space (slected Wiener-Askey scheme) to physical space
+    # if sys_source:
 
-    Arguments:
-        dist_phy: list of marginal distributions of physical random variables,
-            distributions must be mutually independent
-        dist_zeta: list of marginal distributions of zeta random variables
-        zeta: samples in zeta space of shape(ndim, nsamples)
+        # if simParams.doe_method.upper() in ['QUAD', 'GQ']:
+            # phy_cor, phy_weights = sys_in
+        # else:
+            # phy_cor = sys_in
 
-    Return:
-        phy: same shape as zeta, samples in physical space
-    """
+        # for iphy_cor in phy_cor.T:
 
-    print('Transforming samples from Wiener-Askey scheme to physical space')
-    print('   marginal physical distributions are assumed independent')
-    assert len(dist_phy) == len(dist_zeta)
-    if len(dist_phy) == 1:
-        dist_phy = [dist_phy,]
-        dist_zeta = [dist_zeta,]
+            # tmax, dt = simParams.time_max, simParams.dt
 
-    zeta = np.asfarray(zeta)
-    vals = np.empty(zeta.shape)
-    assert len(dist_zeta) == zeta.shape[0]
-    for i, val in enumerate (zeta.T):
-        q = list(map(lambda dist, x: float(dist.cdf(x)), dist_zeta, val))
-        iphy = list(map(lambda dist, x: float(dist.inv(x)), dist_phy, q))
-        vals[:,i] = np.array(iphy) 
-    assert vals.shape == zeta.shape
-    return vals
+            # psd_name    = sys_source['name']
+            # psd_method  = sys_source['method']
+            # psd_sides   = sys_source['sides']
+            # sys_source = [gen_gauss_time_series, iphy_cor, ]
 
+            # t, sys_input_signal = gen_gauss_time_series(tmax, dt, psd_name, iphy_cor,\
+                    # method=psd_method, sides=psd_sides)
+            # add_f = lambda t: 
 
+            # f_obs_i = solver_wrapper(solver_func,simParams,sys_input_signal,sys_param=sys_params)
 
+            # f_obsy.append(f_obs_i)
+    # else:
+        # f_obsy = solver_wrapper(solver_func,simParams,sys_in,sys_param=sys_params)
+    # return np.array(f_obsy)
 

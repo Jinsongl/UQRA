@@ -11,4 +11,8 @@
 """
 # from dynamic_models import lin_oscillator, duffing_oscillator
 # from static_models import ishigami, poly5
+
+# import sys
+# # print(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 # import dynamic_models

@@ -10,6 +10,8 @@
 
 """
 import numpy as np
+from .dynamic_models import duffing_oscillator
+from .dynamic_models import duffing_equation
 
 def solver_wrapper(solver_func, simParams, sys_source, sys_param=None):
     """
@@ -62,15 +64,16 @@ def solver_wrapper(solver_func, simParams, sys_source, sys_param=None):
         elif len(sys_source) == 2:
             source_func, source_args, source_kwargs = sys_source, None
 
-
         ## Default initial condition [0,0]
         if sys_param is not None:
             x0, v0, zeta, omega0, mu = sys_param
         else:
             x0, v0, zeta, omega0, mu = (0,0,0.2,1,1)
 
-        y = solver_func(time_max,dt,x0,v0,zeta,omega0,mu,\
-                source_func=source_func,source_kwargs=source_kwargs, *source_args)
+        # print(solver_func)
+        # print(source_func, source_kwargs, source_args)
+        # y = duffing_oscillator(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs)
+        y,dt,pstep= solver_func(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs)
 
     else:
         raise ValueError('Function {} not defined'.format(solver_func__name__)) 

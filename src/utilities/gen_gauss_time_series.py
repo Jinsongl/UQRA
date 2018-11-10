@@ -23,20 +23,20 @@ def spec_jonswap(f, Hs, Tp):
     Tp: wave peak period, sec
     """
 
-    # print "sample frequency: \n", f
-    fp = 1.0/Tp
-    fr = f/fp
-    gamma = 3.3 
-    sigma = 0.07 * np.ones(f.shape)
-    sigma[f > fp] = 0.09
-    # print "fp:", fp
-    # print "sigma: ", sigma
-    
-    assert f[0] >= 0 ,'Single side power spectrum start with frequency greater or eqaul to 0, f[0]={:4.2f}'.format(f[0])
-
-    # if fr[0] == 0:
-        # fr[0] = 1/np.inf
     with np.errstate(divide='ignore'):
+        # print "sample frequency: \n", f
+        fp = 1.0/Tp
+        fr = f/fp
+        gamma = 3.3 
+        sigma = 0.07 * np.ones(f.shape)
+        sigma[f > fp] = 0.09
+        # print "fp:", fp
+        # print "sigma: ", sigma
+        
+        assert f[0] >= 0 ,'Single side power spectrum start with frequency greater or eqaul to 0, f[0]={:4.2f}'.format(f[0])
+
+        # if fr[0] == 0:
+            # fr[0] = 1/np.inf
         JS1 = 0.3125 * Hs**2 * Tp * fr**-5
         JS2 = np.exp(-1.25*fr**-4) * (1-0.287*np.log(gamma))
         JS3 = gamma**(np.exp(-0.5*(fr-1)**2/sigma**2))
@@ -110,7 +110,7 @@ spectrum_collection = {
         'T1':spec_test1
         }
 
-def gen_gauss_time_series(t, kwargs=None, *args):
+def gen_gauss_time_series(t, *args, kwargs=None):
     """
     Generate Gaussian time series, e.g. Gaussian wave, with given spectrum at specified args parameters
     
@@ -158,7 +158,7 @@ def gen_gauss_time_series(t, kwargs=None, *args):
     # print('   >>> Power spectrum: {}'.format(spectrum_func.__name__))
     # print('   >>> Method: {}'.format(methods[method.upper()]))
 
-    print(args)
+    # print(args)
 
     if sides.upper() in['1','1SIDE','SINGLE','1SIDES']:
         f= np.arange(N+1) * df
