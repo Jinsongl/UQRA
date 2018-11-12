@@ -56,24 +56,25 @@ def solver_wrapper(solver_func, simParams, sys_source, sys_param=None):
     elif solver_func.__name__.upper() ==  'DUFFING_OSCILLATOR':
         # sys_source: [source_func, *arg, *kwargs]
 
-        time_max= simParams.time_max
-        dt      = simParams.dt
+        time_max  = simParams.time_max
+        dt        = simParams.dt
+        normalize = simParams.normalize
 
         if len(sys_source) == 3:
-            source_func, source_args, source_kwargs = sys_source
+            source_func, source_kwargs, source_args = sys_source
         elif len(sys_source) == 2:
-            source_func, source_args, source_kwargs = sys_source, None
+            source_func, source_kwargs, source_args = sys_source[0], None, sys_source[1]
 
         ## Default initial condition [0,0]
         if sys_param is not None:
             x0, v0, zeta, omega0, mu = sys_param
         else:
-            x0, v0, zeta, omega0, mu = (0,0,0.2,1,1)
+            x0, v0, zeta, omega0, mu = (0,0,0.02,1,1)
 
         # print(solver_func)
         # print(source_func, source_kwargs, source_args)
         # y = duffing_oscillator(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs)
-        y,dt,pstep= solver_func(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs)
+        y,dt,pstep= solver_func(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs,normalize=normalize)
 
     else:
         raise ValueError('Function {} not defined'.format(solver_func__name__)) 

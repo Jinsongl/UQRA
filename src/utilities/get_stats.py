@@ -15,8 +15,21 @@ import scipy.stats as scistats
 import csv
 import os
 
-def up_crossing(data, axis=0):
+def _up_crossing(data, axis=0):
     pass
+
+def _moving_avg(data, window=3,axis=None):
+    ret = np.cumsum(data, dtype=float, axis=axis)
+    ret[window:] = ret[window:] - ret[:-window]
+    return ret[window - 1:] / window
+
+def _moving_square(data, window=3, axis=None):
+    return _moving_avg(data**2, window=window, axis=axis)
+
+def _moving_std(data, window=3,axis=None):
+    exp_x2 = _moving_square(data, window=window, axis=axis)
+    expx_2 = _moving_avg(data, window=window, axis=axis) **2
+    return exp_x2 - expx_2
 
 def get_stats(data, stats=[1,1,1,1,1,1,0]):
     """ Calculate the statistics of data
@@ -61,7 +74,11 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
         if stats[5] == 1:
             res = np.append(res, np.min(abs(data), axis=1), axis=1)
         if stats[6] == 1:
-            res = append(res, up_crossing(data, axis=1), axis=1)
+            res = append(res, _up_crossing(data, axis=1), axis=1)
+        # if stats[7] == 1:
+            # res = append(res, _moving_avg(data), axis=1)
+        # if stats[8] == 1:
+            # res = append(res, _moving_std(data), axis=1)
     
     return res
 

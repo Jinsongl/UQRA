@@ -99,9 +99,11 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         "g": "golub_welsch",
         "j": "leja",
         "h": "gauss_hermite",
+        "lag": "gauss_laguerre",
+        "cheb": "gauss_chebyshev",
         }
     chaospy_quad = ['c','e','p','z','g','j']
-    numpy_quad = ['h', 'hermite', 'legendre','lgd', 'laguerre','lgr','chebyshev','cheb']
+    numpy_quad = ['h', 'hermite', 'legendre','lgd', 'laguerre','lag','chebyshev','cheb']
     if doe_method == 'GQ' or doe_method == 'QUAD':
         ## Return samples in 
         rule = 'h' if rule is None else rule ## Default gauss_legendre
@@ -149,7 +151,7 @@ def _gen_quad_numpy(order, domain, rule):
         weights = np.prod(weights, axis=0)
     elif rule in ['lgd', 'legendre']:
         raise NotImplementedError("Quadrature method '{:s}' based on numpy hasn't been implemented yet".format(rule))
-    elif rule in ['lgr', 'laguerre']:
+    elif rule in ['lag', 'laguerre']:
         coord1d, weight1d = np.polynomial.laguerre.laggauss(order)
         coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T
         weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T

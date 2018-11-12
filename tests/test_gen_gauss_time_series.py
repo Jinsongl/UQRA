@@ -166,13 +166,16 @@ def main():
     f2,sf2 = single_psd2double_psd(f, sf)
     start_time = time.time()
     np.random.seed( 10 )
-    t1, eta1 = gen_gauss_time_series(t, Hs, Tp, method='sum')
+
+    source_kwargs= {'name': 'JONSWAP', 'method':'sum', 'sides':'single'}
+    t1, eta1 = gen_gauss_time_series(t, Hs, Tp, kwargs=source_kwargs)
     elapsed_time = time.time() - start_time
     print('SUM elapsed time(sec) :{:.2f}'.format(elapsed_time))
 
     start_time = time.time()
     np.random.seed( 10 )
-    t2, eta2 = gen_gauss_time_series(t,Hs, Tp, method='ifft')
+    source_kwargs= {'name': 'JONSWAP', 'method':'ifft', 'sides':'single'}
+    t2, eta2 = gen_gauss_time_series(t,Hs, Tp, kwargs=source_kwargs)
     elapsed_time = time.time() - start_time
     print('IFFT elapsed time(sec) :{:.2f}'.format(elapsed_time))
     axes[0].set_xlim(0,1)

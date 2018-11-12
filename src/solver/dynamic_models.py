@@ -11,14 +11,44 @@ Single degree of freedom with time series external loads
 """
 
 import numpy as np
-# import numpy.random as rn
-# import numpy.linalg as la
-# import scipy as sp
-# import scipy.signal as sig
 from scipy import interpolate
 from scipy.integrate import odeint, quad
 from scipy.optimize import brentq
+import utilities.spectrum_collections as spec_coll
+import matplotlib.pyplot as plt
 
+def _cal_norm_values(zeta,omega0,source_kwargs, *source_args):
+    TF = lambda w : 1.0/np.sqrt((w**2-omega0**2)**2 + (2*zeta*omega0)**2)
+    spec_dict = spec_coll.get_spec_dict() 
+    spec_name = source_kwargs.get('name','JONSWAP') if source_kwargs else 'JONSWAP'
+    spec_side = source_kwargs.get('sides', '1side') if source_kwargs else '1side'
+    spec_func = spec_dict[spec_name]
+
+    
+    nquads = 100
+    if spec_side.upper() in ['2','2SIDE','DOUBLE','2SIDES']:
+        x, w = np.polynomial.hermite_e.hermegauss(nquads)
+    elif spec_side.upper() in ['1','1SIDE','SINGLE','1SIDES']:
+        x, w = np.polynomial.laguerre.laggauss(nquads)
+    else:
+        raise NotImplementedError("Spectrum side type '{:s}' is not defined".format(spec_side))
+    _,spec_vals = spec_func(x, *source_args)
+    spec_vals = spec_vals.reshape(nquads,1)
+    TF2_vals  = (TF(x)**2).reshape(nquads,1)
+    w = w.reshape(nquads,1)
+    norm_y = np.sum(w.T *(spec_vals*TF2_vals))/(2*np.pi)
+    norm_y = 1/norm_y**0.5
+
+    norm_t = omega0
+
+    return norm_t, norm_y
+
+
+def _normalize_source_func(source_func, norm_t, norm_y):
+    def wrapper(*args, **kwargs):
+        t, y = source_func(*args, **kwargs)
+        return  t*norm_t, y*norm_y/ norm_t**2
+    return wrapper 
 
 def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *source_args):
     source_func = source_func if callable(source_func) else 0
@@ -27,15 +57,35 @@ def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *source
 
 
 def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,\
-        *source_args, source_func=None, source_kwargs=None,t_trans=0):
-    delta = 2 * zeta * omega0
-    alpha = omega0**2
-    beta = omega0**2 * mu
-    dt_per_period = int(2*np.pi/omega0/dt)
-    gamma,omega = 0,1 # gamma ==0 with arbitrary omega
-    t, X, dt, pstep = duffing_equation(tmax,dt_per_period,x0,v0,gamma,delta,omega,\
-            *source_args, source_func=source_func, source_kwargs=source_kwargs,\
-            t_trans=t_trans, alpha=alpha, beta=beta)
+        *source_args, source_func=None, source_kwargs=None,t_trans=0, normalize=False):
+    if normalize:
+        # norm_t, norm_y = normalize[1], normalize[2]
+        norm_t, norm_y = _cal_norm_values(zeta, omega0, source_kwargs) 
+        # print('Normalizing value: [{:.2f}, {:.2f}]'.format(norm_t, norm_y))
+        assert norm_t!= 0
+        delta = 2 * zeta * omega0 / norm_t
+        alpha = omega0**2 / norm_t**2
+        beta = mu*omega0**2/(norm_y**2 * norm_t**2)
+        # print('delta:{:.2f}, alpha: {:.2f}, beta: {:.2f}'.format(delta, alpha, beta))
+        dt_per_period = int(2*np.pi/omega0/dt)
+        tmax = norm_t*tmax
+        dt = norm_t* dt
+        source_func = _normalize_source_func(source_func, norm_t, norm_y) if source_func else source_func
+        source_args = source_args/omega0 if source_args else source_args
+        gamma,omega = 0,1 # gamma ==0 with arbitrary omega
+        t, X, dt, pstep = duffing_equation(tmax,dt_per_period,x0,v0,gamma,delta,omega,\
+                *source_args, source_func=source_func, source_kwargs=source_kwargs,\
+                t_trans=t_trans, alpha=alpha, beta=beta)
+    else:
+        delta = 2 * zeta * omega0
+        alpha = omega0**2
+        beta = omega0**2 * mu
+        dt_per_period = int(2*np.pi/omega0/dt)
+        gamma,omega = 0,1 # gamma ==0 with arbitrary omega
+        t, X, dt, pstep = duffing_equation(tmax,dt_per_period,x0,v0,gamma,delta,omega,\
+                *source_args, source_func=source_func, source_kwargs=source_kwargs,\
+                t_trans=t_trans, alpha=alpha, beta=beta)
+
     t = np.reshape(t,(len(t),1))
     res = np.concatenate((t,X),axis=1)
     return res, dt, pstep 
@@ -52,7 +102,7 @@ def _deriv(X, t, gamma, delta, omega, alpha, beta, source_interp):
         xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) 
     else:
         ## Interpolate function will return [t, value interpolated at t], need only the value
-        xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) + source_interp(t)[1]
+        xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) + source_interp(t)
     return xdot, xdotdot
 
 def duffing_equation(tmax, dt_per_period, x0, v0,gamma,delta,omega,\
@@ -85,8 +135,9 @@ def duffing_equation(tmax, dt_per_period, x0, v0,gamma,delta,omega,\
     X0 = [x0, v0]
     if callable(source_func):
         _t = np.arange(0, tmax+period, dt)
-        source = source_func(_t, *source_args, kwargs=source_kwargs)
-        source_interp = interpolate.interp1d(_t,source,kind='cubic')
+        _, source = source_func(_t, *source_args, kwargs=source_kwargs)
+        source_interp = interpolate.interp1d(_t, source,kind='cubic')
+
     else:
         source_interp = None
 

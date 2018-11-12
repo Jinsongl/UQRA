@@ -24,6 +24,7 @@ from solver.dynamic_models import duffing_oscillator
 from solver.static_models import ishigami
 from solver.static_models import poly5
 from utilities.gen_gauss_time_series import gen_gauss_time_series
+import uqplot.plot_solver as psolver
 
 import matplotlib.pyplot as plt
 from statsmodels.distributions.empirical_distribution import ECDF
@@ -32,19 +33,25 @@ from mpl_toolkits.mplot3d import Axes3D
 import time
 
 def main():
+    ## Duffing oscillator problem 
+    ## Ref: Dr. R. Ghanem
+    ## -- source function S(w) = c/(c^2 + w^2), with c ~ LogNormal()
+    ## -- function is normalized ??? hasn't been implemented yet
+    ## -- 
     ## ------------------------------------------------------------------- ###
     ##  Define Solver parameters ###
     ## ------------------------------------------------------------------- ###
     ## Choose Wiener-Askey scheme random varaible
-    dist_zeta  = [cp.Normal(), cp.Normal()]
-    # dist_zeta = [cp.Uniform(-1,1),cp.Uniform(-1,1)]
-    ## If transformation needed, liek Rosenblatt, need to be done here
+    dist_zeta  = cp.Gamma()  # shape=1, scale=1, shift=0
+    ## If transformation needed, like Rosenblatt, need to be done here
     ## Define independent random varible in physical problems
-    dist_x = [cp.Normal(), cp.Normal()]
+    dist_x = cp.Lognormal(0,0.5) # normal mean = 0, normal std=0.25
+    print(dist_x.inv(1e-4))
+    print(dist_x.inv(1-1e-4))
     # dist_x = [cp.Uniform(-1,1),cp.Uniform(-1,1)]cp.Uniform(-1,1)
     ## Define solver system properties
     # sys_params = {'c': (1,1), 'x0':(0,0)} # zeta, omega_n
-    sys_params = np.array([0,0,1,1,1]).reshape(5,1) #x0,v0, zeta, omega_n, mu
+    sys_params = np.array([0,0,0.02,1,0.15]).reshape(5,1) #x0,v0, zeta, omega_n, mu
     # sys_params = {'p': 2} # ishigami
 
     # dist_zeta   = [cp.Exponential(1), cp.Exponential(1)] 
@@ -52,54 +59,87 @@ def main():
     # ------------------------------------------------------------------- ###
     #  Define simulation parameters  ###
     # ------------------------------------------------------------------- ###
-    doe_method = 'GQ'
-    doe_rule = 'h'
-    doe_order = [2,4]
-    qoi2analysis = [0,]
-    time_start, time_ramp, time_max, dt = 0,0,10,0.1
-    stats = [1,1,1,1,1,0]
+    ## Generate solver system input signal
+    source_kwargs= {'name': 'T1', 'method':'ifft', 'sides':'double'}
+    source_func = gen_gauss_time_series 
+    sys_source = [source_func, source_kwargs]
 
-    quad_simparam = simParameter(doe_method, doe_order, dist_zeta, doe_rule=doe_rule,time_max=time_max,dt=dt,stats=stats,time_ramp=time_ramp)
+
+    # print(source_args[0].shape)
+    doe_method = 'GQ'
+    doe_rule = 'lag'
+    doe_order = [8]
+    doe_params = [doe_method, doe_rule, doe_order]
+
+    time_start, time_ramp, time_max, dt = 0,0,100,0.1
+    time_params =  [time_start, time_ramp, time_max, dt]
+    
+    qoi2analysis = [0,]
+    stats = [1,1,1,1,1,1,0] 
+# [mean, std, skewness, kurtosis, absmax, absmin, up_crossing, moving_avg, moving_std]
+
+    post_params = [qoi2analysis, stats]
+    normalize = True
+
+    np.random.seed(100)
+    quad_simparam = simParameter(dist_zeta, doe_params = doe_params, \
+            time_params = time_params, post_params = post_params,\
+            sys_params = sys_params, sys_source = sys_source, normalize=normalize)
 
     # quad_simparam.setNumOutputs(3)
     quad_simparam.set_seed([1,100])
     ## Get DOE samples
     doe_samples_zeta, doe_samples_phy = quad_simparam.get_doe_samples(retphy=True,dist_phy=dist_x)
 
-    # print(doe_samples_zeta[0][0].shape)
-    ## Generate solver system input signal
-    source_kwargs= {'name': 'JONSWAP', 'method':'ifft', 'sides':'1side'}
-    source_args = doe_samples_phy
-    source_func = gen_gauss_time_series 
-    sys_source = [source_func, source_args, source_kwargs]
-    # print(source_args[0].shape)
+    print(doe_samples_zeta)
+    print(doe_samples_phy)
 
     ## Run simulation
     # ### ------------------------------------------------------------------- ###
     # ### Run Simulations for training data  ###
     # ### ------------------------------------------------------------------- ###
     # print(doe_samples_phy[0][0][0,1])
-    
-    f_obsi = run_sim(duffing_oscillator, quad_simparam, sys_source, sys_params)
-    print(f_obsi[0].shape)
-    print(f_obsi[1].shape)
-    # print(np.array(f_obsi).shape)
+
+    training_set_x = doe_samples_phy
+    training_set_y = run_sim(duffing_oscillator, quad_simparam)
+    training_set   = [training_set_x, training_set_y]
+    print(training_set_y[0].shape)
+
+    # y = np.squeeze(training_set_y[0][0,0,:,:])
+    # t = np.squeeze(training_set_y[0][0,0,:,0])
+    # # y_std = []
+    # # for i in range(1,len(y)):
+        # # y_std.append(np.std(y[:i]))
+    # # plt.figure()
+    # # # plt.plot(t[1:],np.array(y_std))
+    # # plt.plot(t,y)
+    # # plt.show()
+    # x0,v0, zeta, omega_n, mu = sys_params
+    # x0,v0, zeta, omega_n, mu = x0[0],v0[0], zeta[0], omega_n[0], mu[0]
+
+    # delta = 2 * zeta * omega_n
+    # alpha = omega_n**2
+    # beta  = omega_n**2 * mu
+    # print('delta: {:.2f}, alpha: {:.2f}, beta: {:.2f}'.format(delta, alpha, beta)) 
+    # psolver.duffing_equation(x0,v0,delta, alpha, beta,y)
+
+    # print(np.array(training_set_y).shape)
 
     # f_obsY = []
     # for idoe_samples_phy in doe_samples_phy:
-        # # f_obsi = run_sim(lin_oscillator, idoe_samples_phy, quad_simparam,\
+        # # training_set_y = run_sim(lin_oscillator, idoe_samples_phy, quad_simparam,\
                 # # sys_params=sys_params, psd_params=psd_params)
-        # f_obsi = run_sim(duffing_oscillator, idoe_samples_phy, quad_simparam,\
+        # training_set_y = run_sim(duffing_oscillator, idoe_samples_phy, quad_simparam,\
                 # sys_params=sys_params, psd_params=psd_params)
-        # # f_obsi = run_sim(poly5, idoe_samples_phy, quad_simparam)
-        # f_obsY.append(f_obsi)
+        # # training_set_y = run_sim(poly5, idoe_samples_phy, quad_simparam)
+        # f_obsY.append(training_set_y)
     # print(np.array(f_obsY).shape)
     # f_obsY_max = np.max(f_obsY, axis=-2)
     # print(f_obsY_max)
 
     
     # plt.figure()
-    # plt.plot(f_obsi[0,:,0], f_obsi[0,:,1])
+    # plt.plot(training_set_y[0,:,0], training_set_y[0,:,1])
     # plt.show()
 
 
