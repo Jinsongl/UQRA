@@ -13,6 +13,7 @@ import context
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import scipy.signal as spsignal
 from utilities.gen_gauss_time_series import *
 # from src/utilities import gen_gauss_time_series
 # from gen_gauss_time_series.py import * 
@@ -71,11 +72,53 @@ def acf_test3(t):
 
 
 def main():
+    np.random.seed( 10 )
 ################################################################################ 
     # T=100
     # dt = 0.01
     # seed = [1,100]
     # y = deterministic_lin_sdof(Hs,Tp,T,dt,seed=seed)
+
+################################################################################
+# >>>  Time series to PSD test
+# >>>  Given one equation get the other
+# >>>  Psd = Pwelch(Xt)
+################################################################################
+
+    tmax, dt = 10000, 0.1
+    fig, axes = plt.subplots(1,2)
+
+    N = int(tmax/dt)
+    t = np.arange(N+1) * dt
+    fs = int(1/dt)
+    nperseg= int((N+1)/10)
+
+    Hs, Tp = 8, 6
+    source_kwargs= {'name': 'JONSWAP', 'method':'ifft', 'sides':'single'}
+    t, eta = gen_gauss_time_series(t, Hs, Tp, kwargs=source_kwargs)
+    f1,sf1 = spsignal.welch(eta,fs=fs,nperseg=nperseg,detrend='constant')
+    f0,sf0 = spec_jonswap(f1,Hs, Tp)
+    axes[0].set_xlim([0,1])
+    axes[0].plot(f0,sf0,label=r'JONSWAP')
+    axes[0].plot(f1,sf1,label=r'Welch')
+    axes[0].legend()
+   
+    c = 3
+    spec = lambda f,c: 2*c/(c**2 + (2*np.pi*f)**2) * 2 * np.pi
+    source_kwargs= {'name': 'T1', 'method':'ifft', 'sides':'double'}
+    t, eta = gen_gauss_time_series(t, c, kwargs=source_kwargs)
+    f1,sf1 = spsignal.welch(eta,fs=fs,nperseg=nperseg,detrend='constant', return_onesided=False)
+    sf0 = spec(f1,c)
+    # f0,sf0 = spec_test1(f1,c=c)
+    # print(sf0.shape)
+    # axes[1].set_xlim([0,1])
+    axes[1].plot(f1,sf0,label=r'T1')
+    axes[1].plot(f1,sf1,label=r'Welch')
+    axes[1].legend()
+
+    plt.show()
+    
+
 
 ################################################################################
 # >>>  PSD to ACF and ACF to PSD test
@@ -150,38 +193,38 @@ def main():
 # >>>  
 ################################################################################
 
-    tmax = 100
-    dt = 0.1
-    Hs = 8
-    Tp = 6
-    fig, axes = plt.subplots(1,2)
+    # tmax = 100
+    # dt = 0.1
+    # Hs = 8
+    # Tp = 6
+    # fig, axes = plt.subplots(1,2)
 
-    N = int(tmax/dt)
-    t = np.arange(-N,N+1) * dt
-    df = 0.5/tmax
-    f_fft = np.arange(-N,N+1) * df
-    f_sum= np.arange(N+1) * df
+    # N = int(tmax/dt)
+    # t = np.arange(-N,N+1) * dt
+    # df = 0.5/tmax
+    # f_fft = np.arange(-N,N+1) * df
+    # f_sum= np.arange(N+1) * df
 
-    f, sf = spec_jonswap(f_sum,Hs, Tp)
-    f2,sf2 = single_psd2double_psd(f, sf)
-    start_time = time.time()
-    np.random.seed( 10 )
+    # f, sf = spec_jonswap(f_sum,Hs, Tp)
+    # f2,sf2 = single_psd2double_psd(f, sf)
+    # start_time = time.time()
+    # np.random.seed( 10 )
 
-    source_kwargs= {'name': 'JONSWAP', 'method':'sum', 'sides':'single'}
-    t1, eta1 = gen_gauss_time_series(t, Hs, Tp, kwargs=source_kwargs)
-    elapsed_time = time.time() - start_time
-    print('SUM elapsed time(sec) :{:.2f}'.format(elapsed_time))
+    # source_kwargs= {'name': 'JONSWAP', 'method':'sum', 'sides':'single'}
+    # t1, eta1 = gen_gauss_time_series(t, Hs, Tp, kwargs=source_kwargs)
+    # elapsed_time = time.time() - start_time
+    # print('SUM elapsed time(sec) :{:.2f}'.format(elapsed_time))
 
-    start_time = time.time()
-    np.random.seed( 10 )
-    source_kwargs= {'name': 'JONSWAP', 'method':'ifft', 'sides':'single'}
-    t2, eta2 = gen_gauss_time_series(t,Hs, Tp, kwargs=source_kwargs)
-    elapsed_time = time.time() - start_time
-    print('IFFT elapsed time(sec) :{:.2f}'.format(elapsed_time))
-    axes[0].set_xlim(0,1)
-    axes[1].plot(t1, eta1,label='sum')
-    axes[1].plot(t2, eta2,label='ifft')
-    axes[1].legend()
+    # start_time = time.time()
+    # np.random.seed( 10 )
+    # source_kwargs= {'name': 'JONSWAP', 'method':'ifft', 'sides':'single'}
+    # t2, eta2 = gen_gauss_time_series(t,Hs, Tp, kwargs=source_kwargs)
+    # elapsed_time = time.time() - start_time
+    # print('IFFT elapsed time(sec) :{:.2f}'.format(elapsed_time))
+    # axes[0].set_xlim(0,1)
+    # axes[1].plot(t1, eta1,label='sum')
+    # axes[1].plot(t2, eta2,label='ifft')
+    # axes[1].legend()
     
 
     # axes[1].set_xlim(0,1)
@@ -189,9 +232,9 @@ def main():
     # axes[1].plot(t, eta1)
     # axes[1].plot(t, eta2)
     # print('std(eta1) = {:f}'.format(np.std(eta1)))
-    print('std(eta2) = {:f}'.format(np.std(eta2)))
+    # print('std(eta2) = {:f}'.format(np.std(eta2)))
 
-    plt.show()
+    # plt.show()
 
 
 

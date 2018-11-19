@@ -156,6 +156,7 @@ def gen_gauss_time_series(t, *args, kwargs=None):
     if t.ndim == 2:
         t = t.reshape((t.shape[1],))
     return t[N:2*N+1], eta[N:2*N+1]
+    # return t, eta
 
 def acf2psd(tau_max, dtau, acf):
     """

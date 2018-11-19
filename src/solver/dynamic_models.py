@@ -101,7 +101,6 @@ def _deriv(X, t, gamma, delta, omega, alpha, beta, source_interp):
     if source_interp is None:
         xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) 
     else:
-        ## Interpolate function will return [t, value interpolated at t], need only the value
         xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) + source_interp(t)
     return xdot, xdotdot
 
