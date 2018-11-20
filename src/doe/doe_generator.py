@@ -117,7 +117,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
             doe_samples = _gen_quad_numpy(order, domain, rule)
         else:
             raise NotImplementedError("Quadrature rule '{:s}' not defined".format(rule))
-        # print(doe_samples)
+        # print(doe_samples[0].shape)
         print('>>> Done...')
         print('------------------------------------------------------------')
     elif doe_method == 'MC':
@@ -131,6 +131,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         # print("Generating Monte Carlo samples...")
         
         doe_samples = domain.sample(order,rule=rule)
+        doe_samples = doe_samples.reshape(domain.length,-1)
         print('Design of experiment done with {:d} Monte Carlo points'.format(order))
         print('------------------------------------------------------------')
         

@@ -79,16 +79,18 @@ def run_sim(solver_func, simParams):
             source_func, source_kwargs, source_args = sys_source
         elif len(sys_source) == 2:
             source_func, source_kwargs, source_args = sys_source[0], None, sys_source[1]
-        ndoe = len(source_args)
-        nsouce_dim = source_args[0][0].shape[0]
-        nsets_per_doe = source_args[0][0].shape[1]
+        ndoe            = simParams.ndoe 
+        nsouce_dim      = simParams.nsouce_dim
+        nsets_per_doe   = simParams.nsets_per_doe 
+        # nsouce_dim = source_args[0][0].shape[0]
+        # nsets_per_doe = source_args[0][0].shape[1]
         print('   function : {:s}'.format(source_func.__name__))
-        print('   arguments: ndoe={:d}, ndim={:d}, nsets={:d}'\
+        print('   arguments: ndoe={:d}, ndim={:d}, nsets={}'\
                 .format(ndoe, nsouce_dim, nsets_per_doe))
         print('   kwargs   : {}'.format(source_kwargs))
         print('   ------------------------------------')
         print('   Job list: [# DOE sets, # Souce args, # Sys params]')
-        print('   Target  : [{:4d}, {:4d}, {:4d}]'.format(ndoe, nsets_per_doe, sys_param.shape[1]))
+        print('   Target  : [{:4d}, {}, {:4d}]'.format(ndoe, nsets_per_doe, sys_param.shape[1]))
         print('   --------')
         for i, source_args_1doe in enumerate(source_args):
             sys_source_1doe = [source_func, source_kwargs, source_args_1doe]

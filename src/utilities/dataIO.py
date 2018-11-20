@@ -60,10 +60,19 @@ def setfilename(params):
     params.updateDir(NEWDIR) 
     return filenames_new
 
-def saveData(data,filename, dirname,mode='w', isMove=True):
+def save_data(data, filename, dirname=None):
     """
     Save given data(array) with specified filename in dirname folder
     """
+    if len(data) == 2:
+        datax, datay = data
+    elif len(data) == 1:
+        datax, datay = data, None
+    else:
+        raise ValueError('Input data shape not specified, len(data)={:d}'.format(len(data)))
+
+    ## save datax
+    print('data shape: {}'.format(datax.shape))
     # print 'saving file:' + filename + '...'
     # with open(filename, mode) as fileid:
         # writer = csv.writer(fileid, delimiter=',')
@@ -75,3 +84,12 @@ def saveData(data,filename, dirname,mode='w', isMove=True):
     np.savetxt(filename,data,fmt='%.4e',delimiter=',')
     if isMove:
         os.rename(filename,dirname+'/'+filename)
+
+
+def _save_datax(data, filename, dirname=None):
+    for idata in data:
+        print('saving data of shape: {}'.format(idata.shape))
+        data_all = np.hstack((data_all, idata))
+
+
+

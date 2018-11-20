@@ -12,6 +12,7 @@
 import context
 import chaospy as cp
 import numpy as np
+import scipy.signal as spsignal
 import envi, doe, solver, utilities
 
 from envi import environment
@@ -36,8 +37,9 @@ def main():
     ## Duffing oscillator problem 
     ## Ref: Dr. R. Ghanem
     ## -- source function S(w) = c/(c^2 + w^2), with c ~ LogNormal()
-    ## -- function is normalized ??? hasn't been implemented yet
     ## -- 
+    ## Exceedence probability
+    pf = 1e-4
     ## ------------------------------------------------------------------- ###
     ##  Define Solver parameters ###
     ## ------------------------------------------------------------------- ###
@@ -46,47 +48,40 @@ def main():
     ## If transformation needed, like Rosenblatt, need to be done here
     ## Define independent random varible in physical problems
     dist_x = cp.Lognormal(0,0.5) # normal mean = 0, normal std=0.25
-    print(dist_x.inv(1e-4))
-    print(dist_x.inv(1-1e-4))
     # dist_x = [cp.Uniform(-1,1),cp.Uniform(-1,1)]cp.Uniform(-1,1)
+    print(dist_x.inv(pf))
+    print(dist_x.inv(1-pf))
     ## Define solver system properties
-    # sys_params = {'c': (1,1), 'x0':(0,0)} # zeta, omega_n
     sys_params = np.array([0,0,0.02,1,0.15]).reshape(5,1) #x0,v0, zeta, omega_n, mu
-    # sys_params = {'p': 2} # ishigami
 
-    # dist_zeta   = [cp.Exponential(1), cp.Exponential(1)] 
-    # qoi2analysis = [0] # for multioutput dof system, select the one need to analyze
     # ------------------------------------------------------------------- ###
     #  Define simulation parameters  ###
     # ------------------------------------------------------------------- ###
-    ## Generate solver system input signal
+    ## Parameters to generate solver system input signal
     source_kwargs= {'name': 'T1', 'method':'ifft', 'sides':'double'}
     source_func = gen_gauss_time_series 
     sys_source = [source_func, source_kwargs]
 
-
-    # print(source_args[0].shape)
-    doe_method = 'GQ'
-    doe_rule = 'lag'
-    doe_order = [8]
+    ## Parameters to design of experiments
+    doe_method, doe_rule, doe_order = 'GQ','lag',[9]*10
+    # doe_method, doe_rule, doe_order = 'MC','R', [20]
     doe_params = [doe_method, doe_rule, doe_order]
+    print(len(doe_params))
 
-    time_start, time_ramp, time_max, dt = 0,0,100,0.1
+    ## Parameters to the time indexing
+    time_start, time_ramp, time_max, dt = 0,0,200,0.1
     time_params =  [time_start, time_ramp, time_max, dt]
     
+    ## parameters to post analysis
     qoi2analysis = [0,]
-    stats = [1,1,1,1,1,1,0] 
-# [mean, std, skewness, kurtosis, absmax, absmin, up_crossing, moving_avg, moving_std]
-
+    stats = [1,1,1,1,1,1,0] # [mean, std, skewness, kurtosis, absmax, absmin, up_crossing, moving_avg, moving_std]
     post_params = [qoi2analysis, stats]
     normalize = True
 
-    np.random.seed(100)
     quad_simparam = simParameter(dist_zeta, doe_params = doe_params, \
             time_params = time_params, post_params = post_params,\
             sys_params = sys_params, sys_source = sys_source, normalize=normalize)
 
-    # quad_simparam.setNumOutputs(3)
     quad_simparam.set_seed([1,100])
     ## Get DOE samples
     doe_samples_zeta, doe_samples_phy = quad_simparam.get_doe_samples(retphy=True,dist_phy=dist_x)
@@ -103,17 +98,46 @@ def main():
     training_set_x = doe_samples_phy
     training_set_y = run_sim(duffing_oscillator, quad_simparam)
     training_set   = [training_set_x, training_set_y]
-    print(training_set_y[0].shape)
+
+    # ## save training x
+    # _training_set_x = training_set_x[0]
+    # for i in np.arange(1,len(doe_order)):
+        # _training_set_x=np.hstack((_training_set_x,training_set_x[i]))
+    # np.savetxt('training_set_x.csv', np.array(_training_set_x).T, delimiter=',')
+
+    # ## save training y
+    # icount = 0
+    # for itraining_set_y in training_set_y:
+        # for i in np.arange(itraining_set_y.shape[0]):
+            # for j in np.arange(itraining_set_y.shape[1]):
+                # np.savetxt('training_set_y_{:d}.csv'.format(icount), np.squeeze(itraining_set_y[i,j,:,:]),delimiter=',')
+                # icount+=1
+                
+
+
+    # _training_set_x=[]
+    for idoeset in np.arange(len(doe_order)):
+        itraining_set_x = training_set_x[idoeset]
+        itraining_set_y = training_set_y[idoeset]
+
+        np.save('training_set_x_{:d}'.format(idoeset), np.array(training_set_x[idoeset]))
+        np.save('training_set_y_{:d}'.format(idoeset), np.array(training_set_y[idoeset]))
+
+    # print(training_set_x[0].shape)
+    # print(training_set_x[1].shape)
+    # print(training_set_y[0].shape)
+    # print(training_set_y[1].shape)
+
 
     # y = np.squeeze(training_set_y[0][0,0,:,:])
     # t = np.squeeze(training_set_y[0][0,0,:,0])
-    # # y_std = []
-    # # for i in range(1,len(y)):
-        # # y_std.append(np.std(y[:i]))
-    # # plt.figure()
-    # # # plt.plot(t[1:],np.array(y_std))
-    # # plt.plot(t,y)
-    # # plt.show()
+    # y_std = []
+    # for i in range(1,len(y)):
+        # y_std.append(np.std(y[:i]))
+    # plt.figure()
+    # plt.plot(t[1:],np.array(y_std))
+    # plt.plot(t,y)
+    # plt.show()
     # x0,v0, zeta, omega_n, mu = sys_params
     # x0,v0, zeta, omega_n, mu = x0[0],v0[0], zeta[0], omega_n[0], mu[0]
 

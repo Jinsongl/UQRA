@@ -37,6 +37,9 @@ class simParameter(object):
             self.doe_order.append(int(doe_params[2]))
         else:
             self.doe_order = list(int(x) for x in doe_params[2])
+        self.ndoe = len(self.doe_order)
+        self.nsouce_dim = 0
+        self.nsets_per_doe = []
 
         self.time_start, self.time_ramp, self.time_max, self.dt = time_params
         self.qoi2analysis, self.stats = post_params
@@ -109,7 +112,16 @@ class simParameter(object):
                     samp_phy = phy_cor
 
                 doe_samples_phy.append(samp_phy)
-            self.sys_source.append(doe_samples_phy) if retphy else self.sys_source.append(doe_samples_zeta)
+
+            if self.doe_method.upper() in ['QUAD', 'GQ']:
+                self.nsouce_dim = samp_zeta[0].shape[0] 
+                self.nsets_per_doe.append(samp_zeta[0].shape[1])
+            else:
+                self.nsouce_dim = samp_zeta.shape[0] 
+                self.nsets_per_doe.append(samp_zeta.shape[1])
+
+        self.sys_source.append(doe_samples_phy) if retphy else self.sys_source.append(doe_samples_zeta)
+
         return doe_samples_zeta, doe_samples_phy if retphy else doe_samples_zeta
 
     # def _normalize_sys(self):

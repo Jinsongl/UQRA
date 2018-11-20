@@ -11,6 +11,8 @@
 """
 import chaospy as cp
 import numpy as np
+import sklearn.gaussian_process as skgp
+
 # import utility.dataIO as dataIO
 
 class metaModel(object):
@@ -192,11 +194,15 @@ class metaModel(object):
 
         return (f_hats, l2_ers)
 
-    def __build_gp_model(self, x, y):
-        print('\tBuilding Gaussian Process surrogate model')
+    def __build_gp_model(self, x, y, kernel=None, alpha=1e-10, optimizer=’fmin_l_bfgs_b’, n_restarts_optimizer=0, normalize_y=False, copy_X_train=True, random_state=None):
+        """
+
+        Kernel functions:
+            ConstantKernel, WhiteKernel, RBF, Matern, 
+        """
+        print('\tBuilding Gaussian Process Regression(Kriging) surrogate model')
         f_hats = []
         l2_ers = []
-
 
 
         return (f_hats, l2_ers)
