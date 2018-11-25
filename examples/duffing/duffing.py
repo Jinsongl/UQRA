@@ -63,7 +63,9 @@ def main():
     sys_source = [source_func, source_kwargs]
 
     ## Parameters to design of experiments
-    doe_method, doe_rule, doe_order = 'GQ','lag',[9]*10
+    # doe_method, doe_rule, doe_order = 'GQ','lag',[9]*10
+    sample_points_x = dist_zeta.inv(dist_x.cdf(np.arange(1,25)))
+    doe_method, doe_rule, doe_order = 'FIX',sample_points_x  , [len(sample_points_x )]*10
     # doe_method, doe_rule, doe_order = 'MC','R', [20]
     doe_params = [doe_method, doe_rule, doe_order]
     print(len(doe_params))
@@ -120,8 +122,8 @@ def main():
         itraining_set_x = training_set_x[idoeset]
         itraining_set_y = training_set_y[idoeset]
 
-        np.save('training_set_x_{:d}'.format(idoeset), np.array(training_set_x[idoeset]))
-        np.save('training_set_y_{:d}'.format(idoeset), np.array(training_set_y[idoeset]))
+        np.save('Fixx_{:d}'.format(idoeset), np.array(training_set_x[idoeset]))
+        np.save('Fixy_{:d}'.format(idoeset), np.array(training_set_y[idoeset]))
 
     # print(training_set_x[0].shape)
     # print(training_set_x[1].shape)

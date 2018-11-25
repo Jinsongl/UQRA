@@ -33,10 +33,12 @@ class simParameter(object):
         self.distJ      = dist_zeta if len(dist_zeta) == 1 else cp.J(*dist_zeta)
 
         self.doe_method, self.doe_rule, self.doe_order = doe_params[0], doe_params[1], []
-        if not isinstance(doe_params[2], list):
+        if np.isscalar(doe_params[2]): 
             self.doe_order.append(int(doe_params[2]))
         else:
-            self.doe_order = list(int(x) for x in doe_params[2])
+            # self.doe_order = list(int(x) for x in doe_params[2])
+            self.doe_order = np.array(doe_params[2])
+        print(self.doe_order)
         self.ndoe = len(self.doe_order)
         self.nsouce_dim = 0
         self.nsets_per_doe = []

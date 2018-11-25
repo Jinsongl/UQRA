@@ -14,6 +14,7 @@ import itertools
 import chaospy as cp
 import numpy as np
 import numpy.polynomial as nppoly
+import scipy as sp
 import itertools
 
 def samplegen(doe_method, order, domain, rule=None, antithetic=None,
@@ -47,11 +48,11 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
     +------------+------------------------------------------------------------+
     | "BD"  | Stretch samples such that they are in domain[0], domain[1] |
     +------------+------------------------------------------------------------+
-    | "GQ"  | Gaussian-Quadrature rule |
+    | "GQ"  | Gaussian-Quadrature rule                                      |
     +------------+------------------------------------------------------------+
-    | "Q"   | Quantile rule|
+    | "Q"   | Quantile rule                                                 |
     +------------+------------------------------------------------------------+
-    | "MC"  | Monte carlo method to get random samples|
+    | "MC"  | Monte carlo method to get random samples                      |
     +------------+------------------------------------------------------------+
 
 
@@ -101,9 +102,12 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         "h": "gauss_hermite",
         "lag": "gauss_laguerre",
         "cheb": "gauss_chebyshev",
+        "hermite":"gauss_hermite",
+        "legendre":"gauss_legendre",
+        "jacobi":"gauss_jacobi",
         }
     chaospy_quad = ['c','e','p','z','g','j']
-    numpy_quad = ['h', 'hermite', 'legendre','lgd', 'laguerre','lag','chebyshev','cheb']
+    numpy_quad = ['h', 'hermite', 'legendre','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
     if doe_method == 'GQ' or doe_method == 'QUAD':
         ## Return samples in 
         rule = 'h' if rule is None else rule ## Default gauss_legendre
@@ -135,6 +139,17 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         print('Design of experiment done with {:d} Monte Carlo points'.format(order))
         print('------------------------------------------------------------')
         
+    elif doe_method == 'FIX':
+        """
+        Fixed points in doe_order will be used
+        """
+        print('************************************************************')
+        print('Design of experiment with Fixed points given in doe_order')
+        doe_samples = np.array(rule).reshape(domain.length, -1)
+        print('DOE samples shape:{}'.format(doe_samples.shape))
+        
+        print('Design of experiment done with Fixed points')
+        print('------------------------------------------------------------')
     else:
         raise NotImplementedError("DOE method '{:s}' not defined".format(doe_method))
     return doe_samples 
@@ -146,12 +161,18 @@ def _gen_quad_chaospy(order, domain, rule):
 
 def _gen_quad_numpy(order, domain, rule):
     if rule in ['h', 'hermite']:
-        coord1d, weight1d = np.polynomial.hermite_e.hermegauss(order)
+        coord1d, weight1d = np.polynomial.hermite_e.hermegauss(order) ## probabilists
+        # coord1d, weight1d = np.polynomial.hermite.hermgauss(order) ## physicist
         coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T
         weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T
         weights = np.prod(weights, axis=0)
-    elif rule in ['lgd', 'legendre']:
-        raise NotImplementedError("Quadrature method '{:s}' based on numpy hasn't been implemented yet".format(rule))
+    elif rule in ['jac', 'jacobi']:
+        coord1d, weight1d = sp.special.roots_jacobi(order,4,2) #  np.polynomial.laguerre.laggauss(order)
+        coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T
+        weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T
+        weights = np.prod(weights, axis=0)
+
+        # raise NotImplementedError("Quadrature method '{:s}' based on numpy hasn't been implemented yet".format(rule))
     elif rule in ['lag', 'laguerre']:
         coord1d, weight1d = np.polynomial.laguerre.laggauss(order)
         coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T

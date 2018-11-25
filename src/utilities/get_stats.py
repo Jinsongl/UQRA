@@ -15,6 +15,23 @@ import scipy.stats as scistats
 import csv
 import os
 
+def _central_moms(dist, n=np.arange(1,5), Fisher=True):
+    """
+    Calculate the first central moments of distribution dist 
+    """
+    mu = [dist.mom(i) for i in n]
+    res = []
+    mu1 = mu[0]
+    mu2 = mu[1] - mu1**2
+    mu3 = mu[2] - 3 * mu[0] * mu[1] + 2 * mu[0]**3 
+    mu4 = mu[3] - 4* mu[0] * mu[2] + 6 * mu[0]**2*mu[1] - 3 * mu[0]**4 
+    sigma = np.sqrt(mu2)
+    if Fisher:
+        res = [mu1/1, sigma, mu3/sigma**3, mu4/sigma**4-3]
+    else:
+        res = [mu1/1, sigma, mu3/sigma**3, mu4/sigma**4]
+
+    return res
 def _up_crossing(data, axis=0):
     pass
 

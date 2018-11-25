@@ -194,7 +194,7 @@ class metaModel(object):
 
         return (f_hats, l2_ers)
 
-    def __build_gp_model(self, x, y, kernel=None, alpha=1e-10, optimizer=’fmin_l_bfgs_b’, n_restarts_optimizer=0, normalize_y=False, copy_X_train=True, random_state=None):
+    def __build_gp_model(self, x, y, kernel=None, alpha=1e-10, optimizer='fmin_l_bfgs_b', n_restarts_optimizer=0, normalize_y=False, copy_X_train=True, random_state=None):
         """
 
         Kernel functions:
