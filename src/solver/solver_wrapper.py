@@ -10,19 +10,17 @@
 
 """
 import numpy as np
-from .dynamic_models import duffing_oscillator
-from .dynamic_models import duffing_equation
 
-def solver_wrapper(solver_func, simParams, sys_source, sys_param=None):
+def solver_wrapper(solver_func, simParams, sys_input_vars, sys_params=None):
     """
     a wrapper for solvers
 
     Arguments:
         solver_func: callable object
         simParams: general settings for simulation. simParameter class obj
-        sys_source: contains either [source_func, *args, **kwargs] 
+        sys_input_vars: contains either [source_func, *args, **kwargs] 
             or input signal indexed with time
-        sys_param: list of system parameters
+        sys_params: one system parameter set
 
     Return:
         return results from one solver_func run
@@ -37,37 +35,42 @@ def solver_wrapper(solver_func, simParams, sys_source, sys_param=None):
         time_max= simParams.time_max
         dt      = simParams.dt
         ## Default initial condition [0,0]
-        if sys_param:
-            x0, v0, zeta, omega0 = sys_param
+        if sys_params:
+            x0, v0, zeta, omega0 = sys_params
         else:
             x0, v0, zeta, omega0 = (0,0, 0.2, 1)
 
-        y = solver_func(time_max,dt,x0,v0,zeta,omega0,add_f=sys_source[0],*sys_source[1:])
+        y = solver_func(time_max,dt,x0,v0,zeta,omega0,add_f=sys_input_vars[0],*sys_input_vars[1:])
 
     elif solver_func.__name__.upper() == 'ISHIGAMI':
-        p = sys_param if sys_param else 2
-        x = sys_source
+        p = sys_params if sys_params else 2
+        x = sys_input_vars
         y = solver_func(x, p=p)
 
+    elif solver_func.__name__.upper() == 'BENCHMARK1_NORMAL':
+        mu, sigma = sys_params if sys_params else (0, 0.5)
+        x = sys_input_vars
+        y = solver_func(x, mu=mu, sigma=sigma)
+
     elif solver_func.__name__.upper() == 'POLY5':
-        x = sys_source
+        x = sys_input_vars
         y = solver_func(x)
 
     elif solver_func.__name__.upper() ==  'DUFFING_OSCILLATOR':
-        # sys_source: [source_func, *arg, *kwargs]
+        # sys_input_vars: [source_func, *arg, *kwargs]
 
         time_max  = simParams.time_max
         dt        = simParams.dt
         normalize = simParams.normalize
 
-        if len(sys_source) == 3:
-            source_func, source_kwargs, source_args = sys_source
-        elif len(sys_source) == 2:
-            source_func, source_kwargs, source_args = sys_source[0], None, sys_source[1]
+        if len(sys_input_vars) == 3:
+            source_func, source_kwargs, source_args = sys_input_vars
+        elif len(sys_input_vars) == 2:
+            source_func, source_kwargs, source_args = sys_input_vars[0], None, sys_input_vars[1]
 
         ## Default initial condition [0,0]
-        if sys_param is not None:
-            x0, v0, zeta, omega0, mu = sys_param
+        if sys_params is not None:
+            x0, v0, zeta, omega0, mu = sys_params
         else:
             x0, v0, zeta, omega0, mu = (0,0,0.02,1,1)
 

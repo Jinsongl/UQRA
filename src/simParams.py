@@ -13,48 +13,74 @@ import chaospy as cp
 import numpy as np
 from doe.doe_generator import samplegen
 ## Define parameters class
+DOE_METHOD_NAMES = {
+    "GQ"    : "Quadrature"  , "QUAD"  : "Quadrature",
+    "MC"    : "Monte Carlo" , "FIX"   : "Fixed point"
+    } 
+
+QUAD_SHORT_NAMES = {
+    "c": "clenshaw_curtis"  , "e"   : "gauss_legendre"  , "p"   : "gauss_patterson",
+    "z": "genz_keister"     , "g"   : "golub_welsch"    , "j"   : "leja",
+    "h": "gauss_hermite"    ,"lag"  : "gauss_laguerre"  , "cheb": "gauss_chebyshev",
+    "hermite"   :"gauss_hermite",
+    "legendre"  :"gauss_legendre",
+    "jacobi"    :"gauss_jacobi",
+    }
 class simParameter(object):
     """
-    Define general settings to simulation running and post data analysis. Solver parameters will be different between solver and solver
+    Define general parameter settings for simulation running and post data analysis. 
+    Solver parameters will be different between solver and solver
 
-    General options:
-        T,dt: total simulation time, time step
-        stats: list, indicator of statistics to be calculated, [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
-        outfile_name, outdir_name: string, file name and directory used to save output data.  
+    Arguments:
+        dist_zeta: list of selected marginal distributions from Wiener-Askey scheme
+        *OPTIONAL:
+        doe_params  = [doe_method, doe_rule, doe_order]
+        time_params = [time_start, time_ramp, time_max, dt]
+        post_params = [qoi2analysis=[0,], stats=[1,1,1,1,1,1,0]]
+            stats: [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
+        sys_params: list of parameter sets defining the solver
+            if no sys_params is required, sys_params = [None]
+            e.g. for duffing oscillator:
+            sys_params = [np.array([0,0,1,1,1]).reshape(5,1)] # x0,v0, zeta, omega_n, mu 
 
-        qoi2analysis: list, rows of the output data from solver to be analyzed. 
-        pts: int or a list of percentiles for QUANT
+        normalize: 
+
     """
-    def __init__(self,dist_zeta, doe_params=['GQ','lag',[2,3]], time_params=[0,0,1000,0.1], \
-            post_params=[[0,], [1,1,1,1,1,1,0]], sys_params=None, sys_source=None, normalize=False):
+    def __init__(self,dist_zeta, doe_params=['GQ','lag',[2,3]],\
+            time_params=None, post_params=[[0,], [1,1,1,1,1,1,0]],\
+            sys_params=[None], normalize=False):
 
         self.seed       = [0,100]
         self.dist_zeta  = dist_zeta
-        self.distJ      = dist_zeta if len(dist_zeta) == 1 else cp.J(*dist_zeta)
+        self.distJ      = dist_zeta if len(dist_zeta) == 1 else cp.J(*dist_zeta) 
 
         self.doe_method, self.doe_rule, self.doe_order = doe_params[0], doe_params[1], []
         if np.isscalar(doe_params[2]): 
             self.doe_order.append(int(doe_params[2]))
+            # self.doe_order = np.array(int(doe_params[2]))
         else:
             # self.doe_order = list(int(x) for x in doe_params[2])
             self.doe_order = np.array(doe_params[2])
-        print(self.doe_order)
-        self.ndoe = len(self.doe_order)
-        self.nsouce_dim = 0
-        self.nsets_per_doe = []
+        # print(self.doe_order)
 
-        self.time_start, self.time_ramp, self.time_max, self.dt = time_params
+        self.ndoe               = len(self.doe_order)   # number of doe sets
+        self.nsys_input_vars_dim= 0                     # dimension of solver inputs 
+        self.nsamples_per_doe   = []                    # number of samples for each doe sets
+        
+        self.time_start, self.time_ramp, self.time_max, self.dt = time_params if time_params else [None]*4
         self.qoi2analysis, self.stats = post_params
-        self.normalize  = normalize 
-        self.nsamples_done = 0
-        self.outdir_name = ''
-        self.outfile_name= ''
+        self.normalize      = normalize 
+        self.nsamples_done  = 0
+        self.outdir_name    = ''
+        self.outfile_name   = ''
 
         # if normalize:
             # self._normalize_sys()
         # else:
-        self.sys_source = sys_source
+
+        self.get_doe_samples_zeta() 
         self.sys_params = sys_params
+        self.sys_input_params = []
 
     def set_doe_method(self,doe_method):
         self.doe_method = doe_method
@@ -75,100 +101,87 @@ class simParameter(object):
         self.outdir_name = newDir
 
     def set_qoi2analysis(self, qois):
-        # what is thsi??
+        # what is this??
         self.qoi2analysis = qois
+    def set_sys_input_params(self, sys_input_func_name, sys_input_kwargs):
+        self.sys_input_params.insert(0,sys_input_kwargs)
+        self.sys_input_params.insert(0,sys_input_func_name)
 
     def set_nsamples_need(self, n):
         self.nsamples_need= n
         self.doe_method = xrange(self.nsamples_need)
-    def get_doe_samples(self, retphy=False, dist_phy=None):
+    def get_doe_samples_zeta(self):
         """
-        Return design sample points both in physical and zeta spaces based on specified doe_method
+        Return design sample points both in zeta spaces based on specified doe_method
         Return:
-            Experiment samples at zeta and physical space (idoe_order,[samples])
+            Experiment samples at zeta space (idoe_order,[samples for each doe_order])
         """
-        doe_samples_zeta = []
 
-        if retphy:
+        print('------------------------------------------------------------')
+        print('►►► Design of Experiment with {} method'.format(DOE_METHOD_NAMES[self.doe_method]))
+        print('------------------------------------------------------------')
+        print(' ► Quadrature rule               : {:s}'.format(QUAD_SHORT_NAMES[self.doe_rule]))
+        print(' ► Number of quadrature points   : {}'.format(self.doe_order))
 
-            doe_samples_phy = []
-            assert dist_phy, 'To return samples in physical space, list of marginal distributions of physical random variables must be provided.'
-            assert len(dist_phy) == len(self.dist_zeta)
-
+        self.sys_input_zeta = []
         for idoe_order in self.doe_order: 
-           # ED for different selected doe_order 
+           # DoE for different selected doe_order 
             samp_zeta = samplegen(self.doe_method, idoe_order, self.distJ,rule=self.doe_rule)
-            doe_samples_zeta.append(samp_zeta)
-
-            # Transform input sample values from zeta space to physical space
-            if retphy:
-
-                if self.doe_method.upper() in ['QUAD', 'GQ']:
-                    zeta_cor, zeta_weights = samp_zeta
-                    phy_cor = self._dist_transform(self.dist_zeta, dist_phy, zeta_cor)
-                    phy_weights = zeta_weights
-                    samp_phy = np.array([phy_cor, phy_weights])
-                else:
-                    zeta_cor, zeta_weights = samp_zeta, None
-                    phy_cor = self._dist_transform(self.dist_zeta, dist_phy, zeta_cor)
-                    samp_phy = phy_cor
-
-                doe_samples_phy.append(samp_phy)
+            self.sys_input_zeta.append(samp_zeta)
 
             if self.doe_method.upper() in ['QUAD', 'GQ']:
-                self.nsouce_dim = samp_zeta[0].shape[0] 
-                self.nsets_per_doe.append(samp_zeta[0].shape[1])
+                self.nsys_input_vars_dim = samp_zeta[0].shape[0] 
+                self.nsamples_per_doe.append(samp_zeta[0].shape[1])
             else:
-                self.nsouce_dim = samp_zeta.shape[0] 
-                self.nsets_per_doe.append(samp_zeta.shape[1])
+                self.nsys_input_vars_dim = samp_zeta.shape[0] 
+                self.nsamples_per_doe.append(samp_zeta.shape[1])
 
-        self.sys_source.append(doe_samples_phy) if retphy else self.sys_source.append(doe_samples_zeta)
+        # print(' ► ----   Done (Design of Experiment)   ----')
+        print(' ► Summary (Design of Experiment) ')
+        print('   ♦ Number of sample sets : {:d}'.format(len(self.sys_input_zeta)))
+        print('   ♦ Sample shape: ')
+        for isample_zeta in self.sys_input_zeta:
+            if self.doe_method.upper() in ['QUAD', 'GQ']:
+                print('     ∙ Coordinate: {}; weights: {}'\
+                        .format(isample_zeta[0].shape, isample_zeta[1].shape))
+            else:
+                print(' ♦ Sample shape: {}'.format(isample_zeta.shape))
 
-        return doe_samples_zeta, doe_samples_phy if retphy else doe_samples_zeta
+    def get_doe_samples(self, dist_phy):
+        """
+        Return design sample points both in physical spaces based on specified doe_method
+        Return:
+        sys_input_vars: parameters defining the inputs for the solver
+            General format of a solver
+                y =  M(x,sys_params)
+                M: system solver, taking a set of system parameters and input x
+                x: system inputs, ndarray of shape (ndim, nsamples)
+                    1. M takes x[:,i] as input, y = M(x.T)
+                    2. M takes time series generated from input_func(x[:,i]) as input
+            Experiment samples at physical space (idoe_order,[samples for each doe_order])
+        """
 
-    # def _normalize_sys(self):
-        # pass
-    
-    # def __normalize_source_func(self, norm_t, norm_y):
+        self.sys_input_vars = []
+        assert len(dist_phy) == len(self.dist_zeta)
 
-        # def wrapper(*args, **kwargs):
-            # t, y = source_func(*args, **kwargs)
-            # return  t*norm_t, y*norm_y/ norm_t**2
-        # return wrapper 
-
-
-    # def _cal_norm_values(self, zeta,omega0,source_kwargs, *source_args):
-        # TF = lambda w : 1.0/np.sqrt((w**2-omega0**2)**2 + (2*zeta*omega0)**2)
-        # spec_dict = spec_coll.get_spec_dict() 
-        # spec_name = source_kwargs.get('name','JONSWAP') if source_kwargs else 'JONSWAP'
-        # spec_side = source_kwargs.get('sides', '1side') if source_kwargs else '1side'
-        # spec_func = spec_dict[spec_name]
-
-        
-        # nquads = 100
-        # if spec_side.upper() in ['2','2SIDE','DOUBLE','2SIDES']:
-            # x, w = np.polynomial.hermite_e.hermegauss(nquads)
-        # elif spec_side.upper() in ['1','1SIDE','SINGLE','1SIDES']:
-            # x, w = np.polynomial.laguerre.laggauss(nquads)
-        # else:
-            # raise NotImplementedError("Spectrum side type '{:s}' is not defined".format(spec_side))
-        # _,spec_vals = spec_func(x, *source_args)
-        # spec_vals = spec_vals.reshape(nquads,1)
-        # TF2_vals  = (TF(x)**2).reshape(nquads,1)
-        # w = w.reshape(nquads,1)
-        # norm_y = np.sum(w.T *(spec_vals*TF2_vals))/(2*np.pi)
-        # norm_y = 1/norm_y**0.5
-
-        # norm_t = omega0
-
-        # return norm_t, norm_y
+        for isample_zeta in self.sys_input_zeta:
+            if self.doe_method.upper() in ['QUAD', 'GQ']:
+                zeta_cor, zeta_weights = isample_zeta 
+                phy_cor = self._dist_transform(self.dist_zeta, dist_phy, zeta_cor)
+                phy_weights = zeta_weights
+                samp_phy = np.array([phy_cor, phy_weights])
+            else:
+                zeta_cor, zeta_weights = isample_zeta, None
+                phy_cor = self._dist_transform(self.dist_zeta, dist_phy, zeta_cor)
+                samp_phy = phy_cor
+            self.sys_input_vars.append(samp_phy)
+        self.sys_input_params.append(self.sys_input_vars)
 
     def _dist_transform(self,dist1, dist2, var1):
         """
         Transform variables (var1) from list of dist1 to correponding variables in dist2. based on same icdf
 
         Arguments:
-            dist1: list of independent distributions (source)
             dist2: list of independent distributions (destination)
             var1 : variables in dist1 of shape[ndim, nsamples]
 
@@ -189,3 +202,4 @@ class simParameter(object):
         var2 = np.array(var2)
         assert var1.shape == var2.shape
         return var2
+

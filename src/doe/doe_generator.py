@@ -23,10 +23,30 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
     Design of experiment samples generator
     
     Arguments:
+        doe_method: defined below 
+        doe_order :  
+            Quadrature: number of quadrature points
+            MC: number of sample points
+            FIX: not needed
+        domain: 
+            Quadrature: distributions
+            MC: distributions to draw samples from
+            FIX: 
+        rule:
+            Quadrature: rules used to get quadrature points
+            MC: sampling method
+            FIX:
+        antithetic:
 
+        verbose:
+    Returns:
+        doe samples, array of shape:
+            Quadrature: res.shape = (2,) 
+                res[0]: coord of shape (ndim, nsamples) 
+                res[1]: weights of shape (nsamples,) 
+            MC: res.shape = (ndim, nsamples)
+            
     Interpretation of the doe_method argument:
-    
-
     +------------+------------------------------------------------------------+
     | Value | Interpretation                                             |
     +============+============================================================+
@@ -55,11 +75,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
     | "MC"  | Monte carlo method to get random samples                      |
     +------------+------------------------------------------------------------+
 
-
-
-
     Interpretation of the domain argument:
-
     +------------+------------------------------------------------------------+
     | Value      | Interpretation                                             |
     +============+============================================================+
@@ -71,7 +87,6 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
     +------------+------------------------------------------------------------+
 
     Intepretation of the rule argument:
-
     +------+---------------------+--------+
     | Key  | Name                | Nested |
     +======+=====================+========+
@@ -91,7 +106,13 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
 
     """
     doe_method = doe_method.upper()
-    
+    DOE_METHOD_NAMES = {
+        "GQ"    : "Quadrature",
+        "QUAD"  : "Quadrature",
+        "MC"    : "Monte Carlo",
+        "FIX"   : "Fixed point"
+        } 
+
     QUAD_SHORT_NAMES = {
         "c": "clenshaw_curtis",
         "e": "gauss_legendre",
@@ -106,31 +127,30 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         "legendre":"gauss_legendre",
         "jacobi":"gauss_jacobi",
         }
-    chaospy_quad = ['c','e','p','z','g','j']
-    numpy_quad = ['h', 'hermite', 'legendre','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
+    chaospy_quad = ['c','e','p','z','g','j','legendre']
+    numpy_quad = ['h', 'hermite','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
+    # print('************************************************************')
+    # print('Design of experiment with {} method'.format(DOE_METHOD_NAMES[doe_method]))
     if doe_method == 'GQ' or doe_method == 'QUAD':
         ## Return samples in 
         rule = 'h' if rule is None else rule ## Default gauss_legendre
-        print('************************************************************')
-        print('Design of experiment with Quadrature method')
-        quad_order = [order,] * domain.length if np.isscalar(order) else order
-        print('Quadrature rule: {:s}, Number of quadrature points: {}'.format(QUAD_SHORT_NAMES[rule], quad_order))
         if rule in chaospy_quad:
             doe_samples = _gen_quad_chaospy(order, domain, rule)
         elif rule in numpy_quad:
             doe_samples = _gen_quad_numpy(order, domain, rule)
         else:
             raise NotImplementedError("Quadrature rule '{:s}' not defined".format(rule))
+        quad_order = [order,] * domain.length if np.isscalar(order) else order
+        print('   ♦ Quadrature points complete  : {}'.format(quad_order))
         # print(doe_samples[0].shape)
-        print('>>> Done...')
-        print('------------------------------------------------------------')
+        # print('------------------------------------------------------------')
     elif doe_method == 'MC':
         """
         Monte Carlo Points are generated one by one by design, avoiding possible large memory requirement ???
         """
         rule = 'R' if rule is None else rule
-        print('************************************************************')
-        print('Design of experiment with Monte Carlo method')
+        # print('************************************************************')
+        # print('Design of experiment with Monte Carlo method')
         print('Rule : {:s}, Number of monte carlo points (1d): {:d}'.format(rule, order))
         # print("Generating Monte Carlo samples...")
         
@@ -143,8 +163,8 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         """
         Fixed points in doe_order will be used
         """
-        print('************************************************************')
-        print('Design of experiment with Fixed points given in doe_order')
+        # print('************************************************************')
+        # print('Design of experiment with Fixed points given in doe_order')
         doe_samples = np.array(rule).reshape(domain.length, -1)
         print('DOE samples shape:{}'.format(doe_samples.shape))
         
@@ -155,13 +175,14 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
     return doe_samples 
 
 def _gen_quad_chaospy(order, domain, rule):
+    rule = 'e' if rule == 'legendre' else rule
     coord, weights= cp.generate_quadrature(order-1, domain, rule=rule) 
     doe_samples = np.array([coord,weights])
     return doe_samples
 
 def _gen_quad_numpy(order, domain, rule):
     if rule in ['h', 'hermite']:
-        coord1d, weight1d = np.polynomial.hermite_e.hermegauss(order) ## probabilists
+        coord1d, weight1d = np.polynomial.hermite_e.hermegauss(order) ## probabilists , chaospy orth_ttr generate probabilists orthogonal polynomial
         # coord1d, weight1d = np.polynomial.hermite.hermgauss(order) ## physicist
         coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T
         weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T
@@ -185,6 +206,6 @@ def _gen_quad_numpy(order, domain, rule):
         weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T
         weights = np.prod(weights, axis=0)
     else:
-        raise NotImplementedError("Quadrature method '{:s}' is not defined".format(rule))
+        raise NotImplementedError("Quadrature rule '{:s}' is not defined".format(rule))
     doe_samples = np.array([coord, weights])
     return doe_samples

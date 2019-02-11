@@ -139,9 +139,11 @@ dist_k = cp.Normal()
     # y_sol.append(sol)
 # np.save('sode_true.npy', np.array(y_sol))
 
-y_mc = np.load('sode_true.npy')
-y_mc_mean = np.squeeze(np.mean(y_mc,axis=0))
-y_mc_var  = np.squeeze(np.std(y_mc, axis=0)**2)
+# y_mc = np.load('sode_true.npy')
+# y_mc_mean = np.squeeze(np.mean(y_mc,axis=0))
+# y_mc_var  = np.squeeze(np.std(y_mc, axis=0)**2)
+y_mc_mean = np.load('sode_mc_mean.npy')
+y_mc_var  = np.load('sode_mc_var.npy')
 print(y_mc_mean.shape)
 print(y_mc_var.shape)
 
@@ -187,17 +189,22 @@ for npoly_order in np.arange(1,5):
 y1_error = np.array(y1_error)
 y2_error = np.array(y2_error)
 
-plt.figure()
-plt.plot(t, y_mc_mean, '-r', label=r'mc')
+figs, axes = plt.subplots(1,2,figsize=(16,6))
+axes[0].plot(t, y_mc_mean, '-r', label=r'mc')
 for i in np.arange(npoly_order+1):
-    plt.plot(t,sol[:,i],linestyle=pltlinestyles[i],color='k', label=r'$y{}$'.format(i))
-plt.legend()
+    axes[0].plot(t,sol[:,i],linestyle=pltlinestyles[i],color='k', label=r'$y{}$'.format(i))
+axes[0].set_xlabel(r'Time')
+axes[0].set_ylabel(r'Solution')
+axes[0].legend()
 
-plt.figure()
-plt.semilogy(np.arange(npoly_order)+1, np.squeeze(y1_error[:,0,-1]), marker='d',label=r'Mean')
-plt.semilogy(np.arange(npoly_order)+1, np.squeeze(y1_error[:,1,-1]), marker='s',label=r'Variance')
-plt.legend()
-plt.show()
+axes[1].semilogy(np.arange(npoly_order)+1, np.squeeze(y1_error[:,0,-1]), marker='d',label=r'Mean')
+axes[1].semilogy(np.arange(npoly_order)+1, np.squeeze(y1_error[:,1,-1]), marker='s',label=r'Variance')
+axes[1].set_xlabel(r'$P$')
+axes[1].set_ylabel(r'Error')
+axes[1].legend()
+plt.tight_layout()
+plt.savefig('sode.eps')
+# plt.show()
 
 
 

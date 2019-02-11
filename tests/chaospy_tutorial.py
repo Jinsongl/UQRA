@@ -47,6 +47,7 @@ print('coeffs:\n{}'.format(foo_hat.coeffs()))
 print('dim:\n{}'.format(foo_hat.dim))
 print('keys:\n{}'.format(foo_hat.keys))
 print('shape:\n{}'.format(foo_hat.shape))
+foo_hat(samples)
 
 ## how to print coeffs
 

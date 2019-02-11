@@ -35,14 +35,17 @@ def main():
     ## ------------------------------------------------------------------- ###
     ##  Define Solver parameters ###
     ## ------------------------------------------------------------------- ###
-    ## Choose Wiener-Askey scheme random varaible
+    ## >>> Choose Wiener-Askey scheme random variable, 
     dist_zeta  = [cp.Normal(), cp.Normal()]
     # dist_zeta = [cp.Uniform(-1,1),cp.Uniform(-1,1)]
-    ## If transformation needed, liek Rosenblatt, need to be done here
-    ## Define independent random varible in physical problems
+
+    ## >>> If transformation needed, like Rosenblatt, need to be done here
+
+    ## >>> Define independent random variable in physical problems
     dist_x = [cp.Normal(), cp.Normal()]
     # dist_x = [cp.Uniform(-1,1),cp.Uniform(-1,1)]cp.Uniform(-1,1)
-    ## Define solver system properties
+
+    ## >>> Define solver system properties
     # sys_params = {'c': (1,1), 'x0':(0,0)} # zeta, omega_n
     sys_params = np.array([0,0,1,1,1]).reshape(5,1) #x0,v0, zeta, omega_n, mu
     # sys_params = {'p': 2} # ishigami

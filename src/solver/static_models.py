@@ -48,8 +48,39 @@ def ishigami(x, p=None):
         y = np.sin(x[0,:]) + p[0] * np.sin(x[1,:])**2 + p[1]*x[2,:]**4 * np.sin(x[0,:])
     return y
 
-
 def poly5(x):
     x = np.array(x)
     y = x**5 - 10* x**3 + 15*x
     return float(y) if y.ndim == 1 else y  
+
+def benchmark1_func(x):
+    x = np.array(x)
+    return x**2*np.sin(5*x)
+
+def sigma_x(x,sigma=0.5):
+    x = np.array(x)
+    return sigma*(x**2+1)
+
+def benchmark1_normal(x,mu=0,sigma=0.5):
+    """
+    Benchmar problem #1 with normal error
+    Arguments:
+        x: ndarray of shape(ndim, nsamples)
+        optional:
+        (mu, sigma): parameters defining normal error
+    Return:
+        ndarray of shape(nsamples,)
+    """
+    x = np.array(x)
+    sigmas = sigma_x(x,sigma=sigma)
+    y0 = benchmark1_func(x)
+    e = np.array([np.random.normal(mu, sigma, 1) for sigma in sigmas.T]).T
+    y = y0 + e
+    return y
+
+def benchmark1_gumbel(x,mu=0,beta=0.5):
+    x = np.array(x)
+    x0 = x**2*np.sin(5*x)
+    e = np.array([np.random.gumbel(mu, beta*abs(s),1) for s in x]).reshape((len(x),))
+    mu, std
+    return x0+ e

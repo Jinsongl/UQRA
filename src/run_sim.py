@@ -11,133 +11,202 @@
 """
 import numpy as np
 from solver.solver_wrapper import solver_wrapper
-NDOE_DONE   =1
-NSOURCE_DONE=1
-NSYS_DONE   =1
-def run_sim(solver_func, simParams):
+from solver.dynamic_models import lin_oscillator
+from solver.dynamic_models import duffing_oscillator
+from solver.static_models import ishigami
+from solver.static_models import poly5
+from solver.static_models import benchmark1_normal
+
+
+ALL_SOLVERS = {
+        'duffing'   : duffing_oscillator,
+        'ishigami'  : ishigami,
+        'poly5'     : poly5,
+        'bch1_norm' : benchmark1_normal
+        }
+
+def run_sim(solver_name, simParams):
     """
     Run simulation with given "solver" (real model) and predefined environment
+    General format of a solver
+        y =  M(x,sys_params)
+        M: system solver, taking a set of system parameters and input x
+        x: system inputs, could be one of the following three formats
+            1. array of x samples (ndim, nsamples), y = M(x)
+            2. ndarray of time series
+            3. inputs for the sys_input_func_name to generate time series
     Arguments:
-        solver_func: solver. Return [nChannel, nTimeSample] array. Each row is a time series for specified channel
+        solver_name: name of solver. 
+            Return [*.ndofs] array. Each column is a time series for specified channel
         simParams: simParameter class object
-        sys_source: list containing [source_func, source_kwargs, source_args]
-
-    Optional:
-        sys_param: parameters for solver system of shape [ndim, nsamples], ndim is the number of system parameters
 
     Return:
-        List of simulation results
-        Different doe_order, sample size would change, so return list
+        List of simulation results (Different doe_order, sample size would change, so return list)
 
         1. len(res) = len(doe_order)
-        2. For each element in res
-            [#source args sets, # sys parameter sets, returns from solver]
+        2. For each element in res: [#source args sets, # sys parameter sets, returns from solver]
         3. Return from solver 
             a). [*, ndofs]
                 each column represents a time series for one dof
             b). 
 
-        f_obsx: list of length len(doe_order)
-            each element contains input sample variables both in zeta and physical space
-            of shape (ndim, nsamples), each column includes [zeta_0,...zeta_n[,w], phy_0,...,phy_n].T, 
-            weight is optional
-
-        f_obsy: list of length len(doe_order)
-            each element contains solver output for certain amount of samples corresponding to doe_order
-        
-        f_obsy_stats: list of length len(doe_order)
-            each element contains (nsamples, nstats, nqois)
-
     """
-    global NDOE_DONE
-    global NSOURCE_DONE
-    global NSYS_DONE
-    resall = []
-    sys_source = simParams.sys_source
-    sys_param  = simParams.sys_params
+    NDOE_DONE, NSOURCE_DONE, NSYS_DONE = 0, 0, 0 
+    run_sim_res = []
+    sys_params  = simParams.sys_params
+    solver_func = ALL_SOLVERS[solver_name]
 
-    # sys_param = args[0] if len(args) == 1 else None
-    print('************************************************************')
-    print('Start running: {:s}, Tmax={:.1e}, dt={:.2f}'.format(solver_func.__name__,simParams.time_max, simParams.dt))
-    if sys_param is not None:
-        print('System parameters: ndim={:d}, nsets={:d}'.format(sys_param.shape[0], sys_param.shape[1]))
+    # sys_params = args[0] if len(args) == 1 else None
+    print('------------------------------------------------------------')
+    print('►►► Run Simulations ')
+    print('------------------------------------------------------------')
+    if simParams.time_max:
+        print(' ► Start running: {:s}, Tmax={:.1e}, dt={:.2f}'\
+            .format(solver_func.__name__, simParams.time_max, simParams.dt))
+    else:
+        print(' ► Start running: {:s}'.format(solver_func.__name__))
 
-    if isinstance(sys_source, np.ndarray):
-        print('Source parameters: signal of shape {}'.format(sys_source.shape))
-        ## only need inner loop for changing physical system
-        res_inner = _run_fixsource_loop(solver_func, simParams, sys_source, sys_param)
-        resall.append(res_inner)
+    # print system parameter settings if available
+    # sys_params is a list of parameter sets. len(sys_params) = nsets
+    if sys_params[0]:
+        print(' ► System parameters: ndim={}, nsets={:d}'\
+                .format(sys_params[0].shape, len(sys_params)))
+    else:
+        print(' ► System parameters: NA ' )
 
-    elif isinstance(sys_source, list) and callable(sys_source[0]):
-        print('Source parameters:')
-        # Three loops: first loop will go through different doe orders
-        # second loop will go through different source_func arguments
-        # third loop will evaluate at given source_func argument, system response with different parameters.
+    ndoe                = simParams.ndoe 
+    nsamples_per_doe    = simParams.nsamples_per_doe 
+    nsys_input_vars_dim = simParams.nsys_input_vars_dim
 
-        ## First loop for different doe order sys_sources
-        if len(sys_source) == 3:
-            source_func, source_kwargs, source_args = sys_source
-        elif len(sys_source) == 2:
-            source_func, source_kwargs, source_args = sys_source[0], None, sys_source[1]
-        ndoe            = simParams.ndoe 
-        nsouce_dim      = simParams.nsouce_dim
-        nsets_per_doe   = simParams.nsets_per_doe 
-        # nsouce_dim = source_args[0][0].shape[0]
-        # nsets_per_doe = source_args[0][0].shape[1]
-        print('   function : {:s}'.format(source_func.__name__))
-        print('   arguments: ndoe={:d}, ndim={:d}, nsets={}'\
-                .format(ndoe, nsouce_dim, nsets_per_doe))
-        print('   kwargs   : {}'.format(source_kwargs))
-        print('   ------------------------------------')
-        print('   Job list: [# DOE sets, # Souce args, # Sys params]')
-        print('   Target  : [{:4d}, {}, {:4d}]'.format(ndoe, nsets_per_doe, sys_param.shape[1]))
-        print('   --------')
-        for i, source_args_1doe in enumerate(source_args):
-            sys_source_1doe = [source_func, source_kwargs, source_args_1doe]
-            y = _run_fixdoeorder_loop(solver_func, simParams, sys_source_1doe,sys_param) 
-            resall.append(y)
-            NDOE_DONE +=1
+    print(' ► System input parameters:')
+    if len(simParams.sys_input_params) == 3:
+        print('   function : {:s}'.format(simParams.sys_input_params[0]))
+        print('   kwargs   : {}'.format(simParams.sys_input_params[1]))
+        sys_input_func_name = simParams.sys_input_params[0]
+        sys_input_kwargs    = simParams.sys_input_params[1]
+        sys_input_vars      = simParams.sys_input_params[2]
+    elif len(simParams.sys_input_params) == 1:
+        print('   ♦ function : None')
+        print('   ♦ kwargs   : None')
+        sys_input_vars      = simParams.sys_input_params[0]
+        sys_input_func_name = None 
+        sys_input_kwargs    = None 
+    else:
+        assert ValueError('Either 1 or 3 element expected in sys_input_params,\
+                given {:d}'.format(len(simParams.sys_input_params)))
 
-    return resall
+    print('   ♦ input variables: ndoe={:d}, ndim={:d}, nsets={}'\
+            .format(ndoe, nsys_input_vars_dim, nsamples_per_doe))
+    print(' ► Job list: [{:^20} {:^20}]'.format('# Sys params sets', '# DoE sets'))
+    print(' ► Target  : [{:^20d} {:^20d}]'.format(len(sys_params), ndoe))
+    for isys_params in sys_params:
+        NSYS_DONE += 1 
+        run_sim_1doe_res = []
+        for sys_input_vars_1doe in sys_input_vars:
+
+            if simParams.doe_method.upper() in ['QUAD', 'GQ']:
+                input_vars, input_vars_weights = sys_input_vars_1doe
+            else:
+                input_vars, input_vars_weights = sys_input_vars_1doe, None
+            y = solver_wrapper(solver_func,simParams,input_vars, sys_params=isys_params)
+
+            NDOE_DONE += 1
+            print('   Achieved: [{:^20d} {:^20d}]'.format(NSYS_DONE,NDOE_DONE))
+            run_sim_1doe_res.append(y)
+        run_sim_res.append(run_sim_1doe_res)
+    print(' ► Simulation complete...' )
+    return run_sim_res
+## here, need to rebuild three loops
+
+
+    # if isinstance(sys_input_vars, np.ndarray):
+        # ## only need inner loop for changing physical system
+        # print('Source parameters: signal of shape {}'.format(sys_input_vars.shape))
+        # res_inner = _loop_sysparams(solver_func, simParams, sys_input_vars, sys_params)
+        # run_sim_res.append(res_inner)
+
+    # elif isinstance(sys_input_vars, list) and callable(sys_input_vars[0]):
+        # print('Source parameters:')
+        # # Three loops:
+        # # for each DoE:
+        # #   for each source args:
+        # #      for each sys parameter sets
+        # # return [ndoe, nsourceargs, nsysparams, ...]
+
+        # ## First loop for different doe order sys_sources
+        # if len(sys_input_vars) == 3:
+            # sys_input_func_name, sys_input_kwargs, input_vars = sys_input_vars
+        # elif len(sys_input_vars) == 2:
+            # sys_input_func_name, sys_input_kwargs, input_vars = sys_input_vars[0], None, sys_input_vars[1]
+        # ndoe            = simParams.ndoe 
+        # nsys_input_vars_dim      = simParams.nsys_input_vars_dim
+        # nsamples_per_doe= simParams.nsamples_per_doe 
+
+        # print('   function : {:s}'.format(sys_input_func_name)
+        # print('   arguments: ndoe={:d}, ndim={:d}, nsets={}'\
+                # .format(ndoe, nsys_input_vars_dim, nsamples_per_doe))
+        # print('   kwargs   : {}'.format(sys_input_kwargs))
+        # print('   ------------------------------------')
+        # print('   Job list: [# DoE sets, # Souce args, # Sys params sets]')
+        # print('   Target  : [{:4d}, {}, {:4d}]'.format(ndoe, nsamples_per_doe, sys_params.shape[1]))
+        # print('   --------')
+        # for i, sys_input_vars_1doe in enumerate(input_vars):
+            # sys_input_params_1doe = [sys_input_func_name, sys_input_kwargs, sys_input_vars_1doe]
+            # y = _loop_input_vars(solver_func, simParams, sys_input_params_1doe,sys_params) 
+            # run_sim_res.append(y)
+            # NDOE_DONE +=1
+    # else:
+        # raise NotImplementedError("Type of system source not defined")
+
+
            
 
-def _run_fixsource_loop(solver_func,simParams,sys_source_fixed,sys_param_all):
-    global NSYS_DONE
-    res = []
-    ## system parameters don't change
-    if sys_param_all is None:
-        y = solver_wrapper(solver_func,simParams,sys_source_fixed)
-        res.append(y)
-    ## different setzs of system parameters
-    else:
-        for i , isys_param in enumerate(sys_param_all.T):
-            y = solver_wrapper(solver_func,simParams,sys_source_fixed,sys_param=isys_param)
-            res.append(y)
-            NSYS_DONE = i+1
-            # print('   Target  : [{:8d}, {:8d}, {:8d}]'.format(ndoe, nsets_per_doe, sys_param.shape[1]))
-            print('   Achieved: [{:4d}, {:4d}, {:4d}], source args:{}'.format(NDOE_DONE, NSOURCE_DONE, NSYS_DONE, np.round(sys_source_fixed[-1],2)))
-    # print(np.array(res).shape)
-    return np.array(res)
+# def _loop_sysparams(solver_func, simParams, sys_source_fixed, sys_param_all):
+    # """
+    # For a fixed sys_input_vars, loop over sys_params if available
+    # """
+    # global NSYS_DONE
+    # res = []
+    # ## no system parameters is needed
+    # if sys_param_all is None:
+        # y = solver_wrapper(solver_func,simParams,sys_source_fixed)
+        # res.append(y)
+    # ## different sets of system parameters
+    # else:
+        # for i, isys_param in enumerate(sys_param_all.T):
+            # y = solver_wrapper(solver_func,simParams,sys_source_fixed,sys_params=isys_param)
+            # res.append(y)
+            # NSYS_DONE = i+1
+            # # print('   Target  : [{:8d}, {:8d}, {:8d}]'.format(ndoe, nsamples_per_doe, sys_params.shape[1]))
+    # # print(np.array(res).shape)
+    # return np.array(res)
 
-def _run_fixdoeorder_loop(solver_func,simParams,sys_source_1doe, sys_param_all):
-    global NSOURCE_DONE
-    res = []
-    source_func, source_kwargs, source_args = sys_source_1doe
-    if simParams.doe_method.upper() in ['QUAD', 'GQ']:
-        source_args, source_args_weights = source_args 
-    else:
-        source_args, source_args_weights = source_args, None
-    ## source_args must of shape(ndim, nsampes)
-    for i, isource_args in enumerate(source_args.T):
+# def _loop_input_vars(solver_func,simParams, sys_input_vars_1doe, sys_param_all):
 
-        # print(' [{:8d}'.format(i),end='')
-        isys_source = [source_func, source_kwargs, isource_args]
-        res_inner = _run_fixsource_loop(solver_func, simParams, isys_source, sys_param_all)
-        res.append(res_inner)
-        NSOURCE_DONE +=1
+    # global NSOURCE_DONE
+    # res = []
 
-    # print(np.array(res).shape)
-    return np.array(res)
+    # if simParams.doe_method.upper() in ['QUAD', 'GQ']:
+        # input_vars, input_vars_weights = sys_input_vars_1doe
+    # else:
+        # input_vars, input_vars_weights = sys_input_vars_1doe, None
+
+    # ## input_vars must of shape(ndim, nsampes)
+    # # NEED TO IMPLEMENT WHEN INPUT IS ARRAY
+    # if sys_input_func_name is None:
+        # ## y = M(x) 
+        # res_inner = _loop_sysparams(solver_func, simParams, isys_source, sys_param_all)
+    # else: 
+
+
+    # for i, isource_args in enumerate(input_vars.T):
+
+        # # print(' [{:8d}'.format(i),end='')
+        # isys_source = [sys_input_func_name, sys_input_kwargs, isource_args]
+        # res_inner = _loop_sysparams(solver_func, simParams, isys_source, sys_param_all)
+        # res.append(res_inner)
+        # NSOURCE_DONE +=1
+    # return np.array(res)
 
 
 
