@@ -129,9 +129,8 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         }
     chaospy_quad = ['c','e','p','z','g','j','legendre']
     numpy_quad = ['h', 'hermite','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
-    # print('************************************************************')
-    # print('Design of experiment with {} method'.format(DOE_METHOD_NAMES[doe_method]))
-    if doe_method == 'GQ' or doe_method == 'QUAD':
+
+    if doe_method == 'QUADRATURE':
         ## Return samples in 
         rule = 'h' if rule is None else rule ## Default gauss_legendre
         if rule in chaospy_quad:
@@ -144,32 +143,30 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         print('   ♦ Quadrature points complete  : {}'.format(quad_order))
         # print(doe_samples[0].shape)
         # print('------------------------------------------------------------')
-    elif doe_method == 'MC':
+    elif doe_method == 'MONTE CARLO':
         """
         Monte Carlo Points are generated one by one by design, avoiding possible large memory requirement ???
         """
         rule = 'R' if rule is None else rule
         # print('************************************************************')
         # print('Design of experiment with Monte Carlo method')
-        print('Rule : {:s}, Number of monte carlo points (1d): {:d}'.format(rule, order))
+        # print('Rule : {:s}, Number of monte carlo points (1d): {:d}'.format(rule, order))
         # print("Generating Monte Carlo samples...")
         
         doe_samples = domain.sample(order,rule=rule)
         doe_samples = doe_samples.reshape(domain.length,-1)
-        print('Design of experiment done with {:d} Monte Carlo points'.format(order))
-        print('------------------------------------------------------------')
         
-    elif doe_method == 'FIX':
-        """
-        Fixed points in doe_order will be used
-        """
-        # print('************************************************************')
-        # print('Design of experiment with Fixed points given in doe_order')
-        doe_samples = np.array(rule).reshape(domain.length, -1)
-        print('DOE samples shape:{}'.format(doe_samples.shape))
+    # elif doe_method == 'FIXED POINT':
+        # """
+        # Fixed points in doe_order will be used
+        # """
+        # # print('************************************************************')
+        # # print('Design of experiment with Fixed points given in doe_order')
+        # doe_samples = np.array(rule).reshape(domain.length, -1)
+        # print('DOE samples shape:{}'.format(doe_samples.shape))
         
-        print('Design of experiment done with Fixed points')
-        print('------------------------------------------------------------')
+        # print('Design of experiment done with Fixed points')
+        # print('------------------------------------------------------------')
     else:
         raise NotImplementedError("DOE method '{:s}' not defined".format(doe_method))
     return doe_samples 

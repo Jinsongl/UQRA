@@ -18,13 +18,16 @@ DOE_METHOD_NAMES = {
     "MC"    : "Monte Carlo" , "FIX"   : "Fixed point"
     } 
 
-QUAD_SHORT_NAMES = {
+DOE_RULE_NAMES = {
     "c": "clenshaw_curtis"  , "e"   : "gauss_legendre"  , "p"   : "gauss_patterson",
     "z": "genz_keister"     , "g"   : "golub_welsch"    , "j"   : "leja",
     "h": "gauss_hermite"    ,"lag"  : "gauss_laguerre"  , "cheb": "gauss_chebyshev",
     "hermite"   :"gauss_hermite",
     "legendre"  :"gauss_legendre",
     "jacobi"    :"gauss_jacobi",
+    "R": "Pseudo-Random", "RG": "Regular Grid", "NG": "Nested Grid", "L": "Latin Hypercube",
+    "S": "Sobol", "H":"Halton", "M": "Hammersley",
+    "FIX": "Fixed point"
     }
 class simParameter(object):
     """
@@ -38,30 +41,29 @@ class simParameter(object):
         time_params = [time_start, time_ramp, time_max, dt]
         post_params = [qoi2analysis=[0,], stats=[1,1,1,1,1,1,0]]
             stats: [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
-        sys_params: list of parameter sets defining the solver
-            if no sys_params is required, sys_params = [None]
+        sys_def_params: list of parameter sets defining the solver
+            if no sys_def_params is required, sys_def_params = [None]
             e.g. for duffing oscillator:
-            sys_params = [np.array([0,0,1,1,1]).reshape(5,1)] # x0,v0, zeta, omega_n, mu 
+            sys_def_params = [np.array([0,0,1,1,1]).reshape(5,1)] # x0,v0, zeta, omega_n, mu 
 
         normalize: 
 
     """
     def __init__(self,dist_zeta, doe_params=['GQ','lag',[2,3]],\
             time_params=None, post_params=[[0,], [1,1,1,1,1,1,0]],\
-            sys_params=[None], normalize=False):
+            sys_def_params=[None], normalize=False):
 
         self.seed       = [0,100]
         self.dist_zeta  = dist_zeta
         self.distJ      = dist_zeta if len(dist_zeta) == 1 else cp.J(*dist_zeta) 
-
-        self.doe_method, self.doe_rule, self.doe_order = doe_params[0], doe_params[1], []
+        self.doe_method = DOE_METHOD_NAMES.get(doe_params[0])
+        self.doe_rule   = doe_params[1]
+        self.doe_order  = []
+        ## Why not list of int? [1], [1,2,3] something iteratable
         if np.isscalar(doe_params[2]): 
             self.doe_order.append(int(doe_params[2]))
-            # self.doe_order = np.array(int(doe_params[2]))
         else:
-            # self.doe_order = list(int(x) for x in doe_params[2])
             self.doe_order = np.array(doe_params[2])
-        # print(self.doe_order)
 
         self.ndoe               = len(self.doe_order)   # number of doe sets
         self.nsys_input_vars_dim= 0                     # dimension of solver inputs 
@@ -73,14 +75,9 @@ class simParameter(object):
         self.nsamples_done  = 0
         self.outdir_name    = ''
         self.outfile_name   = ''
-
-        # if normalize:
-            # self._normalize_sys()
-        # else:
-
-        self.get_doe_samples_zeta() 
-        self.sys_params = sys_params
-        self.sys_input_params = []
+        self.sys_def_params = sys_def_params
+        # [sys_input_func_name, sys_input_kwargs, sys_input_vars]
+        self.sys_input_params = [None, None, []]
 
     def set_doe_method(self,doe_method):
         self.doe_method = doe_method
@@ -104,13 +101,13 @@ class simParameter(object):
         # what is this??
         self.qoi2analysis = qois
     def set_sys_input_params(self, sys_input_func_name, sys_input_kwargs):
-        self.sys_input_params.insert(0,sys_input_kwargs)
-        self.sys_input_params.insert(0,sys_input_func_name)
+        self.sys_input_params[0] = sys_input_func_name
+        self.sys_input_params[1] = sys_input_kwargs
 
-    def set_nsamples_need(self, n):
-        self.nsamples_need= n
-        self.doe_method = xrange(self.nsamples_need)
-    def get_doe_samples_zeta(self):
+    # def set_nsamples_need(self, n):
+        # self.nsamples_need= n
+        # self.doe_method = xrange(self.nsamples_need)
+    def get_doe_samples_zeta(self, samp_phy=None, dist_phy=None):
         """
         Return design sample points both in zeta spaces based on specified doe_method
         Return:
@@ -118,34 +115,43 @@ class simParameter(object):
         """
 
         print('------------------------------------------------------------')
-        print('►►► Design of Experiment with {} method'.format(DOE_METHOD_NAMES[self.doe_method]))
+        print('►►► Design of Experiments (DoEs)')
         print('------------------------------------------------------------')
-        print(' ► Quadrature rule               : {:s}'.format(QUAD_SHORT_NAMES[self.doe_rule]))
-        print(' ► Number of quadrature points   : {}'.format(self.doe_order))
+        print(' ► DoE parameters: ')
+        print('   ♦ {:<15s} : {:<15s}'.format('DoE method', self.doe_method))
+        print('   ♦ {:<15s} : {:<15s}'.format('DoE rule', DOE_RULE_NAMES[self.doe_rule]))
+        print('   ♦ {:<15s} : {}'.format('DoE order', self.doe_order))
+        print(' ► Running DoEs: ')
 
         self.sys_input_zeta = []
-        for idoe_order in self.doe_order: 
-           # DoE for different selected doe_order 
-            samp_zeta = samplegen(self.doe_method, idoe_order, self.distJ,rule=self.doe_rule)
-            self.sys_input_zeta.append(samp_zeta)
+        if self.doe_method.upper() == 'FIXED POINT':
+            for isamp_phy in samp_phy:
+                self.sys_input_zeta.append(self._dist_transform(dist_phy, self.dist_zeta, isamp_phy))
+        else: ## could be MC or quadrature
+            for idoe_order in self.doe_order: 
+               # DoE for different selected doe_order 
+                samp_zeta = samplegen(self.doe_method, idoe_order, self.distJ,rule=self.doe_rule)
+                self.sys_input_zeta.append(samp_zeta)
 
-            if self.doe_method.upper() in ['QUAD', 'GQ']:
-                self.nsys_input_vars_dim = samp_zeta[0].shape[0] 
-                self.nsamples_per_doe.append(samp_zeta[0].shape[1])
-            else:
-                self.nsys_input_vars_dim = samp_zeta.shape[0] 
-                self.nsamples_per_doe.append(samp_zeta.shape[1])
+                if self.doe_method.upper() == 'QUADRATURE':
+                    ## if quadrature, samp_zeta = [coord(ndim, nsamples), weights(nsamples,)]
+                    self.nsys_input_vars_dim = samp_zeta[0].shape[0] 
+                    self.nsamples_per_doe.append(samp_zeta[0].shape[1])
+                else:
+                    ## if mc , samp_zeta = [coord(ndim, nsamples)]
+                    self.nsys_input_vars_dim = samp_zeta.shape[0] 
+                    self.nsamples_per_doe.append(samp_zeta.shape[1])
 
         # print(' ► ----   Done (Design of Experiment)   ----')
-        print(' ► Summary (Design of Experiment) ')
+        print(' ► DoE Summary:')
         print('   ♦ Number of sample sets : {:d}'.format(len(self.sys_input_zeta)))
         print('   ♦ Sample shape: ')
         for isample_zeta in self.sys_input_zeta:
-            if self.doe_method.upper() in ['QUAD', 'GQ']:
+            if self.doe_method.upper() == 'QUADRATURE':
                 print('     ∙ Coordinate: {}; weights: {}'\
                         .format(isample_zeta[0].shape, isample_zeta[1].shape))
             else:
-                print(' ♦ Sample shape: {}'.format(isample_zeta.shape))
+                print('     ∙ Coordinate: {}'.format(isample_zeta.shape))
 
     def get_doe_samples(self, dist_phy):
         """
@@ -153,7 +159,7 @@ class simParameter(object):
         Return:
         sys_input_vars: parameters defining the inputs for the solver
             General format of a solver
-                y =  M(x,sys_params)
+                y =  M(x,sys_def_params)
                 M: system solver, taking a set of system parameters and input x
                 x: system inputs, ndarray of shape (ndim, nsamples)
                     1. M takes x[:,i] as input, y = M(x.T)
@@ -164,20 +170,33 @@ class simParameter(object):
         self.sys_input_vars = []
         assert len(dist_phy) == len(self.dist_zeta)
 
+        ## Get samples in zeta space first
+        self.get_doe_samples_zeta() 
+        ## Then calcuate corresponding samples in physical variable space 
         for isample_zeta in self.sys_input_zeta:
-            if self.doe_method.upper() in ['QUAD', 'GQ']:
+            if self.doe_method.upper() == 'QUADRATURE':
                 zeta_cor, zeta_weights = isample_zeta 
                 phy_cor = self._dist_transform(self.dist_zeta, dist_phy, zeta_cor)
-                phy_weights = zeta_weights
+                phy_weights = zeta_weights#.reshape(zeta_cor.shape[1],1)
                 samp_phy = np.array([phy_cor, phy_weights])
             else:
                 zeta_cor, zeta_weights = isample_zeta, None
                 phy_cor = self._dist_transform(self.dist_zeta, dist_phy, zeta_cor)
                 samp_phy = phy_cor
+            # print('samp_phy shape: {}, coord shape: {}, weight shape {}'.format(samp_phy.shape, samp_phy[0].shape, samp_phy[1].shape))
             self.sys_input_vars.append(samp_phy)
-        self.sys_input_params.append(self.sys_input_vars)
+        self.sys_input_params[2] = self.sys_input_vars
 
-    def _dist_transform(self,dist1, dist2, var1):
+    def set_doe_samples(self, samp_phy, dist_phy):
+
+        ## Set samples in physical space first
+        self.sys_input_vars = samp_phy
+        self.get_doe_samples_zeta(samp_phy, dist_phy) 
+
+        self.sys_input_params[2].append(self.sys_input_vars)
+
+
+    def _dist_transform(self, dist1, dist2, var1):
         """
         Transform variables (var1) from list of dist1 to correponding variables in dist2. based on same icdf
 
@@ -192,7 +211,7 @@ class simParameter(object):
 
         dist1  = [dist1,] if len(dist1) == 1 else dist1
         dist2  = [dist2,] if len(dist2) == 1 else dist2
-        assert len(dist1) == len(dist2) == var1.shape[0]
+        assert (len(dist1) == len(dist2) == var1.shape[0]), 'Dimension of variable not equal. dist1.ndim={}, dist2.ndim={}, var1.ndim={}'.format(len(dist1), len(dist2), var1.shape[0])
         var2 = []
         for i in range(var1.shape[0]):
             _dist1 = dist1[i]
