@@ -283,27 +283,12 @@ class metaModel(object):
         if not self.metamodels:
             raise ValueError('No surrogate model exists')
 
-        X = np.array(X)
         print(' ► Draw samples from Gaussian process models... ')
         print('   ♦ {:<15s} : {}'.format('n_samples', n_samples))
         print('   ♦ {:<15s} : {}'.format('random_state', random_state))
         y_samples = []
         for i, imetamodel in enumerate(self.metamodels):
             print('   ♦ Surrogate model {:d}/{:d} '.format(i, len(self.metamodels)))
-            imeta_y_samples = imetamodel.sample_y(X.T, n_samples=n_samples, random_state=random_state)
-            n_output_dims = imeta_y_samples.shape[1]
-            if n_output_dims == 1:
-                imeta_y_samples = np.squeeze(imeta_y_samples).T
-                # print(X.shape)
-                # print(imeta_y_samples.shape)
-                y_samples.append(np.vstack((X, imeta_y_samples)))
-                # print(y_samples[-1].shape)
-            else:
-                X = X[np.newaxis,:]
-                y_samples.append(np.vstack((X, imeta_y_samples.T)))
-        if len(y_samples) == 1:
-            y_samples = y_samples[0]
-        return y_samples
 
 
     def cross_validate(self, x, y):

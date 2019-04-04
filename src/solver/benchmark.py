@@ -42,15 +42,16 @@ def gen_error(error_type):
             .name: error distribution name
             .params: float or array_like of floats
     """
+    error_name = error_type.name if error_type.name else None
     if error_type.name is None:
         samples = 0
-    elif error_type.name.upper() == 'NORMAL':
+    elif error_name.upper() == 'NORMAL':
         mu, sigma = error_type.params if error_type.params else (0.0, 1.0)
         samples = np.random.normal(loc=mu,scale=sigma, size=error_type.size) 
-    elif error_type.name.upper() == 'GUMBEL':
+    elif error_name.upper() == 'GUMBEL':
         loc, scale = error_type.params if error_type.params else (0.0, 1.0)
         samples = np.random.gumbel(loc,scale,size=error_type.size)
-    elif error_type.name.upper() == 'WEIBULL':
+    elif error_name.upper() == 'WEIBULL':
         shape, scale = error_type.params if error_type.params else (1.0, 1.0)
         samples = scale * np.random.weibull(shape, size=error_type.size)
     else:
@@ -99,7 +100,8 @@ def bench1(x, error_type):
     e = gen_error(error_type)
     y = x * np.sin(x)
     y = y + e
-    return y
+    y = y.reshape(x.shape[1],-1)
+    return np.squeeze(y)
 
 def bench2(x, error_type):
     x = np.array(x)
@@ -111,7 +113,7 @@ def bench2(x, error_type):
 def bench3(x, error_type):
     x = np.array(x)
     e = gen_error(error_type)
-    y = 0.5 * (x**2 + 1)
+    y = np.sin(np.pi/5.0 * x) + 1/5.0 * np.cos(4*np.pi*x/5.0) 
     y = y + e
     return y
 

@@ -16,11 +16,11 @@ from solver.benchmark import ishigami
 from solver.benchmark import bench1, bench2, bench3, bench4
 
 all_solvers = {
-        'ishigami'  : ishigami,
-        'bench1'    : bench1,
-        'bench2'    : bench2,
-        'bench3'    : bench3,
-        'bench4'    : bench4,
+        'ISHIGAMI'  : ishigami,
+        'BENCH1'    : bench1,
+        'BENCH2'    : bench2,
+        'BENCH3'    : bench3,
+        'BENCH4'    : bench4,
         }
 
 
@@ -45,7 +45,7 @@ def solver_wrapper(solver_name, simParams, sys_input_vars, error_type, sys_def_p
 
     # solver_name, sterm_dist = model_def #if len(model_def) == 2 else model_def[0], None
     # print(solver_name)
-    solver = all_solvers[solver_name]
+    solver = all_solvers[solver_name.upper()]
 
     assert (callable(solver)), '{:s} not callable'.format(solver.__name__)
     
