@@ -20,7 +20,7 @@ from simParams import simParameter
 from run_sim import run_sim
 from utilities.get_exceedance_data import get_exceedance_data
 from utilities.upload2gdrive import upload2gdrive
-import os
+import os,sys
 import warnings
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 
@@ -36,15 +36,17 @@ def make_output_dir(MODEL_NAME):
     MODEL_DIR       = os.path.join(WORKING_DIR, MODEL_NAME)
     FIGURE_DIR= os.path.join(MODEL_DIR,r'Figures')
     # DATA_DIR  = os.path.join(MODEL_DIR,r'Data')
-    DATA_DIR        = '/Users/jinsongliu/External/MUSE_UQ_DATA'
+    current_os  = sys.platform
+    if current_os.upper()[:3] == 'WIN':
+        DATA_DIR= "G:\My Drive\MUSE_UQ_DATA"
+    elif current_os.upper() == 'DARWIN':
+        DATA_DIR= '/Users/jinsongliu/External/MUSE_UQ_DATA'
+    else:
+        raise ValueError('Operating system {} not found'.format(current_os))    
+    
     DATA_DIR  = os.path.join(DATA_DIR,MODEL_NAME,r'Data')
     MODEL_DIR_DATA_ID = GDRIVE_DIR_ID[MODEL_NAME.upper()] 
 
-    # WORKING_DIR     = os.getcwd()
-    # MODEL_DIR       = os.path.join(WORKING_DIR, MODEL_NAME)
-    # FIGURE_DIR= os.path.join(MODEL_DIR,r'Figures')
-    # DATA_DIR        = '/Users/jinsongliu/External/MUSE_UQ_DATA'
-    # DATA_DIR  = os.path.join(DATA_DIR,MODEL_NAME,r'Data')
     # Create directory for model  
     try:
         os.makedirs(MODEL_DIR)
@@ -62,10 +64,10 @@ def main():
     ##  Parameters set-up 
     ## ------------------------------------------------------------------- ###
     pf                  = 1e-4              # Exceedence probability
-    data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
-    data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
-    MODEL_NAME          = 'Bench3'
-    DATA_DIR_ID, DATA_DIR, FIGURE_DIR =  make_output_dir(MODEL_NAME)
+    # data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
+    # data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
+    MODEL_NAME          = 'Bench1'
+    DATA_DIR_ID, DATA_DIR, _ =  make_output_dir(MODEL_NAME)
     ## ------------------------------------------------------------------- ###
     ##  Define Solver parameters ###
     ## ------------------------------------------------------------------- ###
@@ -85,7 +87,7 @@ def main():
     # ## example:
 
     # ## >>> 1. Fixed point:
-    # doe_method, doe_rule, doe_order = 'FIX','FIX', [11,12,13,14,15]
+    # doe_method, doe_rule, doe_order = 'FIX','FIX', [10, 11,12,13,14,15]
     # doe_params  = [doe_method, doe_rule, doe_order]
     # fix_simparam= simParameter(dist_zeta, doe_params=doe_params)
     # rng         = np.random.RandomState(3)
@@ -97,16 +99,16 @@ def main():
     # zeta_samples= fix_simparam.sys_input_zeta[0]
 
     # ##>>> 2. Monte Carlo:
-    # doe_method, doe_rule, doe_order = 'MC','R', [int(1e7)]*10
-    # doe_params  = [doe_method, doe_rule, doe_order]
-    # mc_simparam = simParameter(dist_zeta, doe_params = doe_params)
-    # mc_simparam.get_doe_samples(dist_x)
+    doe_method, doe_rule, doe_order = 'MC','R', [int(1e7)]*10
+    doe_params  = [doe_method, doe_rule, doe_order]
+    mc_simparam = simParameter(dist_zeta, doe_params = doe_params)
+    mc_simparam.get_doe_samples(dist_x)
 
     # ## >>> 3. Quadrature:
-    doe_method, doe_rule, doe_order = 'GQ','hermite',[10]
-    doe_params      = [doe_method, doe_rule, doe_order]
-    quad_simparam   = simParameter(dist_zeta, doe_params = doe_params)
-    quad_simparam.get_doe_samples(dist_x)
+    # doe_method, doe_rule, doe_order = 'GQ','hermite',[10,11,12,13,14,15]
+    # doe_params      = [doe_method, doe_rule, doe_order]
+    # quad_simparam   = simParameter(dist_zeta, doe_params = doe_params)
+    # quad_simparam.get_doe_samples(dist_x)
 
     ## ------------------------------------------------------------------- ###
     ##  Run simulation 
@@ -114,64 +116,57 @@ def main():
     ## model_name, error_type_name, error_type_params, error_type_size = model_def
     ## run_sim output [isys_def_params, idoe, [solver output]]
     ## [solver function name, error_dist.name, [params], size]
-    simparam    = fix_simparam
-    # simparam    = mc_simparam
+    # simparam    = fix_simparam
+    # doe_type    = 'Uniform_DoE'
+    # doe_type    = 'Linspace_DoE'        
+    simparam    = mc_simparam
+    doe_type    = 'MCS_DoE'
     # simparam    = quad_simparam
+    # doe_type    = 'Quadrature_DoE'
+
+    ## ------------------------------------------------------------------- ###
+    ##  Noise Free case 
+    ## ------------------------------------------------------------------- ###
+
     model_def   = [MODEL_NAME]        
     sim_output  = run_sim(model_def, simparam)
     error_params= [] 
-
-    fname_sim_out = '_'.join([model_def[0], 'noise_free', doe_method, 'DoE'])
+    noise_type  = 'noise_free' if model_def[1] is None else model_def[1]
+    print(model_def)
+    fname_sim_out = '_'.join(['Train', noise_type, doe_type])
     for idoe in np.arange(simparam.ndoe):
-        if doe_method.upper() == 'MC':
-            fname_sim_out_idoe = fname_sim_out+ r'{:d}'.format(idoe) 
-        else:
-            fname_sim_out_idoe = fname_sim_out+ r'{:d}'.format(doe_order[idoe]) 
-
         print('   ♦ {:<15s} : {:d} / {:d}'.format('DoE set', idoe, simparam.ndoe))
-        # print(sim_output_mcs[0][idoe].shape)
-        # print('idoe y output shape'.format([:].shape))
+
         x   = np.squeeze(np.array(simparam.sys_input_vars[idoe]))
         y   = np.squeeze(np.array(sim_output[0][idoe]))
         zeta= np.squeeze(np.array(simparam.sys_input_zeta[idoe]))
-        # print('x shape: {}'.format(x.shape))
-        # print('y shape: {}'.format(y.shape))
-        # print('z shape: {}'.format(zeta.shape))
         idoe_res =[x,y,zeta]
-
-        upload2gdrive(os.path.join(DATA_DIR,fname_sim_out_idoe), idoe_res, DATA_DIR_ID)
-
-
-        # ### Upload data to google drive
-        # upload2gdrive_command = ' '.join(['gdrive upload ', fname_sim_out_idoe+'.npy',' --parent ',DATA_DIR_ID])
-        # # os.system(upload2gdrive_command)
-        # out_message = os.popen(upload2gdrive_command).read()
-        # print('upload message: ' + out_message)
-        # rm_file_command = ' '.join(['rm ', fname_sim_out_idoe+'.npy'])
-        # os.system(rm_file_command)
-
-        print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
-        y_mcs_ecdf = get_exceedance_data(y, prob_failure=pf)
-        fname_sim_out_idoe_ecdf = fname_sim_out_idoe+ '_ecdf'
-        np.save(os.path.join(DATA_DIR, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
         error_params.append([0, 0.2*abs(y)])
 
+        if doe_method.upper() == 'MC':
+            fname_sim_out_idoe = fname_sim_out +r'{:d}'.format(idoe) 
+            #### Upload data to google drive
+            upload2gdrive(os.path.join(DATA_DIR,fname_sim_out_idoe), idoe_res, DATA_DIR_ID)   
+            ### Calculate Exceedance (ONLY for MCS sampling)         
+            print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
+            y_mcs_ecdf = get_exceedance_data(y, prob_failure=pf)
+            fname_sim_out_idoe_ecdf = fname_sim_out_idoe+ '_ecdf'
+            np.save(os.path.join(DATA_DIR, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
+
+        else:
+            fname_sim_out_idoe = fname_sim_out +r'{:d}'.format(doe_order[idoe])
+            print(os.path.join(DATA_DIR, fname_sim_out_idoe))         
+            np.save(os.path.join(DATA_DIR, fname_sim_out_idoe), idoe_res)
+
+    ## ------------------------------------------------------------------- ###
+    ##  Add noise case 
+    ## ------------------------------------------------------------------- ###
     model_def  = [MODEL_NAME, 'normal', error_params]        
     sim_output = run_sim(model_def, simparam)
-
-    # print(np.array(sim_output_mcs).shape)
-    # print(r'------------------------------------------------------------')
-    # print(r'►►► Save Data ')
-    # print(r'------------------------------------------------------------')
-    # print(r' ► Saving simulation data ...')
-
-    fname_sim_out = '_'.join([model_def[0], model_def[1], doe_method, 'DoE'])
+    noise_type  = 'noise_free' if model_def[1] is None else model_def[1]
+    fname_sim_out = '_'.join(['Train', noise_type, doe_type])
 
     for idoe in np.arange(simparam.ndoe):
-        if doe_method.upper() == 'MC':
-            fname_sim_out_idoe = fname_sim_out+ r'{:d}'.format(idoe) 
-        else:
-            fname_sim_out_idoe = fname_sim_out+ r'{:d}'.format(doe_order[idoe]) 
 
         print('   ♦ {:<15s} : {:d} / {:d}'.format('DoE set', idoe, simparam.ndoe))
         x   = np.squeeze(np.array(simparam.sys_input_vars[idoe]))
@@ -179,28 +174,22 @@ def main():
         zeta= np.squeeze(np.array(simparam.sys_input_zeta[idoe]))
         idoe_std = np.squeeze(error_params[idoe][1])
         idoe_mean= idoe_std * 0
-
         idoe_res =[x,y,zeta,idoe_mean, idoe_std]
 
-        upload2gdrive(os.path.join(DATA_DIR,fname_sim_out_idoe), idoe_res, DATA_DIR_ID)
-        # np.save(fname_sim_out_idoe+ '.npy', idoe_res)
+        if doe_method.upper() == 'MC':
+            fname_sim_out_idoe = fname_sim_out+ r'{:d}'.format(idoe) 
+            #### Upload data to google drive
+            upload2gdrive(os.path.join(DATA_DIR,fname_sim_out_idoe), idoe_res, DATA_DIR_ID)
+            #### Calculate Exceedance (ONLY for MCS sampling)
+            print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
+            y_mcs_ecdf = get_exceedance_data(y,prob_failure=pf)
+            fname_sim_out_idoe_ecdf = fname_sim_out_idoe+ '_ecdf'
+            np.save(os.path.join(DATA_DIR, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
+        else:
+            fname_sim_out_idoe = fname_sim_out+ r'{:d}'.format(doe_order[idoe]) 
+            np.save(os.path.join(DATA_DIR, fname_sim_out_idoe), idoe_res)
 
-        # ### Upload data to google drive
-        # upload2gdrive_command = ' '.join(['gdrive upload ', fname_sim_out_idoe+'.npy',' --parent ',DATA_DIR_ID])
-        # os.system(upload2gdrive_command)
-        # # out_message = os.popen(upload2gdrive_command).read()
-        # # print(len(out_message))
-        # rm_file_command = ' '.join(['rm ', fname_sim_out_idoe+'.npy'])
-        # os.system(rm_file_command)
 
-        print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
-        y_mcs_ecdf = get_exceedance_data(y,prob_failure=pf)
-        fname_sim_out_idoe_ecdf = fname_sim_out_idoe+ '_ecdf'
-        np.save(os.path.join(DATA_DIR, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
-        # np.save(rfname_mcs, y_pred_mcs_ecdf)
-        # print(np.round(zeta_mcs[:5],4))
-
-        # np.save(os.path.join(DATA_DIR, fname_sim_out_idoe_ecdf), idoe_res)
 
 if __name__ == '__main__':
     main()

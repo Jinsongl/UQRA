@@ -35,7 +35,7 @@ GDRIVE_DIR_ID = {
 
 def make_output_dir(MODEL_NAME):
     WORKING_DIR     = os.getcwd()
-    print(WORKING_DIR)
+    # print(WORKING_DIR)
     MODEL_DIR       = os.path.join(WORKING_DIR, MODEL_NAME)
     FIGURE_DIR= os.path.join(MODEL_DIR,r'Figures')
     # DATA_DIR  = os.path.join(MODEL_DIR,r'Data')
@@ -66,7 +66,7 @@ def main():
     ##  Parameters set-up 
     ## ------------------------------------------------------------------- ###
     pf                  = 1e-4              # Exceedence probability
-    data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
+    # data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
     data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
     MODEL_NAME          = 'Bench1'
     # model_def       = ['bench4']        # [solver function name, error_dist.name, [params], size]
@@ -133,9 +133,10 @@ def main():
     ##  Build surrogate model 
     ## ------------------------------------------------------------------- ###
 
-    noise_dir   = 'DATA_NOISE_FREE'
-    ndoe2train  = [10] 
-    data_file   = r'Bench1_noise_free.npy'
+    noise_dir   = 'DATA_NOISE_NORMAL'
+    noise_type  = 'normal'
+    ndoe2train  = [11,12,13,14,15] 
+    data_file   = r'Bench1_normal.npy'
     data_set    = np.load(os.path.join(DATA_DIR, data_file))
     x_samples   = data_set[0]
     y_samples   = data_set[1]
@@ -148,7 +149,8 @@ def main():
         ## ******************************************************************
 
         doe_type    = 'Quadrature_DoE'
-        train_data = np.load(os.path.join(DATA_DIR,noise_dir, r'Train_noise_free_'+doe_type+'{}.npy'.format(idoe)))
+        fname_train_in = '_'.join(['Train',noise_type, doe_type+'{}.npy'.format(idoe)])
+        train_data = np.load(os.path.join(DATA_DIR,noise_dir, fname_train_in))
         x_train    = np.squeeze(train_data[0][0])
         x_weight   = np.squeeze(train_data[0][1])
         zeta_weight= x_weight 
@@ -163,7 +165,7 @@ def main():
 
         metamodel_class, metamodel_basis = 'PCE', [idoe-1] 
         metamodel_params= {'cal_coeffs': 'GQ'}
-        fname_train     = '_'.join([metamodel_class, 'train_validation_test', doe_type])
+        fname_train_out = '_'.join([metamodel_class, 'train_validation_test', doe_type])
 
         pce_model   = metaModel(metamodel_class, metamodel_basis, dist_zeta, **metamodel_params)
         pce_model.fit_model(zeta_train[np.newaxis,:], y_train, weight=zeta_weight)
@@ -173,7 +175,7 @@ def main():
                         np.array(x_samples),
                         np.array(zeta_samples),
                         np.array(pce_model.predict(zeta_samples))]
-        np.save(os.path.join(DATA_DIR, fname_train + r'{:d}'.format(idoe)), train_data)
+        np.save(os.path.join(DATA_DIR, fname_train_out + r'{:d}'.format(idoe)), train_data)
 
         print('------------------------------------------------------------')
         print('►►► MCS with Surrogate Models')
@@ -187,28 +189,26 @@ def main():
             y_pred_mcs      = pce_model.predict(zeta_mcs)
 
             upload2gdrive(fname_mcs_path+r'{:d}'.format(r),  y_pred_mcs, DATA_DIR_ID)
-
             print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
             y_pred_mcs_ecdf = get_exceedance_data(y_pred_mcs, prob_failure=pf)
             rfname_mcs  = fname_mcs_path + '{:d}_ecdf'.format(r) + '.npy' 
             np.save(rfname_mcs, y_pred_mcs_ecdf)
-            # print(np.round(zeta_mcs[:5],4))
 
         # ******************************************************************
         # >>> Build GPR surrogate model
         # ******************************************************************
 
         doe_type    = 'Uniform_DoE'
-        train_data = np.load(os.path.join(DATA_DIR,noise_dir,\
-                r'Train_noise_free_'+doe_type+'{}.npy'.format(idoe)))
+        fname_train_in = '_'.join(['Train',noise_type, doe_type+'{}.npy'.format(idoe)])
+        train_data = np.load(os.path.join(DATA_DIR,noise_dir,fname_train_in))
         x_train    = np.squeeze(train_data[0])
         y_train    = np.squeeze(train_data[1])
         zeta_train = np.squeeze(train_data[2])
 
         kernels  = [20.0 * RBF(length_scale=1.0, length_scale_bounds=(1e-1, 10))]
         metamodel_class, metamodel_basis = 'GPR', kernels 
-        metamodel_params = {'n_restarts_optimizer':0}
-        fname_train  = '_'.join([metamodel_class, 'train_validation_test', doe_type])
+        metamodel_params = {'n_restarts_optimizer':10}
+        fname_train_out  = '_'.join([metamodel_class, 'train_validation_test', doe_type])
 
         gpr_model   = metaModel(metamodel_class, metamodel_basis, dist_zeta, **metamodel_params)
         gpr_model.fit_model(x_train[np.newaxis,:], y_train)
@@ -218,12 +218,12 @@ def main():
                         np.array(x_samples),
                         np.array(zeta_samples),
                         np.array(gpr_model.predict(x_samples[np.newaxis,:], return_std=True))]
-        np.save(os.path.join(DATA_DIR, fname_train + r'{:d}'.format(idoe)), train_data)
+        np.save(os.path.join(DATA_DIR, fname_train_out + r'{:d}'.format(idoe)), train_data)
 
         ## samples_y
         samples_x = np.sort(np.hstack((x_train, np.linspace(-5,20,1000))))
         samples_y = gpr_model.sample_y(samples_x[np.newaxis,:], n_samples=10)
-        np.save(os.path.join(DATA_DIR, fname_train + r'{:d}_sample_y'.format(idoe)), samples_y)
+        np.save(os.path.join(DATA_DIR, fname_train_out + r'{:d}_sample_y'.format(idoe)), samples_y)
 
         ## Calculate log marginal likelihood at specified theta values
         res = 100
@@ -231,9 +231,8 @@ def main():
         noise_level    = np.logspace(0,3,res)
         theta          = [noise_level,length_scale]
         lml_theta_grid = gpr_model.log_marginal_likelihood(theta)
-        np.save(os.path.join(DATA_DIR, fname_train + r'{:d}_lml'.format(idoe)), lml_theta_grid)
-
-        np.save(os.path.join(DATA_DIR, fname_train + r'{:d}_params'.format(idoe)), gpr_model.metamodel_coeffs)
+        np.save(os.path.join(DATA_DIR, fname_train_out + r'{:d}_lml'.format(idoe)), lml_theta_grid)
+        np.save(os.path.join(DATA_DIR, fname_train_out + r'{:d}_params'.format(idoe)), gpr_model.metamodel_coeffs)
 
 
         print('------------------------------------------------------------')

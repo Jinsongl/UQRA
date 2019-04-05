@@ -9,7 +9,7 @@
 """
 
 """
-import os
+import os,sys
 import numpy as np
 
 
@@ -18,6 +18,13 @@ def upload2gdrive(filename, data, parent_id):
     upload file specified with filename to google drive under folder with id parent_id. 
     If upload successfully, delete filename from local. Otherwise, try 5 more times and keep filename locally 
     """
+    current_os  = sys.platform
+    if current_os.upper()[:3] == 'WIN':
+        gdrive= "C:\Software\gdrive.exe "
+    elif current_os.upper() == 'DARWIN':
+        gdrive = "gdrive "
+    else:
+        raise ValueError('Operating system {} not found'.format(current_os)) 
 
     filename_name, filename_ext = os.path.splitext(filename)
     filename_ext = filename_ext if filename_ext else '.npy'
@@ -29,7 +36,7 @@ def upload2gdrive(filename, data, parent_id):
 
     print('   ♦ {:<15s} : {}'.format('Uploading', filename[26:]))
     while (not upload_success) and n_times2upload <=5:
-        command = ' '.join(['gdrive upload ', filename,' --parent ', parent_id])
+        command = ' '.join([gdrive, 'upload ', filename,' --parent ', parent_id])
         upload_message = os.popen(command).read().upper()
 
         if 'UPLOADED' in upload_message: 
