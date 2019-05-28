@@ -62,7 +62,7 @@ def solver_wrapper(solver_name, simParams, sys_input_vars, error_type, sys_def_p
         y = solver(time_max,dt,x0,v0,zeta,omega0,add_f=sys_input_vars[0],*sys_input_vars[1:])
 
     elif solver.__name__.upper() == 'ISHIGAMI':
-        p = sys_def_params if sys_def_params else 2
+        p = sys_def_params if sys_def_params else [7,0.1]
         x = sys_input_vars
         y = solver(x, p=p)
 

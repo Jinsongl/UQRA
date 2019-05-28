@@ -34,8 +34,17 @@ GDRIVE_DIR_ID = {
         }
 
 def make_output_dir(MODEL_NAME):
+    """
+    WORKING_DIR/
+    +-- MODEL_DIR
+    |   +-- FIGURE_DIR
+
+    /directory saving data depends on OS/
+    +-- MODEL_DIR
+    |   +-- DATA_DIR
+
+    """
     WORKING_DIR     = os.getcwd()
-    # print(WORKING_DIR)
     MODEL_DIR       = os.path.join(WORKING_DIR, MODEL_NAME)
     FIGURE_DIR= os.path.join(MODEL_DIR,r'Figures')
     # DATA_DIR  = os.path.join(MODEL_DIR,r'Data')
@@ -68,7 +77,8 @@ def main():
     pf                  = 1e-4              # Exceedence probability
     # data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
     data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
-    MODEL_NAME          = 'Bench1'
+    MODEL_NAME          = 'Ishigami'
+    # MODEL_NAME          = 'Bench1'
     # model_def       = ['bench4']        # [solver function name, error_dist.name, [params], size]
     # model_def       = [MODEL_NAME,'normal']        # [solver function name, error_dist.name, [params], size]
     DATA_DIR_ID,DATA_DIR,FIGURE_DIR = make_output_dir(MODEL_NAME)
@@ -78,12 +88,14 @@ def main():
     ## ------------------------------------------------------------------- ###
     ## >>> 1. Choose Wiener-Askey scheme random variable
     dist_zeta = cp.Normal(0,1)  # shape=1, scale=1, shift=0
+    dist_zeta = cp.J(cp.Normal(0,1),cp.Normal(0,1),cp.Normal(0,1))  # shape=1, scale=1, shift=0
 
     ## >>> 2. If transformation needed, like Rosenblatt, need to be done here
     ## Perform Rosenblatt etc
 
     ## >>> 3. Define independent random variable in physical problems
     dist_x = cp.Normal(5,2) # normal mean = 0, normal std=0.25
+    dist_x = cp.J(cp.Normal(-np.pi, -np.pi), cp.Normal(-np.pi, -np.pi),cp.Normal(-np.pi, -np.pi)) # normal mean = 0, normal std=0.25
 
     np.random.seed(3)
     ## ------------------------------------------------------------------- ###

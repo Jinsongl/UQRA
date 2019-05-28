@@ -140,7 +140,7 @@ def run_sim(model_def, simParams):
     print('   ♦ Job list: [{:^20} {:^20}]'.format('# Sys params sets', '# DoE sets'))
     print('   ♦ Target  : [{:^20d} {:^20d}]'.format(len(simParams.sys_def_params), simParams.ndoe))
     print('   ' + '·'*55)
-    for isys_def_params in simParams.sys_def_params:
+    for isys_def_params in simParams.sys_def_params: 
         NSYS_DONE += 1 
         run_sim_1doe_res = []
         for idoe, sys_input_vars_1doe in enumerate(simParams.sys_input_vars):

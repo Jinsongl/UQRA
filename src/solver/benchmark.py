@@ -87,7 +87,7 @@ def ishigami(x, p=None):
     """
     x = np.array(x)
     p = p or [7, 0.1]
-    assert x.shape[0] == int(3), 'x.shape={}'.format(x.shape)
+    assert x.shape[0] == int(3), 'Ishigami function expecting 3 random variables, {} given'.format(x.shape[0])
 
     if x.ndim == 1:
         y = np.sin(x[0]) + p[0] * np.sin(x[1])**2 + p[1]*x[2]**4 * np.sin(x[0])

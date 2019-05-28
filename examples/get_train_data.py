@@ -28,10 +28,21 @@ GDRIVE_DIR_ID = {
         'BENCH1': '1d1CRxZ00f4CiwHON5qT_0ijgSGkSbfqv',
         'BENCH4': '15KqRCXBwTTdHppRtDjfFZtmZq1HNHAGY',
         'BENCH3': '1TcVfZ6riXh9pLoJE9H8ZCxXiHLH_jigc',
+        'ISHIGAMI': '1dlbpmHBBahbXP_IzD5ZPUYnR9p0U2_rP',
         }
 
 
 def make_output_dir(MODEL_NAME):
+    """
+    WORKING_DIR/
+    +-- MODEL_DIR
+    |   +-- FIGURE_DIR
+
+    /directory saving data depends on OS/
+    +-- MODEL_DIR
+    |   +-- DATA_DIR
+
+    """
     WORKING_DIR     = os.getcwd()
     MODEL_DIR       = os.path.join(WORKING_DIR, MODEL_NAME)
     FIGURE_DIR= os.path.join(MODEL_DIR,r'Figures')
@@ -48,13 +59,22 @@ def make_output_dir(MODEL_NAME):
     MODEL_DIR_DATA_ID = GDRIVE_DIR_ID[MODEL_NAME.upper()] 
 
     # Create directory for model  
+    print('------------------------------------------------------------')
+    print('►►► Making directories for model {}'.format(MODEL_NAME))
+    print('------------------------------------------------------------')
     try:
         os.makedirs(MODEL_DIR)
         os.makedirs(DATA_DIR)
         os.makedirs(FIGURE_DIR)
+        # print('Data, Figure directories for model {} is created'.format(MODEL_NAME))
     except FileExistsError:
         # one of the above directories already exists
+        # print('Data, Figure directories for model {} already exist'.format(MODEL_NAME))
         pass
+    print('WORKING_DIR: {}'.format(WORKING_DIR))
+    print('+-- MODEL: {}'.format(MODEL_DIR))
+    print('|   +-- {:<6s}: {}'.format('FIGURE',FIGURE_DIR))
+    print('|   +-- {:<6s}: {}'.format('DATA',DATA_DIR))
     return MODEL_DIR_DATA_ID, DATA_DIR, FIGURE_DIR
 
 
@@ -66,19 +86,36 @@ def main():
     pf                  = 1e-4              # Exceedence probability
     # data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
     # data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
-    MODEL_NAME          = 'Bench1'
+    MODEL_NAME          = 'Ishigami'
+    # MODEL_NAME          = 'BENCH1'
     DATA_DIR_ID, DATA_DIR, _ =  make_output_dir(MODEL_NAME)
     ## ------------------------------------------------------------------- ###
     ##  Define Solver parameters ###
     ## ------------------------------------------------------------------- ###
     ## >>> 1. Choose Wiener-Askey scheme random variable
-    dist_zeta = cp.Normal(0,1)  # shape=1, scale=1, shift=0
+    ##            # |   zeta    | Wiener-Askey chaos | support
+    ## # ==============================================================
+    ## # Continuous | Gaussian  | Hermite-chaos      |  (-inf, inf)
+    ##              | Gamma     | Laguerre-chaos     |  [0, inf ) 
+    ##              | Beta      | Jacobi-chaos       |  [a,b] 
+    ##              | Uniform   | Legendre-chaos     |  [a,b] 
+    ## # --------------------------------------------------------------
+    ## # Discrete   | Poisson   | 
+    ##              | Binomial  | 
+    ##              | - Binomial| 
+    ##              | hypergeometric
+    ## 
+    ## dist_zeta = cp.Normal(0,1)  # shape=1, scale=1, shift=0
+    dist_zeta = cp.Normal(0,1)
+    dist_zeta = cp.Iid(dist_zeta,3) 
 
     ## >>> 2. If transformation needed, like Rosenblatt, need to be done here
     ## Perform Rosenblatt etc
 
     ## >>> 3. Define independent random variable in physical problems
-    dist_x = cp.Normal(5,2) # normal mean = 0, normal std=0.25
+    # dist_x = cp.Normal(5,2) # normal mean = 0, normal std=0.25
+    dist_x = cp.Uniform(-np.pi, np.pi)
+    dist_x = cp.Iid(dist_x,3) 
 
     # np.random.seed(100)
     # ## ------------------------------------------------------------------- ###
@@ -98,7 +135,7 @@ def main():
     # fix_simparam.set_doe_samples(x_samples, dist_x)
     # zeta_samples= fix_simparam.sys_input_zeta[0]
 
-    # ##>>> 2. Monte Carlo:
+    ##>>> 2. Monte Carlo:
     doe_method, doe_rule, doe_order = 'MC','R', [int(1e7)]*10
     doe_params  = [doe_method, doe_rule, doe_order]
     mc_simparam = simParameter(dist_zeta, doe_params = doe_params)
@@ -107,6 +144,8 @@ def main():
     # ## >>> 3. Quadrature:
     # doe_method, doe_rule, doe_order = 'GQ','hermite',[10,11,12,13,14,15]
     # doe_params      = [doe_method, doe_rule, doe_order]
+    # # ishigami_consts = [np.array([7,0.1]).reshape(2,1)]
+    # # quad_simparam   = simParameter(dist_zeta, doe_params = doe_params, sys_def_params=ishigami_consts)
     # quad_simparam   = simParameter(dist_zeta, doe_params = doe_params)
     # quad_simparam.get_doe_samples(dist_x)
 
