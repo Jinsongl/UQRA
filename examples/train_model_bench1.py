@@ -71,8 +71,6 @@ def make_output_dir(MODEL_NAME):
     DATA_DIR  = os.path.join(DATA_DIR,MODEL_NAME,r'Data')
     MODEL_DIR_DATA_ID = get_gdrive_folder_id(MODEL_NAME.upper())
 
-
-
     # Create directory for model  
     print('------------------------------------------------------------')
     print('►►► Making directories for model {}'.format(MODEL_NAME))
