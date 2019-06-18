@@ -99,7 +99,7 @@ def main():
     prob_failures        = [1e-3, 1e-4, 1e-5, 1e-6]              # Exceedence probability
     # data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
     data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
-    MODEL_NAME          = 'Bench4'
+    MODEL_NAME          = 'Bench1'
     # model_def       = ['bench4']        # [solver function name, error_dist.name, [params], size]
     # model_def       = [MODEL_NAME,'normal']        # [solver function name, error_dist.name, [params], size]
     DATA_DIR_ID,DATA_DIR,FIGURE_DIR = make_output_dir(MODEL_NAME)
@@ -136,7 +136,7 @@ def main():
     noise_type  = '' ## '' (blank) if noise free else name of noise distribution 
     ndoe2train  = [10] 
     # basis_kernel=['Kernels'] # For Kriging
-    data_file   = r'bench4_realization_noise_free.npy'
+    data_file   = r'bench1_realization_noise_free.npy'
     data_set    = np.load(os.path.join(DATA_DIR, data_file))
     x_samples   = data_set[0]
     y_samples   = data_set[1]
