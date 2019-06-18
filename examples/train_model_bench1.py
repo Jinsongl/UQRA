@@ -134,7 +134,7 @@ def main():
 
     noise_dir   = 'DATA_NOISE_FREE' ## DATA_NOISE_FREE or DATA_NOISE_'name'
     noise_type  = '' ## '' (blank) if noise free else name of noise distribution 
-    ndoe2train  = [10] 
+    ndoe2train  = [10,11,12,13,14,15] 
     # basis_kernel=['Kernels'] # For Kriging
     data_file   = r'bench1_realization_noise_free.npy'
     data_set    = np.load(os.path.join(DATA_DIR, data_file))
@@ -158,7 +158,7 @@ def main():
         zeta_train = np.squeeze(train_data[2][0])
 
         ## Build PCE model with different basis orders
-        metamodel_class, metamodel_basis = 'PCE', [2,3,4] 
+        metamodel_class, metamodel_basis = 'PCE', [idoe-1] 
         metamodel_params= {'cal_coeffs': 'GQ'}
         fname_train_out = '_'.join(['TrainRes',metamodel_class,doe_type])
         pce_model   = metaModel(metamodel_class, metamodel_basis, dist_zeta, **metamodel_params)
