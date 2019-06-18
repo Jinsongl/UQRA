@@ -34,7 +34,8 @@ def upload2gdrive(filename, data, parent_id):
     upload_success = False
     n_times2upload = 1 
 
-    print('   ♦ {:<15s} : {}'.format('Uploading', filename[26:]))
+    # print('   ♦ {:<15s} : {}'.format('Uploading', filename[26:]))
+    print('   ♦ {:<15s} : {}'.format('Uploading', filename))
     while (not upload_success) and n_times2upload <=5:
         command = ' '.join([gdrive, 'upload ', filename,' --parent ', parent_id])
         upload_message = os.popen(command).read().upper()

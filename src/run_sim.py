@@ -64,15 +64,16 @@ def run_sim(model_def, simParams):
             3. inputs for the sys_input_func_name to generate time series
     Arguments:
         model_def: [solver function name, short-term distribution name, [params], size]
-        return [*.ndofs] array. Each column is a time series for specified channel
         simParams: simParameter class object
 
     Return:
         List of simulation results (Different doe_order, sample size would change, so return list)
-
-        1. len(res) = len(doe_order)
-        2. For each element in res: [#source args sets, # sys parameter sets, returns from solver]
-        3. Return from solver 
+        if more than one set of system params: 
+          - output      = [sys_params0,  sys_params1,  ... ]
+          -- sys_param0 = [sim_res_DoE0, sim_res_DoE1, sim_res_DoE2,... ]
+        1. len(res) = len(sys_def_params) 
+        2. For each element in res: simulation results from 1 DoE set
+        3. Return from solver:
             a). [*, ndofs]
                 each column represents a time series for one dof
             b). 
@@ -156,7 +157,12 @@ def run_sim(model_def, simParams):
             print('   ♦ Achieved: [{:^20d} {:^20d}]'.format(NSYS_DONE,NDOE_DONE))
             run_sim_1doe_res.append(y)
         run_sim_res.append(run_sim_1doe_res)
-    print(' ► Simulation Done' )
+    ## 
+    if len(run_sim_res) ==1:
+        run_sim_res = run_sim_res[0]
+    if len(run_sim_res) ==1:
+        run_sim_res = run_sim_res[0]
+    print(' ► Simulation Done, Output length: {}'.format(len(run_sim_res)) )
     return run_sim_res
 
 

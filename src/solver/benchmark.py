@@ -96,6 +96,9 @@ def ishigami(x, p=None):
     return y
 
 def bench1(x, error_type):
+    """
+    y = x*sin(x) + e
+    """
     x = np.array(x)
     e = gen_error(error_type)
     y = x * np.sin(x)
@@ -104,6 +107,9 @@ def bench1(x, error_type):
     return np.squeeze(y)
 
 def bench2(x, error_type):
+    """
+    y = x^2 * sin(x) + e
+    """
     x = np.array(x)
     e = gen_error(error_type)
     y = x**2*np.sin(5*x)
@@ -111,6 +117,9 @@ def bench2(x, error_type):
     return y
 
 def bench3(x, error_type):
+    """
+    y = sin(pi/5 * x) + 0.2 * cos(0.8 * pi * x)
+    """
     x = np.array(x)
     e = gen_error(error_type)
     y = np.sin(np.pi/5.0 * x) + 1/5.0 * np.cos(4*np.pi*x/5.0) 
@@ -118,6 +127,9 @@ def bench3(x, error_type):
     return y
 
 def bench4(x, error_type):
+    """
+    y = -5*x + 2.5*x^2 -0.36*x^3 + 0.015*x^4
+    """
     x = np.array(x)
     e = gen_error(error_type)
     y = -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4

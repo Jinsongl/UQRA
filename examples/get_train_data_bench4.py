@@ -31,11 +31,6 @@ def get_gdrive_folder_id(folder_name):
     If not, create one and return the google drive ID
     Else: return folder ID directly
     """
-    # GDRIVE_DIR_ID = {
-            # 'BENCH1': '1d1CRxZ00f4CiwHON5qT_0ijgSGkSbfqv',
-            # 'BENCH4': '15KqRCXBwTTdHppRtDjfFZtmZq1HNHAGY',
-            # 'BENCH3': '1TcVfZ6riXh9pLoJE9H8ZCxXiHLH_jigc',
-            # }
     command = os.path.join('/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA', folder_name)
     try:
         os.makedirs(command)
@@ -83,10 +78,8 @@ def make_output_dir(MODEL_NAME):
         os.makedirs(MODEL_DIR)
         os.makedirs(DATA_DIR)
         os.makedirs(FIGURE_DIR)
-        # print('Data, Figure directories for model {} is created'.format(MODEL_NAME))
     except FileExistsError:
         # one of the above directories already exists
-        # print('Data, Figure directories for model {} already exist'.format(MODEL_NAME))
         pass
     print('WORKING_DIR: {}'.format(WORKING_DIR))
     print('+-- MODEL: {}'.format(MODEL_DIR))
@@ -100,10 +93,11 @@ def main():
     ## ------------------------------------------------------------------- ###
     ##  Parameters set-up 
     ## ------------------------------------------------------------------- ###
-    prob_failures         = [1e-3, 1e-4, 1e-5, 1e-6] # Exceedence probability
-    # data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
-    # data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
-    MODEL_NAME          = 'Ishigami'
+    prob_failures       = [1e-3, 1e-4, 1e-5, 1e-6] # Exceedence probability
+    data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
+    data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
+    MODEL_NAME          = 'BENCH4'
+    # MODEL_NAME          = 'Ishigami'
     # MODEL_NAME          = 'BENCH1'
     DATA_DIR_ID, DATA_DIR, _ =  make_output_dir(MODEL_NAME)
     ## ------------------------------------------------------------------- ###
@@ -122,38 +116,38 @@ def main():
     ##              | - Binomial| 
     ##              | hypergeometric
     ## 
-    ## dist_zeta = cp.Normal(0,1)  # shape=1, scale=1, shift=0
-    dist_zeta = cp.Uniform(0,1)
-    dist_zeta = cp.Iid(dist_zeta,3) 
+    dist_zeta = cp.Normal(0,1)  # shape=1, scale=1, shift=0
+    # dist_zeta = cp.Uniform(0,1)
+    # dist_zeta = cp.Iid(dist_zeta,3) 
 
     ## >>> 2. If transformation needed, like Rosenblatt, need to be done here
     ## Perform Rosenblatt etc
 
     ## >>> 3. Define independent random variable in physical problems
-    # dist_x = cp.Normal(5,2) # normal mean = 0, normal std=0.25
-    dist_x = cp.Uniform(-np.pi, np.pi)
-    dist_x = cp.Iid(dist_x,3) 
+    dist_x = cp.Normal(5,2) # normal mean = 0, normal std=0.25
+    # dist_x = cp.Uniform(-np.pi, np.pi)
+    # dist_x = cp.Iid(dist_x,3) 
 
     # ## ------------------------------------------------------------------- ###
     # ##  Design of Experiments (DoEs) 
     # ## ------------------------------------------------------------------- ###
     # ## example:
 
-    # ## >>> 1. Fixed point:
-    # doe_method, doe_rule, doe_order = 'FIX','FIX', [10, 11,12,13,14,15]
+    ## >>> 1. Fixed point:
+    # doe_method, doe_rule, doe_order = 'FIX','FIX', [1000]
     # doe_params  = [doe_method, doe_rule, doe_order]
     # fix_simparam= simParameter(dist_zeta, doe_params=doe_params)
     # rng         = np.random.RandomState(3)
     # x_samples   = []
     # for idoe in doe_order:
-        # x_samples.append([rng.uniform(-5,15, idoe)[np.newaxis, :]])
-    # # x_samples   = [np.linspace(-5,14,10)[np.newaxis, :]]
+        # # x_samples.append([rng.uniform(-5,15, idoe)[np.newaxis, :]])
+        # x_samples.append([np.linspace(-5,15, idoe)[np.newaxis, :]])
     # fix_simparam.set_doe_samples(x_samples, dist_x)
-    # zeta_samples= fix_simparam.sys_input_zeta[0]
+    # # zeta_samples= fix_simparam.sys_input_zeta[0]
 
     ##>>> 2. Monte Carlo:
     np.random.seed(100)
-    doe_method, doe_rule, doe_order = 'MC','R', [int(1e7)]
+    doe_method, doe_rule, doe_order = 'MC','R', [int(1e7)]*10
     doe_params  = [doe_method, doe_rule, doe_order]
     mc_simparam = simParameter(dist_zeta, doe_params = doe_params)
     mc_simparam.get_doe_samples(dist_x)
@@ -161,60 +155,74 @@ def main():
     # ## >>> 3. Quadrature:
     # doe_method, doe_rule, doe_order = 'GQ','hermite',[10,11,12,13,14,15]
     # doe_params      = [doe_method, doe_rule, doe_order]
-    # # ishigami_consts = [np.array([7,0.1]).reshape(2,1)]
-    # # quad_simparam   = simParameter(dist_zeta, doe_params = doe_params, sys_def_params=ishigami_consts)
+    # ishigami_consts = [np.array([7,0.1]).reshape(2,1)]
+    # quad_simparam   = simParameter(dist_zeta, doe_params = doe_params, sys_def_params=ishigami_consts)
     # quad_simparam   = simParameter(dist_zeta, doe_params = doe_params)
     # quad_simparam.get_doe_samples(dist_x)
 
-    ## ------------------------------------------------------------------- ###
-    ##  Run simulation 
-    ## ------------------------------------------------------------------- ###
-    ## model_name, error_type_name, error_type_params, error_type_size = model_def
-    ## run_sim output [isys_def_params, idoe, [solver output]]
-    ## [solver function name, error_dist.name, [params], size]
+    # ## ------------------------------------------------------------------- ###
+    # ##  Create simulation parameter 
+    # ## ------------------------------------------------------------------- ###
+
+
     # simparam    = fix_simparam
     # doe_type    = 'Uniform_DoE'
-    # doe_type    = 'Linspace_DoE'        
+    # doe_type    = 'DoE_Linspace'        
     simparam    = mc_simparam
-    doe_type    = 'MCS'+'{:.0E}'.format(doe_order[0])[-1] +'_DoE'
+    doe_type    = 'DoE_MCS'+'{:.0E}'.format(doe_order[0])[-1] 
     # simparam    = quad_simparam
-    # doe_type    = 'Quadrature_DoE'
+    # doe_type    = 'DoE_Quadrature'
 
     ## ------------------------------------------------------------------- ###
     ##  Noise Free case 
     ## ------------------------------------------------------------------- ###
 
+    ## ------------------------------------------------------------------- ###
+    ## >>> Define model parameters and simulation parameters
+    ## run_sim(model_def, simparam)
+    ##  - model_def: [solver function name, 
+    ##              short-term distribution/error name, 
+    ##              [error params], error size]
+    ##  - simparam: simParameter class object
+    ## run_sim output [isys_def_params, idoe, [solver output]]
+    ##  - output = [sys_params0,sys_params1,... ]
+    ##  - sys_param0 = [sim_res_DoE0, sim_res_DoE1,sim_res_DoE2,... ]
+    ## ------------------------------------------------------------------- ###
     model_def   = [MODEL_NAME]        
     sim_output  = run_sim(model_def, simparam)
+
+    ## Define output file names
     error_params= [] 
-    noise_type  = 'noise_free' if model_def[1] is None else model_def[1]
-    print(model_def)
-    fname_sim_out = '_'.join(['Train', noise_type, doe_type])
+    noise_type  = '' if model_def[1] is None else model_def[1]
+    fname_sim_out = '_'.join(['TrainData', noise_type, doe_type])
+
+    ## If DoE method is MCS, calculate ECDF of samples
+    y_mcs_ecdf = [[] for _ in range(len(prob_failures))]
     for idoe in np.arange(simparam.ndoe):
         print('   ♦ {:<15s} : {:d} / {:d}'.format('DoE set', idoe, simparam.ndoe))
-
         x   = np.squeeze(np.array(simparam.sys_input_vars[idoe]))
-        y   = np.squeeze(np.array(sim_output[0][idoe]))
+        y   = np.squeeze(np.array(sim_output[idoe]))
         zeta= np.squeeze(np.array(simparam.sys_input_zeta[idoe]))
         idoe_res =[x,y,zeta]
-        error_params.append([0, 0.2*abs(y)])
+        # error_params.append([0, 0.2*abs(y)])
 
         if doe_method.upper() == 'MC':
-            fname_sim_out_idoe = fname_sim_out +r'{:d}'.format(idoe) 
+            fname_sim_out_idoe = fname_sim_out +r'_R{:d}'.format(idoe) 
             #### Upload data to google drive
-            upload2gdrive(os.path.join(DATA_DIR,fname_sim_out_idoe), idoe_res, DATA_DIR_ID)   
-            ### Calculate Exceedance (ONLY for MCS sampling)         
-            print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
-            for pf in prob_failures:
-                y_mcs_ecdf = get_exceedance_data(y, prob_failure=pf)
-                fname_sim_out_idoe_ecdf = fname_sim_out_idoe+ '_pf' + '{:.0E}'.format(pf)[-1] + '_ecdf'
-                np.save(os.path.join(DATA_DIR, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
-
+            # upload2gdrive(os.path.join(DATA_DIR,fname_sim_out_idoe), idoe_res, DATA_DIR_ID)   
+            for ipf, pf in enumerate(prob_failures):
+                ### Calculate Exceedance (ONLY for MCS sampling)         
+                print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
+                y_mcs_ecdf[ipf].append(get_exceedance_data(y, prob_failure=pf))
         else:
             fname_sim_out_idoe = fname_sim_out +r'{:d}'.format(doe_order[idoe])
             print(os.path.join(DATA_DIR, fname_sim_out_idoe))         
             np.save(os.path.join(DATA_DIR, fname_sim_out_idoe), idoe_res)
 
+    ### Save Exceedence values for MCS
+    for ipf, pf in enumerate(prob_failures):
+        fname_ipf_ecdf = '_'.join(['Ecdf_pf'+'{:.0E}'.format(pf)[-1], 'MCS'+'{:.0E}'.format(doe_order[0])[-1]])  
+        np.save(os.path.join(DATA_DIR, fname_ipf_ecdf), y_mcs_ecdf[ipf]) if y_mcs_ecdf[0] else pass
     # ## ------------------------------------------------------------------- ###
     # ##  Add noise case 
     # ## ------------------------------------------------------------------- ###

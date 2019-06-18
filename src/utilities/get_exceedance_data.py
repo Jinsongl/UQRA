@@ -12,24 +12,42 @@
 import warnings
 import numpy as np
 import collections
+import time
 from statsmodels.distributions.empirical_distribution import ECDF
 
 Ecdf2plot = collections.namedtuple('Ecdf2plot', ['x','y'])
 
+
 def get_exceedance_data(x,prob_failure=None):
+    """
+    Return
+    If x is 2d array, get exceedance column wise
+
+
+    """
+    exceedance = []
+    if x.ndim == 1:
+        exceedance = _get_exceedance_data(x, prob_failure=prob_failure)
+    elif x.ndim == 2:
+        for ix_col in x:
+            exceedance.append(_get_exceedance_data(ix_col, prob_failure=prob_failure))
+
+    return exceedance
+
+
+def _get_exceedance_data(x,prob_failure=None):
     """
     return sub data set retrieved from data set x
 
     data size: 1/(prob_failure * 10) to end
     """
-
     x_ecdf = ECDF(x)
     n_samples = len(x_ecdf.x)
     prob_failure = 1e-3 if prob_failure is None else prob_failure
 
     if n_samples <= 1.0/prob_failure:
         exceedance = (x_ecdf.x, x_ecdf.y, x_ecdf.y)
-        warnings.warn('Warning: not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(n_samples, prob_failure))
+        warnings.warn('\n Not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(n_samples, prob_failure))
     else:
         exceedance_index = -int(prob_failure * n_samples)
         exceedance_value = x_ecdf.x[exceedance_index]
@@ -42,19 +60,6 @@ def get_exceedance_data(x,prob_failure=None):
         y  = np.hstack((y1,y2))
         v  = exceedance_value * np.ones(x.shape)
         exceedance = (x,y,v) 
-
-
-
-        # prob_failure_exp    = int(np.log10(prob_failure))
-        # prob_failure        = 10**(prob_failure_exp)
-        # window_length_half  = int(prob_failure * n_samples)
-        # indx1 = np.logspace(0, prob_failure_exp, window_length_half, dtype=np.int32)
-        # indx2 = np.arange(n_samples-window_length_half, n_samples, dtype=np.int32)
-        # indx  = np.hstack((indx1,indx2))
-        # exceedance = Ecdf2plot(x_ecdf.x[indx], x_ecdf.y[indx])
-        # indx_end = int(10/ prob_failure) 
-        # exceedance = Ecdf2plot(x_ecdf.x[:indx_end], x_ecdf.y[:indx_end])
-
     return exceedance
 
 

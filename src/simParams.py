@@ -59,7 +59,6 @@ class simParameter(object):
         self.doe_method = DOE_METHOD_NAMES.get(doe_params[0])
         self.doe_rule   = doe_params[1]
         self.doe_order  = []
-        ## Why not list of int? [1], [1,2,3] something iteratable
         if np.isscalar(doe_params[2]): 
             self.doe_order.append(int(doe_params[2]))
         else:
@@ -107,6 +106,7 @@ class simParameter(object):
     # def set_nsamples_need(self, n):
         # self.nsamples_need= n
         # self.doe_method = xrange(self.nsamples_need)
+
     def get_doe_samples_zeta(self, samp_phy=None, dist_phy=None):
         """
         Return design sample points both in zeta spaces based on specified doe_method
