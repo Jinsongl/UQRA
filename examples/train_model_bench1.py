@@ -63,6 +63,8 @@ def make_output_dir(MODEL_NAME):
         DATA_DIR= "G:\My Drive\MUSE_UQ_DATA"
     elif current_os.upper() == 'DARWIN':
         DATA_DIR= '/Users/jinsongliu/External/MUSE_UQ_DATA'
+    elif current_os.upper() == 'LINUX':
+        DATA_DIR= '/home/jinsong/Box/MUSE_UQ_DATA'
     else:
         raise ValueError('Operating system {} not found'.format(current_os))
 

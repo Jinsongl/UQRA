@@ -145,19 +145,19 @@ def main():
     # # zeta_samples= fix_simparam.sys_input_zeta[0]
 
     ##>>> 2. Monte Carlo:
-    np.random.seed(100)
-    doe_method, doe_rule, doe_order = 'MC','R', [int(1e7)]*10
-    doe_params  = [doe_method, doe_rule, doe_order]
-    mc_simparam = simParameter(dist_zeta, doe_params = doe_params)
-    mc_simparam.get_doe_samples(dist_x)
+    # np.random.seed(100)
+    # doe_method, doe_rule, doe_order = 'MC','R', [int(1e7)]*10
+    # doe_params  = [doe_method, doe_rule, doe_order]
+    # mc_simparam = simParameter(dist_zeta, doe_params = doe_params)
+    # mc_simparam.get_doe_samples(dist_x)
 
-    # ## >>> 3. Quadrature:
-    # doe_method, doe_rule, doe_order = 'GQ','hermite',[10,11,12,13,14,15]
-    # doe_params      = [doe_method, doe_rule, doe_order]
-    # ishigami_consts = [np.array([7,0.1]).reshape(2,1)]
+    ## >>> 3. Quadrature:
+    doe_method, doe_rule, doe_order = 'GQ','hermite',[10,11,12,13,14,15]
+    doe_params      = [doe_method, doe_rule, doe_order]
+    ### ishigami_consts = [np.array([7,0.1]).reshape(2,1)]
     # quad_simparam   = simParameter(dist_zeta, doe_params = doe_params, sys_def_params=ishigami_consts)
-    # quad_simparam   = simParameter(dist_zeta, doe_params = doe_params)
-    # quad_simparam.get_doe_samples(dist_x)
+    quad_simparam   = simParameter(dist_zeta, doe_params = doe_params)
+    quad_simparam.get_doe_samples(dist_x)
 
     # ## ------------------------------------------------------------------- ###
     # ##  Create simulation parameter 
@@ -167,10 +167,10 @@ def main():
     # simparam    = fix_simparam
     # doe_type    = 'Uniform_DoE'
     # doe_type    = 'DoE_Linspace'        
-    simparam    = mc_simparam
-    doe_type    = 'DoE_MCS'+'{:.0E}'.format(doe_order[0])[-1] 
-    # simparam    = quad_simparam
-    # doe_type    = 'DoE_Quadrature'
+    # simparam    = mc_simparam
+    # doe_type    = 'DoE_MCS'+'{:.0E}'.format(doe_order[0])[-1] 
+    simparam    = quad_simparam
+    doe_type    = 'DoE_Quadrature'
 
     ## ------------------------------------------------------------------- ###
     ##  Noise Free case 
