@@ -75,7 +75,7 @@ class simParameter(object):
         self.outdir_name    = ''
         self.outfile_name   = ''
         self.sys_def_params = sys_def_params
-        # [sys_input_func_name, sys_input_kwargs, sys_input_vars]
+        # sys_input_params = [sys_input_func_name, sys_input_kwargs, sys_input_vars]
         self.sys_input_params = [None, None, []]
 
     def set_doe_method(self,doe_method):
