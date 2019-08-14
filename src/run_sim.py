@@ -101,9 +101,10 @@ def run_sim(model_def, simParams):
     print(' ► Solver (system) properties:')
     print('   ♦ {:<17s} : {:15s}'.format('Solver name', model_name))
 
-    if simParams.sys_def_params[0]:
+    if simParams.sys_def_params:
         print('   ♦ System definition parameters: ndim={}, nsets={:d}'\
-                .format(simParams.sys_def_params[0].shape, len(simParams.sys_def_params)))
+                .format(simParams.sys_def_params.shape[1], simParams.sys_def_params.shape[0]))
+                # .format(simParams.sys_def_params.shape[0], len(simParams.sys_def_params)))
     else:
         print('   ♦ System definition parameters: NA ' )
 
@@ -137,21 +138,28 @@ def run_sim(model_def, simParams):
     else:
         print('   ♦ Short-term/error distribution parameters: NA')
 
+    ### sys_def_params is of shape (m,n), m: number of set, n: number of system parameters per set
+    if simParams.sys_def_params is None:
+        sys_def_params_len  = 0
+        sys_def_params_loop = [None]
+    else:
+        sys_def_params_len  = len(simParams.sys_def_params)
+
     print(' ► Running Simulation...')
     print('   ♦ Job list: [{:^20} {:^20}]'.format('# Sys params sets', '# DoE sets'))
-    print('   ♦ Target  : [{:^20d} {:^20d}]'.format(len(simParams.sys_def_params), simParams.ndoe))
+    print('   ♦ Target  : [{:^20d} {:^20d}]'.format(sys_def_params_len, simParams.ndoe))
     print('   ' + '·'*55)
-    for isys_def_params in simParams.sys_def_params: 
+
+    for isys_def_params in sys_def_params_loop: 
         NSYS_DONE += 1 
         run_sim_1doe_res = []
         for idoe, sys_input_vars_1doe in enumerate(simParams.sys_input_vars):
-
             if simParams.doe_method.upper() == 'QUADRATURE':
                 input_vars, input_vars_weights = sys_input_vars_1doe
             else:
                 input_vars, input_vars_weights = sys_input_vars_1doe, None
-
-            y = solver_wrapper(model_name,simParams,input_vars, error_type_list[idoe], sys_def_params=isys_def_params)
+            y = solver_wrapper(model_name,simParams,input_vars, error_type_list[idoe],\
+                    sys_def_params=isys_def_params)
 
             NDOE_DONE += 1
             print('   ♦ Achieved: [{:^20d} {:^20d}]'.format(NSYS_DONE,NDOE_DONE))
@@ -162,7 +170,7 @@ def run_sim(model_def, simParams):
         run_sim_res = run_sim_res[0]
     if len(run_sim_res) ==1:
         run_sim_res = run_sim_res[0]
-    print(' ► Simulation Done, Output length: {}'.format(len(run_sim_res)) )
+    print(' ► Simulation Done, Output shape: {}'.format(np.array(run_sim_res).shape) )
     return run_sim_res
 
 

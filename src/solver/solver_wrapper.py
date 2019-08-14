@@ -21,6 +21,7 @@ all_solvers = {
         'BENCH2'    : bench2,
         'BENCH3'    : bench3,
         'BENCH4'    : bench4,
+        'DUFFING'   : duffing_oscillator,
         }
 
 
@@ -32,10 +33,17 @@ def solver_wrapper(solver_name, simParams, sys_input_vars, error_type, sys_def_p
     Arguments:
         solver_name: string 
         simParams: general settings for simulation. simParameter class obj
-        sys_input_vars: contains either [source_func, *args, **kwargs] 
-            or input signal indexed with time
-        sys_def_params: one system parameter set
-
+            - dist_zeta: list of selected marginal distributions from Wiener-Askey scheme
+            - doe_params  = [doe_method, doe_rule, doe_order]
+            - time_params = [time_start, time_ramp, time_max, dt]
+            - post_params = [qoi2analysis=[0,], stats=[1,1,1,1,1,1,0]]
+                stats: [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
+            - sys_def_params: list of parameter sets defining the solver
+                if no sys_def_params is required, sys_def_params = [None]
+                e.g. for duffing oscillator:
+                sys_def_params = [np.array([0,0,1,1,1]).reshape(5,1)] # x0,v0, zeta, omega_n, mu 
+            - sys_input_params = [sys_input_func_name, sys_input_kwargs, sys_input_vars]
+                [None,None,sys_input_vars] if sys_input_func_name, sys_input_kwargs are not available
     Return:
         return results from one solver run
         of shape(nsample, nqoi), each column represents a full time series
@@ -69,11 +77,6 @@ def solver_wrapper(solver_name, simParams, sys_input_vars, error_type, sys_def_p
     elif solver.__name__.upper()[:5] == 'BENCH':
         x = sys_input_vars
         y = solver(x, error_type)
-        # if sterm_dist:
-            # mu = 0 * x
-            # sigma = dist_error_params(x)
-            # y = solver(x, sterm_dist, mu, sigma)
-        # else:
 
     elif solver.__name__.upper() ==  'DUFFING_OSCILLATOR':
         # sys_input_vars: [source_func, *arg, *kwargs]

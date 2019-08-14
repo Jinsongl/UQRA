@@ -222,7 +222,7 @@ def main():
     ### Save Exceedence values for MCS
     for ipf, pf in enumerate(prob_failures):
         fname_ipf_ecdf = '_'.join(['Ecdf_pf'+'{:.0E}'.format(pf)[-1], 'MCS'+'{:.0E}'.format(doe_order[0])[-1]])  
-        np.save(os.path.join(DATA_DIR, fname_ipf_ecdf), y_mcs_ecdf[ipf]) if y_mcs_ecdf[0] else pass
+        np.save(os.path.join(DATA_DIR, fname_ipf_ecdf), y_mcs_ecdf[ipf]) if y_mcs_ecdf[0] else None
     # ## ------------------------------------------------------------------- ###
     # ##  Add noise case 
     # ## ------------------------------------------------------------------- ###

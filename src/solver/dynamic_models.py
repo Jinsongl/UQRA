@@ -15,8 +15,9 @@ from scipy import interpolate
 from scipy.integrate import odeint, quad
 from scipy.optimize import brentq
 import utilities.spectrum_collections as spec_coll
+import utilities.gen_processes as gen_processes
 
-def _cal_norm_values(zeta,omega0,source_kwargs, *source_args):
+def _cal_normalize_values(zeta,omega0,source_kwargs, *source_args):
     TF = lambda w : 1.0/np.sqrt((w**2-omega0**2)**2 + (2*zeta*omega0)**2)
     spec_dict = spec_coll.get_spec_dict() 
     spec_name = source_kwargs.get('name','JONSWAP') if source_kwargs else 'JONSWAP'
@@ -37,7 +38,6 @@ def _cal_norm_values(zeta,omega0,source_kwargs, *source_args):
     w = w.reshape(nquads,1)
     norm_y = np.sum(w.T *(spec_vals*TF2_vals))/(2*np.pi)
     norm_y = 1/norm_y**0.5
-
     norm_t = omega0
 
     return norm_t, norm_y
@@ -59,7 +59,7 @@ def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,\
         *source_args, source_func=None, source_kwargs=None,t_trans=0, normalize=False):
     if normalize:
         # norm_t, norm_y = normalize[1], normalize[2]
-        norm_t, norm_y = _cal_norm_values(zeta, omega0, source_kwargs) 
+        norm_t, norm_y = _cal_normalize_values(zeta, omega0, source_kwargs) 
         # print('Normalizing value: [{:.2f}, {:.2f}]'.format(norm_t, norm_y))
         assert norm_t!= 0
         delta = 2 * zeta * omega0 / norm_t

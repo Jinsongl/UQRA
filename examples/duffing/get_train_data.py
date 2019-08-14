@@ -121,8 +121,6 @@ def main():
 
     ## >>> 3. Define independent random variable in physical problems
     dist_x = cp.Lognormal(0,0.5) # normal mean = 0, normal std=0.25
-    # dist_x = cp.Uniform(-np.pi, np.pi)
-    # dist_x = cp.Iid(dist_x,3) 
 
     # ## ------------------------------------------------------------------- ###
     # ##  Design of Experiments (DoEs) 
@@ -147,10 +145,12 @@ def main():
     # ##  Create simulation parameter 
     # ## ------------------------------------------------------------------- ###
 
+    ## Duffing system parameters
+    sys_def_params = np.array([0,0,0.02,1,1]).reshape(1,5) # x0,v0, zeta, omega_n, mu 
+
     ## Parameters to generate solver system input signal
-    source_kwargs= {'name': 'T1', 'method':'ifft', 'sides':'double'}
-    source_func = gen_gauss_time_series 
-    sys_source = [source_func, source_kwargs]
+    sys_input_kwargs= {'name': 'T1', 'method':'ifft', 'sides':'double'}
+    sys_input_func_name = 'Gauss'
 
     ## Parameters to the time indexing
     time_start, time_ramp, time_max, dt = 0,0,200,0.1
@@ -158,21 +158,24 @@ def main():
     
     ## parameters to post analysis
     qoi2analysis = [0,]
-    stats = [1,1,1,1,1,1,0] # [mean, std, skewness, kurtosis, absmax, absmin, up_crossing, moving_avg, moving_std]
+    # [mean, std, skewness, kurtosis, absmax, absmin, up_crossing, moving_avg, moving_std]
+    stats = [1,1,1,1,1,1,0] 
     post_params = [qoi2analysis, stats]
     normalize = True
 
-    quad_simparam = simParameter(dist_zeta, doe_params = doe_params, \
-            time_params = time_params, post_params = post_params,\
-            sys_def_params = sys_def_params, normalize=normalize)
-
-    quad_simparam.set_seed([1,100])
-    ## Get DOE samples
-
-    ## >>> 1. Fixed point:
     # doe_type  = 'Uniform_DoE'
     # doe_type  = 'DoE_Linspace'        
-    # simparam  = simParameter(dist_zeta, doe_params=doe_params)
+    # doe_type  = 'DoE_MCS'+'{:.0E}'.format(doe_order[0])[-1] 
+    doe_type  = 'DoE_Quadrature'
+
+    np.random.seed(100)
+    simparam = simParameter(dist_zeta, doe_params = doe_params, \
+            time_params = time_params, post_params = post_params,\
+            sys_def_params = sys_def_params, normalize=normalize)
+    simparam.set_sys_input_params(sys_input_func_name, sys_input_kwargs)
+    simparam.get_doe_samples(dist_x)
+
+    # simparam.set_seed([1,100])
     # rng       = np.random.RandomState(3)
     # x_samples = []
     # for idoe in doe_order:
@@ -180,21 +183,6 @@ def main():
         # x_samples.append([np.linspace(-5,15, idoe)[np.newaxis, :]])
     # simparam.set_doe_samples(x_samples, dist_x)
     # # zeta_samples= fix_simparam.sys_input_zeta[0]
-
-
-    ##>>> 2. Monte Carlo:
-    # doe_type = 'DoE_MCS'+'{:.0E}'.format(doe_order[0])[-1] 
-    # np.random.seed(100)
-    # simparam = simParameter(dist_zeta, doe_params = doe_params)
-    # simparam.get_doe_samples(dist_x)
-
-    # ## >>> 3. Quadrature:
-    # doe_type   = 'DoE_Quadrature'
-    # doe_method, doe_rule, doe_order = 'GQ','hermite',[10,11,12,13,14,15]
-    # doe_params = [doe_method, doe_rule, doe_order]
-    # simparam   = simParameter(dist_zeta, doe_params = doe_params)
-    # simparam.get_doe_samples(dist_x)
-
 
     ## ------------------------------------------------------------------- ###
     ##  Noise Free case 
@@ -243,9 +231,10 @@ def main():
             np.save(os.path.join(DATA_DIR, fname_sim_out_idoe), idoe_res)
 
     ### Save Exceedence values for MCS
-    for ipf, pf in enumerate(prob_failures):
-        fname_ipf_ecdf = '_'.join(['Ecdf_pf'+'{:.0E}'.format(pf)[-1], 'MCS'+'{:.0E}'.format(doe_order[0])[-1]])  
-        np.save(os.path.join(DATA_DIR, fname_ipf_ecdf), y_mcs_ecdf[ipf]) if y_mcs_ecdf[0] else pass
+    if y_mcs_ecdf[0]:
+        for ipf, pf in enumerate(prob_failures):
+            fname_ipf_ecdf = '_'.join(['Ecdf_pf'+'{:.0E}'.format(pf)[-1], 'MCS'+'{:.0E}'.format(doe_order[0])[-1]])  
+            np.save(os.path.join(DATA_DIR, fname_ipf_ecdf), y_mcs_ecdf[ipf]) 
     # ## ------------------------------------------------------------------- ###
     # ##  Add noise case 
     # ## ------------------------------------------------------------------- ###

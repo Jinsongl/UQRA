@@ -100,7 +100,7 @@ def main():
     ## ------------------------------------------------------------------- ###
     ##  Parameters set-up 
     ## ------------------------------------------------------------------- ###
-    prob_failures         = [1e-3, 1e-4, 1e-5, 1e-6] # Exceedence probability
+    prob_failures         = [1e-3]            # list of failure probabilities
     # data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
     # data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
     MODEL_NAME          = 'Ishigami'
@@ -153,7 +153,7 @@ def main():
 
     ##>>> 2. Monte Carlo:
     np.random.seed(100)
-    doe_method, doe_rule, doe_order = 'MC','R', [int(1e7)]
+    doe_method, doe_rule, doe_order = 'MC','R', [int(1e4)]
     doe_params  = [doe_method, doe_rule, doe_order]
     mc_simparam = simParameter(dist_zeta, doe_params = doe_params)
     mc_simparam.get_doe_samples(dist_x)
@@ -186,6 +186,7 @@ def main():
 
     model_def   = [MODEL_NAME]        
     sim_output  = run_sim(model_def, simparam)
+    print(len(sim_output))
     error_params= [] 
     noise_type  = 'noise_free' if model_def[1] is None else model_def[1]
     print(model_def)

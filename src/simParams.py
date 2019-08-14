@@ -32,7 +32,7 @@ DOE_RULE_NAMES = {
 class simParameter(object):
     """
     Define general parameter settings for simulation running and post data analysis. 
-    Solver parameters will be different between solver and solver
+    System parameters will be different between solver and solver
 
     Arguments:
         dist_zeta: list of selected marginal distributions from Wiener-Askey scheme
@@ -41,17 +41,16 @@ class simParameter(object):
         time_params = [time_start, time_ramp, time_max, dt]
         post_params = [qoi2analysis=[0,], stats=[1,1,1,1,1,1,0]]
             stats: [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
-        sys_def_params: list of parameter sets defining the solver
-            if no sys_def_params is required, sys_def_params = [None]
+        sys_def_params: array of parameter sets defining the solver
+            if no sys_def_params is required, sys_def_params = None
             e.g. for duffing oscillator:
-            sys_def_params = [np.array([0,0,1,1,1]).reshape(5,1)] # x0,v0, zeta, omega_n, mu 
-
+            sys_def_params = np.array([0,0,1,1,1]).reshape(1,5) # x0,v0, zeta, omega_n, mu 
         normalize: 
-
     """
+
     def __init__(self,dist_zeta, doe_params=['GQ','lag',[2,3]],\
             time_params=None, post_params=[[0,], [1,1,1,1,1,1,0]],\
-            sys_def_params=[None], normalize=False):
+            sys_def_params=None, normalize=False):
 
         self.seed       = [0,100]
         self.dist_zeta  = dist_zeta
@@ -65,7 +64,6 @@ class simParameter(object):
             self.doe_order = np.array(doe_params[2])
 
         self.ndoe               = len(self.doe_order)   # number of doe sets
-        self.nsys_input_vars_dim= 0                     # dimension of solver inputs 
         self.nsamples_per_doe   = []                    # number of samples for each doe sets
         
         self.time_start, self.time_ramp, self.time_max, self.dt = time_params if time_params else [None]*4
@@ -75,6 +73,7 @@ class simParameter(object):
         self.outdir_name    = ''
         self.outfile_name   = ''
         self.sys_def_params = sys_def_params
+        self.nsys_input_vars_dim= 0                     # dimension of solver inputs 
         # sys_input_params = [sys_input_func_name, sys_input_kwargs, sys_input_vars]
         self.sys_input_params = [None, None, []]
 
