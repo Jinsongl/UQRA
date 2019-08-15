@@ -11,6 +11,7 @@
 """
 import chaospy as cp
 import numpy as np
+import os
 from doe.doe_generator import samplegen
 ## Define parameters class
 DOE_METHOD_NAMES = {
@@ -55,6 +56,7 @@ class simParameter(object):
         self.seed       = [0,100]
         self.dist_zeta  = dist_zeta
         self.distJ      = dist_zeta if len(dist_zeta) == 1 else cp.J(*dist_zeta) 
+        self.doe_params = doe_params
         self.doe_method = DOE_METHOD_NAMES.get(doe_params[0])
         self.doe_rule   = doe_params[1]
         self.doe_order  = []
@@ -72,45 +74,19 @@ class simParameter(object):
         self.nsamples_done  = 0
         self.outdir_name    = ''
         self.outfile_name   = ''
-        self.sys_def_params = sys_def_params
+        self.sys_def_params = sys_def_params if sys_def_params else [None]
         self.nsys_input_vars_dim= 0                     # dimension of solver inputs 
         # sys_input_params = [sys_input_func_name, sys_input_kwargs, sys_input_vars]
-        self.sys_input_params = [None, None, []]
+        self.sys_input_vars = []
+        self.sys_input_params = [[None], [None], self.sys_input_vars]
+        self.input_vars_phy = []
 
-    def set_doe_method(self,doe_method):
-        self.doe_method = doe_method
-
-    def set_doe_order(self,p):
-        self.doe_order = p
-
-    def add_nsamples_done(self,n):
-        self.nsamples_done += n
-
-    def set_seed(self, s):
-        self.seed = s
-
-    def update_filename(self,filename):
-        self.outfile_name = filename
-
-    def update_dir(self, newDir):
-        self.outdir_name = newDir
-
-    def set_qoi2analysis(self, qois):
-        # what is this??
-        self.qoi2analysis = qois
-    def set_sys_input_params(self, sys_input_func_name, sys_input_kwargs):
-        self.sys_input_params[0] = sys_input_func_name
-        self.sys_input_params[1] = sys_input_kwargs
-
-    # def set_nsamples_need(self, n):
-        # self.nsamples_need= n
-        # self.doe_method = xrange(self.nsamples_need)
 
     def get_doe_samples_zeta(self, samp_phy=None, dist_phy=None):
         """
         Return design sample points both in zeta spaces based on specified doe_method
         Return:
-            Experiment samples at zeta space (idoe_order,[samples for each doe_order])
+            Experiment samples in zeta space (idoe_order,[samples for each doe_order])
         """
 
         print('------------------------------------------------------------')
@@ -152,9 +128,9 @@ class simParameter(object):
             else:
                 print('     ∙ Coordinate: {}'.format(isample_zeta.shape))
 
-    def get_doe_samples(self, dist_phy):
+    def get_doe_samples(self, dist_phy, is_both=True, filename='inputs'):
         """
-        Return design sample points both in physical spaces based on specified doe_method
+        Return and save design sample points both in physical spaces based on specified doe_method
         Return:
         sys_input_vars: parameters defining the inputs for the solver
             General format of a solver
@@ -163,16 +139,26 @@ class simParameter(object):
                 x: system inputs, ndarray of shape (ndim, nsamples)
                     1. M takes x[:,i] as input, y = M(x.T)
                     2. M takes time series generated from input_func(x[:,i]) as input
-            Experiment samples at physical space (idoe_order,[samples for each doe_order])
+            Experiment samples in physical space (idoe_order,[samples for each doe_order])
         """
 
-        self.sys_input_vars = []
+        # # self.sys_input_vars = []
         assert len(dist_phy) == len(self.dist_zeta)
 
         ## Get samples in zeta space first
         self.get_doe_samples_zeta() 
+
+        # n_sys_input_func_name = len(self.sys_input_params[0]) if self.sys_input_params[0] else 1
+        n_sys_input_func_name = len(self.sys_input_params[0]) 
+        n_sys_input_kwargs    = len(self.sys_input_params[1]) 
+        n_sys_def_params      = len(self.sys_def_params) 
+        n_total_simulations = n_sys_input_func_name * n_sys_input_kwargs *n_sys_def_params 
+
+
         ## Then calcuate corresponding samples in physical variable space 
-        for isample_zeta in self.sys_input_zeta:
+        for idoe_order, isample_zeta in enumerate(self.sys_input_zeta):
+            filename = '_'.join([filename, self.doe_params[0], self.doe_params[1],'DoE'+'{:d}'.format(idoe_order)]) + '.txt'
+            filename = os.path.join(self.outdir_name, filename)
             if self.doe_method.upper() == 'QUADRATURE':
                 zeta_cor, zeta_weights = isample_zeta 
                 phy_cor = self._dist_transform(self.dist_zeta, dist_phy, zeta_cor)
@@ -182,8 +168,30 @@ class simParameter(object):
                 zeta_cor, zeta_weights = isample_zeta, None
                 phy_cor = self._dist_transform(self.dist_zeta, dist_phy, zeta_cor)
                 samp_phy = phy_cor
+            n_samp_phy = samp_phy.shape[1] 
+            n_total_simulations *= n_samp_phy 
             # print('samp_phy shape: {}, coord shape: {}, weight shape {}'.format(samp_phy.shape, samp_phy[0].shape, samp_phy[1].shape))
+
             self.sys_input_vars.append(samp_phy)
+            ### save input variables to file
+
+            with open(filename, 'w') as file_input_vars:
+                input_var = []
+                for isys_def_params in self.sys_def_params:
+                    l1 = list(isys_def_params) if isys_def_params else [None]
+                    for isys_input_func_name in self.sys_input_params[0]:
+                        l2 = list(isys_input_func_name) if isys_input_func_name else [None]
+                        for isys_input_kwargs in self.sys_input_params[1]:
+                            l3 = list(isys_input_kwargs ) if isys_input_kwargs else [None]
+                            for isys_input_vars in samp_phy.T:
+                                l4 = list(isys_input_vars ) 
+                                input_var = l1 + l2 + l3 + l4
+                                file_input_vars.write('\t'.join(map(str, input_var)))
+                                # file_input_vars.write(input_var)
+                                file_input_vars.write("\n")
+        print('   ♦ Total number of simulations: {:d}'.format(int(n_total_simulations)))
+        print(' ► Data saved {}'.format(filename))
+
         self.sys_input_params[2] = self.sys_input_vars
 
     def set_doe_samples(self, samp_phy, dist_phy):
@@ -193,6 +201,37 @@ class simParameter(object):
         self.get_doe_samples_zeta(samp_phy, dist_phy) 
 
         self.sys_input_params[2].append(self.sys_input_vars)
+
+
+    def set_doe_method(self,doe_method):
+        self.doe_method = doe_method
+
+    def set_doe_order(self,p):
+        self.doe_order = p
+
+    def add_nsamples_done(self,n):
+        self.nsamples_done += n
+
+    def set_seed(self, s):
+        self.seed = s
+
+    def update_filename(self,filename):
+        self.outfile_name = filename
+
+    def update_dir(self, newDir):
+        self.outdir_name = newDir
+
+    def set_qoi2analysis(self, qois):
+        # what is this??
+        self.qoi2analysis = qois
+    def set_sys_input_params(self, sys_input_func_name, sys_input_kwargs):
+        self.sys_input_params[0] = sys_input_func_name
+        self.sys_input_params[1] = sys_input_kwargs
+
+    # def set_nsamples_need(self, n):
+        # self.nsamples_need= n
+        # self.doe_method = xrange(self.nsamples_need)
+
 
 
     def _dist_transform(self, dist1, dist2, var1):

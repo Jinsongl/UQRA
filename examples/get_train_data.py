@@ -156,7 +156,9 @@ def main():
     doe_method, doe_rule, doe_order = 'MC','R', [int(1e4)]
     doe_params  = [doe_method, doe_rule, doe_order]
     mc_simparam = simParameter(dist_zeta, doe_params = doe_params)
+    mc_simparam.update_dir(DATA_DIR)
     mc_simparam.get_doe_samples(dist_x)
+    # mc_simparam.get_input_vars(dist_x)
 
     # ## >>> 3. Quadrature:
     # doe_method, doe_rule, doe_order = 'GQ','hermite',[10,11,12,13,14,15]

@@ -101,12 +101,12 @@ def run_sim(model_def, simParams):
     print(' ► Solver (system) properties:')
     print('   ♦ {:<17s} : {:15s}'.format('Solver name', model_name))
 
-    if simParams.sys_def_params:
+    if simParams.sys_def_params is None or simParams.sys_def_params[0] is None:
+        print('   ♦ System definition parameters: NA ' )
+    else:
         print('   ♦ System definition parameters: ndim={}, nsets={:d}'\
                 .format(simParams.sys_def_params.shape[1], simParams.sys_def_params.shape[0]))
                 # .format(simParams.sys_def_params.shape[0], len(simParams.sys_def_params)))
-    else:
-        print('   ♦ System definition parameters: NA ' )
 
     print('   ♦ System input parameters:')
     print('     ∙ {:<15s} : {}'.format('function',simParams.sys_input_params[0]))
@@ -139,18 +139,14 @@ def run_sim(model_def, simParams):
         print('   ♦ Short-term/error distribution parameters: NA')
 
     ### sys_def_params is of shape (m,n), m: number of set, n: number of system parameters per set
-    if simParams.sys_def_params is None:
-        sys_def_params_len  = 0
-        sys_def_params_loop = [None]
-    else:
-        sys_def_params_len  = len(simParams.sys_def_params)
+    sys_def_params_len  = len(simParams.sys_def_params)
 
     print(' ► Running Simulation...')
     print('   ♦ Job list: [{:^20} {:^20}]'.format('# Sys params sets', '# DoE sets'))
     print('   ♦ Target  : [{:^20d} {:^20d}]'.format(sys_def_params_len, simParams.ndoe))
     print('   ' + '·'*55)
 
-    for isys_def_params in sys_def_params_loop: 
+    for isys_def_params in sys_def_params: 
         NSYS_DONE += 1 
         run_sim_1doe_res = []
         for idoe, sys_input_vars_1doe in enumerate(simParams.sys_input_vars):
