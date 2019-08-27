@@ -105,7 +105,7 @@ def main():
     # data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
     MODEL_NAME          = 'Ishigami'
     # MODEL_NAME          = 'BENCH1'
-    DATA_DIR_ID, DATA_DIR, _ =  make_output_dir(MODEL_NAME)
+    DATA_DIR_ID, DATA_DIR, FIGURE_DIR =  make_output_dir(MODEL_NAME)
     ## ------------------------------------------------------------------- ###
     ##  Define Solver parameters ###
     ## ------------------------------------------------------------------- ###
@@ -153,10 +153,10 @@ def main():
 
     ##>>> 2. Monte Carlo:
     np.random.seed(100)
-    doe_method, doe_rule, doe_order = 'MC','R', [int(1e4)]
+    doe_method, doe_rule, doe_order = 'MC','R', [int(1e1), int(1e2)]
     doe_params  = [doe_method, doe_rule, doe_order]
     mc_simparam = simParameter(dist_zeta, doe_params = doe_params)
-    mc_simparam.update_dir(DATA_DIR)
+    mc_simparam.update_dir(data_dir = DATA_DIR, figure_dir = FIGURE_DIR)
     mc_simparam.get_doe_samples(dist_x)
     # mc_simparam.get_input_vars(dist_x)
 
@@ -186,21 +186,19 @@ def main():
     ##  Noise Free case 
     ## ------------------------------------------------------------------- ###
 
-    model_def   = [MODEL_NAME]        
-    sim_output  = run_sim(model_def, simparam)
-    print(len(sim_output))
-    error_params= [] 
-    noise_type  = 'noise_free' if model_def[1] is None else model_def[1]
-    print(model_def)
-    fname_sim_out = '_'.join(['Train', noise_type, doe_type])
+    error_params=None
+    simparam.set_error(error_params)
+    sim_output  = run_sim(MODEL_NAME, simparam)
+    fname_sim_out = '_'.join(['Train', simparam.error.name, doe_type])
+
     for idoe in np.arange(simparam.ndoe):
         print('   ♦ {:<15s} : {:d} / {:d}'.format('DoE set', idoe, simparam.ndoe))
 
-        x   = np.squeeze(np.array(simparam.sys_input_vars[idoe]))
+        x   = np.squeeze(np.array(simparam.sys_input_x[idoe]))
         y   = np.squeeze(np.array(sim_output[0][idoe]))
         zeta= np.squeeze(np.array(simparam.sys_input_zeta[idoe]))
         idoe_res =[x,y,zeta]
-        error_params.append([0, 0.2*abs(y)])
+        # error_params.append([0, 0.2*abs(y)])
 
         if doe_method.upper() == 'MC':
             fname_sim_out_idoe = fname_sim_out +r'{:d}'.format(idoe) 

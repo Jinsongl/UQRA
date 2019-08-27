@@ -42,8 +42,8 @@ def gen_error(error_type):
             .name: error distribution name
             .params: float or array_like of floats
     """
-    error_name = error_type.name if error_type.name else None
-    if error_type.name is None:
+    # error_name = error_type.name if error_type.name else None
+    if error_type.name.upper() == 'FREE':
         samples = 0
     elif error_name.upper() == 'NORMAL':
         mu, sigma = error_type.params if error_type.params else (0.0, 1.0)

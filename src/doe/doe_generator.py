@@ -117,7 +117,9 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
     Design of experiment samples generator
     
     Arguments:
-        doe_method: defined below 
+        doe_method: 
+            "GQ"    : "Quadrature"  , "QUAD"  : "Quadrature",
+            "MC"    : "Monte Carlo" , "FIX"   : "Fixed point"
         doe_order :  
             Quadrature: number of quadrature points
             MC: number of sample points
@@ -125,7 +127,6 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         domain: 
             Quadrature: distributions
             MC: distributions to draw samples from
-            FIX: 
         rule:
             Quadrature: rules used to get quadrature points
             MC: sampling method
@@ -183,30 +184,30 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
 
 
     """
-    doe_method = doe_method.upper()
-    DOE_METHOD_NAMES = {
-        "GQ"    : "Quadrature",
-        "QUAD"  : "Quadrature",
-        "MC"    : "Monte Carlo",
-        "FIX"   : "Fixed point"
-        } 
+    # DOE_METHOD_NAMES = {
+        # "GQ"    : "Quadrature",
+        # "QUAD"  : "Quadrature",
+        # "MC"    : "Monte Carlo",
+        # "FIX"   : "Fixed point"
+        # } 
 
-    QUAD_SHORT_NAMES = {
-        "c": "clenshaw_curtis",
-        "e": "gauss_legendre",
-        "p": "gauss_patterson",
-        "z": "genz_keister",
-        "g": "golub_welsch",
-        "j": "leja",
-        "h": "gauss_hermite",
-        "lag": "gauss_laguerre",
-        "cheb": "gauss_chebyshev",
-        "hermite":"gauss_hermite",
-        "legendre":"gauss_legendre",
-        "jacobi":"gauss_jacobi",
-        }
-    chaospy_quad = ['c','e','p','z','g','j','legendre']
-    numpy_quad = ['h', 'hermite','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
+    # QUAD_SHORT_NAMES = {
+        # "c": "clenshaw_curtis",
+        # "e": "gauss_legendre",
+        # "p": "gauss_patterson",
+        # "z": "genz_keister",
+        # "g": "golub_welsch",
+        # "j": "leja",
+        # "h": "gauss_hermite",
+        # "lag": "gauss_laguerre",
+        # "cheb": "gauss_chebyshev",
+        # "hermite":"gauss_hermite",
+        # "legendre":"gauss_legendre",
+        # "jacobi":"gauss_jacobi",
+        # }
+    chaospy_quad= ['c','e','p','z','g','j','legendre']
+    numpy_quad  = ['h', 'hermite','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
+    doe_method  = doe_method.upper()
 
     if doe_method == 'QUADRATURE':
         ## Return samples in 
@@ -223,7 +224,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         # print('------------------------------------------------------------')
     elif doe_method == 'MONTE CARLO':
         """
-        Monte Carlo Points are generated one by one by design, avoiding possible large memory requirement ???
+        Monte Carlo Sampling 
         """
         rule = 'R' if rule is None else rule
         # print('************************************************************')
@@ -232,7 +233,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         # print("Generating Monte Carlo samples...")
         
         doe_samples = domain.sample(order,rule=rule)
-        doe_samples = doe_samples.reshape(domain.length,-1)
+        # doe_samples = doe_samples.reshape(domain.length,-1)
         
     # elif doe_method == 'FIXED POINT':
         # """
