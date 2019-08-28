@@ -37,8 +37,8 @@ def solver_wrapper(solver_name, sys_input_x, error=None, sys_input_params=None, 
                 if no sys_def_params is required, sys_def_params = [None]
                 e.g. for duffing oscillator:
                 sys_def_params = [np.array([0,0,1,1,1]).reshape(5,1)] # x0,v0, zeta, omega_n, mu 
-            - sys_input_params = [sys_input_func_name, sys_input_kwargs, sys_input_x]
-                [None,None,sys_input_x] if sys_input_func_name, sys_input_kwargs are not available
+            - sys_input_params = [sys_excit_func_name, sys_excit_funys_kwargs, sys_input_x]
+                [None,None,sys_input_x] if sys_excit_func_name, sys_excit_func_kwargs are not available
     Return:
         return results from one solver run
         of shape(nsample, nqoi), each column represents a full time series

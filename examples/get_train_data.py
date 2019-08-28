@@ -14,131 +14,27 @@ import chaospy as cp
 import numpy as np
 
 # from envi import environment
+# from sim_setup import 
+# import sim_setup2 
+from sim_setup import sim_setup
 from metaModel import metaModel
 from simParams import simParameter
-
 from run_sim import run_sim
-from utilities.get_exceedance_data import get_exceedance_data
-from utilities.upload2gdrive import upload2gdrive
+from utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
 import os,sys
 import warnings
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 
 
-def get_gdrive_folder_id(folder_name):
-    """
-    Check if the given folder_name exists in Google Drive. 
-    If not, create one and return the google drive ID
-    Else: return folder ID directly
-    """
-    # GDRIVE_DIR_ID = {
-            # 'BENCH1': '1d1CRxZ00f4CiwHON5qT_0ijgSGkSbfqv',
-            # 'BENCH4': '15KqRCXBwTTdHppRtDjfFZtmZq1HNHAGY',
-            # 'BENCH3': '1TcVfZ6riXh9pLoJE9H8ZCxXiHLH_jigc',
-            # }
-    command = os.path.join('/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA', folder_name)
-    try:
-        os.makedirs(command)
-    except FileExistsError:
-        pass
-    command = 'gdrive list --order folder |grep ' +  folder_name
-    folder_id = os.popen(command).read()
-    return folder_id[:33]
-
-def make_output_dir(MODEL_NAME):
-    """
-    WORKING_DIR/
-    +-- MODEL_DIR
-    |   +-- FIGURE_DIR
-
-    /directory saving data depends on OS/
-    +-- MODEL_DIR
-    |   +-- DATA_DIR
-
-    """
-    WORKING_DIR     = os.getcwd()
-    MODEL_DIR       = os.path.join(WORKING_DIR, MODEL_NAME)
-    FIGURE_DIR= os.path.join(MODEL_DIR,r'Figures')
-    # DATA_DIR  = os.path.join(MODEL_DIR,r'Data')
-    current_os  = sys.platform
-    if current_os.upper()[:3] == 'WIN':
-        DATA_DIR= "G:\My Drive\MUSE_UQ_DATA"
-    elif current_os.upper() == 'DARWIN':
-        DATA_DIR= '/Users/jinsongliu/External/MUSE_UQ_DATA'
-    elif current_os.upper() == 'LINUX':
-        DATA_DIR= '/home/jinsong/Box/MUSE_UQ_DATA'
-    else:
-        raise ValueError('Operating system {} not found'.format(current_os))    
-    
-    DATA_DIR  = os.path.join(DATA_DIR,MODEL_NAME,r'Data')
-    # MODEL_DIR_DATA_ID = GDRIVE_DIR_ID[MODEL_NAME.upper()] 
-    MODEL_DIR_DATA_ID = get_gdrive_folder_id(MODEL_NAME)
 
 
-    # Create directory for model  
-    print('------------------------------------------------------------')
-    print('►►► Making directories for model {}'.format(MODEL_NAME))
-    print('------------------------------------------------------------')
-    try:
-        os.makedirs(MODEL_DIR)
-        os.makedirs(DATA_DIR)
-        os.makedirs(FIGURE_DIR)
-        # print('Data, Figure directories for model {} is created'.format(MODEL_NAME))
-    except FileExistsError:
-        # one of the above directories already exists
-        # print('Data, Figure directories for model {} already exist'.format(MODEL_NAME))
-        pass
-    print('WORKING_DIR: {}'.format(WORKING_DIR))
-    print('+-- MODEL: {}'.format(MODEL_DIR))
-    print('|   +-- {:<6s}: {}'.format('FIGURE',FIGURE_DIR))
-    print('|   +-- {:<6s}: {}'.format('DATA',DATA_DIR))
-    return MODEL_DIR_DATA_ID, DATA_DIR, FIGURE_DIR
-
-
-def main():
-
-    ## ------------------------------------------------------------------- ###
-    ##  Parameters set-up 
-    ## ------------------------------------------------------------------- ###
-    prob_failures         = [1e-3]            # list of failure probabilities
-    # data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
-    # data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
-    MODEL_NAME          = 'Ishigami'
-    # MODEL_NAME          = 'BENCH1'
-    DATA_DIR_ID, DATA_DIR, FIGURE_DIR =  make_output_dir(MODEL_NAME)
-    ## ------------------------------------------------------------------- ###
-    ##  Define Solver parameters ###
-    ## ------------------------------------------------------------------- ###
-    ## >>> 1. Choose Wiener-Askey scheme random variable
-    ##            # |   zeta    | Wiener-Askey chaos | support
-    ## # ==============================================================
-    ## # Continuous | Gaussian  | Hermite-chaos      |  (-inf, inf)
-    ##              | Gamma     | Laguerre-chaos     |  [0, inf ) 
-    ##              | Beta      | Jacobi-chaos       |  [a,b] 
-    ##              | Uniform   | Legendre-chaos     |  [a,b] 
-    ## # --------------------------------------------------------------
-    ## # Discrete   | Poisson   | 
-    ##              | Binomial  | 
-    ##              | - Binomial| 
-    ##              | hypergeometric
-    ## 
-    ## dist_zeta = cp.Normal(0,1)  # shape=1, scale=1, shift=0
-    dist_zeta = cp.Uniform(0,1)
-    dist_zeta = cp.Iid(dist_zeta,3) 
-
-    ## >>> 2. If transformation needed, like Rosenblatt, need to be done here
-    ## Perform Rosenblatt etc
-
-    ## >>> 3. Define independent random variable in physical problems
-    # dist_x = cp.Normal(5,2) # normal mean = 0, normal std=0.25
-    dist_x = cp.Uniform(-np.pi, np.pi)
-    dist_x = cp.Iid(dist_x,3) 
+def main(simparam):
 
     # ## ------------------------------------------------------------------- ###
     # ##  Design of Experiments (DoEs) 
     # ## ------------------------------------------------------------------- ###
     # ## example:
-
+    
     # ## >>> 1. Fixed point:
     # doe_method, doe_rule, doe_order = 'FIX','FIX', [10, 11,12,13,14,15]
     # doe_params  = [doe_method, doe_rule, doe_order]
@@ -152,12 +48,15 @@ def main():
     # zeta_samples= fix_simparam.sys_input_zeta[0]
 
     ##>>> 2. Monte Carlo:
+    mc_simparam = simparam
+
     np.random.seed(100)
     doe_method, doe_rule, doe_order = 'MC','R', [int(1e1), int(1e2)]
     doe_params  = [doe_method, doe_rule, doe_order]
-    mc_simparam = simParameter(dist_zeta, doe_params = doe_params)
-    mc_simparam.update_dir(data_dir = DATA_DIR, figure_dir = FIGURE_DIR)
-    mc_simparam.get_doe_samples(dist_x)
+    mc_simparam.set_doe_method(doe_params)
+    # mc_simparam = simParameter(dist_zeta, dist_x, doe_params = doe_params)
+    # mc_simparam.update_dir(data_dir = simparam.data_dir, figure_dir = FIGURE_DIR)
+    mc_simparam.get_doe_samples()
     # mc_simparam.get_input_vars(dist_x)
 
     # ## >>> 3. Quadrature:
@@ -188,14 +87,15 @@ def main():
 
     error_params=None
     simparam.set_error(error_params)
-    sim_output  = run_sim(MODEL_NAME, simparam)
+
+    sim_output  = run_sim(simparam)
+    print(sim_output)
     fname_sim_out = '_'.join(['Train', simparam.error.name, doe_type])
 
     for idoe in np.arange(simparam.ndoe):
         print('   ♦ {:<15s} : {:d} / {:d}'.format('DoE set', idoe, simparam.ndoe))
-
         x   = np.squeeze(np.array(simparam.sys_input_x[idoe]))
-        y   = np.squeeze(np.array(sim_output[0][idoe]))
+        y   = np.squeeze(np.array(sim_output[idoe]))
         zeta= np.squeeze(np.array(simparam.sys_input_zeta[idoe]))
         idoe_res =[x,y,zeta]
         # error_params.append([0, 0.2*abs(y)])
@@ -203,18 +103,18 @@ def main():
         if doe_method.upper() == 'MC':
             fname_sim_out_idoe = fname_sim_out +r'{:d}'.format(idoe) 
             #### Upload data to google drive
-            upload2gdrive(os.path.join(DATA_DIR,fname_sim_out_idoe), idoe_res, DATA_DIR_ID)   
+            upload2gdrive(os.path.join(simparam.data_dir,fname_sim_out_idoe), idoe_res, simparam.data_dir_id)   
             ### Calculate Exceedance (ONLY for MCS sampling)         
             print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
-            for pf in prob_failures:
+            for pf in simparam.prob_fails:
                 y_mcs_ecdf = get_exceedance_data(y, prob_failure=pf)
                 fname_sim_out_idoe_ecdf = fname_sim_out_idoe+ '_pf' + '{:.0E}'.format(pf)[-1] + '_ecdf'
-                np.save(os.path.join(DATA_DIR, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
+                np.save(os.path.join(simparam.data_dir, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
 
         else:
             fname_sim_out_idoe = fname_sim_out +r'{:d}'.format(doe_order[idoe])
-            print(os.path.join(DATA_DIR, fname_sim_out_idoe))         
-            np.save(os.path.join(DATA_DIR, fname_sim_out_idoe), idoe_res)
+            print(os.path.join(simparam.data_dir, fname_sim_out_idoe))         
+            np.save(os.path.join(simparam.data_dir, fname_sim_out_idoe), idoe_res)
 
     # ## ------------------------------------------------------------------- ###
     # ##  Add noise case 
@@ -237,19 +137,20 @@ def main():
         # if doe_method.upper() == 'MC':
             # fname_sim_out_idoe = fname_sim_out+ r'{:d}'.format(idoe) 
             # #### Upload data to google drive
-            # upload2gdrive(os.path.join(DATA_DIR,fname_sim_out_idoe), idoe_res, DATA_DIR_ID)
+            # upload2gdrive(os.path.join(simparam.data_dir,fname_sim_out_idoe), idoe_res, DATA_DIR_ID)
             # #### Calculate Exceedance (ONLY for MCS sampling)
             # print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
             # y_mcs_ecdf = get_exceedance_data(y,prob_failure=pf)
             # fname_sim_out_idoe_ecdf = fname_sim_out_idoe+ '_ecdf'
-            # np.save(os.path.join(DATA_DIR, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
+            # np.save(os.path.join(simparam.data_dir, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
         # else:
             # fname_sim_out_idoe = fname_sim_out+ r'{:d}'.format(doe_order[idoe]) 
-            # np.save(os.path.join(DATA_DIR, fname_sim_out_idoe), idoe_res)
+            # np.save(os.path.join(simparam.data_dir, fname_sim_out_idoe), idoe_res)
 
 
 
 if __name__ == '__main__':
-    main()
+    simparam = sim_setup()
+    main(simparam)
 
-       
+      

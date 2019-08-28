@@ -14,24 +14,26 @@ import numpy as np
 from solver.solver_wrapper import solver_wrapper
 
 
-def run_sim(model_name, simParams):
+def run_sim(simParams):
     """
     Run simulation with given "solver" (real model) and predefined parameters 
         General format of a solver
-            y =  M(x, sys_def_params, sys_input_params)
-            M: system solver, taking following arguments
+            M(x,y, w) = f(theta)
+            M: system solver
             x: system inputs, could be one of the following three formats
                 1. array of x samples (ndim, nsamples), y = M(x)
                 2. ndarray of time series
-                3. inputs for the sys_input_func_name to generate time series
+                3. inputs for the sys_excit_func_name to generate time series
+            y: system output, 
+            w: sys_def_params
+            theta: sys_excit_params
             (optional:)
             sys_def_params: array of shape (m,n), parameters defining system solver
                 - m: number of set, 
                 - n: number of system parameters per set
-            sys_input_params: array of shape(m,n), parameters defining system input signal
+            sys_excit_params: array of shape(m,n), parameters defining system input signal
 
     Arguments:
-        model_name: string, solver function name
         simParams: simParameter class object
 
     Return:
@@ -56,7 +58,7 @@ def run_sim(model_name, simParams):
     ###     m: number of set, 
     ###     n: number of system parameters per set
     print(' ► Solver (system) properties:')
-    print('   ♦ {:<17s} : {:15s}'.format('Solver name', model_name))
+    print('   ♦ {:<17s} : {:15s}'.format('Solver name', simParams.model_name))
 
     if simParams.sys_def_params is None or simParams.sys_def_params[0] is None:
         print('   ♦ System definition parameters: NA ' )
@@ -65,8 +67,8 @@ def run_sim(model_name, simParams):
                 .format(simParams.sys_def_params.shape[1], simParams.sys_def_params.shape[0]))
                 # .format(simParams.sys_def_params.shape[0], len(simParams.sys_def_params)))
     print('   ♦ System input parameters:')
-    print('     ∙ {:<15s} : {}'.format('function',simParams.sys_input_params[0]))
-    print('     ∙ {:<15s} : {}'.format('kwargs', simParams.sys_input_params[1]))
+    print('     ∙ {:<15s} : {}'.format('function',simParams.sys_excit_params[0]))
+    print('     ∙ {:<15s} : {}'.format('kwargs', simParams.sys_excit_params[1]))
 
     ###------------- Time domain step ----------------------------
     if simParams.time_max:
@@ -94,9 +96,9 @@ def run_sim(model_name, simParams):
             else:
                 input_vars, input_vars_weights = sys_input_vars_1doe, None
             ### Run simulations
-            y = solver_wrapper(model_name,input_vars,\
+            y = solver_wrapper(simParams.model_name,input_vars,\
                     error_type      = simParams.error,\
-                    sys_input_params= simParams.sys_input_params,\
+                    sys_excit_params= simParams.sys_excit_params,\
                     sys_def_params  = isys_def_params)
 
             print('   ♦ Achieved: [{:^20d} {:^20d}]'.format(isys_done+1,idoe+1))

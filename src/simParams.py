@@ -15,6 +15,8 @@ import numpy as np
 import os
 from datetime import datetime
 from doe.doe_generator import samplegen
+from utilities import make_output_dir, get_gdrive_folder_id 
+
 ## Define parameters class
 DOE_METHOD_NAMES = {
     "GQ"    : "Quadrature"  , "QUAD"  : "Quadrature",
@@ -39,38 +41,6 @@ def _num2str(n):
     else:
         __str ='{:.0E}'.format(n) 
         return __str[0]+'E'+__str[-1] 
-
-def _makelogfile(sys_definition_params, sys_input_params,idoe_filename,  sys_input_x_shape):
-    """
-    Create log files tracking simulations have been done
-    """
-    now = datetime.now()
-    date_string = now.strftime("%d/%m/%Y %H:%M:%S")
-
-    with open('logfile.txt', 'a') as filein_id:
-        filein_id.write('-'*50+'\n')
-        filein_id.write(date_string+'\n')
-        # filein_id.write('{:<30s}:{:<25s}\n'.format('system definition parameters', str(sys_definition_params)))
-        # filein_id.write('{}\n'.format('system input function parameters'))
-        # filein_id.write('\t{:<30s}:{:<25s}\n'.format('systerm input function name', str(sys_input_params[0])))
-        # filein_id.write('\t{:<30s}:{:<25s}\n'.format('systerm input function kwargs', str(sys_input_params[1])))
-        # filein_id.write('{:<30s}\n'.format('systerm input variables (DoE)'))
-        filein_id.write('\t{:<30s}:{:<25s}\n'.format('systerm input variables file name', idoe_filename))
-        # filein_id.write('\t{:<30s}:{}\n'.format('systerm input variables shape',sys_input_x_shape ))
-        # for isys_def_params in sys_definition_params:
-            # l1 = list(isys_def_params) if isys_def_params else [np.inf]
-            # for isys_input_func_name in  sys_input_params[0]:
-                # l2 = list(isys_input_func_name) if isys_input_func_name else [np.inf]
-                # for isys_input_kwargs in sys_input_params[1]:
-                    # l3 = list(isys_input_kwargs ) if isys_input_kwargs else [np.inf]
-                    # assert sys_input_x.shape == sys_input_zeta.shape, 'Number of elements are not same' 
-                    # samples_input = np.concatenate((sys_input_x,sys_input_zeta))
-                    # for isample_input in samples_input.T:
-                        # l4 = list(isample_input) 
-                        # data1line = l1 + l2 + l3 + l4
-                        # filein_id.write('\t'.join(map(str, data1line)))
-                        # # filein_id.write(data1line)
-                        # filein_id.write("\n")
 
 class ErrorType():
     def __init__(self, name=None, params=None, size=None):
@@ -136,7 +106,6 @@ class ErrorType():
                     print('     ∙ {:<15s} : {}'.format('',ierror_params_shape))
             print('     ∙ {:<15s} : {}'.format('dist_size', self.size))
 
-
 class Logger(object):
     def __init__(self):
         self.terminal = sys.stdout
@@ -171,54 +140,49 @@ class simParameter(object):
         normalize: 
     """
 
-    def __init__(self,dist_zeta, doe_params=['GQ','lag',[2,3]],\
-            time_params=None, post_params=[[0,], [1,1,1,1,1,1,0]],\
-            sys_def_params=None, normalize=False):
+    def __init__(self, model_name, dist_zeta, dist_x, prob_fails=[1e-3]):
         sys.stdout = Logger()
-        ###---------- Random variable parameters ------------------------
+        ###---------- Random system properties ------------------------
         self.seed       = [0,100]
+        self.model_name = model_name
+        self.prob_fails = prob_fails
         self.dist_zeta  = dist_zeta
         self.dist_zeta_J= dist_zeta #if len(dist_zeta) == 1 else cp.J(*dist_zeta) 
+        self.dist_x     = dist_x
+        self.dist_x_J   = dist_x    #if len(dist_zeta) == 1 else cp.J(*dist_zeta) 
+        assert len(self.dist_x) == len(self.dist_zeta)
+        assert len(self.dist_x_J) == len(self.dist_zeta_J)
 
         ###-----------DoE parameters ------------------------------------
-        self.doe_params = doe_params
-        self.doe_method = DOE_METHOD_NAMES.get(doe_params[0])
-        self.doe_rule   = doe_params[1]
+        self.doe_params = [] 
+        self.doe_method = ''
+        self.doe_rule   = '' 
         self.doe_order  = []
+        self.doe_order  = []
+        self.ndoe       = len(self.doe_order)   # number of doe sets
         self.doe_filenames  = 'DoE_filenames.txt'
-        if np.isscalar(doe_params[2]): 
-            self.doe_order.append(int(doe_params[2]))
-        else:
-            self.doe_order = np.array(doe_params[2])
-        self.ndoe           = len(self.doe_order)   # number of doe sets
 
         ###-------------Directories setting -----------------------------
         self.pwd            = ''
         self.data_dir       = ''
+        self.data_dir_id    = ''
         self.figure_dir     = ''
         ###-------------Systerm input params ----------------------------
         ### sys_def_params is of shape (m,n)
         ##  - m: number of set, 
         ##  - n: number of system parameters per set
-        self.sys_def_params = sys_def_params if sys_def_params else [None]
-        self.sys_input_params = [[None], [None]]### sys_input_params = [sys_input_func_name, sys_input_func_kwargs]
-        self.sys_input_x    = []
-        self.sys_input_zeta = []
-
-        # self.ndim_sys_inputs= len(self.dist_zeta_J)                     # dimension of solver inputs 
-        # self.nsamples_per_doe   = []                    # number of samples for each doe sets
-        # self.nsamples_done  = 0
-        # self.nsamples_per_doe.append(samp_zeta[0].shape[1])
+        self.sys_def_params   = []
+        self.sys_excit_params = [] ### sys_excit_params = [sys_excit_func_name, sys_excit_func_kwargs]
+        self.sys_input_x      = []
+        self.sys_input_zeta   = []
 
         ###-------------Error type paramters ----------------------------
         self.error = ErrorType()
 
         ###-------------Others ------------------------------------------
-        self.time_start, self.time_ramp, self.time_max, self.dt = time_params if time_params else [None]*4
-        self.qoi2analysis, self.stats = post_params
-        self.normalize      = normalize 
+        self.set_params()
 
-    def get_doe_samples_zeta(self, sys_input_x=None, dist_x=None):
+    def get_doe_samples_zeta(self, sys_input_x=None):
         """
         Return design sample points both in zeta spaces based on specified doe_method
         Return:
@@ -239,7 +203,7 @@ class simParameter(object):
         if self.doe_method.upper() == 'FIXED POINT':
             assert sys_input_x is not None, " For 'fixed point' method, samples in physical space must be given" 
             for isample_x in sys_input_x:
-                self.sys_input_zeta.append(self._dist_transform(dist_x, self.dist_zeta, isample_x))
+                self.sys_input_zeta.append(self._dist_transform(self.dist_x, self.dist_zeta, isample_x))
         else: ## could be MC or quadrature
             for idoe_order in self.doe_order: 
                 # DoE for different selected doe_order 
@@ -268,7 +232,7 @@ class simParameter(object):
             else:
                 print('     ∙ Coordinate: {}'.format(isample_zeta.shape))
 
-    def get_doe_samples(self, dist_x, is_both=True, filename_leading='DoE'):
+    def get_doe_samples(self, is_both=True, filename_leading='DoE'):
         """
         Return and save design sample points both in physical spaces based on specified doe_method
         Return:
@@ -287,16 +251,16 @@ class simParameter(object):
 
 
         # # self.sys_input_x = []
-        assert len(dist_x) == len(self.dist_zeta)
+        assert len(self.dist_x) == len(self.dist_zeta)
 
         ## Get samples in zeta space first
         self.get_doe_samples_zeta() 
 
-        # n_sys_input_func_name = len(self.sys_input_params[0]) if self.sys_input_params[0] else 1
-        n_sys_input_func_name = len(self.sys_input_params[0]) 
-        n_sys_input_kwargs    = len(self.sys_input_params[1]) 
+        # n_sys_excit_func_name = len(self.sys_excit_params[0]) if self.sys_excit_params[0] else 1
+        n_sys_excit_func_name = len(self.sys_excit_params[0]) 
+        n_sys_excit_func_kwargs= len(self.sys_excit_params[1]) 
         n_sys_def_params      = len(self.sys_def_params) 
-        n_total_simulations   = n_sys_input_func_name * n_sys_input_kwargs *n_sys_def_params 
+        n_total_simulations   = n_sys_excit_func_name * n_sys_excit_func_kwargs *n_sys_def_params 
 
         ## Then calcuate corresponding samples in physical variable space 
         # with open(os.path.join(self.data_dir, self.doe_filenames), 'w') as doe_filenames:
@@ -305,12 +269,12 @@ class simParameter(object):
         for idoe, isample_zeta in enumerate(self.sys_input_zeta):
             if self.doe_method.upper() == 'QUADRATURE':
                 zeta_cor, zeta_weights = isample_zeta 
-                x_cor = self._dist_transform(self.dist_zeta, dist_x, zeta_cor)
+                x_cor = self._dist_transform(self.dist_zeta, self.dist_x, zeta_cor)
                 x_weights = zeta_weights#.reshape(zeta_cor.shape[1],1)
                 isample_x = np.array([x_cor, x_weights])
             else:
                 zeta_cor, zeta_weights = isample_zeta, None
-                x_cor = self._dist_transform(self.dist_zeta, dist_x, zeta_cor)
+                x_cor = self._dist_transform(self.dist_zeta, self.dist_x, zeta_cor)
                 isample_x = x_cor
             # print('isample_x shape: {}, coord shape: {}, weight shape {}'.format(isample_x.shape, isample_x[0].shape, isample_x[1].shape))
 
@@ -328,28 +292,29 @@ class simParameter(object):
         with open('DoE_logfile.txt', 'a') as filein_id:
             filein_id.write(logtext)
 
-            # _save2file(idoe_filename, self.sys_def_params, self.sys_input_params, isample_x, isample_zeta)
-            # print(isample_x)
-            # print(isample_zeta)
-            # print(' ► Data saved {}'.format(idoe_filename))
-
-        # print('   ♦ Total number of simulations: {:d}'.format(int(n_total_simulations)))
-        # self.sys_input_params[2] = self.sys_input_x
-
-    def set_doe_samples(self, input_x, dist_x):
-
-        ## Set samples in physical space first
+    def set_doe_samples(self, input_x):
+        """
+        Set samples in physical space, used for FIXED POINT scheme
+        """
         self.sys_input_x = input_x
-        self.get_doe_samples_zeta(input_x, dist_x) 
+        self.get_doe_samples_zeta(input_x, self.dist_x) 
 
-        self.sys_input_params[2].append(self.sys_input_x)
+        self.sys_excit_params[2].append(self.sys_input_x)
 
-
-    def set_doe_method(self,doe_method):
-        self.doe_method = doe_method
-
-    def set_doe_order(self,p):
-        self.doe_order = p
+    def set_doe_method(self,doe_params= ['GQ','lag',[2,3]]):
+        """
+        Define DoE parameters and properties
+        """
+        self.doe_params = doe_params
+        self.doe_method = DOE_METHOD_NAMES.get(doe_params[0])
+        self.doe_rule   = doe_params[1]
+        self.doe_order  = []
+        self.doe_filenames  = 'DoE_filenames.txt'
+        if np.isscalar(doe_params[2]): 
+            self.doe_order.append(int(doe_params[2]))
+        else:
+            self.doe_order = np.array(doe_params[2])
+        self.ndoe           = len(self.doe_order)   # number of doe sets
 
     def set_error(self, params=None):
         """
@@ -361,8 +326,8 @@ class simParameter(object):
             name, params, size = params
             self.error = ErrorType(name=name, params=params, size=size)
 
-    def add_nsamples_done(self,n):
-        self.nsamples_done += n
+    # def add_nsamples_done(self,n):
+        # self.nsamples_done += n
 
     def set_seed(self, s):
         self.seed = s
@@ -372,27 +337,56 @@ class simParameter(object):
 
     def update_dir(self, **kwargs):
         """
+        update directories for working and data saving.
+            Takes either a string argument or a dictionary argument
+
+        self.update_dir(MDOEL_NAME)  (set as default and has priority).
+            if MODEL_NAME is given, kwargs is ignored
+        self.update_dir(pwd=, data_dir=, figure_dir=)
+
         Updating directories of
             pwd: present working directory, self.pwd
             data_dir: directory saving all data, self.data_dir
             figure_dir: directory saving all figures, self.figure_dir
         """
-        self.pwd = kwargs.get('pwd',os.getcwd())
-        self.data_dir = kwargs.get('data_dir', '')
-        self.figure_dir = kwargs.get('figure_dir', '')
+        data_dir_id, data_dir, figure_dir =  make_output_dir(self.model_name)
+        self.pwd        = kwargs.get('pwd'          , os.getcwd()   )
+        self.data_dir   = kwargs.get('data_dir'     , data_dir      )
+        self.figure_dir = kwargs.get('figure_dir'   , figure_dir    )
+        self.data_dir_id= kwargs.get('data_dir_id'  , data_dir_id   )
 
-    def set_qoi2analysis(self, qois):
-        # what is this??
-        self.qoi2analysis = qois
-    def set_sys_input_params(self, sys_input_func_name, sys_input_kwargs):
-        self.sys_input_params[0] = sys_input_func_name
-        self.sys_input_params[1] = sys_input_kwargs
+    def set_params(self, **kwargs):
+        """
+        Taking key word arguments to set parameters like time, post process etc.
+        """
 
-    # def set_nsamples_need(self, n):
-        # self.nsamples_need= n
-        # self.doe_method = xrange(self.nsamples_need)
+        ## define parameters related to time steps in simulation 
+        self.time_params= kwargs.get('time_params'  , [0,0,0,0])
+        self.time_start = kwargs.get('time_start'   , self.time_params[0])
+        self.time_ramp  = kwargs.get('time_ramp'    , self.time_params[1])
+        self.time_max   = kwargs.get('time_max'     , self.time_params[2])
+        self.dt         = kwargs.get('dt'           , self.time_params[3])
+
+        ## define parameters related to post processing
+        self.post_params    = kwargs.get('post_params'  , [[0,], [1,1,1,1,1,1,0]])
+        self.qoi2analysis   = kwargs.get('qoi2analysis' , self.post_params[0]) 
+        self.stats          = kwargs.get('stats'        , self.post_params[1])
+
+        ###-------------Systerm input params ----------------------------
+        ### sys_def_params is of shape (m,n)
+        ##  - m: number of set, 
+        ##  - n: number of system parameters per set
+        self.sys_def_params     = kwargs.get('sys_def_params'   , [None])
+
+        ### sys_excit_params = [sys_excit_func_name, sys_excit_func_kwargs]
+        self.sys_excit_params   = kwargs.get('sys_excit_params' , [[None], [None]])  
+        self.sys_excit_params[0]= kwargs.get('sys_excit_func_name', self.sys_excit_params[0])
+        self.sys_excit_params[1]= kwargs.get('sys_excit_func_kwargs', self.sys_excit_params[1])
 
 
+        ## 
+        ###-------------Other special params ----------------------------
+        self.normalize = kwargs.get('normalize', False)
 
     def _dist_transform(self, dist1, dist2, var1):
         """
