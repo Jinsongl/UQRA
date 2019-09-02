@@ -12,6 +12,7 @@
 import context
 import chaospy as cp
 import numpy as np
+import scipy.io as sio
 # import envi, doe, solver, utilities
 
 import os, sys
@@ -36,8 +37,10 @@ def main(simparam):
 
     noise_dir   = 'DATA_NOISE_NORMAL'
     ndoe2train  = [11,12,13,14,15] 
-    data_file   = r'Train_Free_MCS1_DoE1_pf3_ecdf.npy'
-    data_set    = np.load(os.path.join(simparam.data_dir, data_file))
+    # data_file   = r'Train_Free_MCS1_DoE1_pf3_ecdf.npy'
+    # data_set    = np.load(os.path.join(simparam.data_dir, data_file))
+    data_file   = r'SNL12x6_R001.mat'
+    data_set    = sio.loadmat(data_file)
     x_samples   = data_set[0]
     y_samples   = data_set[1]
     zeta_samples= data_set[2]
