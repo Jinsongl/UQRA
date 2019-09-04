@@ -18,7 +18,7 @@ import numpy as np
 # import sim_setup2 
 from sim_setup import sim_setup
 from metaModel import metaModel
-from simParams import simParameter
+from simParameters import simParameters
 from run_sim import run_sim
 from utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
 import os,sys
@@ -38,7 +38,7 @@ def main(simparam):
     # ## >>> 1. Fixed point:
     # doe_method, doe_rule, doe_order = 'FIX','FIX', [10, 11,12,13,14,15]
     # doe_params  = [doe_method, doe_rule, doe_order]
-    # fix_simparam= simParameter(dist_zeta, doe_params=doe_params)
+    # fix_simparam= simParameters(dist_zeta, doe_params=doe_params)
     # rng         = np.random.RandomState(3)
     # x_samples   = []
     # for idoe in doe_order:
@@ -87,7 +87,7 @@ def main(simparam):
     simparam.set_error(error_params)
 
     sim_output  = run_sim(simparam)
-    print(sim_output)
+    # print(sim_output)
     # fname_sim_out = 
 
     for idoe in np.arange(simparam.ndoe):
