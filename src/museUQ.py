@@ -16,8 +16,18 @@ import numpy as np
 from simParameters import simParameters
 from utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
 
-class museUQ(simParameter):
+class museUQ(simParameters):
     """
 
     """
+
+    def run_doe(self):
+
+        pass
+
+    def run_solver(self):
+        pass
+
+    def build_surrogate(self):
+        pass
 

@@ -126,7 +126,7 @@ class DoE(simParameters):
         normalize: 
     """
 
-    def __init__(self, model_name, dist_zeta, dist_x, prob_fails=1e-3):
+    def __init__(self,doe_method, doe_rule, doe_order, **kwargs):
         sys.stdout = Logger()
 
         self.doe_params = [] 
@@ -271,77 +271,6 @@ class DoE(simParameters):
         self.outfilename = 'DoE_' + doe_params[0].capitalize() + doe_params[1].capitalize() 
         self.doe_filenames = [self.outfilename + _num2str(idoe) for idoe in self.doe_order]
         self.ndoe        = len(self.doe_order)   # number of doe sets
-
-    def set_error(self, params=None):
-        """
-        Set error distributions 
-        """
-        if params is None:
-            self.error = ErrorType()
-        else:
-            name, params, size = params
-            self.error = ErrorType(name=name, params=params, size=size)
-
-    # def add_nsamples_done(self,n):
-        # self.nsamples_done += n
-
-    def set_seed(self, s):
-        self.seed = s
-
-    def update_outfilename(self,filename):
-        self.outfilename = filename
-
-    def update_dir(self, **kwargs):
-        """
-        update directories for working and data saving.
-            Takes either a string argument or a dictionary argument
-
-        self.update_dir(MDOEL_NAME)  (set as default and has priority).
-            if MODEL_NAME is given, kwargs is ignored
-        self.update_dir(pwd=, data_dir=, figure_dir=)
-
-        Updating directories of
-            pwd: present working directory, self.pwd
-            data_dir: directory saving all data, self.data_dir
-            figure_dir: directory saving all figures, self.figure_dir
-        """
-        data_dir_id, data_dir, figure_dir =  make_output_dir(self.model_name)
-        self.pwd        = kwargs.get('pwd'          , os.getcwd()   )
-        self.data_dir   = kwargs.get('data_dir'     , data_dir      )
-        self.figure_dir = kwargs.get('figure_dir'   , figure_dir    )
-        self.data_dir_id= kwargs.get('data_dir_id'  , data_dir_id   )
-
-    def set_params(self, **kwargs):
-        """
-        Taking key word arguments to set parameters like time, post process etc.
-        """
-
-        ## define parameters related to time steps in simulation 
-        self.time_params= kwargs.get('time_params'  , [0,0,0,0])
-        self.time_start = kwargs.get('time_start'   , self.time_params[0])
-        self.time_ramp  = kwargs.get('time_ramp'    , self.time_params[1])
-        self.time_max   = kwargs.get('time_max'     , self.time_params[2])
-        self.dt         = kwargs.get('dt'           , self.time_params[3])
-
-        ## define parameters related to post processing
-        self.post_params    = kwargs.get('post_params'  , [[0,], [1,1,1,1,1,1,0]])
-        self.qoi2analysis   = kwargs.get('qoi2analysis' , self.post_params[0]) 
-        self.stats          = kwargs.get('stats'        , self.post_params[1])
-
-        ###-------------Systerm input params ----------------------------
-        ### sys_def_params is of shape (m,n)
-        ##  - m: number of set, 
-        ##  - n: number of system parameters per set
-        self.sys_def_params     = kwargs.get('sys_def_params'   , [None])
-
-        ### sys_excit_params = [sys_excit_func_name, sys_excit_func_kwargs]
-        self.sys_excit_params   = kwargs.get('sys_excit_params' , [[None], [None]])  
-        self.sys_excit_params[0]= kwargs.get('sys_excit_func_name', self.sys_excit_params[0])
-        self.sys_excit_params[1]= kwargs.get('sys_excit_func_kwargs', self.sys_excit_params[1])
-
-        ## 
-        ###-------------Other special params ----------------------------
-        self.normalize = kwargs.get('normalize', False)
 
     def _dist_transform(self, dist1, dist2, var1):
         """
