@@ -15,10 +15,10 @@ import chaospy as cp
 import numpy as np
 import os
 
-def genVar(schemePt, simParams, metaParams):
+def genVar(schemePt, simParameters, metaParams):
     """
     Generating samples from zeta space (underlying random variables for selected Wiener-Askey polynomial).
-        simParams: simParameter() object, scheme, schemePt, rule will be provided
+        simParameters: simParameters() object, scheme, schemePt, rule will be provided
 
             (QUAD, schemePt, rule): 
                 QUAD: Quadrature rule,  
@@ -47,26 +47,26 @@ def genVar(schemePt, simParams, metaParams):
     ####  Create Joint distribution for marginal distributions  
     dists      = metaParams.dist
     distJ_zeta = metaParams.distJ
-    scheme = simParams.scheme
+    scheme = simParameters.scheme
 
     #########################################################################
     ###  Quandrature Rule 
     #########################################################################
     if scheme.upper() == "QUAD":
-        if simParams.rule is None:
-            simParams.setRule('G')
-        # simParams.rule = "G" if simParams.rule is None else simParams.rule
+        if simParameters.rule is None:
+            simParameters.setRule('G')
+        # simParameters.rule = "G" if simParameters.rule is None else simParameters.rule
         # if isSave and filename is None:
             # filename,NEWDIR = genfilename(scheme,numPts,rule)
         print '************************************************************'
         print "Generating Quadrature samples..."
-        print "Rule: " + str(simParams.rule) + ", Number of points: " + str(schemePt) 
-        zeta_cor, zeta_weights = cp.generate_quadrature(schemePt-1, distJ_zeta, rule=simParams.rule) 
+        print "Rule: " + str(simParameters.rule) + ", Number of points: " + str(schemePt) 
+        zeta_cor, zeta_weights = cp.generate_quadrature(schemePt-1, distJ_zeta, rule=simParameters.rule) 
         zeta_weights = zeta_weights.reshape((1,len(zeta_weights)))
         zeta_cor = np.concatenate((zeta_cor,zeta_weights), axis=0)
-        simParams.AddSamplesDoneNum(int(zeta_cor.shape[1])) 
+        simParameters.AddSamplesDoneNum(int(zeta_cor.shape[1])) 
 
-        print "... Sampling completed. Total number:" + str(simParams.nsamplesDone)
+        print "... Sampling completed. Total number:" + str(simParameters.nsamplesDone)
 
 
     #########################################################################
@@ -76,8 +76,8 @@ def genVar(schemePt, simParams, metaParams):
         """
         QUANT method generate variables in zeta space based on given percentile
         """
-        if simParams.rule is None:
-            simParams.setRule('Permu')
+        if simParameters.rule is None:
+            simParameters.setRule('Permu')
         string = 'Number of points at each dimension:'
         varDim = []
         quantile_cor = []
@@ -88,7 +88,7 @@ def genVar(schemePt, simParams, metaParams):
 
         print '************************************************************'
         print "Generating Quantile Based samples..."
-        print "Dimensions: ", len(varDim), "Rule: ", str(simParams.rule)
+        print "Dimensions: ", len(varDim), "Rule: ", str(simParameters.rule)
         print string, varDim
 
         zeta_cor=[]
@@ -103,9 +103,9 @@ def genVar(schemePt, simParams, metaParams):
             zeta_cor.append(v)
 
         zeta_cor = np.array(zeta_cor).T
-        simParams.AddSamplesDoneNum(int(zeta_cor.shape[1])) 
+        simParameters.AddSamplesDoneNum(int(zeta_cor.shape[1])) 
 
-        print "... Sampling completed. Total number:" + str(simParams.nsamplesDone)
+        print "... Sampling completed. Total number:" + str(simParameters.nsamplesDone)
 
 
     #########################################################################
@@ -115,16 +115,16 @@ def genVar(schemePt, simParams, metaParams):
         """
         Monte Carlo Points are generated one by one by design, avoiding possible large memory requirement
         """
-        if simParams.rule is None:
-            simParams.setRule('R')
-        zeta_cor = distJ_zeta.sample(1,rule=simParams.rule)
-        simParams.AddSamplesDoneNum(int(zeta_cor.shape[1])) 
-        if simParams.nsamplesDone == 1:
+        if simParameters.rule is None:
+            simParameters.setRule('R')
+        zeta_cor = distJ_zeta.sample(1,rule=simParameters.rule)
+        simParameters.AddSamplesDoneNum(int(zeta_cor.shape[1])) 
+        if simParameters.nsamplesDone == 1:
             print '************************************************************'
             print "Generating Monte Carlo samples..."
-            print "Rule: " + str(simParams.rule) + ", Number of points: " + '{:2.1E}'.format(simParams.nsamplesNeed)
-        if simParams.nsamplesDone % int(simParams.nsamplesNeed/10) == 0:
-            print "     > generating:   " + '{:2.1E}'.format(simParams.nsamplesDone)
+            print "Rule: " + str(simParameters.rule) + ", Number of points: " + '{:2.1E}'.format(simParameters.nsamplesNeed)
+        if simParameters.nsamplesDone % int(simParameters.nsamplesNeed/10) == 0:
+            print "     > generating:   " + '{:2.1E}'.format(simParameters.nsamplesDone)
 
 
 
@@ -136,16 +136,16 @@ def genVar(schemePt, simParams, metaParams):
         schemePt could be generalized, if schemePt is a number, then "rule" will be used
         if schemePt is specified points, schemePt will be used and rule will be ignored
         """
-        if simParams.rule is None:
-            simParams.setRule('L')
+        if simParameters.rule is None:
+            simParameters.setRule('L')
 
         print '************************************************************'
         print "Generating Experimental Design samples..."
-        print "Rule: " + str(simParams.rule) + ", Number of points: " + str(schemePt) 
-        zeta_cor = distJ_zeta.sample(int(schemePt),rule=simParams.rule)
+        print "Rule: " + str(simParameters.rule) + ", Number of points: " + str(schemePt) 
+        zeta_cor = distJ_zeta.sample(int(schemePt),rule=simParameters.rule)
         # print zeta for:_cor
-        simParams.AddSamplesDoneNum(int(zeta_cor.shape[1])) 
-        print "... Sampling completed. Total number:" + str(simParams.nsamplesDone) 
+        simParameters.AddSamplesDoneNum(int(zeta_cor.shape[1])) 
+        print "... Sampling completed. Total number:" + str(simParameters.nsamplesDone) 
 
 
     else:

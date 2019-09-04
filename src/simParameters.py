@@ -106,7 +106,7 @@ class Logger(object):
         #you might want to specify some extra behavior here.
         pass    
 
-class simParameter(object):
+class simParameters(object):
     """
     Define general parameter settings for simulation running and post data analysis. 
     System parameters will be different between solver and solver

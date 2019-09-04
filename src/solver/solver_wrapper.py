@@ -54,8 +54,8 @@ def solver_wrapper(solver_name, sys_input_x, error=None, sys_input_params=None, 
     
 
     if solver.__name__.upper() == 'LIN_OSCILLATOR':
-        time_max= simParams.time_max
-        dt      = simParams.dt
+        time_max= simParameters.time_max
+        dt      = simParameters.dt
         ## Default initial condition [0,0]
         if sys_def_params:
             x0, v0, zeta, omega0 = sys_def_params
@@ -74,9 +74,9 @@ def solver_wrapper(solver_name, sys_input_x, error=None, sys_input_params=None, 
     elif solver.__name__.upper() ==  'DUFFING_OSCILLATOR':
         # sys_input_x: [source_func, *arg, *kwargs]
 
-        time_max  = simParams.time_max
-        dt        = simParams.dt
-        normalize = simParams.normalize
+        time_max  = simParameters.time_max
+        dt        = simParameters.dt
+        normalize = simParameters.normalize
 
         if len(sys_input_x) == 3:
             source_func, source_kwargs, source_args = sys_input_x

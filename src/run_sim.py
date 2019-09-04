@@ -14,7 +14,7 @@ import numpy as np
 from solver.solver_wrapper import solver_wrapper
 
 
-def run_sim(simParams):
+def run_sim(simParameters):
     """
     Run simulation with given "solver" (real model) and predefined parameters 
         General format of a solver
@@ -34,7 +34,7 @@ def run_sim(simParams):
             sys_excit_params: array of shape(m,n), parameters defining system input signal
 
     Arguments:
-        simParams: simParameter class object
+        simParameters: simParameters class object
 
     Return:
         List of simulation results (Different doe_order, sample size would change, so return list)
@@ -58,47 +58,47 @@ def run_sim(simParams):
     ###     m: number of set, 
     ###     n: number of system parameters per set
     print(' ► Solver (system) properties:')
-    print('   ♦ {:<17s} : {:15s}'.format('Solver name', simParams.model_name))
+    print('   ♦ {:<17s} : {:15s}'.format('Solver name', simParameters.model_name))
 
-    if simParams.sys_def_params is None or simParams.sys_def_params[0] is None:
+    if simParameters.sys_def_params is None or simParameters.sys_def_params[0] is None:
         print('   ♦ System definition parameters: NA ' )
     else:
         print('   ♦ System definition parameters: ndim={:d}, nsets={:d}'\
-                .format(simParams.sys_def_params.shape[1], simParams.sys_def_params.shape[0]))
-                # .format(simParams.sys_def_params.shape[0], len(simParams.sys_def_params)))
+                .format(simParameters.sys_def_params.shape[1], simParameters.sys_def_params.shape[0]))
+                # .format(simParameters.sys_def_params.shape[0], len(simParameters.sys_def_params)))
     print('   ♦ System input parameters:')
-    print('     ∙ {:<15s} : {}'.format('function',simParams.sys_excit_params[0]))
-    print('     ∙ {:<15s} : {}'.format('kwargs', simParams.sys_excit_params[1]))
+    print('     ∙ {:<15s} : {}'.format('function',simParameters.sys_excit_params[0]))
+    print('     ∙ {:<15s} : {}'.format('kwargs', simParameters.sys_excit_params[1]))
 
     ###------------- Time domain step ----------------------------
-    if simParams.time_max:
+    if simParameters.time_max:
         print('     ∙ {:<15s} : {:s}, Tmax={:.1e}, dt={:.2f}'\
-            .format('time steps', simParams.time_max, simParams.dt))
+            .format('time steps', simParameters.time_max, simParameters.dt))
     else:
         print('     ∙ {:<15s} : NA'.format('time steps'))
     # print('     ∙ {:<15s} : ndoe={:d}, ndim={:d}, nsets={}'\
-            # .format('input variables', simParams.ndoe, simParams.ndim_sys_inputs, simParams.doe_order))
+            # .format('input variables', simParameters.ndoe, simParameters.ndim_sys_inputs, simParameters.doe_order))
 
     ###------------- Error properties ----------------------------
-    simParams.error.disp()
+    simParameters.error.disp()
 
     print(' ► Running Simulation...')
     print('   ♦ Job list: [{:^20} {:^20}]'.format('# Sys params sets', '# DoE sets'))
-    print('   ♦ Target  : [{:^20d} {:^20d}]'.format(len(simParams.sys_def_params), simParams.ndoe))
+    print('   ♦ Target  : [{:^20d} {:^20d}]'.format(len(simParameters.sys_def_params), simParameters.ndoe))
     print('   ' + '·'*55)
 
 
-    for isys_done, isys_def_params in enumerate(simParams.sys_def_params): 
+    for isys_done, isys_def_params in enumerate(simParameters.sys_def_params): 
         run_sim_1doe_res = []
-        for idoe, sys_input_vars_1doe in enumerate(simParams.sys_input_x):
-            if simParams.doe_method.upper() == 'QUADRATURE':
+        for idoe, sys_input_vars_1doe in enumerate(simParameters.sys_input_x):
+            if simParameters.doe_method.upper() == 'QUADRATURE':
                 input_vars, input_vars_weights = sys_input_vars_1doe
             else:
                 input_vars, input_vars_weights = sys_input_vars_1doe, None
             ### Run simulations
-            y = solver_wrapper(simParams.model_name,input_vars,\
-                    error_type      = simParams.error,\
-                    sys_excit_params= simParams.sys_excit_params,\
+            y = solver_wrapper(simParameters.model_name,input_vars,\
+                    error_type      = simParameters.error,\
+                    sys_excit_params= simParameters.sys_excit_params,\
                     sys_def_params  = isys_def_params)
 
             print('   ♦ Achieved: [{:^20d} {:^20d}]'.format(isys_done+1,idoe+1))
