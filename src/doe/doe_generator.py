@@ -16,7 +16,7 @@ import numpy as np
 import numpy.polynomial as nppoly
 import scipy as sp
 import itertools
-import pyDOE2 as pydoe
+# import pyDOE2 as pydoe
 
 # QUAD_SHORT_NAMES = {
 # "c": "clenshaw_curtis",
@@ -33,6 +33,11 @@ import pyDOE2 as pydoe
 # "jacobi":"gauss_jacobi",
 # }
 
+dic_chaospy_quad_name = {
+    "cc": "c", "leg"  : "e" , "pat" : "p",
+    "gk": "z", "gwel" : "g" , "leja": "j",
+    "hem": "h"   
+}
 def doe_quadrature(distribution, order, rule=None):
     """
     Experiment design with quadrature methods.
@@ -47,9 +52,10 @@ def doe_quadrature(distribution, order, rule=None):
     chaospy_quad = ['c','e','p','z','g','j','legendre']
     numpy_quad = ['h', 'hermite','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
     ## Return samples in 
-    rule = 'h' if rule is None else rule ## Default gauss_legendre
+    # rule = 'h' if rule is None else rule ## Default gauss_legendre
+    assert rule, 'DoE rule is required '
     if rule in chaospy_quad:
-        doe_samples = _gen_quad_chaospy(order, distribution, rule)
+        doe_samples = _gen_quad_chaospy(order, distribution, dic_chaospy_quad_name.get(rule))
     elif rule in numpy_quad:
         doe_samples = _gen_quad_numpy(order, distribution, rule)
     else:
@@ -205,15 +211,15 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         # "legendre":"gauss_legendre",
         # "jacobi":"gauss_jacobi",
         # }
-    chaospy_quad= ['c','e','p','z','g','j','legendre']
-    numpy_quad  = ['h', 'hermite','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
+    chaospy_quad= ['cc','leg','pat','gk','gwel','leja']
+    numpy_quad  = ['hem', 'hermite','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
     doe_method  = doe_method.upper()
 
     if doe_method == 'QUADRATURE':
         ## Return samples in 
-        rule = 'h' if rule is None else rule ## Default gauss_legendre
+        rule = 'hem' if rule is None else rule ## Default gauss_legendre
         if rule in chaospy_quad:
-            doe_samples = _gen_quad_chaospy(order, domain, rule)
+            doe_samples = _gen_quad_chaospy(order, domain, dic_chaospy_quad_name.get(rule))
         elif rule in numpy_quad:
             doe_samples = _gen_quad_numpy(order, domain, rule)
         else:
@@ -257,7 +263,7 @@ def _gen_quad_chaospy(order, domain, rule):
     return doe_samples
 
 def _gen_quad_numpy(order, domain, rule):
-    if rule in ['h', 'hermite']:
+    if rule in ['hem', 'hermite']:
         coord1d, weight1d = np.polynomial.hermite_e.hermegauss(order) ## probabilists , chaospy orth_ttr generate probabilists orthogonal polynomial
         # coord1d, weight1d = np.polynomial.hermite.hermgauss(order) ## physicist
         coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T

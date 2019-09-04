@@ -33,6 +33,35 @@ CAL_COEFFS_METHODS = {
         # self.y = y
         # self.w = w
 
+
+# Chaospy.Poly
+# 1. Any constructed polynomial is a callable. The argument can either be inserted positional or as keyword arguments q0,
+#   q1, . . . :
+#   >>> poly = cp.Poly([1, x**2, x*y])
+#   >>> print(poly(2, 3))
+#   [1 4 6]
+#   >>> print(poly(q1=3, q0=2))
+#   [1 4 6]
+# 2. The input can be a mix of scalars and arrays, as long as the shapes together can be joined to gether in a common
+# compatible shape:
+#   >>> print(poly(2, [1, 2, 3, 4]))
+#   [[1 1 1 1]
+#   [4 4 4 4]
+#   [2 4 6 8]]
+# 3. It is also possible to perform partial evaluation, i.e. evaluating some of the dimensions. To tell the polynomial that
+# a dimension should not be evaluated either leave the argument empty or pass a masked value numpy.ma.masked.
+#   For example:
+#   >>> print(poly(2))
+#   [1, 4, 2q1]
+#   >>> print(poly(np.ma.masked, 2))
+#   [1, q0^2, 2q0]
+#   >>> print(poly(q1=2))
+#   [1, q0^2, 2q0]
+# 4. y = foo_hat(*sample) 
+#   When foo_hat contains multiple surrogate models, it will apply each content of sample (*sample) to each of them and return a ndarray of shape(n,)
+# Returns:
+#   The type of return value for the polynomial is numpy.ndarray if all dimensions are filled. If not, it returns a new polynomial.
+
 class metaModel(object):
     """
     Meta model class object 
@@ -79,7 +108,7 @@ class metaModel(object):
         self.kwparams        = kwparams if kwparams else {} 
 
         ## define list saving outputs
-        self.model_basis     = []   # list of metamodel basis functions. For PCE, list of polynomials, for GPR, list of kernels
+        self.model_basis     = []    # list of metamodel basis functions. For PCE, list of polynomials, for GPR, list of kernels
         self.metamodels      = []    # list of built metamodels
         self.metamodel_coeffs= []    # list of coefficient sets for each built meta model
         self.orthpoly_norms  = []    # Only for PCE model, list of norms for basis_setting functions 
@@ -150,18 +179,19 @@ class metaModel(object):
         if not self.metamodels:
             raise ValueError('No surrogate model exists')
 
-        predres = []
+        res_pred = []
         print(' ► Evaluating with surrogate models ... ')
-        print('   ♦ {:<15s} : {}'.format('Query points ', X.shape))
+        print('   ♦ {:<17s} : {}'.format('Query points ', X.shape))
         for i, imetamodel in enumerate(self.metamodels):
-            print('   ♦ Surrogate model {:d}/{:d} '.format(i, len(self.metamodels)))
+            print('   ♦ {:<17s} : {:d}/{:d} '.format('Surrogate model', i, len(self.metamodels)))
             if self.metamodel_class.upper() == 'PCE':
-                f_pred = np.array(imetamodel(X))
+                ## See explainations about Poly above
+                f_pred = imetamodel(*X)
             elif self.metamodel_class.upper() == 'GPR':
                 f_mean, f_std = imetamodel.predict(X.T, return_std=return_std, return_cov=return_cov)
                 f_pred = np.hstack((f_mean, f_std.reshape(f_mean.shape))).T
-            predres.append(f_pred)
-        return np.squeeze(np.array(predres))
+            res_pred.append(f_pred)
+        return res_pred
 
     def score(self,x,p=[0.01,0.001],retmetrics=[1,1,1,1,1,1]):
         """
@@ -333,7 +363,7 @@ class metaModel(object):
         print('►►► Build Surrogate Models')
         print('------------------------------------------------------------')
         print(' ► Surrogate model properties:')
-        print('   ♦ {:<15s} : {:<15s}'.format('Model class', self.metamodel_class))
+        print('   ♦ {:<17s} : {:<15s}'.format('Model class', self.metamodel_class))
 
         if self.metamodel_class.upper() == 'PCE':
             ## make sure basis_setting is a list
@@ -360,7 +390,10 @@ class metaModel(object):
             self.kwparams['dist_x_J'    ] = self.kwparams.get('dist_x_J'      , None)
             print('   ♦ Optional parameters:')
             for key, value in self.kwparams.items():
-                print('     ∙ {:<25s} : {}'.format(key,value))
+                if key in ['cal_coeffs', 'dist_zeta','Basis order']:
+                    pass
+                else:
+                    print('     ∙ {:<15s} : {}'.format(key,value))
 
         elif self.metamodel_class.upper() == 'GPR':
             ## make sure basis_setting is a list
@@ -384,7 +417,7 @@ class metaModel(object):
             print('   ♦ {:<15s} : {}'.format('Kernels', self.kernels))
             print('   ♦ Optional parameters:')
             for key, value in self.kwparams.items():
-                print('     ∙ {:<25s} : {}'.format(key,value))
+                print('     ∙ {:<15s} : {}'.format(key,value))
 
         elif self.metamodel_class.upper() == 'APCE':
             raise NotImplementedError
@@ -496,7 +529,7 @@ class metaModel(object):
 
         cal_coeffs = self.kwparams.get('cal_coeffs')
         for i, iorthpoly in enumerate(self.model_basis):
-            print('   ♦ {:<15s} : {:d}'.format('PCE model order', self.metamodel_pce_orders[i]))
+            print('   ♦ {:<17s} : {:d}'.format('PCE model order', self.basis_orders[i]))
             if cal_coeffs.upper() in ['SP','GQ','QUAD']:
                 assert w is not None
                 assert iorthpoly.dim == x.shape[0]
@@ -527,7 +560,7 @@ class metaModel(object):
         """
         if self.metamodel_class.upper() == 'PCE':
             for p_order in self.basis_orders:
-                poly, norm = cp.orth_ttr(p_order, self.dist_zeta_J, retall=True)
+                poly, norm = cp.orth_ttr(p_order, self.kwparams['dist_zeta_J'], retall=True)
                 self.model_basis.append(poly)
                 self.orthpoly_norms.append(norm)
         elif self.metamodel_class.upper() == 'GPR':

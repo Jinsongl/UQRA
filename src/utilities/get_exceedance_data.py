@@ -18,38 +18,41 @@ from statsmodels.distributions.empirical_distribution import ECDF
 Ecdf2plot = collections.namedtuple('Ecdf2plot', ['x','y'])
 
 
-def get_exceedance_data(x,prob_failure=None):
+def get_exceedance_data(x,prob=None):
     """
-    Return
-    If x is 2d array, get exceedance column wise
-
-
+    Retrieve the exceedance data value for specified prob from data set x
+    Arguments:
+        x: array-like data set 
+        prob: exceedance probability
+    Return:
+        
     """
     exceedance = []
+    x = np.array(x)
+
     if x.ndim == 1:
-        exceedance = _get_exceedance_data(x, prob_failure=prob_failure)
-    elif x.ndim == 2:
-        for ix_col in x:
-            exceedance.append(_get_exceedance_data(ix_col, prob_failure=prob_failure))
+        exceedance.append(_get_exceedance_data(x, prob=prob))
+    else:
+        exceedance.append([_get_exceedance_data(iset, prob=prob) for iset in x])
 
     return exceedance
 
 
-def _get_exceedance_data(x,prob_failure=None):
+def _get_exceedance_data(x,prob=None):
     """
     return sub data set retrieved from data set x
 
-    data size: 1/(prob_failure * 10) to end
+    data size: 1/(prob * 10) to end
     """
     x_ecdf = ECDF(x)
     n_samples = len(x_ecdf.x)
-    prob_failure = 1e-3 if prob_failure is None else prob_failure
+    prob = 1e-3 if prob is None else prob
 
-    if n_samples <= 1.0/prob_failure:
+    if n_samples <= 1.0/prob:
         exceedance = (x_ecdf.x, x_ecdf.y, x_ecdf.y)
-        warnings.warn('\n Not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(n_samples, prob_failure))
+        warnings.warn('\n Not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(n_samples, prob))
     else:
-        exceedance_index = -int(prob_failure * n_samples)
+        exceedance_index = -int(prob * n_samples)
         exceedance_value = x_ecdf.x[exceedance_index]
         _, idx1 = np.unique(np.round(x_ecdf.x[:exceedance_index], decimals=2), return_index=True)
         x1 = x_ecdf.x[idx1]

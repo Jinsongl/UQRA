@@ -16,24 +16,9 @@ import os
 from datetime import datetime
 from doe.doe_generator import samplegen
 from utilities import make_output_dir, get_gdrive_folder_id 
+import settings
 
 ## Define parameters class
-DOE_METHOD_NAMES = {
-    "GQ"    : "Quadrature"  , "QUAD"  : "Quadrature",
-    "MC"    : "Monte Carlo" , "FIX"   : "Fixed point"
-    } 
-
-DOE_RULE_NAMES = {
-    "c": "clenshaw_curtis"  , "e"   : "gauss_legendre"  , "p"   : "gauss_patterson",
-    "z": "genz_keister"     , "g"   : "golub_welsch"    , "j"   : "leja",
-    "h": "gauss_hermite"    ,"lag"  : "gauss_laguerre"  , "cheb": "gauss_chebyshev",
-    "hermite"   :"gauss_hermite",
-    "legendre"  :"gauss_legendre",
-    "jacobi"    :"gauss_jacobi",
-    "R": "Pseudo-Random", "RG": "Regular Grid", "NG": "Nested Grid", "L": "Latin Hypercube",
-    "S": "Sobol", "H":"Halton", "M": "Hammersley",
-    "FIX": "Fixed point"
-    }
 
 def _num2str(n):
     if n<100:
@@ -140,7 +125,7 @@ class simParameter(object):
         normalize: 
     """
 
-    def __init__(self, model_name, dist_zeta, dist_x, prob_fails=[1e-3]):
+    def __init__(self, model_name, dist_zeta, dist_x, prob_fails=1e-3):
         sys.stdout = Logger()
         ###---------- Random system properties ------------------------
         self.seed       = [0,100]
@@ -160,13 +145,17 @@ class simParameter(object):
         self.doe_order  = []
         self.doe_order  = []
         self.ndoe       = len(self.doe_order)   # number of doe sets
-        self.doe_filenames  = 'DoE_filenames.txt'
+        self.doe_filenames  = [] 
 
         ###-------------Directories setting -----------------------------
         self.pwd            = ''
         self.data_dir       = ''
         self.data_dir_id    = ''
         self.figure_dir     = ''
+        self.outfilename    = ''
+
+        ###-------------Output file names -----------------------------
+        self.fname_doe_out  = ''
         ###-------------Systerm input params ----------------------------
         ### sys_def_params is of shape (m,n)
         ##  - m: number of set, 
@@ -194,7 +183,7 @@ class simParameter(object):
         print('------------------------------------------------------------')
         print(' ► DoE parameters: ')
         print('   ♦ {:<15s} : {:<15s}'.format('DoE method', self.doe_method))
-        print('   ♦ {:<15s} : {:<15s}'.format('DoE rule', DOE_RULE_NAMES[self.doe_rule]))
+        print('   ♦ {:<15s} : {:<15s}'.format('DoE rule', settings.DOE_RULE_NAMES[self.doe_rule]))
         print('   ♦ {:<15s} : {}'.format('DoE order', list(map(_num2str, self.doe_order))))
         print(' ► Running DoEs: ')
 
@@ -281,12 +270,11 @@ class simParameter(object):
             self.sys_input_x.append(isample_x)
 
             ### save input variables to file
-            idoe_filename = '_'.join([filename_leading, self.doe_params[0], self.doe_params[1], _num2str(self.doe_order[idoe])]) 
             samples_input = np.concatenate((isample_x,isample_zeta))
-            logtext += idoe_filename
+            logtext += self.doe_filenames[idoe]
             logtext += '\n'
 
-            idoe_filename = os.path.join(self.data_dir, idoe_filename)
+            idoe_filename = os.path.join(self.data_dir, self.doe_filenames[idoe])
             np.save(idoe_filename,samples_input)
 
         with open('DoE_logfile.txt', 'a') as filein_id:
@@ -301,12 +289,12 @@ class simParameter(object):
 
         self.sys_excit_params[2].append(self.sys_input_x)
 
-    def set_doe_method(self,doe_params= ['GQ','lag',[2,3]]):
+    def set_doe_method(self,doe_params= ['Quad','hem',[2,3]]):
         """
         Define DoE parameters and properties
         """
         self.doe_params = doe_params
-        self.doe_method = DOE_METHOD_NAMES.get(doe_params[0])
+        self.doe_method = settings.DOE_METHOD_NAMES.get(doe_params[0])
         self.doe_rule   = doe_params[1]
         self.doe_order  = []
         self.doe_filenames  = 'DoE_filenames.txt'
@@ -314,7 +302,10 @@ class simParameter(object):
             self.doe_order.append(int(doe_params[2]))
         else:
             self.doe_order = np.array(doe_params[2])
-        self.ndoe           = len(self.doe_order)   # number of doe sets
+
+        self.outfilename = 'DoE_' + doe_params[0].capitalize() + doe_params[1].capitalize() 
+        self.doe_filenames = [self.outfilename + _num2str(idoe) for idoe in self.doe_order]
+        self.ndoe        = len(self.doe_order)   # number of doe sets
 
     def set_error(self, params=None):
         """
@@ -332,8 +323,8 @@ class simParameter(object):
     def set_seed(self, s):
         self.seed = s
 
-    def update_filename(self,filename):
-        self.doe_filenames = filename
+    def update_outfilename(self,filename):
+        self.outfilename = filename
 
     def update_dir(self, **kwargs):
         """
@@ -382,7 +373,6 @@ class simParameter(object):
         self.sys_excit_params   = kwargs.get('sys_excit_params' , [[None], [None]])  
         self.sys_excit_params[0]= kwargs.get('sys_excit_func_name', self.sys_excit_params[0])
         self.sys_excit_params[1]= kwargs.get('sys_excit_func_kwargs', self.sys_excit_params[1])
-
 
         ## 
         ###-------------Other special params ----------------------------

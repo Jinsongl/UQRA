@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+# /usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
@@ -48,24 +48,22 @@ def main(simparam):
     # zeta_samples= fix_simparam.sys_input_zeta[0]
 
     ##>>> 2. Monte Carlo:
-    mc_simparam = simparam
+    # mc_simparam = simparam
 
-    np.random.seed(100)
-    doe_method, doe_rule, doe_order = 'MC','R', [int(1e1), int(1e2)]
-    doe_params  = [doe_method, doe_rule, doe_order]
-    mc_simparam.set_doe_method(doe_params)
-    # mc_simparam = simParameter(dist_zeta, dist_x, doe_params = doe_params)
-    # mc_simparam.update_dir(data_dir = simparam.data_dir, figure_dir = FIGURE_DIR)
-    mc_simparam.get_doe_samples()
-    # mc_simparam.get_input_vars(dist_x)
+    # np.random.seed(100)
+    # doe_method, doe_rule, doe_order = 'MC','R', [int(1e1), int(1e2)]
+    # doe_params  = [doe_method, doe_rule, doe_order]
+    # mc_simparam.set_doe_method(doe_params)
+    # mc_simparam.get_doe_samples()
+    # # mc_simparam.get_input_vars(dist_x)
 
     # ## >>> 3. Quadrature:
-    # doe_method, doe_rule, doe_order = 'GQ','hermite',[10,11,12,13,14,15]
-    # doe_params      = [doe_method, doe_rule, doe_order]
-    # # ishigami_consts = [np.array([7,0.1]).reshape(2,1)]
-    # # quad_simparam   = simParameter(dist_zeta, doe_params = doe_params, sys_def_params=ishigami_consts)
-    # quad_simparam   = simParameter(dist_zeta, doe_params = doe_params)
-    # quad_simparam.get_doe_samples(dist_x)
+    quad_simparam = simparam
+
+    doe_method, doe_rule, doe_order = 'QUAD','hem',[10,11,12,13,14,15]
+    doe_params      = [doe_method, doe_rule, doe_order]
+    quad_simparam.set_doe_method(doe_params)
+    quad_simparam.get_doe_samples()
 
     ## ------------------------------------------------------------------- ###
     ##  Run simulation 
@@ -76,9 +74,9 @@ def main(simparam):
     # simparam    = fix_simparam
     # doe_type    = 'Uniform_DoE'
     # doe_type    = 'Linspace_DoE'        
-    simparam    = mc_simparam
-    doe_type    = 'MCS'+'{:.0E}'.format(doe_order[0])[-1] +'_DoE'
-    # simparam    = quad_simparam
+    # simparam    = mc_simparam
+    # doe_type    = 'MCS'+'{:.0E}'.format(doe_order[0])[-1] +'_DoE'
+    simparam    = quad_simparam
     # doe_type    = 'Quadrature_DoE'
 
     ## ------------------------------------------------------------------- ###
@@ -90,9 +88,10 @@ def main(simparam):
 
     sim_output  = run_sim(simparam)
     print(sim_output)
-    fname_sim_out = '_'.join(['Train', simparam.error.name, doe_type])
+    # fname_sim_out = 
 
     for idoe in np.arange(simparam.ndoe):
+        fname_sim_out_idoe = '_'.join([simparam.doe_filenames[idoe], simparam.error.name,'train'])
         print('   ♦ {:<15s} : {:d} / {:d}'.format('DoE set', idoe, simparam.ndoe))
         x   = np.squeeze(np.array(simparam.sys_input_x[idoe]))
         y   = np.squeeze(np.array(sim_output[idoe]))
@@ -101,7 +100,6 @@ def main(simparam):
         # error_params.append([0, 0.2*abs(y)])
 
         if doe_method.upper() == 'MC':
-            fname_sim_out_idoe = fname_sim_out +r'{:d}'.format(idoe) 
             #### Upload data to google drive
             upload2gdrive(os.path.join(simparam.data_dir,fname_sim_out_idoe), idoe_res, simparam.data_dir_id)   
             ### Calculate Exceedance (ONLY for MCS sampling)         
@@ -112,8 +110,7 @@ def main(simparam):
                 np.save(os.path.join(simparam.data_dir, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
 
         else:
-            fname_sim_out_idoe = fname_sim_out +r'{:d}'.format(doe_order[idoe])
-            print(os.path.join(simparam.data_dir, fname_sim_out_idoe))         
+            # print(os.path.join(simparam.data_dir, fname_sim_out_idoe))         
             np.save(os.path.join(simparam.data_dir, fname_sim_out_idoe), idoe_res)
 
     # ## ------------------------------------------------------------------- ###

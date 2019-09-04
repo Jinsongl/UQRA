@@ -21,11 +21,11 @@ def sim_setup():
     ## ------------------------------------------------------------------- ###
     ##  Parameters set-up 
     ## ------------------------------------------------------------------- ###
-    prob_fails         = [1e-3]            # list of failure probabilities
-    # data_train_params   = [[1e6], 'R']      # nsamples_test, sample_rule
-    # data_test_params    = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
-    MODEL_NAME            = 'Ishigami'
-    # MODEL_NAME          = 'BENCH1'
+    prob_fails          = 1e-1              # failure probabilities
+    # data_train_params = [[1e6], 'R']      # nsamples_test, sample_rule
+    # data_test_params  = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
+    MODEL_NAME          = 'Ishigami'
+    # MODEL_NAME        = 'BENCH1'
 
     ## ------------------------------------------------------------------- ###
     ##  Define Solver parameters ###

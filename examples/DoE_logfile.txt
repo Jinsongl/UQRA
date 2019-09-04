@@ -110,3 +110,51 @@ DoE_MC_R_1E2
 28/08/2019 15:42:56
 DoE_MC_R_10
 DoE_MC_R_1E2
+--------------------------------------------------
+03/09/2019 09:27:06
+DoE_GQ_hermite_10
+DoE_GQ_hermite_11
+DoE_GQ_hermite_12
+DoE_GQ_hermite_13
+DoE_GQ_hermite_14
+DoE_GQ_hermite_15
+--------------------------------------------------
+03/09/2019 11:05:43
+DoE_QuadHem10
+DoE_QuadHem11
+DoE_QuadHem12
+DoE_QuadHem13
+DoE_QuadHem14
+DoE_QuadHem15
+--------------------------------------------------
+03/09/2019 11:09:50
+DoE_QuadHem10
+DoE_QuadHem11
+DoE_QuadHem12
+DoE_QuadHem13
+DoE_QuadHem14
+DoE_QuadHem15
+--------------------------------------------------
+03/09/2019 11:18:02
+DoE_QuadHem10
+DoE_QuadHem11
+DoE_QuadHem12
+DoE_QuadHem13
+DoE_QuadHem14
+DoE_QuadHem15
+--------------------------------------------------
+03/09/2019 11:18:36
+DoE_QuadHem10
+DoE_QuadHem11
+DoE_QuadHem12
+DoE_QuadHem13
+DoE_QuadHem14
+DoE_QuadHem15
+--------------------------------------------------
+03/09/2019 11:19:42
+DoE_QuadHem10
+DoE_QuadHem11
+DoE_QuadHem12
+DoE_QuadHem13
+DoE_QuadHem14
+DoE_QuadHem15
