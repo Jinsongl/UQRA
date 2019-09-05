@@ -13,6 +13,21 @@ import chaospy as cp
 import numpy as np
 import matplotlib.pyplot as plt
 
+"""
+y = f(x), x ~ dist_x
+Assume: y=f(x) ~ Normal(mu(x), sigma(x))
+Steps:
+    1: get sample set containing 100 x samples, [x1,x2, ..., x100] 
+    2: For each x:
+        generate 1000 y samples from distribution ~ Normal(mu(x), sigma(x)) 
+        retrieve the max of those 1000 values, ishort_term_y_max = max(y1,...y1000) 
+    3: have 100 short_term_y_max values
+Repeat the above process for 100 times
+
+Objective:
+    Simulate a stochastic system whose short-term distribution is assumed to be Normal with x-dependent mean and variance. System responses are iid samples from Normal distribution
+
+"""
 def get_mu(x):
     """
     samples to calculate mu
@@ -102,7 +117,8 @@ axes[2,2].scatter(long_term_max_y[:,0],long_term_max_y[:,1],c=long_term_max_y[:,
 axes[2,2].set_xlim(0., 30)
 axes[2,2].set_ylim(0., 15)
 
-plt.show()
+plt.tight_layout()
+plt.savefig(__file__[:-3] + '.pdf')
 
 
 
