@@ -285,7 +285,7 @@ class simParameters(object):
         Set samples in physical space, used for FIXED POINT scheme
         """
         self.sys_input_x = input_x
-        self.get_doe_samples_zeta(input_x, self.dist_x) 
+        self.get_doe_samples_zeta(input_x) 
 
         self.sys_excit_params[2].append(self.sys_input_x)
 
