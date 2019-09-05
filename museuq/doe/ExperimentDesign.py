@@ -14,9 +14,9 @@ import chaospy as cp
 import numpy as np
 import os
 from datetime import datetime
-from simParameters import simParameters
-from doe.doe_generator import samplegen
-from utilities import make_output_dir, get_gdrive_folder_id 
+from museuq.simParameters import simParameters
+from museuq.doe.doe_generator import samplegen
+from museuq.utilities import make_output_dir, get_gdrive_folder_id 
 import settings
 
 ## Define parameters class
@@ -107,10 +107,10 @@ class Logger(object):
         #you might want to specify some extra behavior here.
         pass    
 
-class DoE(simParameters):
+class ExperimentDesign(simParameters):
     """
-    Define general parameter settings for simulation running and post data analysis. 
-    System parameters will be different between solver and solver
+    Experimental design class inheriated from simParameters class
+    Define general parameter settings for DoE
 
     Arguments:
         dist_zeta: list of selected marginal distributions from Wiener-Askey scheme
