@@ -48,22 +48,22 @@ def main(simparam):
     # zeta_samples= fix_simparam.sys_input_zeta[0]
 
     ##>>> 2. Monte Carlo:
-    # mc_simparam = simparam
-
-    # np.random.seed(100)
-    # doe_method, doe_rule, doe_order = 'MC','R', [int(1e1), int(1e2)]
-    # doe_params  = [doe_method, doe_rule, doe_order]
-    # mc_simparam.set_doe_method(doe_params)
-    # mc_simparam.get_doe_samples()
-    # # mc_simparam.get_input_vars(dist_x)
+    mc_simparam = simparam
+    np.random.seed(100)
+    doe_method, doe_rule, doe_order = 'MC','R', [int(1e1), int(1e2)]
+    doe_params  = [doe_method, doe_rule, doe_order]
+    mc_simparam.set_doe_method(doe_params)
+    mc_simparam.get_doe_samples()
+    # mc_simparam.get_input_vars(dist_x)
+    simparam    = mc_simparam
 
     # ## >>> 3. Quadrature:
-    quad_simparam = simparam
-
-    doe_method, doe_rule, doe_order = 'QUAD','hem',[10,11,12,13,14,15]
-    doe_params      = [doe_method, doe_rule, doe_order]
-    quad_simparam.set_doe_method(doe_params)
-    quad_simparam.get_doe_samples()
+    # quad_simparam = simparam
+    # doe_method, doe_rule, doe_order = 'QUAD','hem',[10,11,12,13,14,15]
+    # doe_params      = [doe_method, doe_rule, doe_order]
+    # quad_simparam.set_doe_method(doe_params)
+    # quad_simparam.get_doe_samples()
+    # simparam    = quad_simparam
 
     ## ------------------------------------------------------------------- ###
     ##  Run simulation 
@@ -74,9 +74,7 @@ def main(simparam):
     # simparam    = fix_simparam
     # doe_type    = 'Uniform_DoE'
     # doe_type    = 'Linspace_DoE'        
-    # simparam    = mc_simparam
     # doe_type    = 'MCS'+'{:.0E}'.format(doe_order[0])[-1] +'_DoE'
-    simparam    = quad_simparam
     # doe_type    = 'Quadrature_DoE'
 
     ## ------------------------------------------------------------------- ###
@@ -104,10 +102,9 @@ def main(simparam):
             upload2gdrive(os.path.join(simparam.data_dir,fname_sim_out_idoe), idoe_res, simparam.data_dir_id)   
             ### Calculate Exceedance (ONLY for MCS sampling)         
             print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
-            for pf in simparam.prob_fails:
-                y_mcs_ecdf = get_exceedance_data(y, prob_failure=pf)
-                fname_sim_out_idoe_ecdf = fname_sim_out_idoe+ '_pf' + '{:.0E}'.format(pf)[-1] + '_ecdf'
-                np.save(os.path.join(simparam.data_dir, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
+            y_mcs_ecdf = get_exceedance_data(y, prob=simparam.prob_fails)
+            fname_sim_out_idoe_ecdf = fname_sim_out_idoe+ '_pf' + '{:.0E}'.format(simparam.prob_fails)[-1] + '_ecdf'
+            np.save(os.path.join(simparam.data_dir, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
 
         else:
             # print(os.path.join(simparam.data_dir, fname_sim_out_idoe))         
