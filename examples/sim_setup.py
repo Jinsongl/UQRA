@@ -13,8 +13,8 @@
 import context
 import chaospy as cp
 import numpy as np
-from simParams import simParameter
-from utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
+from museuq.simParameters import simParameters
+from museuq.utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
 
 def sim_setup():
 
@@ -56,7 +56,7 @@ def sim_setup():
     dist_x = cp.Uniform(-np.pi, np.pi)
     dist_x = cp.Iid(dist_x,3) 
 
-    simparam = simParameter(MODEL_NAME, dist_zeta, dist_x, prob_fails = prob_fails)
+    simparam = simParameters(MODEL_NAME, dist_zeta, dist_x, prob_fails = prob_fails)
     simparam.update_dir()
 
     return simparam

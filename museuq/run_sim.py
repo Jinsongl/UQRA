@@ -11,7 +11,7 @@
 """
 import os
 import numpy as np
-from solver.solver_wrapper import solver_wrapper
+from museuq.solver.solver_wrapper import solver_wrapper
 
 
 def run_sim(simParameters):

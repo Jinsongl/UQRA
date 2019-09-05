@@ -9,14 +9,13 @@
 """
 
 """
-import sys
+import os, sys
 import chaospy as cp
 import numpy as np
-import os
 from datetime import datetime
-from doe.doe_generator import samplegen
-from utilities import make_output_dir, get_gdrive_folder_id 
-import settings
+from museuq.doe.doe_generator import samplegen
+from museuq.utilities import make_output_dir, get_gdrive_folder_id 
+from museuq.settings import *
 
 ## Define parameters class
 
@@ -161,6 +160,142 @@ class simParameters(object):
 
         ###-------------Others ------------------------------------------
         self.set_params()
+
+    def get_doe_samples_zeta(self, sys_input_x=None):
+        """
+        Return design sample points both in zeta spaces based on specified doe_method
+        Return:
+            Experiment samples in zeta space (idoe_order,[samples for each doe_order])
+        """
+
+        print('------------------------------------------------------------')
+        print('►►► Design of Experiments (DoEs)')
+        print('------------------------------------------------------------')
+        print(' ► DoE parameters: ')
+        print('   ♦ {:<15s} : {:<15s}'.format('DoE method', self.doe_method))
+        print('   ♦ {:<15s} : {:<15s}'.format('DoE rule', settings.DOE_RULE_NAMES[self.doe_rule]))
+        print('   ♦ {:<15s} : {}'.format('DoE order', list(map(_num2str, self.doe_order))))
+        print(' ► Running DoEs: ')
+
+        self.sys_input_zeta = []
+        doe_completed = 0
+        if self.doe_method.upper() == 'FIXED POINT':
+            assert sys_input_x is not None, " For 'fixed point' method, samples in physical space must be given" 
+            for isample_x in sys_input_x:
+                self.sys_input_zeta.append(self._dist_transform(self.dist_x, self.dist_zeta, isample_x))
+        else: ## could be MC or quadrature
+            for idoe_order in self.doe_order: 
+                # DoE for different selected doe_order 
+                samp_zeta = samplegen(self.doe_method, idoe_order, self.dist_zeta_J, rule=self.doe_rule)
+                self.sys_input_zeta.append(samp_zeta)
+                doe_completed +=1
+                print('   ♦ {:<15s}: {:d}/{:d}'.format( 'DoE completed', doe_completed, self.ndoe ))
+
+                # if self.doe_method.upper() == 'QUADRATURE':
+                    # ## if quadrature, samp_zeta = [coord(ndim, nsamples), weights(nsamples,)]
+                    # # self.ndim_sys_inputs = samp_zeta[0].shape[0] 
+                    # self.nsamples_per_doe.append(samp_zeta[0].shape[1])
+                # else:
+                    # ## if mc , samp_zeta = [coord(ndim, nsamples)]
+                    # # self.ndim_sys_inputs = samp_zeta.shape[0] 
+                    # self.nsamples_per_doe.append(samp_zeta.shape[1])
+
+        # print(' ► ----   Done (Design of Experiment)   ----')
+        print(' ► DoE Summary:')
+        print('   ♦ Number of sample sets : {:d}'.format(len(self.sys_input_zeta)))
+        print('   ♦ Sample shape: ')
+        for isample_zeta in self.sys_input_zeta:
+            if self.doe_method.upper() == 'QUADRATURE':
+                print('     ∙ Coordinate: {}; weights: {}'\
+                        .format(isample_zeta[0].shape, isample_zeta[1].shape))
+            else:
+                print('     ∙ Coordinate: {}'.format(isample_zeta.shape))
+
+    def get_doe_samples(self, is_both=True, filename_leading='DoE'):
+        """
+        Return and save design sample points both in physical spaces based on specified doe_method
+        Return:
+        sys_input_x: parameters defining the inputs for the solver
+            General format of a solver
+                y =  M(x,sys_def_params)
+                M: system solver, taking a set of system parameters and input x
+                x: system inputs, ndarray of shape (ndim, nsamples)
+                    1. M takes x[:,i] as input, y = M(x.T)
+                    2. M takes time series generated from input_func(x[:,i]) as input
+            Experiment samples in physical space (idoe_order,[samples for each doe_order])
+        """
+
+        now = datetime.now()
+        date_string = now.strftime("%d/%m/%Y %H:%M:%S")
+
+
+        # # self.sys_input_x = []
+        assert len(self.dist_x) == len(self.dist_zeta)
+
+        ## Get samples in zeta space first
+        self.get_doe_samples_zeta() 
+
+        # n_sys_excit_func_name = len(self.sys_excit_params[0]) if self.sys_excit_params[0] else 1
+        n_sys_excit_func_name = len(self.sys_excit_params[0]) 
+        n_sys_excit_func_kwargs= len(self.sys_excit_params[1]) 
+        n_sys_def_params      = len(self.sys_def_params) 
+        n_total_simulations   = n_sys_excit_func_name * n_sys_excit_func_kwargs *n_sys_def_params 
+
+        ## Then calcuate corresponding samples in physical variable space 
+        # with open(os.path.join(self.data_dir, self.doe_filenames), 'w') as doe_filenames:
+
+        logtext ='-'*50+'\n' + date_string +'\n' 
+        for idoe, isample_zeta in enumerate(self.sys_input_zeta):
+            if self.doe_method.upper() == 'QUADRATURE':
+                zeta_cor, zeta_weights = isample_zeta 
+                x_cor = self._dist_transform(self.dist_zeta, self.dist_x, zeta_cor)
+                x_weights = zeta_weights#.reshape(zeta_cor.shape[1],1)
+                isample_x = np.array([x_cor, x_weights])
+            else:
+                zeta_cor, zeta_weights = isample_zeta, None
+                x_cor = self._dist_transform(self.dist_zeta, self.dist_x, zeta_cor)
+                isample_x = x_cor
+            # print('isample_x shape: {}, coord shape: {}, weight shape {}'.format(isample_x.shape, isample_x[0].shape, isample_x[1].shape))
+
+            self.sys_input_x.append(isample_x)
+
+            ### save input variables to file
+            samples_input = np.concatenate((isample_x,isample_zeta))
+            logtext += self.doe_filenames[idoe]
+            logtext += '\n'
+
+            idoe_filename = os.path.join(self.data_dir, self.doe_filenames[idoe])
+            np.save(idoe_filename,samples_input)
+
+        with open('DoE_logfile.txt', 'a') as filein_id:
+            filein_id.write(logtext)
+
+    def set_doe_samples(self, input_x):
+        """
+        Set samples in physical space, used for FIXED POINT scheme
+        """
+        self.sys_input_x = input_x
+        self.get_doe_samples_zeta(input_x) 
+
+        self.sys_excit_params[2].append(self.sys_input_x)
+
+    def set_doe_method(self,doe_params= ['Quad','hem',[2,3]]):
+        """
+        Define DoE parameters and properties
+        """
+        self.doe_params = doe_params
+        self.doe_method = settings.DOE_METHOD_NAMES.get(doe_params[0])
+        self.doe_rule   = doe_params[1]
+        self.doe_order  = []
+        self.doe_filenames  = 'DoE_filenames.txt'
+        if np.isscalar(doe_params[2]): 
+            self.doe_order.append(int(doe_params[2]))
+        else:
+            self.doe_order = np.array(doe_params[2])
+
+        self.outfilename = 'DoE_' + doe_params[0].capitalize() + doe_params[1].capitalize() 
+        self.doe_filenames = [self.outfilename + _num2str(idoe) for idoe in self.doe_order]
+        self.ndoe        = len(self.doe_order)   # number of doe sets
 
     def set_error(self, params=None):
         """
