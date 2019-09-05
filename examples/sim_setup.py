@@ -13,8 +13,8 @@
 import context
 import chaospy as cp
 import numpy as np
-from simParameters import simParameters
-from utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
+from museuq.simParameters import simParameters
+from museuq.utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
 
 def sim_setup():
 

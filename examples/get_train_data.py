@@ -17,10 +17,10 @@ import numpy as np
 # from sim_setup import 
 # import sim_setup2 
 from sim_setup import sim_setup
-from metaModel import metaModel
-from simParameters import simParameters
-from run_sim import run_sim
-from utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
+from museuq.metaModel import metaModel
+from museuq.simParameters import simParameters
+from museuq.run_sim import run_sim
+from museuq.utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
 import os,sys
 import warnings
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")

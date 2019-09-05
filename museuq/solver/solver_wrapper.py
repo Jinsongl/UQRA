@@ -10,10 +10,10 @@
 
 """
 import numpy as np
-from solver.dynamic_models import lin_oscillator
-from solver.dynamic_models import duffing_oscillator
-from solver.benchmark import ishigami
-from solver.benchmark import bench1, bench2, bench3, bench4
+from .dynamic_models import lin_oscillator
+from .dynamic_models import duffing_oscillator
+from .benchmark import ishigami
+from .benchmark import bench1, bench2, bench3, bench4
 
 all_solvers = {
         'ISHIGAMI'  : ishigami,

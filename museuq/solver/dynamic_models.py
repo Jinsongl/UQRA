@@ -14,8 +14,8 @@ import numpy as np
 from scipy import interpolate
 from scipy.integrate import odeint, quad
 from scipy.optimize import brentq
-import utilities.spectrum_collections as spec_coll
-import utilities.gen_processes as gen_processes
+import museuq.utilities.spectrum_collections as spec_coll
+import museuq.utilities.gen_processes as gen_processes
 
 def _cal_normalize_values(zeta,omega0,source_kwargs, *source_args):
     TF = lambda w : 1.0/np.sqrt((w**2-omega0**2)**2 + (2*zeta*omega0)**2)
