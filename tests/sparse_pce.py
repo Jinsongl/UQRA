@@ -18,7 +18,7 @@ The independent distributions of the input random variables are usually: xi ~ Un
 References:
 Crestaux, T., Martinez, J.-M., Le Maitre, O., & Lafitte, O. (2007). Polynomial chaos expansion for uncertainties quantification and sensitivity analysis [PowerPoint slides]. Retrieved from SAMO 2007 website: http://samo2007.chem.elte.hu/lectures/Crestaux.pdf.
 
-I3shigami, T., & Homma, T. (1990, December). An importance quantification technique in uncertainty analysis for computer models. In Uncertainty Modeling and Analysis, 1990. Proceedings., First International Symposium on (pp. 398-403). IEEE.
+Ishigami, T., & Homma, T. (1990, December). An importance quantification technique in uncertainty analysis for computer models. In Uncertainty Modeling and Analysis, 1990. Proceedings., First International Symposium on (pp. 398-403). IEEE.
 
 Marrel, A., Iooss, B., Laurent, B., & Roustant, O. (2009). Calculations of sobol indices for the gaussian process metamodel. Reliability Engineering & System Safety, 94(3), 742-751.
 
@@ -227,7 +227,7 @@ plt.ylabel('Relative test MSE')
 ax1.set_yscale('log')
 plt.grid(True)
 plt.axis('tight')
-plt.show()
+plt.savefig(__file__[:-3]+'.pdf')
 # plt.savefig('SparsePCE4.eps')
 
 

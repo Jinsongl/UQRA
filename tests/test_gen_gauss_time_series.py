@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import scipy.signal as spsignal
-from utilities.gen_gauss_time_series import *
+from museuq.utilities.gen_gauss_time_series import *
 # from src/utilities import gen_gauss_time_series
 # from gen_gauss_time_series.py import * 
 # from dynamic_models import *
@@ -116,7 +116,8 @@ def main():
     axes[1].plot(f1,sf1,label=r'Welch')
     axes[1].legend()
 
-    plt.show()
+    plt.savefig('test_gen_gauss_time_series.pdf')
+    # plt.show()
     
 
 

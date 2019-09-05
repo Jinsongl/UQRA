@@ -9,8 +9,8 @@
 """
 
 """
-from envi import Norway5_2 as norway2
-from envi import Norway5_3 as norway3
+from museuq.environment import Norway5_2 as norway2
+from museuq.environment import Norway5_3 as norway3
 
 import numpy as np
 import chaospy as cp

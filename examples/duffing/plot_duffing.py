@@ -11,17 +11,16 @@
 """
 import context
 import numpy as np
-import envi, doe, solver, utilities
 
-from envi import environment
-from metaModel import metaModel
-from simParams import simParameter
-from run_sim import run_sim
-from solver.dynamic_models import lin_oscillator
-from solver.dynamic_models import duffing_equation
-from solver.dynamic_models import duffing_oscillator
-from solver.static_models import ishigami
-from solver.static_models import poly5
+from museuq.environment import environment
+from museuq.metaModel import metaModel
+from museuq.simParameters import simParameters
+from museuq.run_sim import run_sim
+from museuq.solver.dynamic_models import lin_oscillator
+from museuq.solver.dynamic_models import duffing_equation
+from museuq.solver.dynamic_models import duffing_oscillator
+from museuq.solver.benchmark import ishigami
+from museuq.solver.benchmark import bench1
 
 
 import numpy as np
