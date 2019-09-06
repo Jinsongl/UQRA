@@ -12,9 +12,9 @@
 # import context
 import os, sys, chaospy as cp, numpy as np
 
-from .metaModel import metaModel
-from .simParameters import simParameters
-from .utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
+from museuq.metaModel import metaModel
+from museuq.simParameters import simParameters
+from museuq.utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
 
 def run_doe(sim_parameters):
 
@@ -68,9 +68,6 @@ def run_doe(sim_parameters):
     ## ------------------------------------------------------------------- ###
     ##  Noise Free case 
     ## ------------------------------------------------------------------- ###
-
-    error_params=None
-    sim_parameters.set_error(error_params)
 
     sim_output  = run_sim(sim_parameters)
     # print(sim_output)
