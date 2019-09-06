@@ -9,26 +9,14 @@
 """
 
 """
-import context
-import chaospy as cp
-import numpy as np
+# import context
+import os, sys, chaospy as cp, numpy as np
 
-# from envi import environment
-# from sim_setup import 
-# import sim_setup2 
-from sim_setup import sim_setup
-from museuq.metaModel import metaModel
-from museuq.simParameters import simParameters
-from museuq.run_sim import run_sim
-from museuq.utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
-import os,sys
-import warnings
-warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
+from .metaModel import metaModel
+from .simParameters import simParameters
+from .utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
 
-
-
-
-def main(sim_parameters):
+def run_doe(sim_parameters):
 
     # ## ------------------------------------------------------------------- ###
     # ##  Design of Experiments (DoEs) 
@@ -144,7 +132,6 @@ def main(sim_parameters):
 
 
 if __name__ == '__main__':
-    sim_parameters = sim_setup()
-    main(sim_parameters)
+    run_doe(sim_parameters)
 
       

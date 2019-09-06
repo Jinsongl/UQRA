@@ -2,7 +2,6 @@
 # Global settings for variables
 
 import matplotlib.pyplot as plt
-global pltcolors, pltlinestyles, pltmarkers, DOE_RULE_NAMES, DOE_METHOD_NAMES
 pltcolors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 # pltlinestyles = ['solid','dashed','dashdotted','dotted','loosely dashed','loosely dashdotted']
 """

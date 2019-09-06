@@ -13,9 +13,8 @@ import os, sys
 import chaospy as cp
 import numpy as np
 from datetime import datetime
-from museuq.doe.doe_generator import samplegen
-from museuq.utilities import make_output_dir, get_gdrive_folder_id 
-from museuq.settings import *
+from .doe.doe_generator import samplegen
+from .utilities import make_output_dir, get_gdrive_folder_id 
 
 ## Define parameters class
 
