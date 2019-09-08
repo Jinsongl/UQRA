@@ -15,94 +15,11 @@ import numpy as np
 from datetime import datetime
 from .doe.doe_generator import samplegen
 from .utilities import make_output_dir, get_gdrive_folder_id 
+from .utilities.classes import ErrorType
+from .utilities.helpers import num2print
 
 ## Define parameters class
 
-def _num2str(n):
-    if n<100:
-        return '{:2d}'.format(n)
-    else:
-        __str ='{:.0E}'.format(n) 
-        return __str[0]+'E'+__str[-1] 
-
-class ErrorType():
-    def __init__(self, name=None, params=None, size=None):
-        """
-        name:   string, error distribution name or None if not defined
-        params: list of error distribution parameters, float or array_like of floats 
-                [ [mu1, sigma1, ...]
-                  [mu2, sigma2, ...]
-                  ...]
-        size:   list of [int or tuple of ints], optional
-            -- Output shape:
-            If the given shape is, e.g., (m, n, k), then m * n * k samples are drawn. 
-            If size is None (default), a single value is returned if loc and scale are both scalars. 
-            Otherwise, np.broadcast(loc, scale).size samples are drawn.
-        """
-        assert name is None or isinstance(name, str) 
-        if name is None:
-            self.name   = 'Free' 
-            self.params = None 
-            self.size   = None 
-        elif len(params) == 1:
-            self.name   = name
-            self.params = params[0]
-            self.size   = size[0] if size else None
-        else:
-            self.name   = [] 
-            for _ in range(len(params)):
-                self.name.append(name) 
-            self.size   = size if size else [None] * len(params)
-            self.params = params
-
-    def tolist(self, ndoe):
-        """
-
-        """
-        if not isinstance(self.name, list):
-            return [ErrorType(self.name, [self.params], [self.size])] * ndoe
-        else:
-            assert len(self.name) == ndoe,"ErrorType.name provided ({:2d}) doesn't match number of DoE expected ({:2d})".format(len(self.name), ndoe)
-            error_type_list = []
-            for i in range(ndoe):
-                error_type_list.append(ErrorType(self.name[i], [self.params[i]], self.size[i]))
-            return error_type_list
-
-    def disp(self):
-
-        if self.name.upper() == 'FREE':
-            print('   ♦ Short-term/error distribution parameters: noise free')
-        else:
-            print('   ♦ Short-term/error distribution parameters:')
-            print('     ∙ {:<15s} : {}'.format('dist_name', self.name))
-            for i, ierror_params in enumerate(self.params):
-                ierror_params_shape = []
-                for iparam in ierror_params:
-                    if np.isscalar(iparam):
-                        ierror_params_shape.append(1)
-                    else:
-                        ierror_params_shape.append(np.array(iparam).shape)
-
-                if i == 0:
-                    print('     ∙ {:<15s} : {}'.format('dist_params',ierror_params_shape))
-                else:
-                    print('     ∙ {:<15s} : {}'.format('',ierror_params_shape))
-            print('     ∙ {:<15s} : {}'.format('dist_size', self.size))
-
-class Logger(object):
-    def __init__(self):
-        self.terminal = sys.stdout
-        self.log = open("logfile.log", "a")
-
-    def write(self, message):
-        self.terminal.write(message)
-        self.log.write(message)  
-
-    def flush(self):
-        #this flush method is needed for python 3 compatibility.
-        #this handles the flush command by doing nothing.
-        #you might want to specify some extra behavior here.
-        pass    
 
 class simParameters(object):
     """
@@ -173,7 +90,7 @@ class simParameters(object):
         print(' ► DoE parameters: ')
         print('   ♦ {:<15s} : {:<15s}'.format('DoE method', self.doe_method))
         print('   ♦ {:<15s} : {:<15s}'.format('DoE rule', settings.DOE_RULE_NAMES[self.doe_rule]))
-        print('   ♦ {:<15s} : {}'.format('DoE order', list(map(_num2str, self.doe_order))))
+        print('   ♦ {:<15s} : {}'.format('DoE order', list(map(num2print, self.doe_order))))
         print(' ► Running DoEs: ')
 
         self.sys_input_zeta = []
@@ -293,7 +210,7 @@ class simParameters(object):
             self.doe_order = np.array(doe_params[2])
 
         self.outfilename = 'DoE_' + doe_params[0].capitalize() + doe_params[1].capitalize() 
-        self.doe_filenames = [self.outfilename + _num2str(idoe) for idoe in self.doe_order]
+        self.doe_filenames = [self.outfilename + num2print(idoe) for idoe in self.doe_order]
         self.ndoe        = len(self.doe_order)   # number of doe sets
 
     def set_error(self, params=None):
@@ -338,11 +255,11 @@ class simParameters(object):
         """
 
         ## define parameters related to time steps in simulation 
-        self.time_params= kwargs.get('time_params'  , [0,0,0,0])
-        self.time_start = kwargs.get('time_start'   , self.time_params[0])
-        self.time_ramp  = kwargs.get('time_ramp'    , self.time_params[1])
-        self.time_max   = kwargs.get('time_max'     , self.time_params[2])
-        self.dt         = kwargs.get('dt'           , self.time_params[3])
+        self.time_params= kwargs.get('time_params'  , None)
+        self.time_start = kwargs.get('time_start'   , self.time_params)
+        self.time_ramp  = kwargs.get('time_ramp'    , self.time_params)
+        self.time_max   = kwargs.get('time_max'     , self.time_params)
+        self.dt         = kwargs.get('dt'           , self.time_params)
 
         ## define parameters related to post processing
         self.post_params    = kwargs.get('post_params'  , [[0,], [1,1,1,1,1,1,0]])
