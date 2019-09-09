@@ -15,7 +15,7 @@ import numpy as np
 from datetime import datetime
 from .doe.doe_generator import samplegen
 from .utilities import make_output_dir, get_gdrive_folder_id 
-from .utilities.classes import ErrorType
+from .utilities.classes import ErrorType, Logger
 from .utilities.helpers import num2print
 
 ## Define parameters class

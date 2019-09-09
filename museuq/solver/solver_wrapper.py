@@ -10,35 +10,38 @@
 
 """
 import numpy as np
-from .dynamic_models import lin_oscillator
-from .dynamic_models import duffing_oscillator
-from .benchmark import ishigami
-from .benchmark import bench1, bench2, bench3, bench4
+from .dynamic_models import * 
+from .benchmark import * 
 
-all_solvers = {
-        'ISHIGAMI'  : ishigami,
-        'BENCH1'    : bench1,
-        'BENCH2'    : bench2,
-        'BENCH3'    : bench3,
-        'BENCH4'    : bench4,
-        'DUFFING'   : duffing_oscillator,
-        }
+ALL_SOLVERS = {
+    'ISHIGAMI'  : ishigami,
+    'BENCH1'    : bench1,
+    'BENCH2'    : bench2,
+    'BENCH3'    : bench3,
+    'BENCH4'    : bench4,
+    'DUFFING'   : duffing_oscillator,
+    }
 
 
 
-def solver_wrapper(solver_name, sys_input_x, error=None, sys_input_params=None, sys_def_params=None, *args, **kwargs):
+def solver_wrapper(solver_name, x, theta_m=None, error=None, source_func=None,  theta_s=None, *args, **kwargs):
     """
     a wrapper for solvers
 
-    Arguments:
-        solver_name: string 
-        sys_input_x: ndarray of shape(ndim, nsamples)
-            - sys_def_params: list of parameter sets defining the solver
-                if no sys_def_params is required, sys_def_params = [None]
-                e.g. for duffing oscillator:
-                sys_def_params = [np.array([0,0,1,1,1]).reshape(5,1)] # x0,v0, zeta, omega_n, mu 
-            - sys_input_params = [sys_excit_func_name, sys_excit_funys_kwargs, sys_input_x]
-                [None,None,sys_input_x] if sys_excit_func_name, sys_excit_func_kwargs are not available
+    solver_name: string 
+    M(x,t,theta_m;y) = s(x,t; theta_s)
+    - x: array -like (ndim, nsamples) ~ dist(x) 
+        1. array of x samples (ndim, nsamples), y = M(x)
+        2. ndarray of time series
+    - t: time 
+    - M: deterministic solver, defined by solver_name
+    - theta_m: parameters defining solver M of shape (m,n)(theta_m)
+        - m: number of set, 
+        - n: number of system parameters per set
+    - y: variable to solve 
+    - s: excitation source function, defined by source_func (string) 
+    - theta_s: parameters defining excitation function s 
+
     Return:
         return results from one solver run
         of shape(nsample, nqoi), each column represents a full time series
@@ -48,44 +51,45 @@ def solver_wrapper(solver_name, sys_input_x, error=None, sys_input_params=None, 
 
     # solver_name, sterm_dist = model_def #if len(model_def) == 2 else model_def[0], None
     # print(solver_name)
-    solver = all_solvers[solver_name.upper()]
-
+    try:
+        solver = ALL_SOLVERS[solver_name.upper()]
+    except KeyError:
+        print(f"{solver} is not defined" )
     assert (callable(solver)), '{:s} not callable'.format(solver.__name__)
     
+    if solver.__name__.upper() == 'ISHIGAMI':
+        p = theta_m if theta_m else [7,0.1]
+        y = solver(x, p=p)
 
-    if solver.__name__.upper() == 'LIN_OSCILLATOR':
+    elif solver.__name__.upper()[:5] == 'BENCH':
+        y = solver(x, error)
+
+    elif solver.__name__.upper() == 'LIN_OSCILLATOR':
         time_max= simParameters.time_max
         dt      = simParameters.dt
         ## Default initial condition [0,0]
-        if sys_def_params:
-            x0, v0, zeta, omega0 = sys_def_params
+        if theta_m:
+            x0, v0, zeta, omega0 = theta_m
         else:
             x0, v0, zeta, omega0 = (0,0, 0.2, 1)
 
-        y = solver(time_max,dt,x0,v0,zeta,omega0,add_f=sys_input_x[0],*sys_input_x[1:])
-
-    elif solver.__name__.upper() == 'ISHIGAMI':
-        p = sys_def_params if sys_def_params else [7,0.1]
-        y = solver(sys_input_x, p=p)
-
-    elif solver.__name__.upper()[:5] == 'BENCH':
-        y = solver(sys_input_x, error)
+        y = solver(time_max,dt,x0,v0,zeta,omega0,add_f=x[0],*x[1:])
 
     elif solver.__name__.upper() ==  'DUFFING_OSCILLATOR':
-        # sys_input_x: [source_func, *arg, *kwargs]
+        # x: [source_func, *arg, *kwargs]
 
         time_max  = simParameters.time_max
         dt        = simParameters.dt
         normalize = simParameters.normalize
 
-        if len(sys_input_x) == 3:
-            source_func, source_kwargs, source_args = sys_input_x
-        elif len(sys_input_x) == 2:
-            source_func, source_kwargs, source_args = sys_input_x[0], None, sys_input_x[1]
+        if len(x) == 3:
+            source_func, source_kwargs, source_args = x
+        elif len(x) == 2:
+            source_func, source_kwargs, source_args = x[0], None, x[1]
 
         ## Default initial condition [0,0]
-        if sys_def_params is not None:
-            x0, v0, zeta, omega0, mu = sys_def_params
+        if theta_m is not None:
+            x0, v0, zeta, omega0, mu = theta_m
         else:
             x0, v0, zeta, omega0, mu = (0,0,0.02,1,1)
 

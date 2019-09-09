@@ -12,9 +12,9 @@
 # import context
 import os, sys, chaospy as cp, numpy as np
 
-from museuq.metaModel import metaModel
-from museuq.simParameters import simParameters
-from museuq.utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
+from ..surrogate_model.SurrogateModel import SurrogateModel 
+from ..simParameters import simParameters
+from ..utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
 
 def run_doe(sim_parameters):
 

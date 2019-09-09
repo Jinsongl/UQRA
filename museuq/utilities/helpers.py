@@ -9,9 +9,7 @@
 """
 
 """
-import numpy as np
-
-def num2str(n):
+def num2print(n):
     if n<100:
         return '{:2d}'.format(n)
     else:

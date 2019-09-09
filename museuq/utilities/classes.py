@@ -10,6 +10,7 @@
 
 """
 import numpy as np
+import sys, os
 
 class ErrorType():
     def __init__(self, name=None, params=None, size=None):
@@ -55,7 +56,6 @@ class ErrorType():
             return error_type_list
 
     def disp(self):
-
         if self.name.upper() == 'FREE':
             print('   ♦ Short-term/error distribution parameters: noise free')
         else:
