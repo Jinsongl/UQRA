@@ -215,7 +215,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
     numpy_quad  = ['hem', 'hermite','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
     doe_method  = doe_method.upper()
 
-    if doe_method == 'QUADRATURE':
+    if doe_method in ['QUADRATURE','QUAD', 'GQ']:
         ## Return samples in 
         rule = 'hem' if rule is None else rule ## Default gauss_legendre
         if rule in chaospy_quad:
