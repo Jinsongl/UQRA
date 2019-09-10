@@ -80,6 +80,12 @@ class Logger(object):
         self.terminal = sys.stdout
         self.log = open("logfile.log", "a")
 
+        now = datetime.now()
+        date_string = now.strftime("%d/%m/%Y %H:%M:%S")
+        logtext ='-'*50+'\n' + date_string +'\n' 
+        self.log.write(logtext)
+
+
     def write(self, message):
         self.terminal.write(message)
         self.log.write(message)  

@@ -17,6 +17,7 @@ warnings.filterwarnings(action="ignore", module="scipy", message="^internal gels
 
 def main():
 
+    sys.stdout  = museuq.utilities.classes.Logger()
     ## ------------------------ Parameters set-up ----------------------- ###
     prob_fails  = 1e-1              # failure probabilities
     model_name  = 'Ishigami'
