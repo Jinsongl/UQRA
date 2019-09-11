@@ -225,7 +225,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         else:
             raise NotImplementedError("Quadrature rule '{:s}' not defined".format(rule))
         quad_order = [order,] * domain.length if np.isscalar(order) else order
-        print('   ♦ Quadrature points complete  : {}'.format(quad_order))
+        # print('   ♦ Quadrature points complete  : {}'.format(quad_order))
         # print(doe_samples[0].shape)
         # print('------------------------------------------------------------')
     elif doe_method == 'MONTE CARLO':

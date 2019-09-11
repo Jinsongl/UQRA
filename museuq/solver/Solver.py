@@ -16,6 +16,16 @@ from .benchmark import bench1, bench2, bench3, bench4, ishigami
 from .solver_wrapper import solver_wrapper
 from ..utilities.classes import ErrorType
 from ..utilities.helpers import num2print
+from ..utilities import constants as const
+
+ALL_SOLVERS = {
+    'ISHIGAMI'  : ishigami,
+    'BENCH1'    : bench1,
+    'BENCH2'    : bench2,
+    'BENCH3'    : bench3,
+    'BENCH4'    : bench4,
+    'DUFFING'   : duffing_oscillator,
+    }
 
 class Solver(object):
     """
@@ -46,13 +56,14 @@ class Solver(object):
             b). 
     """
 
-    def __init__(self,solver_name, x, theta_m=None, error=None, source_func=None, theta_s=None, *args, **kwargs):
+    def __init__(self,solver_name, x, theta_m=None, error=None, source_func=None, theta_s=None):
         self.solver_name= solver_name
-        self.output     = []
         self.input_x    = x
+        self.theta_m    = [theta_m] if theta_m is None else theta_m
         self.error      = error if error else ErrorType()
         self.source_func= source_func
         self.theta_s    = theta_s
+        self.output     = []
 
         print('------------------------------------------------------------')
         print('►►► Initialize Solver Obejct...')
@@ -60,10 +71,10 @@ class Solver(object):
         print(' ► Solver (system) properties:')
         print('   ♦ {:<17s} : {:15s}'.format('Solver name', solver_name))
 
-        if theta_m is None or theta_m[0] is None:
+        if self.theta_m is None or self.theta_m[0] is None:
             print('   ♦ Solver parameters: NA ' )
         else:
-            print('   ♦ Solver parameters: ndim={:d}, nsets={:d}'.format(theta_m.shape[1], theta_m.shape[0]))
+            print('   ♦ Solver parameters: ndim={:d}, nsets={:d}'.format(self.theta_m.shape[1], self.theta_m.shape[0]))
         print('   ♦ System excitation functions:')
         print('     ∙ {:<15s} : {}'.format('function'   , self.source_func))
         print('     ∙ {:<15s} : {}'.format('parameters' , self.theta_s))
@@ -71,45 +82,112 @@ class Solver(object):
         self.error.disp()
 
 
-    def run(self, sim_parameters):
-        output = [] # a list saving simulation results
-        print('------------------------------------------------------------')
-        print('►►► Run solver...')
-        print('------------------------------------------------------------')
-        print(' ► Solver setting ...')
-        if sim_parameters.time_params:
-            print('   ♦ {:<15s} : '.format('time parameters'))
-            print('     ∙ {:<8s} : {:.2f} ∙ {:<8s} : {:.2f}'.format('start', sim_parameters.time_start, 'end', sim_parameters.time_max )
-            print('     ∙ {:<8s} : {:.2f} ∙ {:<8s} : {:.2f}'.format('ramp ', sim_parameters.time_ramp , 'dt ', sim_parameters.dt )
-
+    def run(self, doe_obj, *args, **kwargs):
+        self.output = [] # a list saving simulation results
         print(' ► Running Simulation...')
         print('   ♦ Job list: [{:^20} {:^20}]'.format('# solver parameter sets', '# DoE sets'))
-        print('   ♦ Target  : [{:^20d} {:^20d}]'.format(len(theta_m), sim_parameters.ndoe))
+        print('   ♦ Target  : [{:^20d} {:^20d}]'.format(len(self.theta_m), doe_obj.ndoe))
         print('   ' + '·'*55)
 
-        for isys_done, itheta_m in enumerate(theta_m): 
+        for isys_done, itheta_m in enumerate(self.theta_m): 
             run_sim_1doe_res = []
-            for idoe, sys_input_x_1doe in enumerate(sim_parameters.sys_input_x):
-                if sim_parameters.doe_method.upper() == 'QUADRATURE':
-                    input_vars, input_vars_weights = sys_input_x_1doe
+            for idoe, isamples_x in enumerate(doe_obj.mapped_samples):
+                if const.DOE_METHOD_FULL_NAMES[doe_obj.method.upper()] == 'QUADRATURE':
+                    input_vars, input_vars_weights = isamples_x
                 else:
-                    input_vars, input_vars_weights = sys_input_x_1doe, None
+                    input_vars, input_vars_weights = isamples_x, None
                 ### Run simulations
-                y = solver_wrapper(sim_parameters.model_name,input_vars,\
-                        error_type      = sim_parameters.error,\
-                        sys_excit_params= sim_parameters.sys_excit_params,\
-                        sys_def_params  = itheta_m)
-
+                y = self._solver_wrapper(input_vars, theta_m = itheta_m, *args, **kwargs)
                 print('   ♦ Achieved: [{:^20d} {:^20d}]'.format(isys_done+1,idoe+1))
                 run_sim_1doe_res.append(y)
-            output.append(run_sim_1doe_res)
+            self.output.append(run_sim_1doe_res)
         ## 
-        if len(output) ==1:
-            output = output[0]
-        if len(output) ==1:
-            output = output[0]
-        print(' ► Simulation Done, Output shape: {}'.format(np.array(output).shape) )
-        return output
+        if len(self.output) ==1:
+            self.output = self.output[0]
+        if len(self.output) ==1:
+            self.output = self.output[0]
+        print(' ► Simulation Done, Output shape: {}'.format(np.array(self.output).shape) )
+        return self.output
+
+    def _solver_wrapper(self, x, theta_m=None, *args, **kwargs):
+        """
+        a wrapper for solvers
+
+        solver_name: string 
+        M(x,t,theta_m;y) = s(x,t; theta_s)
+        - x: array -like (ndim, nsamples) ~ dist(x) 
+            1. array of x samples (ndim, nsamples), y = M(x)
+            2. ndarray of time series
+        - t: time 
+        - M: deterministic solver, defined by solver_name
+        - theta_m: parameters defining solver M of shape (m,n)(theta_m)
+            - m: number of set, 
+            - n: number of system parameters per set
+        - y: variable to solve 
+        - s: excitation source function, defined by source_func (string) 
+        - theta_s: parameters defining excitation function s 
+
+        Return:
+            return results from one solver run
+            of shape(nsample, nqoi), each column represents a full time series
+            or just a number for single output solvers
+
+        """
+
+        # solver_name, sterm_dist = model_def #if len(model_def) == 2 else model_def[0], None
+        # print(solver_name)
+        try:
+            solver = ALL_SOLVERS[self.solver_name.upper()]
+        except KeyError:
+            print(f"{solver} is not defined" )
+        assert (callable(solver)), '{:s} not callable'.format(solver.__name__)
+        
+        if self.solver_name.upper() == 'ISHIGAMI':
+            p = theta_m if theta_m else [7,0.1]
+            y = solver(x, p=p)
+
+        elif self.solver_name.upper()[:5] == 'BENCH':
+            y = solver(x, error)
+
+        elif self.solver_name.upper() == 'LIN_OSCILLATOR':
+            time_max= simParameters.time_max
+            dt      = simParameters.dt
+            ## Default initial condition [0,0]
+            if theta_m:
+                x0, v0, zeta, omega0 = theta_m
+            else:
+                x0, v0, zeta, omega0 = (0,0, 0.2, 1)
+
+            y = solver(time_max,dt,x0,v0,zeta,omega0,add_f=x[0],*x[1:])
+
+        elif self.solver_name.upper() ==  'DUFFING_OSCILLATOR':
+            # x: [source_func, *arg, *kwargs]
+
+            time_max  = simParameters.time_max
+            dt        = simParameters.dt
+            normalize = simParameters.normalize
+
+            if len(x) == 3:
+                source_func, source_kwargs, source_args = x
+            elif len(x) == 2:
+                source_func, source_kwargs, source_args = x[0], None, x[1]
+
+            ## Default initial condition [0,0]
+            if theta_m is not None:
+                x0, v0, zeta, omega0, mu = theta_m
+            else:
+                x0, v0, zeta, omega0, mu = (0,0,0.02,1,1)
+
+            # print(solver)
+            # print(source_func, source_kwargs, source_args)
+            # y = duffing_oscillator(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs)
+            y,dt,pstep= solver(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs,normalize=normalize)
+
+        else:
+            raise ValueError('Function {} not defined'.format(solver.__name__)) 
+        
+        return y
+
 
 
 
