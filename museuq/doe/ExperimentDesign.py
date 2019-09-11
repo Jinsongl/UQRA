@@ -15,7 +15,7 @@ from datetime import datetime
 from ..utilities import make_output_dir, get_gdrive_folder_id 
 from ..utilities.classes import ErrorType, Logger
 from ..utilities.helpers import num2print
-from ..utilities import constants as c
+from ..utilities import constants as const
 
 from .doe_generator import samplegen
 
@@ -40,22 +40,23 @@ class ExperimentDesign(object):
         normalize: 
     """
 
-    def __init__(self,method, rule, orders, space, **kwargs):
+    def __init__(self, method, rule, orders, space, **kwargs):
         self.params = [] 
         self.method = method
         self.rule   = rule
         self.orders = orders
         self.space  = space
         self.ndoe   = len(self.orders)   # number of doe sets
-        self.samples=[]
+        self.samples=[]  # DoE output in space1
+        self.mapped_samples = [] # DoE output in space2 after calling mappingto method
         self.filenames  = [] 
 
         print('------------------------------------------------------------')
         print('►►► Initialize Experiment Design:')
         print('------------------------------------------------------------')
         print(' ► DoE parameters: ')
-        print('   ♦ {:<15s} : {:<15s}'.format('DoE method', c.DOE_METHOD_FULL_NAMES[self.method.upper()]))
-        print('   ♦ {:<15s} : {:<15s}'.format('DoE rule',c.DOE_RULE_FULL_NAMES[self.rule.upper()]))
+        print('   ♦ {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.upper()]))
+        print('   ♦ {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.upper()]))
         print('   ♦ {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders))))
 
 
@@ -75,25 +76,31 @@ class ExperimentDesign(object):
             # assert fix_point is not None, " For 'fixed point' method, samples in physical space must be given" 
             # for isample_x in fix_point:
                 # self.samples.append(self._space_transform(self.dist_x, self.dist_zeta, isample_x))
-        if c.DOE_METHOD_FULL_NAMES[self.method.upper()] in ['QUADRATURE', 'MONTE CARLO']:
-            for idoe_order_done, idoe_order in enumerate(self.orders): 
+        if const.DOE_METHOD_FULL_NAMES[self.method.upper()] in ['QUADRATURE', 'MONTE CARLO']:
+            for idoe_order in self.orders: 
                 # DoE for different selected orders 
+                # doe samples, array of shape:
+                #    - Quadrature: res.shape = (2,) 
+                #       res[0]: coord of shape (ndim, nsamples) 
+                #       res[1]: weights of shape (nsamples,) 
+                #    - MC: res.shape = (ndim, nsamples)
                 isamples = samplegen(self.method, idoe_order, self.space, rule=self.rule)
                 self.samples.append(isamples)
-                print('   ♦ {:<15s}: {:d}/{:d}'.format( 'DoE completed', idoe_order_done, self.ndoe ))
+                print('\r   ♦ {:<15s}: {}'.format( 'DoE completed', self.orders[:idoe_order+1]), end='')
         else:
-            raise ValueError('DoE method: {:s} not implemented'.format(c.DOE_METHOD_FULL_NAMES[self.method.upper()]))
+            raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.upper()]))
 
-        print(' ► DoE Summary:')
+        print('\n ► DoE Summary:')
         print('   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
         print('   ♦ Sample shape: ')
         for isamples in self.samples:
-            if c.DOE_METHOD_FULL_NAMES[self.method.upper()] == 'QUADRATURE':
+            if const.DOE_METHOD_FULL_NAMES[self.method.upper()] == 'QUADRATURE':
                 print('     ∙ Coordinate: {}; weights: {}'\
                         .format(isamples[0].shape, isamples[1].shape))
             else:
                 print('     ∙ Coordinate: {}'.format(isamples.shape))
-
+        # if not mapping, mapped_samples would be same as samples
+        self.mapped_samples = self.samples
         return self.samples
 
     def mappingto(self, space2):
@@ -104,7 +111,7 @@ class ExperimentDesign(object):
         self.mapped_samples = []
         assert len(self.space) == len(self.mapped_space)
         ## Get samples in zeta space first
-        if self.samples:
+        if not self.samples:
             self.get_samples() 
 
         # # n_sys_excit_func_name = len(self.sys_excit_params[0]) if self.sys_excit_params[0] else 1
@@ -117,7 +124,7 @@ class ExperimentDesign(object):
         # with open(os.path.join(self.data_dir, self.filenames), 'w') as filenames:
 
         for idoe, isamples in enumerate(self.samples):
-            if self.method.upper() == 'QUADRATURE':
+            if const.DOE_METHOD_FULL_NAMES[self.method.upper()] == 'QUADRATURE':
                 zeta_cor, zeta_weights = isamples 
                 x_cor = self._space_transform(self.space, self.mapped_space, zeta_cor)
                 x_weights = zeta_weights#.reshape(zeta_cor.shape[1],1)
@@ -130,10 +137,6 @@ class ExperimentDesign(object):
 
             self.mapped_samples.append(isample_x)
 
-            ### save input variables to file
-            samples_input = np.concatenate((isample_x,isamples))
-            idoe_filename = os.path.join(self.data_dir, self.filenames[idoe])
-            np.save(idoe_filename,samples_input)
         return self.mapped_samples
 
     def set_samples(self, input_x):
@@ -162,6 +165,14 @@ class ExperimentDesign(object):
         self.outfilename = 'DoE_' + params[0].capitalize() + params[1].capitalize() 
         self.filenames = [self.outfilename + num2print(idoe) for idoe in self.orders]
         self.ndoe        = len(self.orders)   # number of doe sets
+
+    def savedata(self, filename):
+        ### save input variables to file
+        for idoe, isamples in enumerate(self.samples):
+            imapped_samples = self.mapped_samples[idoe] 
+            samples = np.concatenate((imapped_samples,isamples))
+            idoe_filename = filename + '_DoE{:d}'.format(idoe)
+            np.save(idoe_filename,samples)
 
     def _space_transform(self, dist1, dist2, var1):
         """
