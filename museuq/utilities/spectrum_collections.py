@@ -10,7 +10,20 @@
 
 """
 import numpy as np
+# l = []
+# for key, value in locals().items():
+    # if callable(value) and value.__module__ == __name__:
+        # l.append(key)
+# print l
 
+
+def get_spec_dict():
+    spectrum_collection = {
+            'JONSWAP': spec_jonswap,
+            'JS':spec_jonswap,
+            'T1':spec_test1
+            }
+    return spectrum_collection
 
 def spec_jonswap(f, Hs, Tp):
     """ JONSWAP wave spectrum, IEC 61400-3
@@ -41,11 +54,6 @@ def spec_jonswap(f, Hs, Tp):
         JS2[np.isinf(JS2)] = 0
         JS3[np.isinf(JS3)] = 0
         # print(np.isnan(JS1).any())
-        # print(np.isnan(JS2).any())
-        # print(np.isnan(JS3).any())
-        # print(np.isinf(JS1).any())
-        # print(np.isinf(JS2).any())
-        # print(np.isinf(JS3).any())
         JS = JS1 * JS2 * JS3
 
     return f, JS
@@ -73,11 +81,4 @@ def spec_test1(f, c=2):
     sa = np.sum(sf*df) 
     return f, sf
 
-def get_spec_dict():
-    spectrum_collection = {
-            'JONSWAP': spec_jonswap,
-            'JS':spec_jonswap,
-            'T1':spec_test1
-            }
-    return spectrum_collection
        

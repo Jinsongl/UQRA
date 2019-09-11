@@ -10,48 +10,55 @@
 
 """
 import numpy as np
-from .spectrum_collections import *
+import spectrum_collections as spectrum
 
 def nextpow2(x):
     return 2**(int(x)-1).bit_length()
 
-def single_psd2double_psd(f,sf):
+def single_psd2double_psd(f,pxx):
     """
-    Convert single side psd to double side
+    Convert single side psd specified by (f, pxx) to double side
+    Arguments:
+        f   : single side frequency vector, could start from arbitrary value 
+        pxx : single side power spectral density (PSD) estimate, pxx, 
+    Returns:
+        ff  : double side frequency vector
+        pxx2: double side power spectral density (PSD) estimate, pxx2
     """
-    assert f[0] >= 0 and f[-1] >0
+    assert f[0] >= 0 and f[-1] >0 # make sure frequency vector in positive range
     df  = f[1] - f[0]
-    N   = len(np.arange(f[-1], 0, -df))
-    sff = np.zeros(2*N+1)
+    N   = len(np.arange(f[-1], 0, -df)) # does not include 0
+    pxx2= np.zeros(2*N+1)
     ff  = np.zeros(2*N+1)
-    # print(ff.shape, sff.shape)
+    # print(ff.shape, pxx2.shape)
    
     # Positive frequencies part
+    ## padding psd from 0 to f[0] with 0
     N0 = len(np.arange(f[0]-df, 0, -df))
-    # print(N0)
-    sff[0:N0] = 0
-    sff[N0:N+1] = sf/2
+    pxx2[0:N0] = 0
+    ## assign half power to corresponding frequencies
+    pxx2[N0:N+1] = pxx/2
     ff[1:N+1] = np.flip(np.arange(f[-1], 0, -df))
 
     # Negative frequencies part
-    sff[N+1:] = np.flip(sf[1:]/2) 
+    pxx2[N+1:] = np.flip(pxx[1:]/2) 
     ff[N+1:] = -np.arange(f[-1], 0, -df)
     
-    sff = np.roll(sff, N)
+    pxx2 = np.roll(pxx2, N)
     ff = np.roll(ff, N)
 
-    return ff, sff
+    return ff, pxx2
 
-def gen_gauss_time_series(t, *args, kwargs=None):
+def gen_gauss_time_series(t, *args, **kwargs):
     """
     Generate Gaussian time series, e.g. Gaussian wave, with given spectrum at specified args parameters
     
     Arguments:
-        t: time index 
+        t: ndarry, time index 
         specturm: string, spectral function name 
         method:
             sum: sum(A_i*cos(w_i*t + theta_i))
-                for 1side psd, i =  0 to N, A_i = sqrt(2 * S(f) * df)
+                for 1side psd, i =  0 to N, A_i = sqrt(2*S(f)*df)
                 for 2side psd, i = -N to N, A_i = sqrt(S(f)*df), note: theta(f) = -theta(-f)
             ifft: ifft(A_i * exp(j*theta_i)), A_i = sqrt(S(f)*df), theta(f) = -theta(-f)
         sides:
@@ -70,54 +77,46 @@ def gen_gauss_time_series(t, *args, kwargs=None):
     # Frequency domain  | [-fmax, fmax] | df = 1/(2(tmax))  
     #                   | fmax = 1/(2*dt)
     # ---------------------------------------------------------
-    spec_dict = get_spec_dict()
-    methods = {'SUM':'Direct summation',
-            'IFFT':'Inverse Fourier Transform'}
-    if kwargs:
-        spectrum_name   = kwargs.get('name',    'JONSWAP')
-        method          = kwargs.get('method',  'IFFT')
-        sides           = kwargs.get('sides',   '1side')
-    else:
-        spectrum_name = 'JONSWAP'
-        method        = 'IFFT'
-        sides         = '1side'
-    tmax,dt = t[-1], t[1]-t[0]
-    N = int(tmax/dt)
-    t = np.arange(-N,N+1) * dt
-    # tmax = t[-1]
-    df = 0.5/tmax
-    spectrum_func = spec_dict[spectrum_name.upper()]
-    # print('   Generating Gaussian time series in [0, {:4.2}] with dt={:4.2}'.format(tmax, dt))
-    # print('   >>> Power spectrum: {}'.format(spectrum_func.__name__))
-    # print('   >>> Method: {}'.format(methods[method.upper()]))
-
-    # print(args)
+    spec_dict       = spectrum.get_spec_dict()
+    methods         = {'SUM':'Direct summation', 'IFFT':'Inverse Fourier Transform'}
+    spectrum_name   = kwargs.get('name',    'JONSWAP')
+    method          = kwargs.get('method',  'IFFT')
+    sides           = kwargs.get('sides',   '1side')
+    tmax,dt         = t[-1], t[1]-t[0]
+    N               = int(tmax/dt)
+    t               = np.arange(-N,N+1) * dt
+    df              = 0.5/tmax
+    spectrum_func   = spec_dict[spectrum_name.upper()]
 
     if sides.upper() in ['1','1SIDE','SINGLE','1SIDES']:
-        f= np.arange(N+1) * df
-        theta = np.random.uniform(-np.pi, np.pi, len(f))
+        f       = np.arange(N+1) * df
+        theta   = np.random.uniform(-np.pi, np.pi, len(f))
         psd_f, psd_pxx = spectrum_func(f, *args)
         if method.upper() == 'SUM':
             # Direct sum with single side psd
-            ampf = np.sqrt(2*psd_pxx*(psd_f[1] - psd_f[0])) # amplitude
-
+            ampf  = np.sqrt(2*psd_pxx*(psd_f[1] - psd_f[0])) # amplitude
             # Reshape to matrix operation format
             ampf  = np.reshape(ampf,  (N+1,1))
             psd_f = np.reshape(psd_f, (N+1,1))
             theta = np.reshape(theta, (N+1,1))
             t     = np.reshape(t,     (1, 2*N+1))
-
+            ## psd_f * t -> (N+1,1) * (1, 2*N+1) = (N+1, 2*N+1)
             eta = np.sum(ampf * np.cos(2*np.pi*psd_f*t + theta),axis=0)
 
         elif method.upper() == 'IFFT':
             # To use IFFT method, need to create IFFT coefficients for negative frequencies
             # Single side psd need to be divide by 2 to create double side psd, S1(f) = S1(-f) = S2(f)/2
             # Phase: theta(f) = -theta(-f) 
-            theta = np.hstack((-np.flip(theta[1:]),theta))
+            theta   = np.hstack((-np.flip(theta[1:]),theta)) # concatenation along the second axis
             psd_f, psd_pxx = single_psd2double_psd(psd_f, psd_pxx)
             ampf    = np.sqrt(psd_pxx*(psd_f[1] - psd_f[0])) # amplitude
 
             eta_fft_coeffs = ampf * np.exp(1j*theta)
+            # numpy.fft.ifft(a, n=None, axis=-1, norm=None)
+            #   The input should be ordered in the same way as is returned by fft, i.e.,
+            #       a[0] should contain the zero frequency term,
+            #       a[1:n//2] should contain the positive-frequency terms,
+            #       a[n//2 + 1:] should contain the negative-frequency terms, in increasing order starting from the most negative frequency.
             eta = np.fft.ifft(np.roll(eta_fft_coeffs,N+1)) *(2*N+1)
             eta = np.roll(eta,N).real
         else:
@@ -126,10 +125,10 @@ def gen_gauss_time_series(t, *args, kwargs=None):
 
     elif sides.upper() in ['2','2SIDE','DOUBLE','2SIDES']:
 
-        f = np.arange(-N,N+1) * df
+        f       = np.arange(-N,N+1) * df
         psd_f, psd_pxx = spectrum_func(f, *args)
-        theta = np.random.uniform(-np.pi, np.pi, N+1)
-        theta = np.hstack((-np.flip(theta[1:]),theta))
+        theta   = np.random.uniform(-np.pi, np.pi, N+1)
+        theta   = np.hstack((-np.flip(theta[1:]),theta))
         ampf    = np.sqrt(psd_pxx*(psd_f[1] - psd_f[0])) # amplitude
         if method.upper() == 'SUM':
             # Direct sum with double side psd
@@ -142,12 +141,9 @@ def gen_gauss_time_series(t, *args, kwargs=None):
             eta = eta.reshape((eta.shape[1],))
 
         elif method.upper() == 'IFFT':
-            # IFFT
-
             eta_fft_coeffs = ampf * np.exp(1j*theta)
             eta = np.fft.ifft(np.roll(eta_fft_coeffs,N+1)) *(2*N+1)
             eta = np.roll(eta,N).real
-
         else:
             raise ValueError('Mehtod {} not defined for two-side power spectral density function'.format(method))
     else:
@@ -174,8 +170,11 @@ def acf2psd(tau_max, dtau, acf):
     tau = np.arange(-N,N)*dtau
 
     # Create acf values at tau if not given
-    assert callable(acf)
-    acf_tau = acf(tau)
+    try:
+        acf_tau = acf(tau)
+    except TypeError:
+        print(f'{acf} is not callable')
+
     acf_fft = np.fft.fft(np.roll(acf_tau,N))
 
     psd_f = np.fft.fftfreq(acf_tau.shape[-1],d=dtau)
