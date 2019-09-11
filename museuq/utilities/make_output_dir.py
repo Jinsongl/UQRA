@@ -63,9 +63,6 @@ def make_output_dir(MODEL_NAME):
 
 
     # Create directory for model  
-    print('------------------------------------------------------------')
-    print('►►► Making directories for model {}'.format(MODEL_NAME))
-    print('------------------------------------------------------------')
     try:
         os.makedirs(MODEL_DIR)
         os.makedirs(DATA_DIR)
@@ -75,8 +72,4 @@ def make_output_dir(MODEL_NAME):
         # one of the above directories already exists
         # print('Data, Figure directories for model {} already exist'.format(MODEL_NAME))
         pass
-    print('WORKING_DIR: {}'.format(WORKING_DIR))
-    print('+-- MODEL: {}'.format(MODEL_DIR))
-    print('|   +-- {:<6s}: {}'.format('FIGURE',FIGURE_DIR))
-    print('|   +-- {:<6s}: {}'.format('DATA',DATA_DIR))
     return MODEL_DIR_DATA_ID, DATA_DIR, FIGURE_DIR
