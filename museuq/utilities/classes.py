@@ -11,7 +11,7 @@
 """
 import numpy as np
 import sys, os
-
+from datetime import datetime
 class ErrorType():
     def __init__(self, name=None, params=None, size=None):
         """
@@ -78,7 +78,7 @@ class ErrorType():
 class Logger(object):
     def __init__(self):
         self.terminal = sys.stdout
-        self.log = open("logfile.log", "a")
+        self.log = open("logfile.log", "w+")
 
         now = datetime.now()
         date_string = now.strftime("%d/%m/%Y %H:%M:%S")
