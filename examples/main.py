@@ -33,13 +33,21 @@ def main():
     ## 3. Define independent random variable in physical problems
     # dist_x = cp.Uniform(-np.pi, np.pi)
     dist_x = cp.Iid(cp.Uniform(-np.pi, np.pi),3) 
-    simparams = museuq.setup(model_name, dist_zeta, dist_x, prob_fails)
-
     error_params=None
+    simparams = museuq.setup(model_name, dist_zeta, dist_x, prob_fails)
     simparams.set_error(error_params)
-    print(simparams.model_name)
 
-    museuq.run_doe(simparams)
+    simparams.disp()
+
+    doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [4,5,6]
+    quad_doe = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
+    samples_zeta = quad_doe.get_samples()
+    samples_x = quad_doe.mappingto(dist_x)
+
+    solver = museuq.Solver(model_name, samples_x)
+    solver.run(quad_doe)
+
+
 
 if __name__ == '__main__':
     main()

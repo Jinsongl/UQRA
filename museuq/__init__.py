@@ -11,7 +11,8 @@ quantification
 # from museuq.constants import *
 from museuq.setup import setup 
 from museuq.doe.run_doe import run_doe
-
+from museuq.doe.ExperimentDesign import ExperimentDesign as DoE
+from museuq.solver.Solver import Solver
 
 
 
