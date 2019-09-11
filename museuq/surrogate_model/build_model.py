@@ -16,17 +16,12 @@ import scipy.io as sio
 # import envi, doe, solver, utilities
 
 import os, sys
-from envi import environment
-from sim_setup import sim_setup
-from metaModel import metaModel
-from simParameters import simParameters
-from run_sim import run_sim
 from utilities import upload2gdrive, get_exceedance_data,make_output_dir, get_gdrive_folder_id 
 from sklearn.gaussian_process.kernels import (RBF, Matern, RationalQuadratic,
                                               ExpSineSquared, DotProduct,
                                               ConstantKernel,WhiteKernel)
-import warnings
-warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
+# import warnings
+# warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 
 def main(simparam):
     

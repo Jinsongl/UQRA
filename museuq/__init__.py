@@ -10,16 +10,8 @@ quantification
 # If you were to re-assign MY_CONSTANT in any of the modules, it would only affect that module. In this case, you must reference by attribute, i.e. mypackage.constants.MY_CONSTANT
 # from museuq.constants import *
 from museuq.setup import setup 
-from museuq.doe.run_doe import run_doe
 from museuq.doe.ExperimentDesign import ExperimentDesign as DoE
 from museuq.solver.Solver import Solver
+from museuq.surrogate_model.SurrogateModel import SurrogateModel
 
-
-
-# import environment
-# import doe
-# import solver
-# import utilities
-# import MUSEPlot
-# from utilities import dataIO, gen_gauss_time_series, get_stats #file_rename, 
 

@@ -13,7 +13,6 @@ import numpy as np
 
 from .dynamic_models import lin_oscillator, duffing_oscillator
 from .benchmark import bench1, bench2, bench3, bench4, ishigami
-from .solver_wrapper import solver_wrapper
 from ..utilities.classes import ErrorType
 from ..utilities.helpers import num2print
 from ..utilities import constants as const

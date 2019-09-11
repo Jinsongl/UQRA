@@ -12,9 +12,8 @@
 import sys, os
 import chaospy as cp, numpy as np
 from datetime import datetime
-from ..utilities import make_output_dir, get_gdrive_folder_id 
 from ..utilities.classes import ErrorType, Logger
-from ..utilities.helpers import num2print
+from ..utilities.helpers import num2print, make_output_dir, get_gdrive_folder_id 
 from ..utilities import constants as const
 
 from .doe_generator import samplegen
