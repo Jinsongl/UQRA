@@ -38,7 +38,7 @@ def sphere_points(ndim, r=1, npts=360):
 
     return cord
 
-class environment(object):
+class Environment(object):
 
     def __init__(self, site, isTrunc=False,bnd=None):
         self.site = site

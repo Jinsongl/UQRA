@@ -62,7 +62,7 @@ CAL_COEFFS_METHODS = {
 # Returns:
 #   The type of return value for the polynomial is numpy.ndarray if all dimensions are filled. If not, it returns a new polynomial.
 
-class metaModel(object):
+class SurrogateModel(object):
     """
     Meta model class object 
     General options:

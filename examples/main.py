@@ -8,42 +8,72 @@
 
 """
 
-## >>> 1. Choose Wiener-Askey scheme random variable
-##            # |   zeta    | Wiener-Askey chaos | support
-## # ==============================================================
-## # Continuous | Gaussian  | Hermite-chaos      |  (-inf, inf)
-##              | Gamma     | Laguerre-chaos     |  [0, inf ) 
-##              | Beta      | Jacobi-chaos       |  [a,b] 
-##              | Uniform   | Legendre-chaos     |  [a,b] 
-## # --------------------------------------------------------------
-## # Discrete   | Poisson   | 
-##              | Binomial  | 
-##              | - Binomial| 
-##              | hypergeometric
 """
-import numpy as np
-## ------------------------------------------------------------------- ###
-##  Parameters set-up 
-## ------------------------------------------------------------------- ###
-prob_fails          = 1e-1              # failure probabilities
-# data_train_params = [[1e6], 'R']      # nsamples_test, sample_rule
-# data_test_params  = [1e7, 10, 'R']    # nsamples_test, nrepeat, sample_rule
-MODEL_NAME          = 'Ishigami'
-# MODEL_NAME        = 'BENCH1'
+import context
+import museuq
+import numpy as np, chaospy as cp, os, sys
+import warnings
+from museuq.utilities import helpers as uqhelpers 
+warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
+sys.stdout  = museuq.utilities.classes.Logger()
 
-## ------------------------------------------------------------------- ###
-##  Define Solver parameters ###
-## ------------------------------------------------------------------- ###
-## 
-## >>> 1. Choose Wiener-Askey scheme random variable
-## dist_zeta = cp.Normal(0,1)  # shape=1, scale=1, shift=0
-dist_zeta = cp.Uniform(0,1)
-dist_zeta = cp.Iid(dist_zeta,3) 
+def main():
+    ## ------------------------ Parameters set-up ----------------------- ###
+    prob_fails  = 1e-1              # failure probabilities
+    model_name  = 'linear_oscillator'
+    ## 1. Choose Wiener-Askey scheme random variable
+    # dist_zeta = cp.Uniform(0,1)
+    dist_zeta = cp.Iid(cp.Uniform(0,1),2) 
 
-## >>> 2. If transformation needed, like Rosenblatt, need to be done here
-## Perform Rosenblatt etc
+    ## 2. If transformation needed, like Rosenblatt, need to be done here
+    ## Perform Rosenblatt etc
 
-## >>> 3. Define independent random variable in physical problems
-# dist_x = cp.Normal(5,2) # normal mean = 0, normal std=0.25
-dist_x = cp.Uniform(-np.pi, np.pi)
-dist_x = cp.Iid(dist_x,3) 
+    ## 3. Define independent random variable in physical problems
+    # dist_x = cp.Uniform(-np.pi, np.pi)
+    dist_x = cp.Iid(cp.Uniform(-np.pi, np.pi),2) 
+    error_params=None
+    simparams = museuq.setup(model_name, dist_zeta, dist_x, prob_fails)
+    simparams.set_error(error_params)
+    simparams.disp()
+
+    ## ------------------------ Define DoE parameters ---------------------- ###
+    doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [4,5,6]
+    quad_doe = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
+    samples_zeta= quad_doe.get_samples()
+    samples_x   = quad_doe.mappingto(dist_x)
+    assert len(samples_x) == len(samples_zeta)
+
+    ## ------------------------ Define Solver parameters ---------------------- ###
+    solver = museuq.Solver(model_name, samples_x)
+    samples_y = solver.run(quad_doe)
+
+    ## ------------------------ Define surrogate model parameters ---------------------- ###
+    x_train    = np.squeeze(samples_x[0][0])
+    x_weight   = np.squeeze(samples_x[0][1])
+    zeta_weight= x_weight 
+    y_train    = np.squeeze(samples_y[0])
+    zeta_train = np.squeeze(samples_zeta[0][0])
+
+    metamodel_class, metamodel_basis_setting = 'PCE', [11,15] 
+    metamodel_params= {'cal_coeffs': 'GQ', 'dist_zeta': dist_zeta}
+    pce_model   = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
+
+    pce_model.fit_model(zeta_train, y_train, weight=zeta_weight)
+    y_validate  = pce_model.predict(zeta_train)
+    train_data  = [ x_train, x_weight , y_train, zeta_train, np.array(y_validate)]
+    # np.save(os.path.join(simparam.data_dir, fname_train_out), train_data)
+
+    # data_test_params= [1e2, 10, 'R'] ##[nsamples, repeat, sampling rule]
+
+    # for r in range(data_test_params[1]):
+        # dist_zeta = pce_model.kwparams['dist_zeta']
+        # zeta_mcs  = dist_zeta.sample(data_test_params[0], data_test_params[2])
+        # y_pred_mcs= pce_model.predict(zeta_mcs)
+
+        # uqhelpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
+        # print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
+        # y_pred_mcs_ecdf = uqhelpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparam.prob_fails)
+        # # rfname_mcs  = fname_test_path + '{:d}_ecdf'.format(r) 
+        # # np.save(rfname_mcs, y_pred_mcs_ecdf)
+if __name__ == '__main__':
+    main()

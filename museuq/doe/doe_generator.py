@@ -215,7 +215,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
     numpy_quad  = ['hem', 'hermite','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
     doe_method  = doe_method.upper()
 
-    if doe_method == 'QUADRATURE':
+    if doe_method in ['QUADRATURE','QUAD', 'GQ']:
         ## Return samples in 
         rule = 'hem' if rule is None else rule ## Default gauss_legendre
         if rule in chaospy_quad:
@@ -225,7 +225,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         else:
             raise NotImplementedError("Quadrature rule '{:s}' not defined".format(rule))
         quad_order = [order,] * domain.length if np.isscalar(order) else order
-        print('   ♦ Quadrature points complete  : {}'.format(quad_order))
+        # print('   ♦ Quadrature points complete  : {}'.format(quad_order))
         # print(doe_samples[0].shape)
         # print('------------------------------------------------------------')
     elif doe_method == 'MONTE CARLO':

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2018 Jinsong Liu <jinsongliu@utexas.edu>
+# Copyright © 2019 Jinsong Liu <jinsongliu@utexas.edu>
 #
 # Distributed under terms of the GNU-License license.
 
@@ -14,6 +14,30 @@ import numpy.linalg as nla
 import numpy.random as nrand 
 import copy
 import progressbar
+
+def optimality_A():
+    pass
+
+def optimality_BA():
+    pass
+
+def optimality_BD():
+    pass
+def optimality_C():
+    pass
+def optimality_D():
+    pass
+def optimality_E():
+    pass
+def optimality_G():
+    pass
+def optimality_S():
+    pass
+def quasi_optimal():
+    pass
+def trace():
+    pass
+
 def get_quasi_optimal(m,A,I=None,is_orth=False):
     """
     return a list of containing indices of quasi optimal row selection matrix S 
@@ -186,9 +210,6 @@ def cal_logsvalue_under(R,A):
 
 
 
-
-
-
 def main():
     x = nrand.randn(100,1)
     A = [np.ones(x.shape),x,x**2,x**3]
@@ -198,8 +219,5 @@ def main():
     I = get_quasi_optimal(m,A)
     print(I)
 
-
-if __name__ == '__main__':
-    main()
 
 
