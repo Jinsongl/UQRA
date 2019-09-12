@@ -89,16 +89,7 @@ class ExperimentDesign(object):
         else:
             raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.upper()]))
 
-        print('\n ► DoE Summary:')
-        print('   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
-        print('   ♦ Sample shape: ')
-        for isamples in self.samples:
-            if const.DOE_METHOD_FULL_NAMES[self.method.upper()] == 'QUADRATURE':
-                print('     ∙ Coordinate: {}; weights: {}'\
-                        .format(isamples[0].shape, isamples[1].shape))
-            else:
-                print('     ∙ Coordinate: {}'.format(isamples.shape))
-        # if not mapping, mapped_samples would be same as samples
+        print('\n',end='')
         self.mapped_samples = self.samples
         return self.samples
 
@@ -198,4 +189,23 @@ class ExperimentDesign(object):
         var2 = np.array(var2)
         assert var1.shape == var2.shape
         return var2
+
+    def disp(self):
+        print(' ► DoE Summary:')
+        print('   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
+        for i, isamples in enumerate(self.samples):
+            print('   ♦ Sample set No. {:d}:'.format(i))
+            if const.DOE_METHOD_FULL_NAMES[self.method.upper()] == 'QUADRATURE':
+                print('     ∙ Coordinate: {}; weights: {}'\
+                        .format(isamples[0].shape, isamples[1].shape))
+            else:
+                print('     ∙ Coordinate: {}'.format(isamples.shape))
+
+            for j, jcor in enumerate(isamples[0].T):
+                if j > 5:
+                    break
+                print('     ∙ {} | {:<.2f}'.format(np.around(jcor,3), isamples[1][j] ))
+
+
+
 
