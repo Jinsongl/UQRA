@@ -11,7 +11,7 @@
 """
 import numpy as np
 
-from .dynamic_models import lin_oscillator, duffing_oscillator
+from .dynamic_models import lin_oscillator, duffing_oscillator, linear_oscillator
 from .benchmark import bench1, bench2, bench3, bench4, ishigami
 from ..utilities.classes import ErrorType
 from ..utilities.helpers import num2print
@@ -24,6 +24,8 @@ ALL_SOLVERS = {
     'BENCH3'    : bench3,
     'BENCH4'    : bench4,
     'DUFFING'   : duffing_oscillator,
+    'SDOF'      : linear_oscillator,
+    'LINEAR_OSCILLATOR' : linear_oscillator,
     }
 
 class Solver(object):
@@ -138,7 +140,7 @@ class Solver(object):
         try:
             solver = ALL_SOLVERS[self.solver_name.upper()]
         except KeyError:
-            print(f"{solver} is not defined" )
+            print(f"{self.solver_name.upper()} is not defined" )
         assert (callable(solver)), '{:s} not callable'.format(solver.__name__)
         
         if self.solver_name.upper() == 'ISHIGAMI':
@@ -158,6 +160,11 @@ class Solver(object):
                 x0, v0, zeta, omega0 = (0,0, 0.2, 1)
 
             y = solver(time_max,dt,x0,v0,zeta,omega0,add_f=x[0],*x[1:])
+
+        elif self.solver_name.upper() == 'LINEAR_OSCILLATOR':
+            tmax,dt =1000, 0.1
+            y = [linear_oscillator(tmax,dt,spec_vars=ix) for ix in x.T]
+
 
         elif self.solver_name.upper() ==  'DUFFING_OSCILLATOR':
             # x: [source_func, *arg, *kwargs]
