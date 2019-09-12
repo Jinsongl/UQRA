@@ -16,6 +16,9 @@ from statsmodels.distributions.empirical_distribution import ECDF
 
 Ecdf2plot = collections.namedtuple('Ecdf2plot', ['x','y'])
 
+def nextpow2(x):
+    return 2**(int(x)-1).bit_length()
+
 def num2print(n):
     if n<100:
         return '{:2d}'.format(n)
