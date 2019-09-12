@@ -81,7 +81,7 @@ def psd2acf(fmax, df, psd_func, spec_type='2SIDE', fmin=0):
 
     return t, ft
 
-def single_psd2double_psd(f,pxx):
+def psd_single2double(f,pxx):
     """
     Convert single side psd specified by (f, pxx) to double side
     Arguments:
