@@ -20,17 +20,17 @@ sys.stdout  = museuq.utilities.classes.Logger()
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
     prob_fails  = 1e-1              # failure probabilities
-    model_name  = 'Ishigami'
+    model_name  = 'linear_oscillator'
     ## 1. Choose Wiener-Askey scheme random variable
     # dist_zeta = cp.Uniform(0,1)
-    dist_zeta = cp.Iid(cp.Uniform(0,1),3) 
+    dist_zeta = cp.Iid(cp.Uniform(0,1),2) 
 
     ## 2. If transformation needed, like Rosenblatt, need to be done here
     ## Perform Rosenblatt etc
 
     ## 3. Define independent random variable in physical problems
     # dist_x = cp.Uniform(-np.pi, np.pi)
-    dist_x = cp.Iid(cp.Uniform(-np.pi, np.pi),3) 
+    dist_x = cp.Iid(cp.Uniform(-np.pi, np.pi),2) 
     error_params=None
     simparams = museuq.setup(model_name, dist_zeta, dist_x, prob_fails)
     simparams.set_error(error_params)
@@ -63,17 +63,17 @@ def main():
     train_data  = [ x_train, x_weight , y_train, zeta_train, np.array(y_validate)]
     # np.save(os.path.join(simparam.data_dir, fname_train_out), train_data)
 
-    data_test_params= [1e2, 10, 'R'] ##[nsamples, repeat, sampling rule]
+    # data_test_params= [1e2, 10, 'R'] ##[nsamples, repeat, sampling rule]
 
-    for r in range(data_test_params[1]):
-        dist_zeta = pce_model.kwparams['dist_zeta']
-        zeta_mcs  = dist_zeta.sample(data_test_params[0], data_test_params[2])
-        y_pred_mcs= pce_model.predict(zeta_mcs)
+    # for r in range(data_test_params[1]):
+        # dist_zeta = pce_model.kwparams['dist_zeta']
+        # zeta_mcs  = dist_zeta.sample(data_test_params[0], data_test_params[2])
+        # y_pred_mcs= pce_model.predict(zeta_mcs)
 
-        uqhelpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
-        print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
-        y_pred_mcs_ecdf = uqhelpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparam.prob_fails)
-        # rfname_mcs  = fname_test_path + '{:d}_ecdf'.format(r) 
-        # np.save(rfname_mcs, y_pred_mcs_ecdf)
+        # uqhelpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
+        # print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
+        # y_pred_mcs_ecdf = uqhelpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparam.prob_fails)
+        # # rfname_mcs  = fname_test_path + '{:d}_ecdf'.format(r) 
+        # # np.save(rfname_mcs, y_pred_mcs_ecdf)
 if __name__ == '__main__':
     main()
