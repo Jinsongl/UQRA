@@ -190,7 +190,7 @@ class ExperimentDesign(object):
         assert var1.shape == var2.shape
         return var2
 
-    def disp(self):
+    def disp(self, decimals=4):
         print(' ► DoE Summary:')
         print('   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
         for i, isamples in enumerate(self.samples):
@@ -204,7 +204,7 @@ class ExperimentDesign(object):
             for j, jcor in enumerate(isamples[0].T):
                 if j > 5:
                     break
-                print('     ∙ {} | {:<.2f}'.format(np.around(jcor,3), isamples[1][j] ))
+                print('     ∙ {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
 
 
 

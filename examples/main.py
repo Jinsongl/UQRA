@@ -22,45 +22,49 @@ def main():
     prob_fails  = 1e-1              # failure probabilities
     model_name  = 'linear_oscillator'
     ## 1. Choose Wiener-Askey scheme random variable
-    # dist_zeta = cp.Uniform(0,1)
-    dist_zeta = cp.Iid(cp.Uniform(0,1),2) 
+    dist_zeta = cp.Uniform(-1,1)
+    dist_zeta = cp.Gamma(4,1)
+    # dist_zeta = cp.Iid(cp.Uniform(0,1),2) 
 
     ## 2. If transformation needed, like Rosenblatt, need to be done here
     ## Perform Rosenblatt etc
 
     ## 3. Define independent random variable in physical problems
-    # dist_x = cp.Uniform(-np.pi, np.pi)
-    dist_x = cp.Iid(cp.Uniform(-np.pi, np.pi),2) 
+    dist_x = cp.Uniform(-np.pi, np.pi)
+    # dist_x = cp.Iid(cp.Uniform(-np.pi, np.pi),2) 
     error_params=None
     simparams = museuq.setup(model_name, dist_zeta, dist_x, prob_fails)
     simparams.set_error(error_params)
     simparams.disp()
 
     ## ------------------------ Define DoE parameters ---------------------- ###
-    doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [4,5,6]
+    doe_method, doe_rule, doe_orders = 'QUAD', 'lag', [2,3,4,5,6]
     quad_doe = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
     samples_zeta= quad_doe.get_samples()
+    
+    quad_doe.disp()
+    # print(*samples_zeta, sep='\n')
     samples_x   = quad_doe.mappingto(dist_x)
     assert len(samples_x) == len(samples_zeta)
 
-    ## ------------------------ Define Solver parameters ---------------------- ###
-    solver = museuq.Solver(model_name, samples_x)
-    samples_y = solver.run(quad_doe)
+    # ## ------------------------ Define Solver parameters ---------------------- ###
+    # solver = museuq.Solver(model_name, samples_x)
+    # samples_y = solver.run(quad_doe)
 
-    ## ------------------------ Define surrogate model parameters ---------------------- ###
-    x_train    = np.squeeze(samples_x[0][0])
-    x_weight   = np.squeeze(samples_x[0][1])
-    zeta_weight= x_weight 
-    y_train    = np.squeeze(samples_y[0])
-    zeta_train = np.squeeze(samples_zeta[0][0])
+    # ## ------------------------ Define surrogate model parameters ---------------------- ###
+    # x_train    = np.squeeze(samples_x[0][0])
+    # x_weight   = np.squeeze(samples_x[0][1])
+    # zeta_weight= x_weight 
+    # y_train    = np.squeeze(samples_y[0])
+    # zeta_train = np.squeeze(samples_zeta[0][0])
 
-    metamodel_class, metamodel_basis_setting = 'PCE', [11,15] 
-    metamodel_params= {'cal_coeffs': 'GQ', 'dist_zeta': dist_zeta}
-    pce_model   = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
+    # metamodel_class, metamodel_basis_setting = 'PCE', [11,15] 
+    # metamodel_params= {'cal_coeffs': 'GQ', 'dist_zeta': dist_zeta}
+    # pce_model   = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
 
-    pce_model.fit_model(zeta_train, y_train, weight=zeta_weight)
-    y_validate  = pce_model.predict(zeta_train)
-    train_data  = [ x_train, x_weight , y_train, zeta_train, np.array(y_validate)]
+    # pce_model.fit_model(zeta_train, y_train, weight=zeta_weight)
+    # y_validate  = pce_model.predict(zeta_train)
+    # train_data  = [ x_train, x_weight , y_train, zeta_train, np.array(y_validate)]
     # np.save(os.path.join(simparam.data_dir, fname_train_out), train_data)
 
     # data_test_params= [1e2, 10, 'R'] ##[nsamples, repeat, sampling rule]
