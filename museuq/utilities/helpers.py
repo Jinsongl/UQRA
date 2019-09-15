@@ -16,6 +16,14 @@ from statsmodels.distributions.empirical_distribution import ECDF
 
 Ecdf2plot = collections.namedtuple('Ecdf2plot', ['x','y'])
 
+# Disable print
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
+
+# Restore print
+def enablePrint():
+    sys.stdout = sys.__stdout__
+
 def nextpow2(x):
     return 2**(int(x)-1).bit_length()
 
