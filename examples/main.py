@@ -22,23 +22,23 @@ def main():
     prob_fails  = 1e-1              # failure probabilities
     model_name  = 'linear_oscillator'
     ## 1. Choose Wiener-Askey scheme random variable
-    dist_zeta = cp.Uniform(-1,1)
-    dist_zeta = cp.Gamma(4,1)
-    # dist_zeta = cp.Iid(cp.Uniform(0,1),2) 
+    # dist_zeta = cp.Uniform(-1,1)
+    # dist_zeta = cp.Gamma(4,1)
+    dist_zeta = cp.Iid(cp.Uniform(0,1),2) 
 
     ## 2. If transformation needed, like Rosenblatt, need to be done here
     ## Perform Rosenblatt etc
 
     ## 3. Define independent random variable in physical problems
-    dist_x = cp.Uniform(-np.pi, np.pi)
-    # dist_x = cp.Iid(cp.Uniform(-np.pi, np.pi),2) 
+    # dist_x = cp.Uniform(-np.pi, np.pi)
+    dist_x = cp.Iid(cp.Uniform(-np.pi, np.pi),2) 
     error_params=None
     simparams = museuq.setup(model_name, dist_zeta, dist_x, prob_fails)
     simparams.set_error(error_params)
     simparams.disp()
 
     ## ------------------------ Define DoE parameters ---------------------- ###
-    doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [2,3,4,5,6]
+    doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [3,4,5,6]
     quad_doe = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
     samples_zeta= quad_doe.get_samples()
     quad_doe.disp()
