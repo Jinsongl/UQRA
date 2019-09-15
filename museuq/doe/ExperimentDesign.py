@@ -54,8 +54,8 @@ class ExperimentDesign(object):
         print('►►► Initialize Experiment Design:')
         print('------------------------------------------------------------')
         print(' ► DoE parameters: ')
-        print('   ♦ {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.upper()]))
-        print('   ♦ {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.upper()]))
+        print('   ♦ {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
+        print('   ♦ {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.lower()]))
         print('   ♦ {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders))))
 
 
@@ -71,11 +71,11 @@ class ExperimentDesign(object):
         self.samples = []
         ## one can update new space here
         self.space = space if space else self.space
-        # if self.method.upper() == 'FIXED POINT':
+        # if self.method.lower() == 'FIXED POINT':
             # assert fix_point is not None, " For 'fixed point' method, samples in physical space must be given" 
             # for isample_x in fix_point:
                 # self.samples.append(self._space_transform(self.dist_x, self.dist_zeta, isample_x))
-        if const.DOE_METHOD_FULL_NAMES[self.method.upper()] in ['QUADRATURE', 'MONTE CARLO']:
+        if const.DOE_METHOD_FULL_NAMES[self.method.lower()] in ['QUADRATURE', 'MONTE CARLO']:
             for idoe_order in self.orders: 
                 # DoE for different selected orders 
                 # doe samples, array of shape:
@@ -87,7 +87,7 @@ class ExperimentDesign(object):
                 self.samples.append(isamples)
                 print('\r   ♦ {:<15s}: {}'.format( 'DoE completed', self.orders[:idoe_order+1]), end='')
         else:
-            raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.upper()]))
+            raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
 
         print('\n',end='')
         self.mapped_samples = self.samples
@@ -114,7 +114,7 @@ class ExperimentDesign(object):
         # with open(os.path.join(self.data_dir, self.filenames), 'w') as filenames:
 
         for idoe, isamples in enumerate(self.samples):
-            if const.DOE_METHOD_FULL_NAMES[self.method.upper()] == 'QUADRATURE':
+            if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
                 zeta_cor, zeta_weights = isamples 
                 x_cor = self._space_transform(self.space, self.mapped_space, zeta_cor)
                 x_weights = zeta_weights#.reshape(zeta_cor.shape[1],1)
@@ -195,7 +195,7 @@ class ExperimentDesign(object):
         print('   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
         for i, isamples in enumerate(self.samples):
             print('   ♦ Sample set No. {:d}:'.format(i))
-            if const.DOE_METHOD_FULL_NAMES[self.method.upper()] == 'QUADRATURE':
+            if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
                 print('     ∙ Coordinate: {}; weights: {}'\
                         .format(isamples[0].shape, isamples[1].shape))
             else:
