@@ -38,18 +38,18 @@ def main():
     simparams.disp()
 
     ## ------------------------ Define DoE parameters ---------------------- ###
-    doe_method, doe_rule, doe_orders = 'QUAD', 'lag', [2,3,4,5,6]
+    doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [2,3,4,5,6]
     quad_doe = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
     samples_zeta= quad_doe.get_samples()
-    
     quad_doe.disp()
+
     # print(*samples_zeta, sep='\n')
     samples_x   = quad_doe.mappingto(dist_x)
     assert len(samples_x) == len(samples_zeta)
 
-    # ## ------------------------ Define Solver parameters ---------------------- ###
-    # solver = museuq.Solver(model_name, samples_x)
-    # samples_y = solver.run(quad_doe)
+    ## ------------------------ Define Solver parameters ---------------------- ###
+    solver = museuq.Solver(model_name, samples_x)
+    samples_y = solver.run(quad_doe)
 
     # ## ------------------------ Define surrogate model parameters ---------------------- ###
     # x_train    = np.squeeze(samples_x[0][0])
