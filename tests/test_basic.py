@@ -3,6 +3,8 @@
 import context, museuq, unittest,warnings
 import numpy as np, chaospy as cp, os, sys
 from museuq.utilities import helpers as uqhelpers 
+from museuq.utilities import constants as const
+
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
 
@@ -13,7 +15,9 @@ class BasicTestSuite(unittest.TestCase):
         """
         https://keisan.casio.com/exec/system/1329114617
         """
-        quadrature_rule_to_test = ['LEG', 'HEM', 'LAG', 'JACOBI']
+        quadrature_rule_to_test = ['leg', 'hem', 'lag', 'jacobi']
+        quadrature_dist_to_test = [cp.Uniform(-1,1), cp.Normal(), cp.Gamma(1,1), cp.Beta(1,1)]
+        #cp.Gamma() def: x**(a-1)*numpy.e**(-x) / special.gamma(a)
     #Legendre-Gauss quadrature 
         # n = 2
             # i	weight - wi	abscissa - xi
@@ -43,15 +47,49 @@ class BasicTestSuite(unittest.TestCase):
             # 5	0.2369268850561891	0.9061798459386640
 
 
-        dist_zeta = cp.Uniform(-1,1)
-        dist_zeta = cp.Gamma(4,1)
         # dist_zeta = cp.Iid(cp.Uniform(0,1),2) 
 
-        doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [2,3,4,5,6]
-        quad_doe = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
-        samples_zeta= quad_doe.get_samples()
-        quad_doe.disp()
+        for dist, doe_rule in zip(quadrature_dist_to_test, quadrature_rule_to_test):
+            print('Gauss Quadrature with polynominal: {}'.format(const.DOE_RULE_FULL_NAMES[doe_rule.lower()]))
+            doe_method, doe_rule, doe_orders = 'QUAD', doe_rule, [2,3,4,5,6]
+            quad_doe = museuq.DoE(doe_method, doe_rule, doe_orders, dist)
+            samples_zeta= quad_doe.get_samples()
+            quad_doe.disp()
         print('Compared results here: https://keisan.casio.com/exec/system/1329114617')
+
+    def test_gpce(self):
+        gpce_dist_to_test   = [cp.Normal(), cp.Normal(2,3), cp.Gamma(1,1), cp.Beta(1,1)]
+        gpce_opt_dist       = [cp.Normal(), cp.Normal(), cp.Gamma(1,1), cp.Beta(1,1)]
+        gpce_opt_rule       = ['hem', 'hem', 'lag', 'jacobi']
+        npoly_orders        = range(2,5)
+        dist_zeta0          = cp.Normal()
+        for i, igpce_dist in enumerate(gpce_dist_to_test):
+            dist_zeta1 = gpce_opt_dist[i]
+            print('>> Testing # {:d}: gpce: {}, zeta0: {} , zeta1: {}'.format(i, igpce_dist, dist_zeta0, dist_zeta1 ))
+            for ipoly_order in npoly_orders:
+                print('  Polynomial order: {:d}'.format(ipoly_order))
+                ## gPCE with hermite chaos
+                uqhelpers.blockPrint()
+                quad_doe = museuq.DoE('QUAD', 'hem', [ipoly_order+1], dist_zeta0)
+                samples_zeta= quad_doe.get_samples()
+                zeta_cor, zeta_weight = samples_zeta[0]
+                x_cor = igpce_dist.inv(dist_zeta0.cdf(zeta_cor))
+                zeta_poly, zeta_norms = cp.orth_ttr(ipoly_order, dist_zeta0, retall=True)
+                x_hat,coeffs = cp.fit_quadrature(zeta_poly, zeta_cor, zeta_weight, np.squeeze(x_cor), retall=True)
+                uqhelpers.enablePrint()
+                print('\t Hermite: {}'.format( np.around(coeffs,4)))
+
+
+                ## gPCE with optimal chaos
+                uqhelpers.blockPrint()
+                quad_doe = museuq.DoE('QUAD', gpce_opt_rule[i], [ipoly_order+1], dist_zeta1)
+                samples_zeta= quad_doe.get_samples()
+                zeta_cor, zeta_weight = samples_zeta[0]
+                x_cor = igpce_dist.inv(dist_zeta1.cdf(zeta_cor))
+                zeta_poly, zeta_norms = cp.orth_ttr(ipoly_order, dist_zeta1, retall=True)
+                x_hat,coeffs = cp.fit_quadrature(zeta_poly, zeta_cor, zeta_weight, np.squeeze(x_cor), retall=True)
+                uqhelpers.enablePrint()
+                print('\t Optimal: {}'.format( np.around(coeffs,4)))
 
     def test_absolute_truth_and_meaning(self):
         assert True
