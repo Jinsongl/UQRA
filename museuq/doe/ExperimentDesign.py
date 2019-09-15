@@ -190,21 +190,23 @@ class ExperimentDesign(object):
         assert var1.shape == var2.shape
         return var2
 
-    def disp(self, decimals=4):
+    def disp(self, decimals=4, nsamples2print=0):
         print(' ► DoE Summary:')
         print('   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
+        print('   ♦ {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
         for i, isamples in enumerate(self.samples):
-            print('   ♦ Sample set No. {:d}:'.format(i))
+            # print('   ♦ Sample set No. {:d}:'.format(i))
             if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
-                print('     ∙ Coordinate: {}; weights: {}'\
-                        .format(isamples[0].shape, isamples[1].shape))
+                print('     ∙ {} & {}'.format(isamples[0].shape,isamples[1].shape))
             else:
-                print('     ∙ Coordinate: {}'.format(isamples.shape))
+                pass
+                # print('     ∙ Coordinate: {}'.format(isamples.shape))
 
-            for j, jcor in enumerate(isamples[0].T):
-                if j > 5:
-                    break
-                print('     ∙ {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
+            if nsamples2print: 
+                for j, jcor in enumerate(isamples[0].T):
+                    if j > nsamples2print:
+                        break
+                    print('       - {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
 
 
 
