@@ -22,6 +22,7 @@ def blockPrint():
 
 # Restore print
 def enablePrint():
+    sys.stdout.close()
     sys.stdout = sys.__stdout__
 
 def nextpow2(x):
