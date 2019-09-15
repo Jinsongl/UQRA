@@ -93,7 +93,7 @@ class Solver(object):
         for isys_done, itheta_m in enumerate(self.theta_m): 
             run_sim_1doe_res = []
             for idoe, isamples_x in enumerate(doe_obj.mapped_samples):
-                if const.DOE_METHOD_FULL_NAMES[doe_obj.method.upper()] == 'QUADRATURE':
+                if const.DOE_METHOD_FULL_NAMES[doe_obj.method.lower()] == 'QUADRATURE':
                     input_vars, input_vars_weights = isamples_x
                 else:
                     input_vars, input_vars_weights = isamples_x, None
@@ -163,7 +163,8 @@ class Solver(object):
 
         elif self.solver_name.upper() == 'LINEAR_OSCILLATOR':
             tmax,dt =1000, 0.1
-            y = [linear_oscillator(tmax,dt,spec_vars=ix) for ix in x.T]
+            t = np.arange(0,tmax, dt)
+            y = [linear_oscillator(t,ix) for ix in x.T]
 
 
         elif self.solver_name.upper() ==  'DUFFING_OSCILLATOR':

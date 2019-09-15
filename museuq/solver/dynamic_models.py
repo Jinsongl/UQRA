@@ -53,7 +53,7 @@ def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *source
     x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,source_func=source_func,t_trans=t_trans)
     return x
 
-def linear_oscillator(t,args=(1, 0.03, 0.0225), kwargs={'spec_name': 'JONSWAP', 'spec_vars': [10,2]}):
+def linear_oscillator(t, x, args=(1, 0.03, 0.0225), kwargs={'spec_name': 'JONSWAP'}):
     """
     Solving linear oscillator in frequency domain
     m x'' + c x' + k x = f => 
@@ -75,8 +75,8 @@ def linear_oscillator(t,args=(1, 0.03, 0.0225), kwargs={'spec_name': 'JONSWAP', 
     H_square= 1.0/np.sqrt( (k-m*f**2)**2 + (c*f)**2 )
 
     spec_dict = psd.get_spec_dict() 
-    spec_func = spec_dict.get(kwargs['spec_name'].upper(), 'JONSWAP')
-    f,x_pxx   = spec_func(f, *kwargs['spec_vars'])
+    spec_func = spec_dict.get(kwargs.get('spec_name', 'JONSWAP'))
+    f,x_pxx   = spec_func(f, *x)
     y_pxx     = H_square * x_pxx
 
     t, x_t = psd2process(f, x_pxx)
@@ -87,7 +87,6 @@ def linear_oscillator(t,args=(1, 0.03, 0.0225), kwargs={'spec_name': 'JONSWAP', 
     x_t = np.array(x_t).reshape((-1,1))
     y_t = np.array(y_t).reshape((-1,1))
     y1  = np.concatenate((t,x_t,y_t), axis=1)
-    print('hello')
     np.save('frequency', y1)
     f   = np.array(f).reshape((-1,1))
     x_pxx=np.array(x_pxx).reshape((-1,1))
