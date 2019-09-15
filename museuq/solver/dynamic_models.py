@@ -53,27 +53,30 @@ def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *source
     x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,source_func=source_func,t_trans=t_trans)
     return x
 
-def linear_oscillator(tmax,dt,m=1,c=0.03,k=0.0225, spec_name='JONSWAP', spec_vars=[10,2]):
+def linear_oscillator(t,args=(1, 0.03, 0.0225), kwargs={'spec_name': 'JONSWAP', 'spec_vars': [10,2]}):
     """
     Solving linear oscillator in frequency domain
     m x'' + c x' + k x = f => 
     x'' + 2*zeta*w_n x' + w_n**2 x = 1/m f, where, w_n = sqrt(k/m), zeta = c/(2*sqrt(m*k))
     default value: omega_n = 0.15 Hz, zeta = 0.1
+
     f: frequency in Hz
+    t: array, A sequence of time points for which to solve for y. 
+    args, tuple, oscillator arguments in order of (mass, damping, stiffness) 
+    kwargs, dictionary, spectrum definitions for the input excitation functions
     """
-    N  = int(tmax/dt)
-    t  = np.arange(-N,N+1) * dt
+    tmax, dt = t[-1], t[1] - t[0]
     df = 0.5/tmax
-    f  = np.arange(N+1) * df
+    f  = np.arange(len(t)+1) * df
     ##--------- oscillator properties -----------
+    m, c, k = args
     w_n     = np.sqrt(k/m)          # natural frequency
     zeta    = c/(2*np.sqrt(m*k))    # damping ratio
     H_square= 1.0/np.sqrt( (k-m*f**2)**2 + (c*f)**2 )
 
     spec_dict = psd.get_spec_dict() 
-    spec_func = spec_dict.get(spec_name.upper(), 'JONSWAP')
-    print(spec_vars)
-    f,x_pxx   = spec_func(f, *spec_vars)
+    spec_func = spec_dict.get(kwargs['spec_name'].upper(), 'JONSWAP')
+    f,x_pxx   = spec_func(f, *kwargs['spec_vars'])
     y_pxx     = H_square * x_pxx
 
     t, x_t = psd2process(f, x_pxx)
