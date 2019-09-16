@@ -12,7 +12,7 @@
 import numpy as np
 from scipy.stats.mstats import mquantiles 
 from numpy.linalg import norm
-
+from scipy.stats import moment
 ## import regression metrics from scikit-learn
 from sklearn.metrics import explained_variance_score, max_error, mean_absolute_error, mean_squared_error, mean_squared_log_error, median_absolute_error, r2_score
 
@@ -29,9 +29,11 @@ from sklearn.metrics import explained_variance_score, max_error, mean_absolute_e
 # -2	smallest singular value	i       as below
 # other	–	                        sum(abs(x)**ord)**(1./ord)
 
-def moments(self,x, orders=np.arange(1,5)):
-    x = np.squeeze(x)
-    assert x.ndim == 1
-    xx = np.array([x**i for i in orders])
-    xx_moms = np.mean(xx, axis=1)
-    return xx_moms
+def moments(y_true, y_pred, m=1):
+    res = [moment(y_true,moment=m), moment(y_pred,moment=m)]
+    return res
+def upper_tails(y_true, y_pred, prob=[0.75, 0.9, 0.99], alphap=0.4, betap=0.4, axis=None, limit=()):
+    res = [mquantiles(y_true,prob=prob,alphap=alphap,betap=betap,axis=axis,limit=limit),
+           mquantiles(y_pred,prob=prob,alphap=alphap,betap=betap,axis=axis,limit=limit)]
+    return res
+
