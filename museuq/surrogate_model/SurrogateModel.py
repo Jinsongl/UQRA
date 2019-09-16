@@ -7,16 +7,14 @@
 """
 
 """
-import chaospy as cp
-import numpy as np
-import sklearn.gaussian_process as skgp
+import chaospy as cp, numpy as np, sklearn.gaussian_process as skgp
 import scipy.stats as scistats
-from sklearn.utils import check_random_state
 from scipy.stats.kde import gaussian_kde
 from statsmodels.distributions.empirical_distribution import ECDF
+from sklearn.gaussian_process import GaussianProcessRegressor
+from ../utilities import metrics
 import warnings
 warnings.filterwarnings(action="ignore",  message="^internal gelsd")
-from sklearn.gaussian_process import GaussianProcessRegressor
 
 # Chaospy.Poly
 # 1. Any constructed polynomial is a callable. The argument can either be inserted positional or as keyword arguments q0,
@@ -53,7 +51,7 @@ CAL_COEFFS_METHODS = {
     }
 class SurrogateModel(object):
     """
-    Meta model class object 
+    Surrogate model class object 
     General options:
     """
     def __init__(self, name, setting, **kwparams):
@@ -91,23 +89,20 @@ class SurrogateModel(object):
         # define  a list of parameters to get metamodel basis functions. 
         # - PCE: list of basis function orders, redefine an attribute self.basis_orders
         # - GPR: list of kernels, redefine an attribute self.kernels  
-        self.name       = name  # string, PCE, aPCE, GPR
-        self.setting    = []   # list, used to generate the setting functions for surrogate models
-        self.kwparams   = kwparams if kwparams else {} 
-
+        self.name            = name  # string, PCE, aPCE, GPR
+        self.setting         = []   # list, used to generate the setting functions for surrogate models
+        self.kwparams        = kwparams if kwparams else {} 
         ## define list saving outputs
-        self.basis     = []    # list of metamodel basis functions. For PCE, list of polynomials, for GPR, list of kernels
+        self.basis           = []    # list of metamodel basis functions. For PCE, list of polynomials, for GPR, list of kernels
         self.metamodels      = []    # list of built metamodels
         self.metamodel_coeffs= []    # list of coefficient sets for each built meta model
         self.orthpoly_norms  = []    # Only for PCE model, list of norms for setting functions 
         self.cv_l2errors     = []
-        self.metric_names    = ['value','moments','norms','upper fractile','ECDF','pdf']
-        self.metrics         = [[] for _ in range(len(self.metric_names))] ## each element is of shape: [sample sets, metaorders, repeated samples, metric]
-
+        self.metrics2cal     = ['mean_squared_error']
+        self.metrics_value   = [] ## each element is of shape: [sample sets, metaorders, repeated samples, metric]
         ## Initialize metaModel methods
         self.__metamodel_setting(setting) 
         self.__get_metamodel_basis()    # list of setting functions/kernels for meta models 
-
 
     def fit(self,x_train,y_train,weight=None):
         """
@@ -165,9 +160,9 @@ class SurrogateModel(object):
             predicted value from surrogate models at query points
         """
         if not self.metamodels:
-            raise ValueError('No surrogate model exists')
+            raise ValueError('No surrogate models exist')
 
-        res_pred = []
+        f_pred_all = []
         print(' ► Evaluating with surrogate models ... ')
         print('   ♦ {:<17s} : {}'.format('Query points ', X.shape))
         for i, imetamodel in enumerate(self.metamodels):
@@ -178,18 +173,33 @@ class SurrogateModel(object):
             elif self.name.upper() == 'GPR':
                 f_mean, f_std = imetamodel.predict(X.T, return_std=return_std, return_cov=return_cov)
                 f_pred = np.hstack((f_mean, f_std.reshape(f_mean.shape))).T
-            res_pred.append(f_pred)
-        return res_pred
+            f_pred_all.append(f_pred)
+        return f_pred_all
 
-    def score(self,x,p=[0.01,0.001],retmetrics=[1,1,1,1,1,1]):
+    def score(self,X,y_true,prob=[0.9,0.99,0.999], metrics2cal=['mean_squared_error'],moment=1):
         """
-        Calculate a set of error metrics used to evaluate the accuracy of the approximation
+        Calculate error metrics_value used to evaluate the accuracy of the approximation
         Reference: "On the accuracy of the polynomial chaos approximation R.V. Field Jr., M. Grigoriu"
-        arguments: 
-            x: estimate data of shape(n,)
-            y: real data of shape(n,)
-        [values, moments, norms, upper tails, ecdf, pdf] 
+        Parameters:	
+        X : array-like, shape = (n_samples, n_features)
+        Test samples. For some estimators this may be a precomputed kernel matrix instead, shape = (n_samples, n_samples_fitted], where n_samples_fitted is the number of samples used in the fitting for the estimator.
+
+        y : array-like, shape = (n_samples) or (n_samples, n_outputs)
+        True values for X.
+
+        sample_weight : array-like, shape = [n_samples], optional
+        Sample weights.
+
+        [values, moments, norms, upper tails, ecdf, pdf, R2] 
         -----------------------------------------------------------------------
+        Returns the coefficient of determination R^2 of the prediction.
+
+        The coefficient R^2 is defined as (1 - u/v), where u is the residual sum of squares ((y_true - y_pred) ** 2).sum() and v is the total sum of squares ((y_true - y_true.mean()) ** 2).sum(). The best possible score is 1.0 and it can be negative (because the model can be arbitrarily worse). A constant model that always predicts the expected value of y, disregarding the input features, would get a R^2 score of 0.0.
+
+
+        Returns:	
+        score : float
+        R^2 of self.predict(X) wrt. y.
         0 | values 
         1 | moments, e = [1 - pce_moment(i)/real_moment(i)], for i in range(n)
         2 | norms : numpy.linalg.norm(x, ord=None, axis=None, keepdims=False)
@@ -197,30 +207,23 @@ class SurrogateModel(object):
         4 | ecdf 
         5 | kernel density estimator pdf
         """
-        metrics = []
-        self.metric_names=[]
-        x = np.squeeze(np.array(x))
-        if retmetrics[0]:
-            metrics.append(x)
-            self.metric_names.append['value']
-        if retmetrics[1]:
-            metrics.append(self.__error_moms(x))
-            self.metric_names.append('moments')
-        if retmetrics[2]:
-            metrics.append(self.__error_norms(x))
-            self.metric_names.append('norms')
-        if retmetrics[3]:
-            metrics.append(self.__error_tail(x,p=p))
-            self.metric_names.append('upper_tail')
-        if retmetrics[4]:
-            metrics.append(ECDF(x))
-            self.metric_names.append('ECDF')
-        if retmetrics[5]:
-            metrics.append(gaussian_kde(x))
-            self.metric_names.append('kde')
-        # else:
-            # NotImplementedError('Metric not implemented')
-        return metrics
+        self.metrics2cal    = []
+        y_pred              = self.predict(X,return_std=False,return_cov=False)
+        self.metrics_value  = [[] for _ in range(len(y_pred))]   
+
+        print(' ► Calculating scores...')
+        print('   ♦ Metrics to be calculated: {}'.format(metrics2cal))
+
+        for imetric_name in metrics2cal:
+            imetric2call = getattr(metrics, imetric_name.lower())
+            for i, iy_pred in enumerate(y_pred):
+                if imetric_name.lower() == 'upper_tails':
+                    self.metrics_value[i].append(imetric2call(y_true, iy_pred, prob=prob))
+                elif imetric_name.lower() == 'moments': 
+                    self.metrics_value[i].append(imetric2call(y_true, iy_pred, m=moment))
+                else:
+                    self.metrics_value[i].append(imetric2call(y_true, iy_pred))
+        return self.metrics_value
     
     def log_marginal_likelihood(self, theta, eval_gradient=False):
         """
@@ -316,23 +319,23 @@ class SurrogateModel(object):
             y_samples = y_samples[0]
         return y_samples
 
-    def cross_validate(self, x, y):
-        """
-        Cross validation of the fitted metaModel with given data
-        """
-        if not self.metamodels:
-            raise ValueError('No meta model exists')
-        for _, metamodels in enumerate(self.metamodels):
-            _cv_l2error = []
-            print('\t\tCross validation {:s} metamodel of order \
-                    {:d}'.format(self.name, max([sum(order) for order in f.keys])))
-            for _, f in enumerate(metamodels):
-                f_fit = [f(*val) for val in x.T]
-                f_cv.append(f_fit)
-                cv_l2error = np.sqrt(np.mean((np.asfarray(f_fit) - y)**2),axis=0)
-                _cv_l2error.append(cv_l2error)
-            self.cv_l2errors.append(_cv_l2error)
-# sampling=[1e5,10,'R'], retmetrics=[1,1,1,1,1,1]
+    # def cross_validate(self, x, y):
+        # """
+        # Cross validation of the fitted metaModel with given data
+        # """
+        # if not self.metamodels:
+            # raise ValueError('No meta model exists')
+        # for _, metamodels in enumerate(self.metamodels):
+            # _cv_l2error = []
+            # print('\t\tCross validation {:s} metamodel of order \
+                    # {:d}'.format(self.name, max([sum(order) for order in f.keys])))
+            # for _, f in enumerate(metamodels):
+                # f_fit = [f(*val) for val in x.T]
+                # f_cv.append(f_fit)
+                # cv_l2error = np.sqrt(np.mean((np.asfarray(f_fit) - y)**2),axis=0)
+                # _cv_l2error.append(cv_l2error)
+            # self.cv_l2errors.append(_cv_l2error)
+# # sampling=[1e5,10,'R'], metrics2cal=[1,1,1,1,1,1]
 
     def __metamodel_setting(self, setting):
         """
