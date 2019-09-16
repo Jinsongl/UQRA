@@ -26,7 +26,7 @@ from numpy.linalg import norm
 # -2	smallest singular value	i       as below
 # other	–	                        sum(abs(x)**ord)**(1./ord)
 
-def moments(self,x, orders=np.arange(7)):
+def moments(self,x, orders=np.arange(1,5)):
     x = np.squeeze(x)
     assert x.ndim == 1
     xx = np.array([x**i for i in orders])
