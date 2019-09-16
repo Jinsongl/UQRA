@@ -87,15 +87,15 @@ def linear_oscillator(t, x, args=(1, 0.03, 0.0225), kwargs={'spec_name': 'JONSWA
     x_t = np.array(x_t).reshape((-1,1))
     y_t = np.array(y_t).reshape((-1,1))
     y1  = np.concatenate((t,x_t,y_t), axis=1)
-    np.save('frequency', y1)
+    np.save('./JupyterNotebook/frequency', y1)
     f   = np.array(f).reshape((-1,1))
     x_pxx=np.array(x_pxx).reshape((-1,1))
     y_pxx=np.array(y_pxx).reshape((-1,1))
     y2  = np.concatenate((f,x_pxx,y_pxx), axis=1)
-    np.save('time', y2)
+    np.save('./JupyterNotebook/time', y2)
 
     y = np.array([y1,y2])
-    # return y
+    return y
 
      
 

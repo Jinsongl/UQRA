@@ -12,7 +12,7 @@ import scipy.stats as scistats
 from scipy.stats.kde import gaussian_kde
 from statsmodels.distributions.empirical_distribution import ECDF
 from sklearn.gaussian_process import GaussianProcessRegressor
-from ../utilities import metrics
+from ..utilities import metrics
 import warnings
 warnings.filterwarnings(action="ignore",  message="^internal gelsd")
 
