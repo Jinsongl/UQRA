@@ -18,22 +18,6 @@ import warnings
 warnings.filterwarnings(action="ignore",  message="^internal gelsd")
 from sklearn.gaussian_process import GaussianProcessRegressor
 
-CAL_COEFFS_METHODS = {
-        'GQ'    : 'Gauss Quadrature',
-        'QUAD'  : 'Gauss Quadrature',
-        'SP'    : 'Gauss Quadrature',
-        'RG'    : 'Linear Regression',
-        }
-# class dataClass(object):
-    # """
-    # data object
-    # """
-    # def __init__(self, x, y, w=None):
-        # self.x = x
-        # self.y = y
-        # self.w = w
-
-
 # Chaospy.Poly
 # 1. Any constructed polynomial is a callable. The argument can either be inserted positional or as keyword arguments q0,
 #   q1, . . . :
@@ -62,26 +46,30 @@ CAL_COEFFS_METHODS = {
 # Returns:
 #   The type of return value for the polynomial is numpy.ndarray if all dimensions are filled. If not, it returns a new polynomial.
 
+CAL_COEFFS_METHODS = {
+  'GALERKIN': 'Galerkin Projection',
+    'G'     : 'Galerkin Projection',
+    'OLS'   : 'Ordinary Least Square ',
+    }
 class SurrogateModel(object):
     """
     Meta model class object 
     General options:
     """
-    def __init__(self, metamodel_class, basis_setting, **kwparams):
+    def __init__(self, name, setting, **kwparams):
         """
-        metamodel_class: string, surrogate model classes to be used
+        name: string, surrogate model classes to be used
             - PCE
-            - aPCE
+            - aPCE (to be implemented)
             - Gaussian Process (GPR)
 
-        basis_setting: list, used to generate the basis_setting functions for surrogate models
-            PCE: list of orders, e.g. [8,9,10]. 
+        setting: list, used to generate the setting functions for surrogate models
+            PCE: list of polynomial orders, e.g. [8,9,10]. 
             GPR: list of kernel functions, e.g. [RBF + WN, RBF] 
             aPCE:
 
-
         dist_zeta: class, chaospy.distributions
-            Distributions of underlying random variables from selected Wiener-Askey polynomial, mutually independent
+            Distributions of underlying random variables from selected Wiener-Askey polynomial, assumed IID now 
 
         kwparams: dictionary containing parameters for specified metamodel class
             PCE: {
@@ -97,31 +85,31 @@ class SurrogateModel(object):
                 ...
                 }
 
-        basis_setting, orthpoly_norms: orthogonal polynomial basis_setting and their corresponding normalization constant. E[Phi_i, Phi_i] = nomrs[i]
+        setting, orthpoly_norms: orthogonal polynomial setting and their corresponding normalization constant. E[Phi_i, Phi_i] = nomrs[i]
         
         """
-        self.metamodel_class = metamodel_class
         # define  a list of parameters to get metamodel basis functions. 
         # - PCE: list of basis function orders, redefine an attribute self.basis_orders
         # - GPR: list of kernels, redefine an attribute self.kernels  
-        self.basis_setting   = []   
-        self.kwparams        = kwparams if kwparams else {} 
+        self.name       = name  # string, PCE, aPCE, GPR
+        self.setting    = []   # list, used to generate the setting functions for surrogate models
+        self.kwparams   = kwparams if kwparams else {} 
 
         ## define list saving outputs
-        self.model_basis     = []    # list of metamodel basis functions. For PCE, list of polynomials, for GPR, list of kernels
+        self.basis     = []    # list of metamodel basis functions. For PCE, list of polynomials, for GPR, list of kernels
         self.metamodels      = []    # list of built metamodels
         self.metamodel_coeffs= []    # list of coefficient sets for each built meta model
-        self.orthpoly_norms  = []    # Only for PCE model, list of norms for basis_setting functions 
+        self.orthpoly_norms  = []    # Only for PCE model, list of norms for setting functions 
         self.cv_l2errors     = []
         self.metric_names    = ['value','moments','norms','upper fractile','ECDF','pdf']
         self.metrics         = [[] for _ in range(len(self.metric_names))] ## each element is of shape: [sample sets, metaorders, repeated samples, metric]
 
         ## Initialize metaModel methods
-        self.__metamodel_setting(basis_setting) 
-        self.__get_metamodel_basis()    # list of basis_setting functions/kernels for meta models 
+        self.__metamodel_setting(setting) 
+        self.__get_metamodel_basis()    # list of setting functions/kernels for meta models 
 
 
-    def fit_model(self,x_train,y_train,weight=None):
+    def fit(self,x_train,y_train,weight=None):
         """
         Fit specified meta model with given observations (x_train,y_train, [weight for quadrature])
 
@@ -137,7 +125,7 @@ class SurrogateModel(object):
         """
 
         print(' ► Building surrogate models ...')
-        if not self.basis_setting:
+        if not self.setting:
             self.__get_metamodel_basis() 
 
         x_train = np.squeeze(np.array(x_train))
@@ -153,13 +141,13 @@ class SurrogateModel(object):
         else:
             raise ValueError
 
-        if self.metamodel_class.upper() == 'PCE':
+        if self.name.upper() == 'PCE':
             weight = np.squeeze(weight)
             self.__build_pce_model(x_train,y_train,w=weight) 
-        elif self.metamodel_class.upper() == "GPR":
+        elif self.name.upper() == "GPR":
             self.__build_gpr_model(x_train,y_train)
 
-        elif self.metamodel_class.upper() == 'APCE':
+        elif self.name.upper() == 'APCE':
             raise NotImplementedError
         else:
             raise NotImplementedError
@@ -184,10 +172,10 @@ class SurrogateModel(object):
         print('   ♦ {:<17s} : {}'.format('Query points ', X.shape))
         for i, imetamodel in enumerate(self.metamodels):
             print('   ♦ {:<17s} : {:d}/{:d} '.format('Surrogate model', i, len(self.metamodels)))
-            if self.metamodel_class.upper() == 'PCE':
+            if self.name.upper() == 'PCE':
                 ## See explainations about Poly above
                 f_pred = imetamodel(*X)
-            elif self.metamodel_class.upper() == 'GPR':
+            elif self.name.upper() == 'GPR':
                 f_mean, f_std = imetamodel.predict(X.T, return_std=return_std, return_cov=return_cov)
                 f_pred = np.hstack((f_mean, f_std.reshape(f_mean.shape))).T
             res_pred.append(f_pred)
@@ -255,7 +243,7 @@ class SurrogateModel(object):
 
         """
 
-        if self.metamodel_class.upper() != 'GPR':
+        if self.name.upper() != 'GPR':
             raise ValueError('log_marginal_likelihood funtion defined only for GPR model for now')
         if not self.metamodels:
             raise ValueError('No surrogate model exists')
@@ -301,7 +289,7 @@ class SurrogateModel(object):
 
         """
 
-        if self.metamodel_class.upper() != 'GPR':
+        if self.name.upper() != 'GPR':
             raise ValueError('log_marginal_likelihood funtion defined only for GPR model for now')
         if not self.metamodels:
             raise ValueError('No surrogate model exists')
@@ -337,7 +325,7 @@ class SurrogateModel(object):
         for _, metamodels in enumerate(self.metamodels):
             _cv_l2error = []
             print('\t\tCross validation {:s} metamodel of order \
-                    {:d}'.format(self.metamodel_class, max([sum(order) for order in f.keys])))
+                    {:d}'.format(self.name, max([sum(order) for order in f.keys])))
             for _, f in enumerate(metamodels):
                 f_fit = [f(*val) for val in x.T]
                 f_cv.append(f_fit)
@@ -346,12 +334,12 @@ class SurrogateModel(object):
             self.cv_l2errors.append(_cv_l2error)
 # sampling=[1e5,10,'R'], retmetrics=[1,1,1,1,1,1]
 
-    def __metamodel_setting(self, basis_setting):
+    def __metamodel_setting(self, setting):
         """
         Define parameters to build the metamodels
         """
         # __________________________________________________________________________________________________________________
-        #           |                      Parameters
+        #           |                           Parameters
         # metamodel |-------------------------------------------------------------------------------------------------------
         #           |           required            |            optional 
         # ------------------------------------------------------------------------------------------------------------------
@@ -360,26 +348,26 @@ class SurrogateModel(object):
         # __________________________________________________________________________________________________________________
         # For PCE model, following parameters are required:
         print('------------------------------------------------------------')
-        print('►►► Build Surrogate Models')
+        print('►►► Initialize SurrogateModel Object...')
         print('------------------------------------------------------------')
         print(' ► Surrogate model properties:')
-        print('   ♦ {:<17s} : {:<15s}'.format('Model class', self.metamodel_class))
+        print('   ♦ {:<17s} : {:<15s}'.format('Model name', self.name))
 
-        if self.metamodel_class.upper() == 'PCE':
-            ## make sure basis_setting is a list
-            self.basis_setting = []
-            if np.isscalar(basis_setting):
-                self.basis_setting.append(int(metamodel_orders))
+        if self.name.upper() == 'PCE':
+            ## make sure setting is a list
+            self.setting = []
+            if np.isscalar(setting):
+                self.setting.append(int(setting))
             else:
-                self.basis_setting= list(int(x) for x in basis_setting)
-            # change basis_setting to basis_order for code reading easily
-            self.basis_orders = self.basis_setting
+                self.setting= list(int(x) for x in setting)
+            # change setting to basis_order for code reading easily
+            self.basis_orders = self.setting
 
             # Following parameters are required
             print('   ♦ Requried parameters:')
             try:
-                print('     ∙ {:<15s} : {}'.format('Coeffs Meth'  , CAL_COEFFS_METHODS.get(self.kwparams['cal_coeffs'])))
-                print('     ∙ {:<15s} : {}'.format('zeta dist'    , self.kwparams['dist_zeta']))
+                print('     ∙ {:<15s} : {}'.format('Solve coeffs:', CAL_COEFFS_METHODS.get(self.kwparams['cal_coeffs'])))
+                print('     ∙ {:<15s} : {}'.format('Zeta dist'    , self.kwparams['dist_zeta']))
                 print('     ∙ {:<15s} : {}'.format('Basis order'  , self.basis_orders))
             except KeyError:
                 pass # Key is not present
@@ -395,14 +383,14 @@ class SurrogateModel(object):
                 else:
                     print('     ∙ {:<15s} : {}'.format(key,value))
 
-        elif self.metamodel_class.upper() == 'GPR':
-            ## make sure basis_setting is a list
-            if isinstance(basis_setting, list):
-                self.basis_setting = basis_setting 
+        elif self.name.upper() == 'GPR' :
+            ## make sure setting is a list
+            if isinstance(setting, list):
+                self.setting = setting 
             else:
-                self.basis_setting = [basis_setting,]
-            # change basis_setting to kernels for code reading easily
-            self.kernels = self.basis_setting
+                self.setting = [setting,]
+            # change setting to kernels for code reading easily
+            self.kernels = self.setting
 
             # For GPR models, only list of kernel functions are required
 
@@ -419,54 +407,11 @@ class SurrogateModel(object):
             for key, value in self.kwparams.items():
                 print('     ∙ {:<15s} : {}'.format(key,value))
 
-        elif self.metamodel_class.upper() == 'APCE':
+        elif self.name.upper() == 'APCE':
             raise NotImplementedError
         else:
             raise NotImplementedError
 
-    def __error_moms(self,x):
-        x = np.squeeze(x)
-        assert x.ndim == 1
-        xx = np.array([x**i for i in np.arange(7)])
-        xx_moms = np.mean(xx, axis=1)
-        return xx_moms
-
-    def __error_norms(self, x):
-        """
-        ord	norm for matrices	        norm for vectors
-        None	Frobenius norm	                2-norm
-        ‘fro’	Frobenius norm	                –
-        ‘nuc’	nuclear norm	                –
-        inf	max(sum(abs(x), axis=1))	max(abs(x))
-        -inf	min(sum(abs(x), axis=1))	min(abs(x))
-        0	–	                        sum(x != 0)
-        1	max(sum(abs(x), axis=0))	as below
-        -1	min(sum(abs(x), axis=0))	as below
-        2	2-norm (largest sing. value)	as below
-        -2	smallest singular value	i       as below
-        other	–	                        sum(abs(x)**ord)**(1./ord)
-        """
-        x = np.squeeze(x)
-        # y = np.squeeze(y)
-        assert x.ndim == 1
-        e = []
-
-        e.append(np.linalg.norm(x,ord=0))
-        e.append(np.linalg.norm(x,ord=1))
-        e.append(np.linalg.norm(x,ord=2))
-        e.append(np.linalg.norm(x,ord=np.inf))
-        e.append(np.linalg.norm(x,ord=-np.inf))
-        return e
-
-    def __error_tail(self,x, p=[0.01,]):
-        """
-        """
-        e = []
-        for ip in p:
-            p_invx = scistats.mstats.mquantiles(x,1-ip)
-            # p_invy = scistats.mstats.mquantiles(y,1-ip)
-            e.append(p_invx[0])
-        return e 
 
     def __build_gpr_model(self, x_train, y_train):
 
@@ -528,15 +473,15 @@ class SurrogateModel(object):
         # len(f_hat): n_output
 
         cal_coeffs = self.kwparams.get('cal_coeffs')
-        for i, iorthpoly in enumerate(self.model_basis):
+        for i, iorthpoly in enumerate(self.basis):
             print('   ♦ {:<17s} : {:d}'.format('PCE model order', self.basis_orders[i]))
-            if cal_coeffs.upper() in ['SP','GQ','QUAD']:
+            if cal_coeffs.upper() in ['GP','GALERKIN']:
                 assert w is not None
                 assert iorthpoly.dim == x.shape[0]
                 f_hat, orthpoly_coeffs = cp.fit_quadrature(iorthpoly, x, w, y, retall=True)
                 self.metamodels.append(f_hat)
                 self.metamodel_coeffs.append(orthpoly_coeffs)
-            elif cal_coeffs.upper() == 'RG':
+            elif cal_coeffs.upper() == 'OLS':
                 f_hat, orthpoly_coeffs= cp.fit_regression(iorthpoly, x, y, retall=True)
                 self.metamodels.append(f_hat)
                 self.metamodel_coeffs.append(orthpoly_coeffs)
@@ -555,16 +500,16 @@ class SurrogateModel(object):
     def __get_metamodel_basis(self):
         """
         Return meta model basis functions
-        For PCE: orthogonal basis functions for the specified underlying distributions (dist_zeta) with specifed orders (metamodel_orders)
+        For PCE: orthogonal basis functions for the specified underlying distributions (dist_zeta) with specifed orders (setting)
         For GPR: list of kernels
         """
-        if self.metamodel_class.upper() == 'PCE':
+        if self.name.upper() == 'PCE':
             for p_order in self.basis_orders:
                 poly, norm = cp.orth_ttr(p_order, self.kwparams['dist_zeta_J'], retall=True)
-                self.model_basis.append(poly)
+                self.basis.append(poly)
                 self.orthpoly_norms.append(norm)
-        elif self.metamodel_class.upper() == 'GPR':
-            self.kernels = self.basis_setting 
+        elif self.name.upper() == 'GPR':
+            self.kernels = self.setting 
 
 
 
