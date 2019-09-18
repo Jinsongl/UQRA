@@ -47,7 +47,7 @@ class ExperimentDesign(object):
         self.space  = space
         self.ndoe   = len(self.orders)   # number of doe sets
         self.samples=[]  # DoE output in space1
-        self.mapped_samples = [] # DoE output in space2 after calling mappingto method
+        self.mapped_samples = None # DoE output in space2 after calling mappingto method
         self.filenames  = [] 
 
         print('------------------------------------------------------------')
@@ -57,7 +57,6 @@ class ExperimentDesign(object):
         print('   ♦ {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
         print('   ♦ {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.lower()]))
         print('   ♦ {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders))))
-
 
     def get_samples(self, space=None):
         """
@@ -76,7 +75,7 @@ class ExperimentDesign(object):
             # for isample_x in fix_point:
                 # self.samples.append(self._space_transform(self.dist_x, self.dist_zeta, isample_x))
         if const.DOE_METHOD_FULL_NAMES[self.method.lower()] in ['QUADRATURE', 'MONTE CARLO']:
-            for idoe_order in self.orders: 
+            for i, idoe_order in enumerate(self.orders): 
                 # DoE for different selected orders 
                 # doe samples, array of shape:
                 #    - Quadrature: res.shape = (2,) 
@@ -85,12 +84,12 @@ class ExperimentDesign(object):
                 #    - MC: res.shape = (ndim, nsamples)
                 isamples = samplegen(self.method, idoe_order, self.space, rule=self.rule)
                 self.samples.append(isamples)
-                print('\r   ♦ {:<15s}: {}'.format( 'DoE completed', self.orders[:idoe_order+1]), end='')
+                print('\r   ♦ {:<15s}: {}'.format( 'DoE completed', self.orders[:i+1]), end='')
         else:
             raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
 
         print('\n',end='')
-        self.mapped_samples = self.samples
+        # self.mapped_samples = self.samples
         return self.samples
 
     def mappingto(self, space2):
@@ -131,6 +130,7 @@ class ExperimentDesign(object):
 
     def set_samples(self, input_x):
         """
+        TO FINISH, not yet in practice
         Set samples in physical space, used for FIXED POINT scheme
         """
         self.mapped_samples = input_x
@@ -156,13 +156,34 @@ class ExperimentDesign(object):
         self.filenames = [self.outfilename + num2print(idoe) for idoe in self.orders]
         self.ndoe        = len(self.orders)   # number of doe sets
 
-    def savedata(self, filename):
+    def save_data(self, data_dir):
         ### save input variables to file
         for idoe, isamples in enumerate(self.samples):
-            imapped_samples = self.mapped_samples[idoe] 
-            samples = np.concatenate((imapped_samples,isamples))
-            idoe_filename = filename + '_DoE{:d}'.format(idoe)
+            if self.mapped_samples:
+                imapped_samples = self.mapped_samples[idoe] 
+                samples = np.concatenate((imapped_samples,isamples))
+            else:
+                samples = imapped_samples
+            idoe_filename = os.path.join(data_dir, 'DoE_{}{}{}'.format(self.method.capitalize(), self.rule.capitalize(), num2print(self.orders[idoe])))
             np.save(idoe_filename,samples)
+
+    def disp(self, decimals=4, nsamples2print=0):
+        print(' ► DoE Summary:')
+        print('   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
+        print('   ♦ {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
+        for i, isamples in enumerate(self.samples):
+            # print('   ♦ Sample set No. {:d}:'.format(i))
+            if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
+                print('     ∙ {} & {}'.format(isamples[0].shape,isamples[1].shape))
+            else:
+                pass
+                # print('     ∙ Coordinate: {}'.format(isamples.shape))
+
+            if nsamples2print: 
+                for j, jcor in enumerate(isamples[0].T):
+                    if j > nsamples2print:
+                        break
+                    print('       - {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
 
     def _space_transform(self, dist1, dist2, var1):
         """
@@ -189,25 +210,6 @@ class ExperimentDesign(object):
         var2 = np.array(var2)
         assert var1.shape == var2.shape
         return var2
-
-    def disp(self, decimals=4, nsamples2print=0):
-        print(' ► DoE Summary:')
-        print('   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
-        print('   ♦ {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
-        for i, isamples in enumerate(self.samples):
-            # print('   ♦ Sample set No. {:d}:'.format(i))
-            if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
-                print('     ∙ {} & {}'.format(isamples[0].shape,isamples[1].shape))
-            else:
-                pass
-                # print('     ∙ Coordinate: {}'.format(isamples.shape))
-
-            if nsamples2print: 
-                for j, jcor in enumerate(isamples[0].T):
-                    if j > nsamples2print:
-                        break
-                    print('       - {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
-
 
 
 

@@ -141,7 +141,6 @@ class simParameters(object):
             name, params, size = params
             self.error = ErrorType(name=name, params=params, size=size)
     def disp(self):
-
         print('------------------------------------------------------------')
         print('►►► SimParameter setting for model: {}'.format(self.model_name))
         print('------------------------------------------------------------')
@@ -166,17 +165,5 @@ class simParameters(object):
             print('   ♦ {:<15s} '.format('post analysis parameters'))
             print('     ∙ {:<15s} : {} '.format('qoi2analysis', self.qoi2analysis ))
             print('     ∙ {:<15s} : {} '.format('statistics'  , self.stats ))
-        # if self.sys_def_params is None :
-            # print('   ♦ {:<15s} : {:s}'.format('system definition parameters', 'NA'))
-        # else:
-            # print('   ♦ {:<15s} '.format('system definition parameters'))
-            # print('     ∙ {:<10s} : {:d}  ∙ {:<10s} : {:d} '.format('# dim', self.sys_def_params.shape[0],'# set', self.sys_def_params.shape[1] ))
-        # if self.sys_excit_params is None or self.sys_excit_params[0] is None:
-            # print('   ♦ {:<15s} : {:s}'.format('system excitation force', 'NA'))
-        # else:
-            # print('   ♦ {:<15s} '.format('system excitation force'))
-            # print('     ∙ {:<15s} : {} '.format('Excitation function name', self.sys_excit_params[0] ))
-            # print('     ∙ {:<15s} :    '.format('Excitation function kwargs'))
-            # for ikey, ivalue in self.sys_excit_params[1].items():
-                # print('     - {:<15s} : {}   '.format(ikey, ivalue))
+    
 

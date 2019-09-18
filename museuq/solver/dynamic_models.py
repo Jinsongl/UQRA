@@ -107,10 +107,6 @@ def linear_oscillator(t, x, args=(100, 0.3, 2.25), kwargs={'spec_name': 'JONSWAP
     # y = np.array([y1,y2])
     return y
 
-     
-
-    
-
 def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,\
         *source_args, source_func=None, source_kwargs=None,t_trans=0, normalize=False):
     if normalize:

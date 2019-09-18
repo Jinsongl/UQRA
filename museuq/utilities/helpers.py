@@ -30,7 +30,7 @@ def nextpow2(x):
 
 def num2print(n):
     if n<100:
-        return '{:2d}'.format(n)
+        return '{:d}'.format(n)
     else:
         __str ='{:.0E}'.format(n) 
         return __str[0]+'E'+__str[-1] 

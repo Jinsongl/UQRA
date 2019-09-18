@@ -165,7 +165,6 @@ class PowerSpectrum(object):
         eta_fft_coeffs = ampf * np.exp(1j*theta)
         eta = np.fft.ifft(np.roll(eta_fft_coeffs,ntime_steps+1)) *(2*ntime_steps+1)
         eta = np.roll(eta,ntime_steps).real # roll back to [-T, T], IFFT result should be real, imaginary part is very small ~10^-16
-        print(eta)
 
         time, eta = time[ntime_steps:2*ntime_steps+1], eta[ntime_steps:2*ntime_steps+1]
 

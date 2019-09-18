@@ -43,15 +43,15 @@ def main():
     quad_doe = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
     samples_zeta= quad_doe.get_samples()
     quad_doe.disp()
-
     # print(*samples_zeta, sep='\n')
     samples_x   = quad_doe.mappingto(dist_x)
+    quad_doe.save_data(simparams.data_dir)
     assert len(samples_x) == len(samples_zeta)
 
     ## ------------------------ Define Solver parameters ---------------------- ###
     solver = museuq.Solver(model_name, samples_x)
     samples_y = solver.run(quad_doe)
-    print(samples_y)
+    # print(samples_y)
 
     # ## ------------------------ Define surrogate model parameters ---------------------- ###
     # x_train    = np.squeeze(samples_x[0][0])
