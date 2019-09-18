@@ -43,6 +43,7 @@ class PowerSpectrum(object):
         self.args   = args
 
     def set_psd(self, f, pxx, sides='single'):
+        assert f.shape == pxx.shape, 'f and pxx should have same shape. f.shape={}, pxx.shape={}'.format(f.shape, pxx.shape)
         self.f      = f
         self.pxx    = pxx
         self.sides  = sides
@@ -50,9 +51,10 @@ class PowerSpectrum(object):
     def get_pxx(self, f):
         spectrum_func = getattr(spectrum_collections, self.name.lower())
         f, pxx = spectrum_func(f, *self.args)
+        assert f.shape == pxx.shape, 'f and pxx should have same shape. f.shape={}, pxx.shape={}'.format(f.shape, pxx.shape)
         self.f = f if self.f is None else self.f
         self.pxx = pxx if self.pxx is None else self.pxx
-        return f, pxx
+        return pxx
 
     def get_acf(self):
         """
@@ -153,7 +155,7 @@ class PowerSpectrum(object):
 
         fmax, df = f[-1]  , f[1]-f[0]
         tmax, dt = 0.5/df , 0.5/fmax
-        ntime_steps = int(tmax/dt)
+        ntime_steps = f.size//2 #int(fmax/df) same as number of frequencies
         time = np.arange(-ntime_steps,ntime_steps+1) * dt
 
         theta   = np.random.uniform(-np.pi, np.pi, ntime_steps + 1)
