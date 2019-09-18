@@ -48,7 +48,7 @@ class ExperimentDesign(object):
         self.ndoe   = len(self.orders)   # number of doe sets
         self.samples=[]  # DoE output in space1
         self.mapped_samples = None # DoE output in space2 after calling mappingto method
-        self.filenames  = [] 
+        self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
 
         print('------------------------------------------------------------')
         print('►►► Initialize Experiment Design:')
@@ -110,7 +110,7 @@ class ExperimentDesign(object):
         # n_total_simulations   = n_sys_excit_func_name * n_sys_excit_func_kwargs *n_sys_def_params 
 
         ## Then calcuate corresponding samples in physical variable space 
-        # with open(os.path.join(self.data_dir, self.filenames), 'w') as filenames:
+        # with open(os.path.join(self.data_dir, self.filename), 'w') as filename:
 
         for idoe, isamples in enumerate(self.samples):
             if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
@@ -146,14 +146,14 @@ class ExperimentDesign(object):
         self.method = params[0] 
         self.rule   = params[1]
         self.orders = params[2] 
-        self.filenames= [] 
+        self.filename= [] 
         if np.isscalar(params[2]): 
             self.orders.append(int(params[2]))
         else:
             self.orders = np.array(params[2])
 
         self.outfilename = 'DoE_' + params[0].capitalize() + params[1].capitalize() 
-        self.filenames = [self.outfilename + num2print(idoe) for idoe in self.orders]
+        self.filename = [self.outfilename + num2print(idoe) for idoe in self.orders]
         self.ndoe        = len(self.orders)   # number of doe sets
 
     def save_data(self, data_dir):
@@ -164,7 +164,7 @@ class ExperimentDesign(object):
                 samples = np.concatenate((imapped_samples,isamples))
             else:
                 samples = imapped_samples
-            idoe_filename = os.path.join(data_dir, 'DoE_{}{}{}'.format(self.method.capitalize(), self.rule.capitalize(), num2print(self.orders[idoe])))
+            idoe_filename = os.path.join(data_dir, self.filename+'{}'.format(num2print(self.orders[idoe])))
             np.save(idoe_filename,samples)
 
     def disp(self, decimals=4, nsamples2print=0):
