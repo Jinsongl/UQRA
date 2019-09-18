@@ -4,10 +4,12 @@ import context, museuq, unittest,warnings
 import numpy as np, chaospy as cp, os, sys
 from museuq.utilities import helpers as uqhelpers 
 from museuq.utilities import constants as const
+from museuq.utilities.PowerSpectrum import PowerSpectrum
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
 
+data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
@@ -90,6 +92,30 @@ class BasicTestSuite(unittest.TestCase):
                 x_hat,coeffs = cp.fit_quadrature(zeta_poly, zeta_cor, zeta_weight, np.squeeze(x_cor), retall=True)
                 uqhelpers.enablePrint()
                 print('\t Optimal: {}'.format( np.around(coeffs,4)))
+
+    def test_PowerSpectrum(self):
+        powerspecturms2test = ['jonswap']
+        powerspecturms_args = [(8, 10)]
+        df  = 0.00001
+        f   = np.arange(0, 10, df)
+
+        for psd_name, psd_args in zip(powerspecturms2test, powerspecturms_args):
+            psd = PowerSpectrum(psd_name, *psd_args)
+            psd_f, psd_pxx = psd.get_pxx(f) 
+            psd_area = np.sum(psd_pxx * df)
+            np.save(os.path.join(data_dir,psd_name+'_psd_f'), psd_f)
+            np.save(os.path.join(data_dir,psd_name+'_psd_pxx'), psd_pxx)
+            tau, acf = psd.get_acf()
+            np.save(os.path.join(data_dir,psd_name+'_tau'), tau)
+            np.save(os.path.join(data_dir,psd_name+'_acf'), acf)
+            t, eta = psd.gen_process()
+            np.save(os.path.join(data_dir,psd_name+'_t'), t)
+            np.save(os.path.join(data_dir,psd_name+'_eta'), eta)
+            print(t, eta)
+            # t, eta = psd._gen_process_sum()
+            print('PSD name: {:s}, args: {}, Area: {:.2f}, 4*std:{}'.format(psd_name, psd_args, psd_area, 4*np.std(eta)))
+            
+
 
     def test_absolute_truth_and_meaning(self):
         assert True
