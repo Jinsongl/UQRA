@@ -14,6 +14,7 @@ import numpy as np
 from scipy import interpolate
 from scipy.integrate import odeint, quad
 from scipy.optimize import brentq
+from ..utilities.PowerSpectrum import PowerSpectrum
 from ..utilities import power_spectrum as psd
 from ..utilities.psd2process import psd2process
 
@@ -74,27 +75,35 @@ def linear_oscillator(t, x, args=(1, 0.03, 0.0225), kwargs={'spec_name': 'JONSWA
     zeta    = c/(2*np.sqrt(m*k))    # damping ratio
     H_square= 1.0/np.sqrt( (k-m*f**2)**2 + (c*f)**2 )
 
-    spec_dict = psd.get_spec_dict() 
-    spec_func = spec_dict.get(kwargs.get('spec_name', 'JONSWAP'))
-    f,x_pxx   = spec_func(f, *x)
-    y_pxx     = H_square * x_pxx
+    # spec_dict = psd.get_spec_dict() 
+    # spec_func = spec_dict.get(kwargs.get('spec_name', 'JONSWAP'))
+    # f,x_pxx   = spec_func(f, *x)
+    
+    input_psd   = PowerSpectrum('JONSWAP', *x)
+    x_pxx       = input_psd.get_pxx(f)
+    t, x_t      = input_psd.gen_process()
+    output_psd  = PowerSpectrum('SDOF_out')
+    y_pxx       = H_square * x_pxx
+    output_psd.set_psd(f, y_pxx)
+    t, y_t      = output_psd.gen_process()
 
-    t, x_t = psd2process(f, x_pxx)
-    t, y_t = psd2process(f, y_pxx)
+    # t, x_t = psd2process(f, x_pxx)
+    # t, y_t = psd2process(f, y_pxx)
 
     ##---- Reshape-----
     t   = np.array(t).reshape((-1,1))
     x_t = np.array(x_t).reshape((-1,1))
     y_t = np.array(y_t).reshape((-1,1))
     y1  = np.concatenate((t,x_t,y_t), axis=1)
-    np.save('./JupyterNotebook/frequency', y1)
+    np.save('./JupyterNotebook/sdof_time', y1)
     f   = np.array(f).reshape((-1,1))
     x_pxx=np.array(x_pxx).reshape((-1,1))
     y_pxx=np.array(y_pxx).reshape((-1,1))
     y2  = np.concatenate((f,x_pxx,y_pxx), axis=1)
-    np.save('./JupyterNotebook/time', y2)
+    np.save('./JupyterNotebook/sdof_frequency', y2)
 
-    y = np.array([y1,y2])
+    y  = np.concatenate((t,x_t,y_t, f,x_pxx,y_pxx), axis=1)
+    # y = np.array([y1,y2])
     return y
 
      
