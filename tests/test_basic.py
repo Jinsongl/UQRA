@@ -115,6 +115,12 @@ class BasicTestSuite(unittest.TestCase):
             # t, eta = psd._gen_process_sum()
             print('PSD name: {:s}, args: {}, Area: {:.2f}, 4*std:{}'.format(psd_name, psd_args, psd_area, 4*np.std(eta)))
 
+    def test_linear_oscillator(self):
+        x = (Hs,Tp) = (8, 14.7)
+        tmax,dt =1000, 0.1
+        t = np.arange(0,tmax, dt)
+        y = museuq.solver.dynamic_models.linear_oscillator(t,x)
+
     def test_absolute_truth_and_meaning(self):
         assert True
 

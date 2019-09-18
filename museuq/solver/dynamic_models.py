@@ -10,13 +10,14 @@
 Single degree of freedom with time series external loads
 """
 
-import numpy as np
+import os, numpy as np
 from scipy import interpolate
 from scipy.integrate import odeint, quad
 from scipy.optimize import brentq
 from ..utilities.PowerSpectrum import PowerSpectrum
 from ..utilities import power_spectrum as psd
 from ..utilities.psd2process import psd2process
+data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
 
 def _cal_normalize_values(zeta,omega0,source_kwargs, *source_args):
     TF = lambda w : 1.0/np.sqrt((w**2-omega0**2)**2 + (2*zeta*omega0)**2)
@@ -54,7 +55,7 @@ def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *source
     x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,source_func=source_func,t_trans=t_trans)
     return x
 
-def linear_oscillator(t, x, args=(1, 0.03, 0.0225), kwargs={'spec_name': 'JONSWAP'}):
+def linear_oscillator(t, x, args=(100, 0.3, 2.25), kwargs={'spec_name': 'JONSWAP'}):
     """
     Solving linear oscillator in frequency domain
     m x'' + c x' + k x = f => 
@@ -95,12 +96,12 @@ def linear_oscillator(t, x, args=(1, 0.03, 0.0225), kwargs={'spec_name': 'JONSWA
     x_t = np.array(x_t).reshape((-1,1))
     y_t = np.array(y_t).reshape((-1,1))
     y1  = np.concatenate((t,x_t,y_t), axis=1)
-    np.save('./JupyterNotebook/sdof_time', y1)
+    # np.save(os.path.join(data_dir, 'sdof_time'), y1)
     f   = np.array(f).reshape((-1,1))
     x_pxx=np.array(x_pxx).reshape((-1,1))
     y_pxx=np.array(y_pxx).reshape((-1,1))
     y2  = np.concatenate((f,x_pxx,y_pxx), axis=1)
-    np.save('./JupyterNotebook/sdof_frequency', y2)
+    # np.save(os.path.join(data_dir, 'sdof_frequency'), y2)
 
     y  = np.concatenate((t,x_t,y_t, f,x_pxx,y_pxx), axis=1)
     # y = np.array([y1,y2])
