@@ -114,8 +114,6 @@ class BasicTestSuite(unittest.TestCase):
             print(t, eta)
             # t, eta = psd._gen_process_sum()
             print('PSD name: {:s}, args: {}, Area: {:.2f}, 4*std:{}'.format(psd_name, psd_args, psd_area, 4*np.std(eta)))
-            
-
 
     def test_absolute_truth_and_meaning(self):
         assert True

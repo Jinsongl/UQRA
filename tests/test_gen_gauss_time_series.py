@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import time
 import scipy.signal as spsignal
 from museuq.utilities.gen_gauss_time_series import *
+from museuq.utilities.gen_processes import * 
 # from src/utilities import gen_gauss_time_series
 # from gen_gauss_time_series.py import * 
 # from dynamic_models import *
@@ -70,6 +71,39 @@ def acf_test2(t):
 def acf_test3(t):
     return np.sinc(t)/np.pi
 
+def spec_jonswap(f, Hs, Tp):
+    """ JONSWAP wave spectrum, IEC 61400-3
+    f: frequencies to be sampled at, hz 
+    Hs: significant wave height, m
+    Tp: wave peak period, sec
+    """
+
+    with np.errstate(divide='ignore'):
+        # print "sample frequency: \n", f
+        fp = 1.0/Tp
+        fr = f/fp
+        gamma = 3.3 
+        sigma = 0.07 * np.ones(f.shape)
+        sigma[f > fp] = 0.09
+        # print "fp:", fp
+        # print "sigma: ", sigma
+        
+        assert f[0] >= 0 ,'Single side power spectrum start with frequency greater or eqaul to 0, f[0]={:4.2f}'.format(f[0])
+
+        # if fr[0] == 0:
+            # fr[0] = 1/np.inf
+        JS1 = 0.3125 * Hs**2 * Tp * fr**-5
+        JS2 = np.exp(-1.25*fr**-4) * (1-0.287*np.log(gamma))
+        JS3 = gamma**(np.exp(-0.5*(fr-1)**2/sigma**2))
+
+        JS1[np.issinf(JS1)] = 0
+        JS2[np.isinf(JS2)] = 0
+        JS3[np.isinf(JS3)] = 0
+        # print(np.isnan(JS1).any())
+        JS = JS1 * JS2 * JS3
+
+    return f, JS
+
 
 def main():
     np.random.seed( 10 )
@@ -85,39 +119,39 @@ def main():
 # >>>  Psd = Pwelch(Xt)
 ################################################################################
 
-    tmax, dt = 10000, 0.1
-    fig, axes = plt.subplots(1,2)
+    # tmax, dt = 10000, 0.1
+    # fig, axes = plt.subplots(1,2)
 
-    N = int(tmax/dt)
-    t = np.arange(N+1) * dt
-    fs = int(1/dt)
-    nperseg= int((N+1)/10)
+    # N = int(tmax/dt)
+    # t = np.arange(N+1) * dt
+    # fs = int(1/dt)
+    # nperseg= int((N+1)/10)
 
-    Hs, Tp = 8, 6
-    source_kwargs= {'name': 'JONSWAP', 'method':'ifft', 'sides':'single'}
-    t, eta = gen_gauss_time_series(t, Hs, Tp, kwargs=source_kwargs)
-    f1,sf1 = spsignal.welch(eta,fs=fs,nperseg=nperseg,detrend='constant')
-    f0,sf0 = spec_jonswap(f1,Hs, Tp)
-    axes[0].set_xlim([0,1])
-    axes[0].plot(f0,sf0,label=r'JONSWAP')
-    axes[0].plot(f1,sf1,label=r'Welch')
-    axes[0].legend()
+    # Hs, Tp = 8, 6
+    # source_kwargs= {'name': 'JONSWAP', 'method':'ifft', 'sides':'single'}
+    # t, eta = gen_gauss_time_series(t, Hs, Tp, **source_kwargs)
+    # f1,sf1 = spsignal.welch(eta,fs=fs,nperseg=nperseg,detrend='constant')
+    # f0,sf0 = spec_jonswap(f1,Hs, Tp)
+    # axes[0].set_xlim([0,1])
+    # axes[0].plot(f0,sf0,label=r'JONSWAP')
+    # axes[0].plot(f1,sf1,label=r'Welch')
+    # axes[0].legend()
    
-    c = 3
-    spec = lambda f,c: 2*c/(c**2 + (2*np.pi*f)**2) * 2 * np.pi
-    source_kwargs= {'name': 'T1', 'method':'ifft', 'sides':'double'}
-    t, eta = gen_gauss_time_series(t, c, kwargs=source_kwargs)
-    f1,sf1 = spsignal.welch(eta,fs=fs,nperseg=nperseg,detrend='constant', return_onesided=False)
-    sf0 = spec(f1,c)
-    # f0,sf0 = spec_test1(f1,c=c)
-    # print(sf0.shape)
-    # axes[1].set_xlim([0,1])
-    axes[1].plot(f1,sf0,label=r'T1')
-    axes[1].plot(f1,sf1,label=r'Welch')
-    axes[1].legend()
+    # c = 3
+    # spec = lambda f,c: 2*c/(c**2 + (2*np.pi*f)**2) * 2 * np.pi
+    # source_kwargs= {'name': 'T1', 'method':'ifft', 'sides':'double'}
+    # t, eta = gen_gauss_time_series(t, c, **source_kwargs)
+    # f1,sf1 = spsignal.welch(eta,fs=fs,nperseg=nperseg,detrend='constant', return_onesided=False)
+    # sf0 = spec(f1,c)
+    # # f0,sf0 = spec_test1(f1,c=c)
+    # # print(sf0.shape)
+    # # axes[1].set_xlim([0,1])
+    # axes[1].plot(f1,sf0,label=r'T1')
+    # axes[1].plot(f1,sf1,label=r'Welch')
+    # axes[1].legend()
 
-    plt.savefig('test_gen_gauss_time_series.pdf')
-    # plt.show()
+    # plt.savefig('test_gen_gauss_time_series.pdf')
+    # # plt.show()
     
 
 
@@ -129,30 +163,33 @@ def main():
 
     # psd_tests = [spec_test1, spec_test2, spec_test3] 
     # acf_tests = [acf_test1, acf_test2, acf_test3] 
+    psd_tests = [spec_test1, spec_test3] 
+    acf_tests = [acf_test1, acf_test3] 
 
-    # f, axes = plt.subplots(len(psd_tests),2)
-    # t_max = 10
-    # dt = .01
-    # N = int(t_max/dt)
-    # t = np.arange(-N, N) * dt
+    f, axes = plt.subplots(len(psd_tests),2)
+    t_max   = 10
+    dt      = .01
+    N       = int(t_max/dt)
+    t       = np.arange(-N, N) * dt
 
 
-    # for i, (psd_func, acf_func) in enumerate(zip(psd_tests, acf_tests)):
-        # acf_true = acf_func(t) 
-        # ## Given psd function and the time domain want to achieve,compare 
-        # ## calculated acf and true acf
-        # t_sim, ft_sim = psd2acf(0.5/dt, 0.5/t_max, psd_func)
-        # # print(t_sim, ft_sim)
+    for i, (psd_func, acf_func) in enumerate(zip(psd_tests, acf_tests)):
+        acf_true = acf_func(t) 
+        ## Given psd function and the time domain want to achieve,compare 
+        ## calculated acf and true acf
+        t_sim, ft_sim = psd2acf(0.5/dt, 0.5/t_max, psd_func)
+        # print(t_sim, ft_sim)
 
-        # axes[i,0].plot(t,acf_true,label='real')
-        # axes[i,0].plot(t_sim,ft_sim,label='sim')
-        # # axes[0].legend()
+        axes[i,0].plot(t,acf_true,label='real')
+        axes[i,0].plot(t_sim,ft_sim,label='sim', linestyle='dashed')
+        # axes[0].legend()
 
-        # freq, amp = acf2psd(t_max,dt, acf_func) 
-        # axes[i,1].plot(freq, psd_func(freq)[0],label='real')
-        # axes[i,1].plot(freq, amp,label='sim')
-        # # axes[1].plot(freq, amp - psd_func(freq)[0])
-        # axes[i,1].legend()
+        freq, amp = acf2psd(t_max,dt, acf_func) 
+        axes[i,1].plot(freq, psd_func(freq)[0],label='real')
+        axes[i,1].plot(freq, amp,label='sim',linestyle='dashed')
+        # axes[1].plot(freq, amp - psd_func(freq)[0])
+        axes[i,1].legend()
+    plt.savefig('test_gen_gauss_time_series.pdf')
     # plt.show()
 
 

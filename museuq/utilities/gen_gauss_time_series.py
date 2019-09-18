@@ -10,7 +10,7 @@
 
 """
 import numpy as np
-import power_spectrum as psd
+from . import power_spectrum as psd
 
 
 def gen_gauss_time_series(t, *args, **kwargs):
