@@ -166,10 +166,11 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
     """
     if isinstance(data,str):
         if data[-3:] =="csv":
-            deli = ','
+            data = np.genfromtxt(data, delimiter=',')
+        elif data[-3:] == 'npy':
+            data = np.load(data)
         else:
-            deli = None 
-        data = np.genfromtxt(data, delimiter=deli)
+            data = np.genfromtxt(data, delimiter=None)
     else:
         data = np.array(data)
     # if data is just a column or row vector (samples, ), get the stats for that vector
@@ -178,10 +179,8 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
         res = np.array(np.mean(data), np.std(data), scistats.skew(data), scistats.kurtosis(data), np.max(abs(data)), np.min(abs(data)), up_crossing(data))
         # use filter to select stats
         res = [istat for i, istat in enumerate(res) if stats[i]]
-    else:
-        assert data.ndim == int(3)
-
-        res = np.empty(data.shape[0], int(sum(stats)), data.shape[2])
+    elif data.ndim == 2:
+        res = np.empty(int(sum(stats)), data.shape[1])
         if stats[0] == 1:
             res = np.append(res, np.mean(data, axis=1), axis=1)
         if stats[1] == 1:
@@ -248,7 +247,7 @@ def _central_moms(dist, n=np.arange(1,5), Fisher=True):
 
     return res
 def _up_crossing(data, axis=0):
-    pass
+    return 0
 
 def _moving_avg(data, window=3,axis=None):
     ret = np.cumsum(data, dtype=float, axis=axis)
