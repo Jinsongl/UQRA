@@ -65,6 +65,7 @@ class Solver(object):
         self.source_func= source_func
         self.theta_s    = theta_s
         self.output     = []
+        self.output_stats=[]
 
         print('------------------------------------------------------------')
         print('►►► Initialize Solver Obejct...')
@@ -91,7 +92,6 @@ class Solver(object):
         print('   ' + '·'*55)
 
         for isys_done, itheta_m in enumerate(self.theta_m): 
-            run_sim_1doe_res = []
             for idoe, isamples_x in enumerate(doe_obj.mapped_samples):
                 if const.DOE_METHOD_FULL_NAMES[doe_obj.method.lower()] == 'QUADRATURE':
                     input_vars, input_vars_weights = isamples_x
@@ -99,14 +99,8 @@ class Solver(object):
                     input_vars, input_vars_weights = isamples_x, None
                 ### Run simulations
                 y = self._solver_wrapper(input_vars, theta_m = itheta_m, *args, **kwargs)
+                self.output.append(y)
                 print('   ♦ Achieved: [{:^20d} {:^20d}]'.format(isys_done+1,idoe+1))
-                run_sim_1doe_res.append(y)
-            self.output.append(run_sim_1doe_res)
-        ## 
-        if len(self.output) ==1:
-            self.output = self.output[0]
-        if len(self.output) ==1:
-            self.output = self.output[0]
         print(' ► Simulation Done, Output shape: {}'.format(np.array(self.output).shape) )
         return self.output
 
