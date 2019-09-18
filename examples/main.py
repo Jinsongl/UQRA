@@ -52,7 +52,6 @@ def main():
     solver = museuq.Solver(model_name, samples_x)
     samples_y = solver.run(quad_doe)
     print(samples_y)
-    uqmetrics.mquantiles(np.arange(1000))
 
     # ## ------------------------ Define surrogate model parameters ---------------------- ###
     # x_train    = np.squeeze(samples_x[0][0])
