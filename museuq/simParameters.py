@@ -112,7 +112,7 @@ class simParameters(object):
         self.dt         = kwargs.get('dt'           , self.time_params)
 
         ## define parameters related to post processing
-        self.post_params    = kwargs.get('post_params'  , [[0,], [1,1,1,1,1,1,0]])
+        self.post_params    = kwargs.get('post_params'  , [None, [1,1,1,1,1,1,0]])
         self.qoi2analysis   = kwargs.get('qoi2analysis' , self.post_params[0]) 
         self.stats          = kwargs.get('stats'        , self.post_params[1])
 
