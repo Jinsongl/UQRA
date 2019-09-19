@@ -259,7 +259,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
 def _gen_quad_chaospy(order, domain, rule):
     rule = 'e' if rule == 'legendre' else rule
     coord, weights= cp.generate_quadrature(order-1, domain, rule=rule) 
-    doe_samples = np.array([coord,weights])
+    doe_samples = np.concatenate((coord, weights[np.newaxis,:]), axis=0)
     return doe_samples
 
 def _gen_quad_numpy(order, domain, rule):
@@ -289,5 +289,5 @@ def _gen_quad_numpy(order, domain, rule):
         weights = np.prod(weights, axis=0)
     else:
         raise NotImplementedError("Quadrature rule '{:s}' is not defined".format(rule))
-    doe_samples = np.array([coord, weights])
+    doe_samples = np.concatenate((coord, weights[np.newaxis,:]), axis=0)
     return doe_samples
