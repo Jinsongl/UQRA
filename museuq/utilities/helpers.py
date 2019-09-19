@@ -184,25 +184,26 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
         if stats[0] == 1:
             res.append(np.mean(data, axis=0))
         if stats[1] == 1:
-            res.append(np.std(data, axis=1))
+            res.append(np.std(data, axis=0))
         if stats[2] == 1:
-            res.append(scistats.skew(data, axis=1))
+            res.append(scistats.skew(data, axis=0))
         if stats[3] == 1:
-            res.append(scistats.kurtosis(data, axis=1))
+            res.append(scistats.kurtosis(data, axis=0))
         if stats[4] == 1:
-            res.append(np.max(abs(data), axis=1))
+            res.append(np.max(abs(data), axis=0))
         if stats[5] == 1:
-            res.append(np.min(abs(data), axis=1))
+            res.append(np.min(abs(data), axis=0))
         if stats[6] == 1:
-            res.append(_up_crossing(data, axis=1))
+            res.append(_up_crossing(data, axis=0))
         # if stats[7] == 1:
             # res = append(res, _moving_avg(data), axis=1)
         # if stats[8] == 1:
             # res = append(res, _moving_std(data), axis=1)
+
     else:
         raise ValueError('Only 1D or 2D ndarray is accepted, given data dimension: {}'.data.ndim)
     
-    return res
+    return np.array(res)
 
 def _get_exceedance_data(x,prob=None):
     """
