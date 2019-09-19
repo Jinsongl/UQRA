@@ -84,19 +84,25 @@ class Solver(object):
         self.error.disp()
 
     def run(self, doe_obj, *args, **kwargs):
+        """
+        run solver for given DoE object
+        Parameters:
+        doe_obj: ExperiemntDesign object
+
+        Returns:
+
+        """
         self.output = [] # a list saving simulation results
         print(' ► Running Simulation...')
         # print('   ♦ Job list: [{:^20} {:^20}]'.format('# solver parameter sets', '# DoE sets'))
         # print('   ♦ Target  : [{:^20d} {:^20d}]'.format(len(self.theta_m), doe_obj.ndoe))
         # print('   ' + '·'*55)
-
-
         for idoe, isamples_x in enumerate(doe_obj.mapped_samples):
             print('   ♦ DoE set : {:d} / {:d}'.format(idoe, doe_obj.ndoe), end='')
             for isys_done, itheta_m in enumerate(self.theta_m): 
                 # print('      ∙ Solver parameter set : {:4d} / {:4d}'.format(isys_done, self.theta_m.shape[0]))
                 if const.DOE_METHOD_FULL_NAMES[doe_obj.method.lower()] == 'QUADRATURE':
-                    input_vars, input_vars_weights = isamples_x
+                    input_vars, input_vars_weights = isamples_x[:-1,:], isamples_x[-1,:]
                 else:
                     input_vars, input_vars_weights = isamples_x, None
                 ### Run simulations
@@ -119,10 +125,12 @@ class Solver(object):
         """
 
         for idoe_output  in self.output:
+            idoe_output_stats = []
             for data in idoe_output:
                 data = data[qoi2analysis] if qoi2analysis else data
                 stat = museuq_helpers.get_stats(data, stats=stats2cal)
-                self.output_stats.append(stat)
+                idoe_output_stats.append(stat)
+            self.output_stats.append(np.array(idoe_output_stats))
 
         return self.output_stats
     def _solver_wrapper(self, x, theta_m=None, *args, **kwargs):
