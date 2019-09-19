@@ -14,7 +14,7 @@ import numpy as np
 from .dynamic_models import lin_oscillator, duffing_oscillator, linear_oscillator
 from .benchmark import bench1, bench2, bench3, bench4, ishigami
 from ..utilities.classes import ErrorType
-from ..utilities.helpers import num2print
+from ..utilities import helpers as museuq_helpers
 from ..utilities import constants as const
 
 ALL_SOLVERS = {
@@ -83,16 +83,18 @@ class Solver(object):
         ###------------- Error properties ----------------------------
         self.error.disp()
 
-
     def run(self, doe_obj, *args, **kwargs):
         self.output = [] # a list saving simulation results
         print(' ► Running Simulation...')
-        print('   ♦ Job list: [{:^20} {:^20}]'.format('# solver parameter sets', '# DoE sets'))
-        print('   ♦ Target  : [{:^20d} {:^20d}]'.format(len(self.theta_m), doe_obj.ndoe))
-        print('   ' + '·'*55)
+        # print('   ♦ Job list: [{:^20} {:^20}]'.format('# solver parameter sets', '# DoE sets'))
+        # print('   ♦ Target  : [{:^20d} {:^20d}]'.format(len(self.theta_m), doe_obj.ndoe))
+        # print('   ' + '·'*55)
 
-        for isys_done, itheta_m in enumerate(self.theta_m): 
-            for idoe, isamples_x in enumerate(doe_obj.mapped_samples):
+
+        for idoe, isamples_x in enumerate(doe_obj.mapped_samples):
+            print('   ♦ DoE set : {:d} / {:d}'.format(idoe, doe_obj.ndoe), end='')
+            for isys_done, itheta_m in enumerate(self.theta_m): 
+                # print('      ∙ Solver parameter set : {:4d} / {:4d}'.format(isys_done, self.theta_m.shape[0]))
                 if const.DOE_METHOD_FULL_NAMES[doe_obj.method.lower()] == 'QUADRATURE':
                     input_vars, input_vars_weights = isamples_x
                 else:
@@ -100,15 +102,34 @@ class Solver(object):
                 ### Run simulations
                 y = self._solver_wrapper(input_vars, theta_m = itheta_m, *args, **kwargs)
                 self.output.append(y)
-                print('   ♦ Achieved: [{:^20d} {:^20d}]'.format(isys_done+1,idoe+1))
-        print(' ► Simulation Done, Output shape: {}'.format(np.array(self.output).shape) )
+                print('    -> Solver output : {}'.format(y.shape))
+            # print('   ♦ Achieved: [{:^20d} {:^20d}]'.format(isys_done+1,idoe+1))
+        # print(' ► Simulation Done, Output shape: {}'.format(np.array(self.output).shape) )
         return self.output
 
+    def get_stats(self, qoi2analysis=None, stats2cal=None):
+        """
+        Return column-wise statistic properties for given qoi2analysis and stats2cal
+        Parameters:
+            - qoi2analysis: array of integers, Column indices to analysis
+            - stats2cal: array of boolen, indicators of statistics to calculate
+              [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
+        Return:
+            list of calculated statistics [ np.array(nstats, nqoi2analysis)] 
+        """
+
+        for idoe_output  in self.output:
+            for data in idoe_output:
+                data = data[qoi2analysis] if qoi2analysis else data
+                stat = museuq_helpers.get_stats(data, stats=stats2cal)
+                self.output_stats.append(stat)
+
+        return self.output_stats
     def _solver_wrapper(self, x, theta_m=None, *args, **kwargs):
         """
-        a wrapper for solvers
+        a wrapper for all solvers
 
-        solver_name: string 
+        Parameters:
         M(x,t,theta_m;y) = s(x,t; theta_s)
         - x: array -like (ndim, nsamples) ~ dist(x) 
             1. array of x samples (ndim, nsamples), y = M(x)
@@ -122,10 +143,8 @@ class Solver(object):
         - s: excitation source function, defined by source_func (string) 
         - theta_s: parameters defining excitation function s 
 
-        Return:
-            return results from one solver run
-            of shape(nsample, nqoi), each column represents a full time series
-            or just a number for single output solvers
+        Return: ndarray of shape (nsamples, [each solver return])
+        [each solver return]: (:, nqoi)
 
         """
 
@@ -158,7 +177,7 @@ class Solver(object):
         elif self.solver_name.upper() == 'LINEAR_OSCILLATOR':
             tmax,dt =1000, 0.1
             t = np.arange(0,tmax, dt)
-            y = [linear_oscillator(t,ix) for ix in x.T]
+            y = np.array([linear_oscillator(t,ix) for ix in x.T])
 
 
         elif self.solver_name.upper() ==  'DUFFING_OSCILLATOR':
