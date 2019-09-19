@@ -46,7 +46,7 @@ warnings.filterwarnings(action="ignore",  message="^internal gelsd")
 
 CAL_COEFFS_METHODS = {
   'GALERKIN': 'Galerkin Projection',
-    'G'     : 'Galerkin Projection',
+    'GP'     : 'Galerkin Projection',
     'OLS'   : 'Ordinary Least Square ',
     }
 class SurrogateModel(object):
@@ -122,7 +122,6 @@ class SurrogateModel(object):
         print(' ► Building surrogate models ...')
         if not self.setting:
             self.__get_metamodel_basis() 
-
         x_train = np.squeeze(np.array(x_train))
         y_train = np.squeeze(np.array(y_train))
         if x_train.ndim == y_train.ndim == 1:
@@ -135,6 +134,14 @@ class SurrogateModel(object):
             assert x_train.shape[1] == y_train.shape[0], 'Number of data points in x and y is not same: {}!={} '.format(x_train.shape[1], y_train.shape[0])
         else:
             raise ValueError
+
+        # print('   ♦ {:<17s} : (X, Y, W) = {} x {} x {}'.format('Traning data:', x_train.shape, y_train.shape))
+        # print('     ∙ {:<15s} : {}'.format('X shape:', x_train.shape ))
+        # print('     ∙ {:<15s} : {}'.format('Y shape:', y_train.shape ))
+        if weight is not None:
+            print('   ♦ {:<17s} : (X, Y, W) = {} x {} x {}'.format('Traning data shape', x_train.shape, y_train.shape, weight.shape))
+        else:
+            print('   ♦ {:<17s} : (X, Y, W) = {} x {} '.format('Traning data shape', x_train.shape, y_train.shape))
 
         if self.name.upper() == 'PCE':
             weight = np.squeeze(weight)
