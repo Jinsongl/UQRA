@@ -51,6 +51,8 @@ def main():
     ## ------------------------ Define Solver parameters ---------------------- ###
     solver = museuq.Solver(model_name, samples_x)
     samples_y = solver.run(quad_doe)
+    print(len(samples_y))
+    samples_y_stats = solver.get_stats(simparams.qoi2analysis, simparams.stats)
     # print(samples_y)
 
     # ## ------------------------ Define surrogate model parameters ---------------------- ###
