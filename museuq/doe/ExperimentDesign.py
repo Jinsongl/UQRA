@@ -114,10 +114,11 @@ class ExperimentDesign(object):
 
         for idoe, isamples in enumerate(self.samples):
             if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
-                zeta_cor, zeta_weights = isamples 
+                zeta_cor, zeta_weights = isamples[:-1,:], isamples[-1,:] 
                 x_cor = self._space_transform(self.space, self.mapped_space, zeta_cor)
                 x_weights = zeta_weights#.reshape(zeta_cor.shape[1],1)
-                isample_x = np.array([x_cor, x_weights])
+                isample_x = np.concatenate((x_cor, x_weights[np.newaxis,:]), axis=0)
+                # isample_x = np.array([x_cor, x_weights])
             else:
                 zeta_cor, zeta_weights = isamples, None
                 x_cor = self._space_transform(self.space, self.mapped_space, zeta_cor)
@@ -174,11 +175,10 @@ class ExperimentDesign(object):
         for i, isamples in enumerate(self.samples):
             # print('   ♦ Sample set No. {:d}:'.format(i))
             if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
-                print('     ∙ {} & {}'.format(isamples[0].shape,isamples[1].shape))
+                print('     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
             else:
                 pass
                 # print('     ∙ Coordinate: {}'.format(isamples.shape))
-
             if nsamples2print: 
                 for j, jcor in enumerate(isamples[0].T):
                     if j > nsamples2print:
