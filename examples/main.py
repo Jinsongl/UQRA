@@ -51,37 +51,43 @@ def main():
     ## ------------------------ Define Solver parameters ---------------------- ###
     solver = museuq.Solver(model_name, samples_x)
     samples_y = solver.run(quad_doe)
-    print(len(samples_y))
     samples_y_stats = solver.get_stats(simparams.qoi2analysis, simparams.stats)
     # print(samples_y)
 
-    # ## ------------------------ Define surrogate model parameters ---------------------- ###
-    # x_train    = np.squeeze(samples_x[0][0])
-    # x_weight   = np.squeeze(samples_x[0][1])
-    # zeta_weight= x_weight 
-    # y_train    = np.squeeze(samples_y[0])
-    # zeta_train = np.squeeze(samples_zeta[0][0])
+    ## ------------------------ Define surrogate model parameters ---------------------- ###
+    for idoe_sample_zeta, idoe_samplex, idoe_sampley_stats in zip(samples_zeta, samples_x, samples_y_stats):
+        # print(idoe_samplex.shape)
+        # print(idoe_sampley_stats.shape)
+        x_train    = np.squeeze(idoe_samplex[:-1,:])
+        x_weight   = np.squeeze(idoe_samplex[-1,:])
+        zeta_weight= x_weight 
+        y_train    = np.squeeze(idoe_sampley_stats[:, 4, 2])
+        zeta_train = np.squeeze(idoe_sample_zeta[:-1,:])
+        print(x_train.shape)
+        print(x_weight.shape)
+        print(y_train.shape)
 
-    # metamodel_class, metamodel_basis_setting = 'PCE', [11,15] 
-    # metamodel_params= {'cal_coeffs': 'GQ', 'dist_zeta': dist_zeta}
-    # pce_model   = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
+        metamodel_class, metamodel_basis_setting = 'PCE', [11,15] 
+        metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_zeta}
+        pce_model   = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
 
-    # pce_model.fit_model(zeta_train, y_train, weight=zeta_weight)
-    # y_validate  = pce_model.predict(zeta_train)
-    # train_data  = [ x_train, x_weight , y_train, zeta_train, np.array(y_validate)]
-    # np.save(os.path.join(simparam.data_dir, fname_train_out), train_data)
+        pce_model.fit(zeta_train, y_train, weight=zeta_weight)
+        y_validate  = pce_model.predict(zeta_train)
+        pce_model_scores = pce_model.score(zeta_train, y_train)
+        # train_data  = [ x_train, x_weight , y_train, zeta_train, np.array(y_validate)]
+        # np.save(os.path.join(simparam.data_dir, fname_train_out), train_data)
 
-    # data_test_params= [1e2, 10, 'R'] ##[nsamples, repeat, sampling rule]
+        # data_test_params= [1e2, 10, 'R'] ##[nsamples, repeat, sampling rule]
 
-    # for r in range(data_test_params[1]):
-        # dist_zeta = pce_model.kwparams['dist_zeta']
-        # zeta_mcs  = dist_zeta.sample(data_test_params[0], data_test_params[2])
-        # y_pred_mcs= pce_model.predict(zeta_mcs)
+        # for r in range(data_test_params[1]):
+            # dist_zeta = pce_model.kwparams['dist_zeta']
+            # zeta_mcs  = dist_zeta.sample(data_test_params[0], data_test_params[2])
+            # y_pred_mcs= pce_model.predict(zeta_mcs)
 
-        # uqhelpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
-        # print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
-        # y_pred_mcs_ecdf = uqhelpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparam.prob_fails)
-        # # rfname_mcs  = fname_test_path + '{:d}_ecdf'.format(r) 
-        # # np.save(rfname_mcs, y_pred_mcs_ecdf)
+            # uqhelpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
+            # print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
+            # y_pred_mcs_ecdf = uqhelpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparam.prob_fails)
+            # # rfname_mcs  = fname_test_path + '{:d}_ecdf'.format(r) 
+            # # np.save(rfname_mcs, y_pred_mcs_ecdf)
 if __name__ == '__main__':
     main()
