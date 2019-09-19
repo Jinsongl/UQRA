@@ -94,13 +94,9 @@ class Solver(object):
         """
         self.output = [] # a list saving simulation results
         print(' ► Running Simulation...')
-        # print('   ♦ Job list: [{:^20} {:^20}]'.format('# solver parameter sets', '# DoE sets'))
-        # print('   ♦ Target  : [{:^20d} {:^20d}]'.format(len(self.theta_m), doe_obj.ndoe))
-        # print('   ' + '·'*55)
         for idoe, isamples_x in enumerate(doe_obj.mapped_samples):
             print('   ♦ DoE set : {:d} / {:d}'.format(idoe, doe_obj.ndoe), end='')
             for isys_done, itheta_m in enumerate(self.theta_m): 
-                # print('      ∙ Solver parameter set : {:4d} / {:4d}'.format(isys_done, self.theta_m.shape[0]))
                 if const.DOE_METHOD_FULL_NAMES[doe_obj.method.lower()] == 'QUADRATURE':
                     input_vars, input_vars_weights = isamples_x[:-1,:], isamples_x[-1,:]
                 else:
@@ -109,8 +105,6 @@ class Solver(object):
                 y = self._solver_wrapper(input_vars, theta_m = itheta_m, *args, **kwargs)
                 self.output.append(y)
                 print('    -> Solver output : {}'.format(y.shape))
-            # print('   ♦ Achieved: [{:^20d} {:^20d}]'.format(isys_done+1,idoe+1))
-        # print(' ► Simulation Done, Output shape: {}'.format(np.array(self.output).shape) )
         return self.output
 
     def get_stats(self, qoi2analysis=None, stats2cal=None):

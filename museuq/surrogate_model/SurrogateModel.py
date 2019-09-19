@@ -139,9 +139,9 @@ class SurrogateModel(object):
         # print('     ∙ {:<15s} : {}'.format('X shape:', x_train.shape ))
         # print('     ∙ {:<15s} : {}'.format('Y shape:', y_train.shape ))
         if weight is not None:
-            print('   ♦ {:<17s} : (X, Y, W) = {} x {} x {}'.format('Traning data shape', x_train.shape, y_train.shape, weight.shape))
+            print('   ♦ {:<17s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x_train.shape, y_train.shape, weight.shape))
         else:
-            print('   ♦ {:<17s} : (X, Y, W) = {} x {} '.format('Traning data shape', x_train.shape, y_train.shape))
+            print('   ♦ {:<17s} : (X, Y, W) = {} x {} '.format('Train data shape', x_train.shape, y_train.shape))
 
         if self.name.upper() == 'PCE':
             weight = np.squeeze(weight)
@@ -219,17 +219,18 @@ class SurrogateModel(object):
         self.metrics_value  = [[] for _ in range(len(y_pred))]   
 
         print(' ► Calculating scores...')
-        print('   ♦ Metrics to be calculated: {}'.format(metrics2cal))
 
         for imetric_name in metrics2cal:
             imetric2call = getattr(metrics, imetric_name.lower())
             for i, iy_pred in enumerate(y_pred):
                 if imetric_name.lower() == 'upper_tails':
-                    self.metrics_value[i].append(imetric2call(y_true, iy_pred, prob=prob))
+                    imetric_value = imetric2call(y_true, iy_pred, prob=prob)
                 elif imetric_name.lower() == 'moments': 
-                    self.metrics_value[i].append(imetric2call(y_true, iy_pred, m=moment))
+                    imetric_value = imetric2call(y_true, iy_pred, m=moment)
                 else:
-                    self.metrics_value[i].append(imetric2call(y_true, iy_pred))
+                    imetric_value = imetric2call(y_true, iy_pred)
+                print('   ♦ {:<15s}: {:.2f}'.format(imetric_name, imetric_value))
+                self.metrics_value[i].append(imetric_value)
         return self.metrics_value
     
     def log_marginal_likelihood(self, theta, eval_gradient=False):

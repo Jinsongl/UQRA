@@ -60,30 +60,35 @@ def setfilename(params):
     params.updateDir(NEWDIR) 
     return filenames_new
 
-def save_data(data, filename, dirname=None):
+def save_data(data, filename, dir_name=None, identifiers=None):
     """
-    Save given data(array) with specified filename in dirname folder
+    Parameters:
+    data:
+      1. ndarray: directly save data
+      2. list of ndarray: save each element in list individually
+      3. list of list [l1, l2, ...]
+         e.g.
+         for il1, il2 in zip(l1, l2):
+            data_= np.concatenate(il1,il2)
+            save data_
     """
-    if len(data) == 2:
-        datax, datay = data
-    elif len(data) == 1:
-        datax, datay = data, None
+    if isinstance(data, (np.ndarray, np.generic)):
+        np.save(os.path.join(dir_name, filename), data)
+    elif isinstance(data, list) and isinstance(data[0], (np.ndarray, np.generic)):
+        assert len(data) == len(identifiers)
+        for idata, i in zip(data, identifiers):
+            np.save(os.path.join(dir_name, filename+'{}'.format(i)), idata)
+    elif isinstance(data, list) and isinstance(data[0], list):
+        assert len(data[0]) == len(data[1]) == len(identifiers)
+        # i = 0
+        for i, data_ in enumerate(zip(*data)):
+            idata = np.concatenate(data_, axis=0)
+            np.save(os.path.join(dir_name, filename+'{}'.format(identifiers[i])), idata )
+            # i +=1
     else:
-        raise ValueError('Input data shape not specified, len(data)={:d}'.format(len(data)))
+        raise ValueError('Input data type not defined')
 
-    ## save datax
-    print('data shape: {}'.format(datax.shape))
-    # print 'saving file:' + filename + '...'
-    # with open(filename, mode) as fileid:
-        # writer = csv.writer(fileid, delimiter=',')
-        # if data.ndim == 1:
-            # writer.writerow(data)
-        # else:
-            # for v in data: 
-                # writer.writerow(['{:8.4e}'.format(float(x)) for x in v])
-    np.savetxt(filename,data,fmt='%.4e',delimiter=',')
-    if isMove:
-        os.rename(filename,dirname+'/'+filename)
+
 
 
 def _save_datax(data, filename, dirname=None):

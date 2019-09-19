@@ -14,6 +14,7 @@ import chaospy as cp, numpy as np
 from datetime import datetime
 from ..utilities.classes import ErrorType, Logger
 from ..utilities.helpers import num2print, make_output_dir, get_gdrive_folder_id 
+from ..utilities import dataIO 
 from ..utilities import constants as const
 
 from .doe_generator import samplegen
@@ -159,14 +160,21 @@ class ExperimentDesign(object):
 
     def save_data(self, data_dir):
         ### save input variables to file
-        for idoe, isamples in enumerate(self.samples):
-            if self.mapped_samples:
-                imapped_samples = self.mapped_samples[idoe] 
-                samples = np.concatenate((imapped_samples,isamples))
-            else:
-                samples = imapped_samples
-            idoe_filename = os.path.join(data_dir, self.filename+'{}'.format(num2print(self.orders[idoe])))
-            np.save(idoe_filename,samples)
+        if self.mapped_samples:
+            data = [self.samples, self.mapped_samples]
+        else:
+            data = self.samples
+
+        dataIO.save_data(data, self.filename, data_dir, self.orders)
+
+        # for idoe, isamples in enumerate(self.samples):
+            # if self.mapped_samples:
+                # imapped_samples = self.mapped_samples[idoe] 
+                # samples = np.concatenate((imapped_samples,isamples))
+            # else:
+                # samples = imapped_samples
+            # idoe_filename = os.path.join(data_dir, self.filename+'{}'.format(num2print(self.orders[idoe])))
+            # np.save(idoe_filename,samples)
 
     def disp(self, decimals=4, nsamples2print=0):
         print(' ► DoE Summary:')
