@@ -228,7 +228,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         # print('   ♦ Quadrature points complete  : {}'.format(quad_order))
         # print(doe_samples[0].shape)
         # print('------------------------------------------------------------')
-    elif doe_method == 'MONTE CARLO':
+    elif doe_method in ['MONTE CARLO', 'MC']:
         """
         Monte Carlo Sampling 
         """

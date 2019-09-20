@@ -44,12 +44,16 @@ class ExperimentDesign(object):
         self.params = [] 
         self.method = method
         self.rule   = rule
-        self.orders = orders
+        self.orders = [int(orders),] if np.isscalar(orders) else orders
         self.space  = space
         self.ndoe   = len(self.orders)   # number of doe sets
         self.samples=[]  # DoE output in space1
         self.mapped_samples = None # DoE output in space2 after calling mappingto method
         self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
+        if self.method == 'MC':
+            self.filename_tags = [ num2print(iorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
+        else:
+            self.filename_tags = [ num2print(iorder) for iorder in self.orders] 
 
         print('------------------------------------------------------------')
         print('►►► Initialize Experiment Design:')
@@ -57,7 +61,7 @@ class ExperimentDesign(object):
         print(' ► DoE parameters: ')
         print('   ♦ {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
         print('   ♦ {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.lower()]))
-        print('   ♦ {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders))))
+        print('   ♦ {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders)) ))
 
     def get_samples(self, space=None):
         """
@@ -85,7 +89,7 @@ class ExperimentDesign(object):
                 #    - MC: res.shape = (ndim, nsamples)
                 isamples = samplegen(self.method, idoe_order, self.space, rule=self.rule)
                 self.samples.append(isamples)
-                print('\r   ♦ {:<15s}: {}'.format( 'DoE completed', self.orders[:i+1]), end='')
+                print('\r   ♦ {:<15s}: {}'.format( 'DoE completed', list(map(num2print, self.orders[:i+1]))), end='')
         else:
             raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
 
@@ -154,9 +158,12 @@ class ExperimentDesign(object):
         else:
             self.orders = np.array(params[2])
 
-        self.outfilename = 'DoE_' + params[0].capitalize() + params[1].capitalize() 
-        self.filename = [self.outfilename + num2print(idoe) for idoe in self.orders]
+        self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
         self.ndoe        = len(self.orders)   # number of doe sets
+        if self.method == 'MC':
+            self.filename_tags = [ num2print(iorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
+        else:
+            self.filename_tags = [ num2print(iorder) for iorder in self.orders] 
 
     def save_data(self, data_dir):
         ### save input variables to file
@@ -165,7 +172,7 @@ class ExperimentDesign(object):
         else:
             data = self.samples
 
-        dataIO.save_data(data, self.filename, data_dir, self.orders)
+        dataIO.save_data(data, self.filename, data_dir, self.filename_tags)
 
         # for idoe, isamples in enumerate(self.samples):
             # if self.mapped_samples:

@@ -60,7 +60,7 @@ def setfilename(params):
     params.updateDir(NEWDIR) 
     return filenames_new
 
-def save_data(data, filename, dir_name=None, identifiers=None):
+def save_data(data, filename, dir_name=None, tags=None):
     """
     Parameters:
     data:
@@ -75,15 +75,15 @@ def save_data(data, filename, dir_name=None, identifiers=None):
     if isinstance(data, (np.ndarray, np.generic)):
         np.save(os.path.join(dir_name, filename), data)
     elif isinstance(data, list) and isinstance(data[0], (np.ndarray, np.generic)):
-        assert len(data) == len(identifiers)
-        for idata, i in zip(data, identifiers):
-            np.save(os.path.join(dir_name, filename+'{}'.format(i)), idata)
+        assert len(data) == len(tags)
+        for idata, i in zip(data, tags):
+            np.save(os.path.join(dir_name, filename + '{}'.format(i) ), idata)
     elif isinstance(data, list) and isinstance(data[0], list):
-        assert len(data[0]) == len(data[1]) == len(identifiers)
+        assert len(data[0]) == len(data[1]) == len(tags)
         # i = 0
         for i, data_ in enumerate(zip(*data)):
             idata = np.concatenate(data_, axis=0)
-            np.save(os.path.join(dir_name, filename+'{}'.format(identifiers[i])), idata )
+            np.save(os.path.join(dir_name, filename + '{}'.format(tags[i])), idata )
             # i +=1
     else:
         raise ValueError('Input data type not defined')
