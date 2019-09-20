@@ -33,7 +33,10 @@ def num2print(n):
         return '{:d}'.format(n)
     else:
         __str ='{:.0E}'.format(n) 
-        return __str[0]+'E'+__str[-1] 
+        if int(__str[0]) == 1:
+            return 'E'+__str[-1] 
+        else:
+            return __str[0]+'E'+__str[-1] 
 
 def get_gdrive_folder_id(folder_name):
     """
