@@ -35,13 +35,18 @@ DOE_METHOD_FULL_NAMES = {
     } 
 
 DOE_RULE_FULL_NAMES = {
-    "cc": "clenshaw_curtis"  , "leg"   : "gauss_legendre"  , "pat"   : "gauss_patterson",
-    "gk": "genz_keister"     , "gwel"   : "golub_welsch"    , "leja"   : "leja",
-    "hem": "gauss_hermite"    ,"lag"  : "gauss_laguerre"  , "cheb": "gauss_chebyshev",
-    "hermite"   :"gauss_hermite",
+    "cc"    : "clenshaw_curtis"  , "leg"  : "gauss_legendre"  , "pat" : "gauss_patterson",
+    "gk"    : "genz_keister"     , "gwel" : "golub_welsch"    , "leja": "leja",
+    "hem"   : "gauss_hermite"    , "lag"  : "gauss_laguerre"  , "cheb": "gauss_chebyshev",
+    "hermite"   :"gauss_hermite" ,
     "legendre"  :"gauss_legendre",
-    "jacobi"    :"gauss_jacobi",
-    "R": "Pseudo-Random", "RG": "Regular Grid", "NG": "Nested Grid", "L": "Latin Hypercube",
-    "S": "Sobol", "H":"Halton", "M": "Hammersley",
-    "FIX": "Fixed point"
+    "jacobi"    :"gauss_jacobi"  ,
+    "R" : "Pseudo-Random"   , "r" : "Pseudo-Random"     ,
+    "RG": "Regular Grid"    , "rg": "Regular Grid"      ,
+    "NG": "Nested Grid"     , "ng": "Nested Grid"       ,
+    "L" : "Latin Hypercube" , "l" : "Latin Hypercube"   ,
+    "S" : "Sobol"           , "s" : "Sobol"             ,
+    "H" : "Halton"          , "h" : "Halton"            , 
+    "M" : "Hammersley"      , "m" : "Hammersley"        ,
+    "FIX": "Fixed point"    ,"fix": "Fixed point"       ,
     }
