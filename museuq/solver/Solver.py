@@ -10,6 +10,7 @@
 
 """
 import numpy as np
+from tqdm import tqdm
 
 from .dynamic_models import lin_oscillator, duffing_oscillator, linear_oscillator
 from .benchmark import bench1, bench2, bench3, bench4, ishigami
@@ -179,7 +180,7 @@ class Solver(object):
         elif self.solver_name.upper() == 'LINEAR_OSCILLATOR':
             tmax,dt =1000, 0.1
             t = np.arange(0,tmax, dt)
-            y = np.array([linear_oscillator(t,ix) for ix in x.T])
+            y = np.array([linear_oscillator(t,ix) for ix in tqdm(x.T)])
 
 
         elif self.solver_name.upper() ==  'DUFFING_OSCILLATOR':
