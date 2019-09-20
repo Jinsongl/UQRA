@@ -16,7 +16,7 @@ from datetime import datetime
 from .doe.doe_generator import samplegen
 from .utilities.classes import ErrorType, Logger
 from .utilities.helpers import num2print, make_output_dir, get_gdrive_folder_id 
-
+from itertools import compress
 ## Define parameters class
 
 
@@ -163,7 +163,9 @@ class simParameters(object):
             print('     ∙ {:<8s} : {:.2f} ∙ {:<8s} : {:.2f}'.format('ramp ', self.time_ramp , 'dt ', self.dt ))
         if self.post_params:
             print('   ♦ {:<15s} '.format('post analysis parameters'))
-            print('     ∙ {:<15s} : {} '.format('qoi2analysis', self.qoi2analysis ))
-            print('     ∙ {:<15s} : {} '.format('statistics'  , self.stats ))
+            qoi2analysis = self.qoi2analysis if self.qoi2analysis is not None else 'All'
+            print('     ∙ {:<15s} : {} '.format('qoi2analysis', qoi2analysis))
+            stats_list = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
+            print('     ∙ {:<15s} : {} '.format('statistics'  , list(compress(stats_list, self.stats)) ))
     
 
