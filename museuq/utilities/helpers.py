@@ -13,8 +13,12 @@
 import numpy as np, scipy as sp, scipy.stats as scistats
 import os, sys, warnings, collections, csv
 from statsmodels.distributions.empirical_distribution import ECDF
+import math
 
 Ecdf2plot = collections.namedtuple('Ecdf2plot', ['x','y'])
+
+def ordinal(n):
+    return "%d%s" % (n,"tsnrhtdd"[(math.floor(n/10)%10!=1)*(n%10<4)*n%10::4])
 
 # Disable print
 def blockPrint():
