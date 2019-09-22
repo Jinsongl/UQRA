@@ -108,9 +108,4 @@ src/Data/
 *.csv
 *.npy
 
-# figures
-*.jpg
-*.eps
-*.pdf
-*.png
 
