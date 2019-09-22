@@ -12,7 +12,8 @@ import scipy.stats as scistats
 from scipy.stats.kde import gaussian_kde
 from statsmodels.distributions.empirical_distribution import ECDF
 from sklearn.gaussian_process import GaussianProcessRegressor
-from ..utilities import metrics
+from ..utilities import metrics_collections 
+from ..utilities.helpers import ordinal
 import warnings
 warnings.filterwarnings(action="ignore",  message="^internal gelsd")
 
@@ -97,8 +98,7 @@ class SurrogateModel(object):
         self.metamodels      = []    # list of built metamodels
         self.metamodel_coeffs= []    # list of coefficient sets for each built meta model
         self.orthpoly_norms  = []    # Only for PCE model, list of norms for setting functions 
-        self.cv_l2errors     = []
-        self.metrics2cal     = ['mean_squared_error']
+        self.metrics     = ['mean_squared_error']
         self.metrics_value   = [] ## each element is of shape: [sample sets, metaorders, repeated samples, metric]
         ## Initialize metaModel methods
         self.__metamodel_setting(setting) 
@@ -124,16 +124,20 @@ class SurrogateModel(object):
             self.__get_metamodel_basis() 
         x_train = np.squeeze(np.array(x_train))
         y_train = np.squeeze(np.array(y_train))
-        if x_train.ndim == y_train.ndim == 1:
-            assert len(x_train) == len(y_train), 'Number of data points in x and y is not same: {}!={}'.format(len(x_train), len(y_train))
-        elif x_train.ndim == 1 and y_train.ndim != 1: 
-            assert len(x_train) == y_train.shape[0],  'Number of data points in x and y is not same: {}!={} '.format(len(x_train), y_train.shape[0])
-        elif x_train.ndim != 1 and y_train.ndim == 1:
-            assert x_train.shape[1] == len(y_train),  'Number of data points in x and y is not same: {}!={} '.format(x_train.shape[1], len(y_train))
-        elif x_train.ndim != 1 and y_train.ndim != 1:
-            assert x_train.shape[1] == y_train.shape[0], 'Number of data points in x and y is not same: {}!={} '.format(x_train.shape[1], y_train.shape[0])
-        else:
-            raise ValueError
+
+        if x_train.shape[-1] != y_train.shape[0]:
+            raise ValueError("x.T and y must have same first dimension, but have shapes {} and {}".format(x_train.T.shape, y_train.shape))
+
+        # if x_train.ndim == y_train.ndim == 1:
+            # assert len(x_train) == len(y_train), 'Number of data points in x and y is not same: {}!={}'.format(len(x_train), len(y_train))
+        # elif x_train.ndim == 1 and y_train.ndim != 1: 
+            # assert len(x_train) == y_train.shape[0],  'Number of data points in x and y is not same: {}!={} '.format(len(x_train), y_train.shape[0])
+        # elif x_train.ndim != 1 and y_train.ndim == 1:
+            # assert x_train.shape[1] == len(y_train),  'Number of data points in x and y is not same: {}!={} '.format(x_train.shape[1], len(y_train))
+        # elif x_train.ndim != 1 and y_train.ndim != 1:
+            # assert x_train.shape[1] == y_train.shape[0], 'Number of data points in x and y is not same: {}!={} '.format(x_train.shape[1], y_train.shape[0])
+        # else:
+            # raise ValueError
 
         # print('   ♦ {:<17s} : (X, Y, W) = {} x {} x {}'.format('Traning data:', x_train.shape, y_train.shape))
         # print('     ∙ {:<15s} : {}'.format('X shape:', x_train.shape ))
@@ -183,7 +187,7 @@ class SurrogateModel(object):
             f_pred_all.append(f_pred)
         return f_pred_all
 
-    def score(self,X,y_true,prob=[0.9,0.99,0.999], metrics2cal=['mean_squared_error'],moment=1):
+    def score(self,X,y_true,metrics=['mean_squared_error'],prob=[0.9,0.99,0.999], moment=1):
         """
         Calculate error metrics_value used to evaluate the accuracy of the approximation
         Reference: "On the accuracy of the polynomial chaos approximation R.V. Field Jr., M. Grigoriu"
@@ -214,22 +218,32 @@ class SurrogateModel(object):
         4 | ecdf 
         5 | kernel density estimator pdf
         """
-        self.metrics2cal    = []
+        self.metrics    = []
         y_pred              = self.predict(X,return_std=False,return_cov=False)
         self.metrics_value  = [[] for _ in range(len(y_pred))]   
 
         print(' ► Calculating scores...')
 
-        for imetric_name in metrics2cal:
-            imetric2call = getattr(metrics, imetric_name.lower())
+        for imetric_name in metrics:
+            imetric2call = getattr(metrics_collections, imetric_name.lower())
             for i, iy_pred in enumerate(y_pred):
                 if imetric_name.lower() == 'upper_tails':
                     imetric_value = imetric2call(y_true, iy_pred, prob=prob)
+                    print('   ♦ {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetric_name, 'True', 'Prediction', '%Error'))
+                    for iprob, iupper_tail in zip(prob, np.array(imetric_value).T):
+                        error_perc = abs((iupper_tail[1]-iupper_tail[0])/iupper_tail[0]) * 100.0 if iupper_tail[0] else np.inf
+                        print('     ∙ {:<18f}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(iprob, iupper_tail[0], iupper_tail[1], error_perc))
+
                 elif imetric_name.lower() == 'moments': 
                     imetric_value = imetric2call(y_true, iy_pred, m=moment)
+
+                    print('   ♦ {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetric_name, 'True', 'Prediction', '%Error'))
+                    for imoment, imoment_value in zip(moment, np.array(imetric_value).T):
+                        error_perc = abs((imoment_value[1]-imoment_value[0])/imoment_value[0])* 100.0 if imoment_value[0] else np.inf
+                        print('     ∙ {:<18s}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(ordinal(imoment), imoment_value[0], imoment_value[1], error_perc))
                 else:
                     imetric_value = imetric2call(y_true, iy_pred)
-                print('   ♦ {:<15s}: {:.2f}'.format(imetric_name, imetric_value))
+                    print('   ♦ {:<20s}: {}'.format(imetric_name, np.around(imetric_value,2)))
                 self.metrics_value[i].append(imetric_value)
         return self.metrics_value
     
@@ -327,24 +341,6 @@ class SurrogateModel(object):
             y_samples = y_samples[0]
         return y_samples
 
-    # def cross_validate(self, x, y):
-        # """
-        # Cross validation of the fitted metaModel with given data
-        # """
-        # if not self.metamodels:
-            # raise ValueError('No meta model exists')
-        # for _, metamodels in enumerate(self.metamodels):
-            # _cv_l2error = []
-            # print('\t\tCross validation {:s} metamodel of order \
-                    # {:d}'.format(self.name, max([sum(order) for order in f.keys])))
-            # for _, f in enumerate(metamodels):
-                # f_fit = [f(*val) for val in x.T]
-                # f_cv.append(f_fit)
-                # cv_l2error = np.sqrt(np.mean((np.asfarray(f_fit) - y)**2),axis=0)
-                # _cv_l2error.append(cv_l2error)
-            # self.cv_l2errors.append(_cv_l2error)
-# # sampling=[1e5,10,'R'], metrics2cal=[1,1,1,1,1,1]
-
     def __metamodel_setting(self, setting):
         """
         Define parameters to build the metamodels
@@ -381,7 +377,7 @@ class SurrogateModel(object):
                 print('     ∙ {:<15s} : {}'.format('Zeta dist'    , self.kwparams['dist_zeta']))
                 print('     ∙ {:<15s} : {}'.format('Basis order'  , self.basis_orders))
             except KeyError:
-                pass # Key is not present
+                print('     ∙ cal_coeffs, dist_zeta, basis_orders are required parameters for PCE model...')
 
             # Following parameters are optional
             self.kwparams['dist_zeta_J' ] = self.kwparams.get('dist_zeta_J'   ,self.kwparams['dist_zeta'])

@@ -174,15 +174,6 @@ class ExperimentDesign(object):
 
         dataIO.save_data(data, self.filename, data_dir, self.filename_tags)
 
-        # for idoe, isamples in enumerate(self.samples):
-            # if self.mapped_samples:
-                # imapped_samples = self.mapped_samples[idoe] 
-                # samples = np.concatenate((imapped_samples,isamples))
-            # else:
-                # samples = imapped_samples
-            # idoe_filename = os.path.join(data_dir, self.filename+'{}'.format(num2print(self.orders[idoe])))
-            # np.save(idoe_filename,samples)
-
     def disp(self, decimals=4, nsamples2print=0):
         print(' ► DoE Summary:')
         print('   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
