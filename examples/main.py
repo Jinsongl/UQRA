@@ -42,7 +42,7 @@ def main():
 
     ## ------------------------ Define DoE parameters ---------------------- ###
     # doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [5,6,7,8]
-    doe_method, doe_rule, doe_orders = 'MC', 'R', [1e7]*10
+    doe_method, doe_rule, doe_orders = 'MC', 'R', [1e2]*3
     quad_doe    = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
     samples_zeta= quad_doe.get_samples()
     samples_x   = quad_doe.mappingto(dist_x)
@@ -51,34 +51,35 @@ def main():
     assert len(samples_x) == len(samples_zeta)
 
     ## ---------------------- Define Solver parameters ---------------------- ###
-    solver      = museuq.Solver(model_name, samples_x)
-    samples_y   = solver.run(quad_doe)
-    filename_tags = [itag+'_y' for itag in quad_doe.filename_tags]
-    museuq_dataio.save_data(samples_y, quad_doe.filename, simparams.data_dir, filename_tags)
+    # solver      = museuq.Solver(model_name, samples_x)
+    # samples_y   = solver.run(quad_doe)
+    # filename_tags = [itag+'_y' for itag in quad_doe.filename_tags]
+    # museuq_dataio.save_data(samples_y, quad_doe.filename, simparams.data_dir, filename_tags)
+    # samples_y_stats = solver.get_stats(simparams.qoi2analysis, simparams.stats)
+    # filename_tags = [itag+'_y_stats' for itag in quad_doe.filename_tags]
+    # museuq_dataio.save_data(samples_y_stats, quad_doe.filename, simparams.data_dir, filename_tags)
 
-    samples_y_stats = solver.get_stats(simparams.qoi2analysis, simparams.stats)
-    filename_tags = [itag+'_y_stats' for itag in quad_doe.filename_tags]
-    museuq_dataio.save_data(samples_y_stats, quad_doe.filename, simparams.data_dir, filename_tags)
 
+    # ------------------------ Define surrogate model parameters ---------------------- ###
+    metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_zeta}
 
-    ## ------------------------ Define surrogate model parameters ---------------------- ###
-    # metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_zeta}
+    samples_zeta = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem5.npy')
 
-    # for idoe_sample_zeta, idoe_samplex, idoe_sampley_stats, ipoly_order in zip(samples_zeta, samples_x, samples_y_stats, [4,5,6]):
-        # metamodel_class, metamodel_basis_setting = 'PCE', ipoly_order 
-        # pce_model  = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
-        # x_train    = np.squeeze(idoe_samplex[:-1,:])
-        # x_weight   = np.squeeze(idoe_samplex[-1,:])
-        # zeta_weight= x_weight 
-        # y_train    = np.squeeze(idoe_sampley_stats[:, 4, 2])
-        # zeta_train = np.squeeze(idoe_sample_zeta[:-1,:])
-        # pce_model.fit(zeta_train, y_train, weight=zeta_weight)
-        # y_validate = pce_model.predict(zeta_train)
-        # pce_model_scores = pce_model.score(zeta_train, y_train)
-    # train_data  = [ x_train, x_weight , y_train, zeta_train, np.array(y_validate)]
-        # np.save(os.path.join(simparam.data_dir, fname_train_out), train_data)
+    for idoe_sample_zeta, idoe_samplex, idoe_sampley_stats, ipoly_order in zip(samples_zeta, samples_x, samples_y_stats, [4,5,6]):
+        metamodel_class, metamodel_basis_setting = 'PCE', ipoly_order 
+        pce_model  = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
+        x_train    = np.squeeze(idoe_samplex[:-1,:])
+        x_weight   = np.squeeze(idoe_samplex[-1,:])
+        zeta_weight= x_weight 
+        y_train    = np.squeeze(idoe_sampley_stats[:, 4, 2])
+        zeta_train = np.squeeze(idoe_sample_zeta[:-1,:])
+        pce_model.fit(zeta_train, y_train, weight=zeta_weight)
+        y_validate = pce_model.predict(zeta_train)
+        pce_model_scores = pce_model.score(zeta_train, y_train)
+    train_data  = [ x_train, x_weight , y_train, zeta_train, np.array(y_validate)]
+        np.save(os.path.join(simparams.data_dir, fname_train_out), train_data)
 
-        # data_test_params= [1e2, 10, 'R'] ##[nsamples, repeat, sampling rule]
+        data_test_params= [1e2, 10, 'R'] ##[nsamples, repeat, sampling rule]
 
         # for r in range(data_test_params[1]):
             # dist_zeta = pce_model.kwparams['dist_zeta']
