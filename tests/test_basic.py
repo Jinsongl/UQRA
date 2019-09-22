@@ -17,6 +17,8 @@ class BasicTestSuite(unittest.TestCase):
         """
         https://keisan.casio.com/exec/system/1329114617
         """
+        print('========================TESTING: GAUSS QUADRATURE=======================')
+
         quadrature_rule_to_test = ['leg', 'hem', 'lag', 'jacobi']
         quadrature_dist_to_test = [cp.Uniform(-1,1), cp.Normal(), cp.Gamma(1,1), cp.Beta(1,1)]
         #cp.Gamma() def: x**(a-1)*numpy.e**(-x) / special.gamma(a)
@@ -60,6 +62,7 @@ class BasicTestSuite(unittest.TestCase):
         print('Compared results here: https://keisan.casio.com/exec/system/1329114617')
 
     def test_gpce(self):
+        print('==================TESTING: Generalized PCE (Not using SurrogateModel) ===================')
         gpce_dist_to_test   = [cp.Normal(), cp.Normal(2,3), cp.Gamma(1,1), cp.Beta(1,1)]
         gpce_opt_dist       = [cp.Normal(), cp.Normal(), cp.Gamma(1,1), cp.Beta(1,1)]
         gpce_opt_rule       = ['hem', 'hem', 'lag', 'jacobi']
@@ -81,7 +84,6 @@ class BasicTestSuite(unittest.TestCase):
                 uqhelpers.enablePrint()
                 print('\t Hermite: {}'.format( np.around(coeffs,4)))
 
-
                 ## gPCE with optimal chaos
                 uqhelpers.blockPrint()
                 quad_doe = museuq.DoE('QUAD', gpce_opt_rule[i], [ipoly_order+1], dist_zeta1)
@@ -94,6 +96,7 @@ class BasicTestSuite(unittest.TestCase):
                 print('\t Optimal: {}'.format( np.around(coeffs,4)))
 
     def test_PowerSpectrum(self):
+        print('========================TESTING: Power Spectrum =======================')
         powerspecturms2test = ['jonswap']
         powerspecturms_args = [(8, 10)]
         df  = 0.00001
@@ -116,10 +119,81 @@ class BasicTestSuite(unittest.TestCase):
             print('PSD name: {:s}, args: {}, Area: {:.2f}, 4*std:{}'.format(psd_name, psd_args, psd_area, 4*np.std(eta)))
 
     def test_linear_oscillator(self):
+        print('========================TESTING: Lienar Oscillator =======================')
         x = (Hs,Tp) = (8, 14.7)
         tmax,dt =1000, 0.1
         t = np.arange(0,tmax, dt)
         y = museuq.solver.dynamic_models.linear_oscillator(t,x)
+
+    def test_surrogate_model(self):
+        print('========================TESTING: SurrogateModel.fit(), ~Normal =======================')
+        solver1 = lambda x: x
+        solver2 = lambda x: x**2 + 1
+        solver3 = lambda x: x**3 + x**2 + x + 3
+        solver4 = lambda x: cp.Gamma(1,1).inv(cp.Normal(0,1).cdf(x))
+        solver5 = lambda x: cp.Gamma(1,1).inv(cp.Gamma(1,1).cdf(x))
+
+        metrics  = ['max_error', 'mean_absolute_error', 'mean_squared_error','moments', 'upper_tails']
+        
+        solvers2test= [solver1,solver2,solver3, solver4, solver5]
+        solver_strs = ['x', '1 + x**2', '3 + x + x**2 + x**3', 'Gamma(1,1), Hermite', 'Gamma(1,1), Optimal']
+        poly_orders = [1,2,3, range(2,5), range(2,5),]
+        dist_x      = cp.Normal()
+
+        for isolver , ipoly_order, isolver_str in zip(solvers2test, poly_orders, solver_strs):
+            metamodel_class, metamodel_basis_setting = 'PCE', ipoly_order 
+            metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_x}
+            uqhelpers.blockPrint()
+            quad_doe = museuq.DoE('QUAD', 'hem', 100, dist_x)
+            samples_x= quad_doe.get_samples()[0]
+
+            x_train, x_weight = samples_x[0,:].reshape(1,-1),samples_x[1,:]
+            y_train = np.squeeze(isolver(x_train))
+            pce_model  = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
+            pce_model.fit(x_train, y_train, weight=x_weight)
+            uqhelpers.enablePrint()
+            pce_model_scores = pce_model.score(x_train, y_train, metrics=metrics, moment=np.arange(1,5))
+            print('Target: {}'.format(isolver_str))
+            for i, ipoly_coeffs in enumerate(pce_model.poly_coeffs):
+                print('{:<6s}: {}'.format('museuq'*(i==0), np.around(ipoly_coeffs,4)))
+
+
+        # print('========================TESTING: SurrogateModel.fit(), Generalized  ====================')
+        # gpce_dist_to_test   = [cp.Normal(), cp.Normal(2,3), cp.Gamma(1,1), cp.Beta(1,1)]
+        # gpce_opt_dist       = [cp.Normal(), cp.Normal(), cp.Gamma(1,1), cp.Beta(1,1)]
+        # gpce_opt_rule       = ['hem', 'hem', 'lag', 'jacobi']
+        # npoly_orders        = range(2,5)
+        # dist_zeta0          = cp.Normal()
+
+        # for i, igpce_dist in enumerate(gpce_dist_to_test):
+            # dist_zeta1 = gpce_opt_dist[i]
+            # print('>> Testing # {:d}: gpce: {}, zeta0: {} , zeta1: {}'.format(i, igpce_dist, dist_zeta0, dist_zeta1 ))
+            # for ipoly_order in npoly_orders:
+                # print('  Polynomial order: {:d}'.format(ipoly_order))
+                # ## gPCE with hermite chaos
+                # uqhelpers.blockPrint()
+                # quad_doe = museuq.DoE('QUAD', 'hem', [ipoly_order+1], dist_zeta0)
+                # samples_zeta= quad_doe.get_samples()
+                # zeta_cor, zeta_weight = samples_zeta[0]
+                # x_cor = igpce_dist.inv(dist_zeta0.cdf(zeta_cor))
+                # zeta_poly, zeta_norms = cp.orth_ttr(ipoly_order, dist_zeta0, retall=True)
+                # x_hat,coeffs = cp.fit_quadrature(zeta_poly, zeta_cor, zeta_weight, np.squeeze(x_cor), retall=True)
+                # uqhelpers.enablePrint()
+                # print('\t Hermite: {}'.format( np.around(coeffs,4)))
+
+
+                # ## gPCE with optimal chaos
+                # uqhelpers.blockPrint()
+                # quad_doe = museuq.DoE('QUAD', gpce_opt_rule[i], [ipoly_order+1], dist_zeta1)
+                # samples_zeta= quad_doe.get_samples()
+                # zeta_cor, zeta_weight = samples_zeta[0]
+                # x_cor = igpce_dist.inv(dist_zeta1.cdf(zeta_cor))
+                # zeta_poly, zeta_norms = cp.orth_ttr(ipoly_order, dist_zeta1, retall=True)
+                # x_hat,coeffs = cp.fit_quadrature(zeta_poly, zeta_cor, zeta_weight, np.squeeze(x_cor), retall=True)
+                # uqhelpers.enablePrint()
+                # print('\t Optimal: {}'.format( np.around(coeffs,4)))
+    def test_surrogate_model_scores(self):
+        print('========================TESTING: SurrogateModel.scores() =======================')
 
     def test_absolute_truth_and_meaning(self):
         assert True

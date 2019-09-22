@@ -96,7 +96,8 @@ class SurrogateModel(object):
         ## define list saving outputs
         self.basis           = []    # list of metamodel basis functions. For PCE, list of polynomials, for GPR, list of kernels
         self.metamodels      = []    # list of built metamodels
-        self.metamodel_coeffs= []    # list of coefficient sets for each built meta model
+        self.basis_coeffs    = []    # list of coefficient sets for each built meta model
+        self.poly_coeffs     = []    # list of coefficient sets for each built meta model
         self.orthpoly_norms  = []    # Only for PCE model, list of norms for setting functions 
         self.metrics     = ['mean_squared_error']
         self.metrics_value   = [] ## each element is of shape: [sample sets, metaorders, repeated samples, metric]
@@ -122,8 +123,8 @@ class SurrogateModel(object):
         print(' ► Building surrogate models ...')
         if not self.setting:
             self.__get_metamodel_basis() 
-        x_train = np.squeeze(np.array(x_train))
-        y_train = np.squeeze(np.array(y_train))
+        x_train = np.array(x_train)
+        y_train = np.array(y_train)
 
         if x_train.shape[-1] != y_train.shape[0]:
             raise ValueError("x.T and y must have same first dimension, but have shapes {} and {}".format(x_train.T.shape, y_train.shape))
@@ -451,7 +452,7 @@ class SurrogateModel(object):
             kernel_params = gp.kernel_.get_params()
             kernel_params['opt_theta'] = gp.kernel_.theta
             kernel_params['opt_theta_lml'] = gp.log_marginal_likelihood()
-            self.metamodel_coeffs.append(kernel_params)
+            self.basis_coeffs.append(kernel_params)
 
             # kernel_params = gp.get_params()
             print('   ♦ {:<15s} : {:d}'.format('Kernel (Initial)', ikernel))
@@ -472,7 +473,7 @@ class SurrogateModel(object):
         Returns: None
             Append surrogate models to self.metamodels 
             Append surrogate model params 
-              (coeffs for orthogonal poly in PCE and kernel params for GPR) to self.metamodel_coeffs
+              (coeffs for orthogonal poly in PCE and kernel params for GPR) to self.basis_coeffs
         """
         # iorthpoly: ndim
         # x: (ndim, nsamples)
@@ -483,15 +484,19 @@ class SurrogateModel(object):
         for i, iorthpoly in enumerate(self.basis):
             print('   ♦ {:<17s} : {:d}'.format('PCE model order', self.basis_orders[i]))
             if cal_coeffs.upper() in ['GP','GALERKIN']:
-                assert w is not None
-                assert iorthpoly.dim == x.shape[0]
+                if w is None:
+                    raise ValueError("Quadrature weights are needed for Galerkin method")
+                if iorthpoly.dim != x.shape[0]:
+                    raise ValueError("Polynomial base functions and variables must have same dimensions, but have Poly.ndim={} and x.ndim={}".format(iorthpoly.dim, x.shape[0]))
                 f_hat, orthpoly_coeffs = cp.fit_quadrature(iorthpoly, x, w, y, retall=True)
                 self.metamodels.append(f_hat)
-                self.metamodel_coeffs.append(orthpoly_coeffs)
+                self.basis_coeffs.append(orthpoly_coeffs)
+                self.poly_coeffs.append(f_hat.coeffs())
             elif cal_coeffs.upper() == 'OLS':
                 f_hat, orthpoly_coeffs= cp.fit_regression(iorthpoly, x, y, retall=True)
                 self.metamodels.append(f_hat)
-                self.metamodel_coeffs.append(orthpoly_coeffs)
+                self.basis_coeffs.append(orthpoly_coeffs)
+                self.poly_coeffs.append(f_hat.coeffs())
             else:
                 raise ValueError('Method to calculate PCE coefficients {:s} is not defined'.format(cal_coeffs))
 
