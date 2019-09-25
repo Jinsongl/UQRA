@@ -488,7 +488,7 @@ class SurrogateModel(object):
                     raise ValueError("Quadrature weights are needed for Galerkin method")
                 if iorthpoly.dim != x.shape[0]:
                     raise ValueError("Polynomial base functions and variables must have same dimensions, but have Poly.ndim={} and x.ndim={}".format(iorthpoly.dim, x.shape[0]))
-                f_hat, orthpoly_coeffs = cp.fit_quadrature(iorthpoly, x, w, y, retall=True)
+                f_hat, orthpoly_coeffs = cp.fit_quadrature(iorthpoly, x, w, y, norms=self.orthpoly_norms[i], retall=True)
                 self.metamodels.append(f_hat)
                 self.basis_coeffs.append(orthpoly_coeffs)
                 self.poly_coeffs.append(f_hat.coeffs())
