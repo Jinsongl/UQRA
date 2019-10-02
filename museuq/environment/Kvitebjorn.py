@@ -15,8 +15,8 @@ Johannessen, K. and Nygaard, E. (2000): â€œMetocean Design Criteria for KvitebjÃ
 
 """
 import numpy as np
-import scipy.stats as stats
 import chaospy as cp
+import scipy.stats as stats
 
 # Sequence of conditional distributions based on Rosenblatt transformation 
 def dist_Hs(x, key='value'):
@@ -54,12 +54,12 @@ def dist_Tp(Hs):
     sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*Hs))
     return cp.LogNormal(mu_tp, sigma_tp)
 
+#
 # Sequence of conditional distributions based on Rosenblatt transformation 
-def samples_hs(x):
+
+def hs_pdf(hs):
     """
-    Random Hs values could be generated either by
-        - x: int, number of samples needed
-        - x: nd.array, target cdf values
+
     """
 
     mu_Hs    = 0.77
@@ -67,30 +67,39 @@ def samples_hs(x):
     Hs_shape = 1.503
     Hs_scale = 2.691
     h0       = 2.9
-    cdf_h0   = 0.6732524353557928
 
+    hs1_pdf = stats.lognorm.pdf(hs, s=sigma_Hs, loc=0, scale=np.exp(mu_Hs)) 
+    hs2_pdf = stats.weibull_min.pdf(hs, c=Hs_shape, scale=Hs_scale) 
+    hs_pdf  = np.where(hs<=h0, hs1_pdf, hs2_pdf)
+    return hs_pdf
 
-    if isinstance(x, int):
-        samples1 = np.random.lognormal(mu_Hs, sigma_Hs,x)
-        samples2 = np.random.weibull(Hs_shape,x) * Hs_scale
-        samples_hs = np.where(samples1<=h0,samples1, samples2)
+# Sequence of conditional distributions based on Rosenblatt transformation 
+def samples_hs(u):
+    """
+    Random Hs values could be generated either by
+        - u: int, number of samples needed
+        - u: nd.array, target cdf values
+    """
 
-    elif isinstance(x, np.ndarray):
-        x = np.array(x)
-        assert min(x) >=0 and max(x) <=1
-        samples1 = stats.lognorm.ppf(x, s=sigma_Hs, loc=mu_Hs)
-        samples2 = Hs_scale * (-np.log(1-x)) **(1/Hs_shape)
-        samples_hs = np.where(samples1<=cdf_h0,samples1, samples2)
-    else:
-        raise ValueError('samples_hs(x) takes either int or ndarray, but {} is given'.format(type(x)))
+    mu_Hs    = 0.77
+    sigma_Hs = 0.6565
+    Hs_shape = 1.503
+    Hs_scale = 2.691
+    h0       = 2.9
 
-    return samples_hs
+    u = np.array(u)
+    assert min(u) >=0 and max(u) <=1
+    samples1 = stats.lognorm.ppf(u, s=sigma_Hs, loc=0, scale=np.exp(mu_Hs))
+    samples2 = stats.weibull_min.ppf(u, c=Hs_shape, loc=0, scale=Hs_scale) #0 #Hs_scale * (-np.log(1-u)) **(1/Hs_shape)
+    samples_hs = np.where(samples1<=h0,samples1, samples2)
 
-def samples_tp(hs,tp_cdf=None):
+    return np.squeeze(samples_hs)
+
+def samples_tp(hs,u_tp=None):
     """
     Generate tp sample values based on given Hs values:
     Optional:
-    if tp_cdf is given, corresponding cdf values for Tp|Hs are returns, otherwise a random number from Tp|Hs distribution is returned
+    if u_tp is given, corresponding cdf values for Tp|Hs are returns, otherwise a random number from Tp|Hs distribution is returned
     or given Hs cdf values
     """
 
@@ -100,15 +109,15 @@ def samples_tp(hs,tp_cdf=None):
     b1 = 0.005
     b2 = 0.120
     b3 = 0.455
-
     mu_tp   = a1 + a2* hs**a3 
     sigma_tp= np.sqrt(b1 + b2*np.exp(-b3*hs))
-    if tp_cdf is None:
-        samples = np.array([ np.random.lognormal(ihs, itp, 1) for ihs, itp in zip(mu_tp, sigma_tp)])
-    else:
-        samples = np.array([ stats.lognorm.ppf(ip, s=isigma, loc=imu) for ip, imu, isigma in zip(tp_cdf, mu_tp, sigma_tp)])
 
-    return samples 
+    if u_tp is None:
+        samples = np.random.lognormal(mean=mu_tp, sigma=sigma_tp, size=len(hs)) 
+    else:
+        samples = stats.lognorm.ppf(u_tp, s=sigma_tp, loc=0, scale=np.exp(mu_tp)) 
+
+    return np.squeeze(samples)
 
 def samples(x):
     """
@@ -119,15 +128,21 @@ def samples(x):
       2. ndarray of cdf values 
         - shape (2, n) : n samples to be generated based on values cdf values of x
     """
-    if isinstance(x, int):
+    if isinstance(x, (int, float)):
+        x = int(x)
+        x = np.random.uniform(0,1,x)
         samples0 = samples_hs(x)
         samples1 = samples_tp(samples0)
-    elif isinstance(x, np.ndarray):
-        if x.shape[0] != 2:
-            raise ValueError(' CDF values for two random variables (Hs,Tp) are expected for Kvitebjorn, but {} was given'.format(x.shape[0])) 
-        samples0 = samples_hs(x[0,:])
-        samples1 = samples_tp(samples0, x[1,:])
 
+    elif isinstance(x, np.ndarray):
+        if x.ndim == 1 or x.shape[0] == 1:
+            samples0 = samples_hs(x)
+            samples1 = samples_tp(samples0)
+        elif x.ndim ==2 and x.shape[0] == 2:
+            samples0 = samples_hs(x[0,:])
+            samples1 = samples_tp(samples0, u_tp=x[1,:])
+        else:
+            raise ValueError(' CDF values for either only Hs or both (Hs,Tp) are expected for Kvitebjorn, but {} was given'.format(x.shape[0])) 
     else:
         raise ValueError('samples(x) takes either int or ndarray, but {} is given'.format(type(x)))
 
