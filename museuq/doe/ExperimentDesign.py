@@ -48,7 +48,7 @@ class ExperimentDesign(object):
         self.space  = space
         self.ndoe   = len(self.orders)   # number of doe sets
         self.samples=[]  # DoE output in space1
-        self.mapped_samples = None # DoE output in space2 after calling mappingto method
+        self.samples_env = None # DoE output in space2 after calling mappingto method
         self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
         if self.method == 'MC':
             self.filename_tags = [ num2print(iorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
@@ -94,16 +94,16 @@ class ExperimentDesign(object):
             raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
 
         print('\n',end='')
-        # self.mapped_samples = self.samples
+        # self.samples_env = self.samples
         return self.samples
 
     def mappingto(self, space2):
         """
         Mapping the DOE results from original space (self.space) to another specified space  
         """
-        self.mapped_space   = space2
-        self.mapped_samples = []
-        assert len(self.space) == len(self.mapped_space)
+        self.space_env   = space2
+        self.samples_env = []
+        assert len(self.space) == len(self.space_env)
         ## Get samples in zeta space first
         if not self.samples:
             self.get_samples() 
@@ -120,29 +120,27 @@ class ExperimentDesign(object):
         for idoe, isamples in enumerate(self.samples):
             if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
                 zeta_cor, zeta_weights = isamples[:-1,:], isamples[-1,:] 
-                x_cor = self._space_transform(self.space, self.mapped_space, zeta_cor)
+                x_cor = self._space_transform(self.space, self.space_env, zeta_cor)
                 x_weights = zeta_weights#.reshape(zeta_cor.shape[1],1)
                 isample_x = np.concatenate((x_cor, x_weights[np.newaxis,:]), axis=0)
                 # isample_x = np.array([x_cor, x_weights])
             else:
                 zeta_cor, zeta_weights = isamples, None
-                x_cor = self._space_transform(self.space, self.mapped_space, zeta_cor)
+                x_cor = self._space_transform(self.space, self.space_env, zeta_cor)
                 isample_x = x_cor
             # print('isample_x shape: {}, coord shape: {}, weight shape {}'.format(isample_x.shape, isample_x[0].shape, isample_x[1].shape))
 
-            self.mapped_samples.append(isample_x)
+            self.samples_env.append(isample_x)
 
-        return self.mapped_samples
+        return self.samples_env
 
-    def set_samples(self, input_x):
+    def set_samples(self, **kwargs):
         """
         TO FINISH, not yet in practice
         Set samples in physical space, used for FIXED POINT scheme
         """
-        self.mapped_samples = input_x
-        self.get_samples(input_x, self.dist_x) 
-
-        self.sys_excit_params[2].append(self.mapped_samples)
+        self.samples     = kwargs.get('zeta', self.samples)
+        self.samples_env = kwargs.get('env', self.samples_env) 
 
     def set_method(self,params= ['QUAD','hem',[2,3]]):
         """
@@ -167,8 +165,8 @@ class ExperimentDesign(object):
 
     def save_data(self, data_dir):
         ### save input variables to file
-        if self.mapped_samples:
-            data = [self.samples, self.mapped_samples]
+        if self.samples_env:
+            data = [self.samples, self.samples_env]
         else:
             data = self.samples
 
