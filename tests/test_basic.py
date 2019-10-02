@@ -199,12 +199,13 @@ class BasicTestSuite(unittest.TestCase):
         hs_pdf  = Kvitebjorn.hs_pdf(hs) 
         np.save(os.path.join(data_dir, 'Kvitebjorn_hs'), np.vstack((hs, hs_pdf)))
 
-
-        u = np.arange(0,1,1000)
-
         n = 1e6 
         samples_x = Kvitebjorn.samples(n)
         np.save(os.path.join(data_dir, 'Kvitebjorn_samples_n'), samples_x)
+
+        EC_samples = Kvitebjorn.EC()
+        np.save(os.path.join(data_dir, 'Kvitebjorn_samples_EC'), EC_samples)
+
 
 
 
