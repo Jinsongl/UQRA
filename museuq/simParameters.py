@@ -148,7 +148,7 @@ class simParameters(object):
         print('   ♦ {:<25s} : {}'.format('Model Name:', self.model_name))
         print('   ♦ {:<25s} : {} '.format('Target Exceedance prob', self.prob_fails))
         print('   ♦ {:<25s} : {} '.format('Joint zeta distribution', self.dist_zeta_J))
-        print('   ♦ {:<25s} : {} '.format('Joint x distribution', self.dist_x_J))
+        # print('   ♦ {:<25s} : {} '.format('Joint x distribution', self.dist_x_J))
 
         print(' ► Working directory:')
         print('   WORKING_DIR: {}'.format(os.getcwd()))
