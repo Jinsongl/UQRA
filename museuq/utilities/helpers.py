@@ -140,9 +140,10 @@ def upload2gdrive(filename, data, parent_id):
             print('   ♦ {:<7s} : {:d}/ 5'.format('trial', n_times2upload), end='\r')
         n_times2upload +=1
 
-def get_exceedance_data(x,prob=None):
+def get_exceedance_data(x,prob=1e-3):
     """
     Retrieve the exceedance data value for specified prob from data set x
+    if x is 2D array, calculate exceedance row-wise
     Arguments:
         x: array-like data set 
         prob: exceedance probability
@@ -157,6 +158,7 @@ def get_exceedance_data(x,prob=None):
     else:
         exceedance.append([_get_exceedance_data(iset, prob=prob) for iset in x])
 
+    ## each exceedance element corresponds to one result for each row in x. Number of element in exceedance could be different. Can only return list
     return exceedance
 
 def get_stats(data, stats=[1,1,1,1,1,1,0]):
@@ -212,23 +214,29 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
     
     return np.array(res)
 
-def _get_exceedance_data(x,prob=None):
+def _get_exceedance_data(x,prob=1e-3):
     """
     return sub data set retrieved from data set x
+    Parameters:
+        data: 1d array
+        prob: exceedance probability
 
-    data size: 1/(prob * 10) to end
+    Return:
+
     """
-    x_ecdf = ECDF(x)
+    assert np.array(x).ndim == 1
+    x_ecdf    = ECDF(x)
     n_samples = len(x_ecdf.x)
-    prob = 1e-3 if prob is None else prob
 
     if n_samples <= 1.0/prob:
         exceedance = (x_ecdf.x, x_ecdf.y, x_ecdf.y)
         warnings.warn('\n Not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(n_samples, prob))
     else:
-        exceedance_index = -int(prob * n_samples)
-        exceedance_value = x_ecdf.x[exceedance_index]
+        exceedance_index = -int(prob * n_samples)   # index of the exceedance value
+        exceedance_value = x_ecdf.x[exceedance_index] # exceedance x value
         _, idx1 = np.unique(np.round(x_ecdf.x[:exceedance_index], decimals=2), return_index=True)
+        # remove 'duplicate' values up to index exceedance_index, wish to have much smaller size of data when making plot
+        # append the rest to the array
         x1 = x_ecdf.x[idx1]
         y1 = x_ecdf.y[idx1]
         x2 = x_ecdf.x[exceedance_index:]
@@ -237,7 +245,7 @@ def _get_exceedance_data(x,prob=None):
         y  = np.hstack((y1,y2))
         v  = exceedance_value * np.ones(x.shape)
         exceedance = (x,y,v) 
-    return exceedance
+    return np.array(exceedance)
 
 def _central_moms(dist, n=np.arange(1,5), Fisher=True):
     """
