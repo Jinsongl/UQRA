@@ -27,8 +27,8 @@
 import chaospy as cp, chaospy as cp
 from .simParameters import simParameters
 
-def setup(model_name, dist_zeta, dist_x, prob_fails):
-    simparam = simParameters(model_name, dist_zeta, dist_x, prob_fails = prob_fails)
+def setup(model_name, dist_zeta, prob_fails):
+    simparam = simParameters(model_name, dist_zeta, prob_fails = prob_fails)
     simparam.update_dir()
     return simparam
 
