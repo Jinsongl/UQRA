@@ -17,7 +17,12 @@ Johannessen, K. and Nygaard, E. (2000): â€œMetocean Design Criteria for KvitebjÃ
 import numpy as np
 import chaospy as cp
 import scipy.stats as stats
-
+def make_circle(r,n=100):
+    t = np.linspace(0, np.pi * 2.0, n)
+    t = t.reshape((len(t), 1))
+    x = r * np.cos(t)
+    y = r * np.sin(t)
+    return np.hstack((x, y)).T
 # Sequence of conditional distributions based on Rosenblatt transformation 
 def dist_Hs(x, key='value'):
     """
@@ -54,7 +59,19 @@ def dist_Tp(Hs):
     sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*Hs))
     return cp.LogNormal(mu_tp, sigma_tp)
 
-#
+
+## Environment Contour
+
+def EC(p=1e-4, n=100):
+    beta        = stats.norm.ppf(1-p)
+    print('{:<20s}:{:.4f}'.format('Reliability Index', beta))
+    EC_normal   = make_circle(beta,n=n)
+    EC_norm_cdf = stats.norm.cdf(EC_normal)
+    EC_samples  = samples(EC_norm_cdf)
+    print(EC_normal.shape)
+    print(EC_samples.shape)
+    return np.vstack((EC_normal, EC_samples))
+
 # Sequence of conditional distributions based on Rosenblatt transformation 
 
 def hs_pdf(hs):
