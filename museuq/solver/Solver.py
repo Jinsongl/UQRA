@@ -84,21 +84,23 @@ class Solver(object):
         ###------------- Error properties ----------------------------
         self.error.disp()
 
-    def run(self, doe_obj, *args, **kwargs):
+    def run(self, *args, **kwargs):
         """
         run solver for given DoE object
         Parameters:
-        doe_obj: ExperiemntDesign object
 
         Returns:
 
         """
+        doe2run = [self.input_x] if isinstance(self.input_x, (np.ndarray, np.generic)) else self.input_x
+
         self.output = [] # a list saving simulation results
         print(' ► Running Simulation...')
-        for idoe, isamples_x in enumerate(doe_obj.mapped_samples):
-            print('   ♦ DoE set : {:d} / {:d}'.format(idoe, doe_obj.ndoe), end='')
+        for idoe, isamples_x in enumerate(doe2run):
+            print('   ♦ DoE set : {:d} / {:d}'.format(idoe, len(doe2run)), end='')
             for isys_done, itheta_m in enumerate(self.theta_m): 
-                if const.DOE_METHOD_FULL_NAMES[doe_obj.method.lower()] == 'QUADRATURE':
+                doe_method = kwargs['doe_method']
+                if doe_method.lower() == 'QUADRATURE':
                     input_vars, input_vars_weights = isamples_x[:-1,:], isamples_x[-1,:]
                 else:
                     input_vars, input_vars_weights = isamples_x, None
@@ -108,7 +110,7 @@ class Solver(object):
                 print('    -> Solver output : {}'.format(y.shape))
         return self.output
 
-    def get_stats(self, qoi2analysis=None, stats2cal=None):
+    def get_stats(self, qoi2analysis='all', stats2cal=[1,1,1,1,1,1,0]):
         """
         Return column-wise statistic properties for given qoi2analysis and stats2cal
         Parameters:
@@ -122,7 +124,7 @@ class Solver(object):
         for idoe_output  in self.output:
             idoe_output_stats = []
             for data in idoe_output:
-                data = data[qoi2analysis] if qoi2analysis else data
+                data = data if qoi2analysis == 'all' else data[qoi2analysis]
                 stat = museuq_helpers.get_stats(data, stats=stats2cal)
                 idoe_output_stats.append(stat)
             self.output_stats.append(np.array(idoe_output_stats))
