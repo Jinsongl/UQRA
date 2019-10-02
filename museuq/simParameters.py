@@ -39,7 +39,7 @@ class simParameters(object):
         normalize: 
     """
 
-    def __init__(self, model_name, dist_zeta, dist_x, prob_fails=1e-3):
+    def __init__(self, model_name, dist_zeta, prob_fails=1e-3):
         sys.stdout = Logger()
         ###---------- Random system properties ------------------------
         self.seed       = [0,100]
@@ -47,10 +47,10 @@ class simParameters(object):
         self.prob_fails = prob_fails
         self.dist_zeta  = dist_zeta
         self.dist_zeta_J= dist_zeta #if len(dist_zeta) == 1 else cp.J(*dist_zeta) 
-        self.dist_x     = dist_x
-        self.dist_x_J   = dist_x    #if len(dist_zeta) == 1 else cp.J(*dist_zeta) 
-        assert len(self.dist_x) == len(self.dist_zeta)
-        assert len(self.dist_x_J) == len(self.dist_zeta_J)
+        # self.dist_x     = dist_x
+        # self.dist_x_J   = dist_x    #if len(dist_zeta) == 1 else cp.J(*dist_zeta) 
+        # assert len(self.dist_x) == len(self.dist_zeta)
+        # assert len(self.dist_x_J) == len(self.dist_zeta_J)
 
         ###-------------Directories setting -----------------------------
         self.pwd            = ''
