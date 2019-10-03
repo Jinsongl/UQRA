@@ -122,7 +122,7 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_linear_oscillator(self):
         print('========================TESTING: Lienar Oscillator =======================')
-        x = (Hs,Tp) = (8, 14.7)
+        x = (Hs,Tp) = (4, 12)
         tmax,dt =1000, 0.1
         t = np.arange(0,tmax, dt)
         y = museuq.solver.dynamic_models.linear_oscillator(t,x)
