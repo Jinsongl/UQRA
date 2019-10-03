@@ -62,33 +62,33 @@ def get_quasi_optimal(m,A,I=None,is_orth=False):
     M,p = A.shape
     assert m >= p, "quasi optimal sebset are design for overdetermined problem only"
     # assert m < 2*p, 'Quasi optimal are disigned to choose ~p design points, too many asking'
-    # print('>>'*20)
-    print('\tQuasi-Optimal Experiment Design')
-    print('\t>>>','*'*40)
-    print("\tNumber of design point:\t{:2d} \n\tNumber of samples:\t{:2d} \n\tNumber of features:\t{:2d}".format(m,A.shape[0],A.shape[1]))
-    print('\t>>>','*'*40)
+    # print(r'>>'*20)
+    print(r'\tQuasi-Optimal Experiment Design')
+    print(r'\t>>>','*'*40)
+    print(r"\tNumber of design point:\t{:2d} \n\tNumber of samples:\t{:2d} \n\tNumber of features:\t{:2d}".format(m,A.shape[0],A.shape[1]))
+    print(r'\t>>>','*'*40)
     # (Q,R) = (A, _ )if is_orth else nla.qr(A, mode='complete')
     (Q,R) = (A, _ )if is_orth else nla.qr(A)
-    print('\tComplete QR factorization of Design matrix A. \n\t  Q.shape = {0}, R.shape={1}'.format(Q.shape, R.shape))
-    print('\t>>>','*'*40)
-    print('\tSearching for design points based on S-value')
+    print(r'\tComplete QR factorization of Design matrix A. \n\t  Q.shape = {0}, R.shape={1}'.format(Q.shape, R.shape))
+    print(r'\t>>>','*'*40)
+    print(r'\tSearching for design points based on S-value')
 
     I = [nrand.randint(0,M)] if I is None else I
     m1 = len(I) 
-    print('\tRandom Initialize...')
+    print(r'\tRandom Initialize...')
     # widgets = ['\tProcessed: ', progressbar.Counter(), ' \tSelected: {:5d}'.format(I[-1]), ' (', progressbar.Timer(), ')']
     # pbar = progressbar.ProgressBar(widgets=widgets)
 
     # for ipbar in pbar((i for i in range(m-m1))):
-    print('\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
+    print(r'\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
     while m1 < m:
         i = find_next(I,Q)
         I.append(i)
-        print('\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
+        print(r'\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
         m1 = m1 + 1
     I = sorted(I)
-    print('\tQuasi-Optimal Experiment design done!')
-    print('\tSelected subset indice (first 10): ', I[:10] if len(I) > 10 else I)
+    print(r'\tQuasi-Optimal Experiment design done!')
+    print(r'\tSelected subset indice (first 10): ', I[:10] if len(I) > 10 else I)
     return I 
 
 
@@ -112,7 +112,7 @@ def find_next(I,Q):
     svalues = cal_svalue(Q_candi,Q_selec)
     assert(svalues.shape[0] == len(I_candi))
     # I_candi_sorted = list(map(lambda i: I_candi[i], np.argsort(svalues)))
-    # print('\tSorted S-value indices (increasing)', I_candi_sorted)
+    # print(r'\tSorted S-value indices (increasing)', I_candi_sorted)
     i = I_candi[np.argmax(svalues)]
     return i
 
@@ -217,7 +217,7 @@ def main():
     m = 6
      
     I = get_quasi_optimal(m,A)
-    print(I)
+    print(rI)
 
 
 

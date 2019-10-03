@@ -99,7 +99,7 @@ class simParameters(object):
         self.figure_dir = kwargs.get('figure_dir'   , figure_dir    )
         self.data_dir_id= kwargs.get('data_dir_id'  , data_dir_id   )
 
-    def set_params(self, **kwargs):
+    def st_params(self, **kwargs):
         """
         Taking key word arguments to set parameters like time, post process etc.
         """
@@ -141,31 +141,31 @@ class simParameters(object):
             name, params, size = params
             self.error = ErrorType(name=name, params=params, size=size)
     def disp(self):
-        print('------------------------------------------------------------')
-        print('►►► SimParameter setting for model: {}'.format(self.model_name))
-        print('------------------------------------------------------------')
-        print(' ► Required parameters:')
-        print('   ♦ {:<25s} : {}'.format('Model Name:', self.model_name))
-        print('   ♦ {:<25s} : {} '.format('Target Exceedance prob', self.prob_fails))
-        print('   ♦ {:<25s} : {} '.format('Joint zeta distribution', self.dist_zeta_J))
-        # print('   ♦ {:<25s} : {} '.format('Joint x distribution', self.dist_x_J))
+        print(r'------------------------------------------------------------')
+        print(r'►►► SimParameter setting for model: {}'.format(self.model_name))
+        print(r'------------------------------------------------------------')
+        print(r' ► Required parameters:')
+        print(r'   ♦ {:<25s} : {}'.format('Model Name:', self.model_name))
+        print(r'   ♦ {:<25s} : {} '.format('Target Exceedance prob', self.prob_fails))
+        print(r'   ♦ {:<25s} : {} '.format('Joint zeta distribution', self.dist_zeta_J))
+        # print(r'   ♦ {:<25s} : {} '.format('Joint x distribution', self.dist_x_J))
 
-        print(' ► Working directory:')
-        print('   WORKING_DIR: {}'.format(os.getcwd()))
-        print('   +-- MODEL: {}'.format(self.figure_dir[:-7]))
-        print('   |   +-- {:<6s}: {}'.format('FIGURE',self.figure_dir))
-        print('   |   +-- {:<6s}: {}'.format('DATA',self.data_dir))
+        print(r' ► Working directory:')
+        print(r'   WORKING_DIR: {}'.format(os.getcwd()))
+        print(r'   +-- MODEL: {}'.format(self.figure_dir[:-7]))
+        print(r'   |   +-- {:<6s}: {}'.format('FIGURE',self.figure_dir))
+        print(r'   |   +-- {:<6s}: {}'.format('DATA',self.data_dir))
 
-        print(' ► Optional parameters:')
+        print(r' ► Optional parameters:')
         if self.time_params:
-            print('   ♦ {:<15s} : '.format('time parameters'))
-            print('     ∙ {:<8s} : {:.2f} ∙ {:<8s} : {:.2f}'.format('start', self.time_start, 'end', self.time_max ))
-            print('     ∙ {:<8s} : {:.2f} ∙ {:<8s} : {:.2f}'.format('ramp ', self.time_ramp , 'dt ', self.dt ))
+            print(r'   ♦ {:<15s} : '.format('time parameters'))
+            print(r'     ∙ {:<8s} : {:.2f} ∙ {:<8s} : {:.2f}'.format('start', self.time_start, 'end', self.time_max ))
+            print(r'     ∙ {:<8s} : {:.2f} ∙ {:<8s} : {:.2f}'.format('ramp ', self.time_ramp , 'dt ', self.dt ))
         if self.post_params:
-            print('   ♦ {:<15s} '.format('post analysis parameters'))
+            print(r'   ♦ {:<15s} '.format('post analysis parameters'))
             qoi2analysis = self.qoi2analysis if self.qoi2analysis is not None else 'All'
-            print('     ∙ {:<15s} : {} '.format('qoi2analysis', qoi2analysis))
+            print(r'     ∙ {:<15s} : {} '.format('qoi2analysis', qoi2analysis))
             stats_list = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
-            print('     ∙ {:<15s} : {} '.format('statistics'  , list(compress(stats_list, self.stats)) ))
+            print(r'     ∙ {:<15s} : {} '.format('statistics'  , list(compress(stats_list, self.stats)) ))
     
 

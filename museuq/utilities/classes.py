@@ -57,10 +57,10 @@ class ErrorType():
 
     def disp(self):
         if self.name.upper() == 'FREE':
-            print('   ♦ Short-term/error distribution parameters: noise free')
+            print(r'   ♦ Short-term/error distribution parameters: noise free')
         else:
-            print('   ♦ Short-term/error distribution parameters:')
-            print('     ∙ {:<15s} : {}'.format('dist_name', self.name))
+            print(r'   ♦ Short-term/error distribution parameters:')
+            print(r'     ∙ {:<15s} : {}'.format('dist_name', self.name))
             for i, ierror_params in enumerate(self.params):
                 ierror_params_shape = []
                 for iparam in ierror_params:
@@ -70,10 +70,10 @@ class ErrorType():
                         ierror_params_shape.append(np.array(iparam).shape)
 
                 if i == 0:
-                    print('     ∙ {:<15s} : {}'.format('dist_params',ierror_params_shape))
+                    print(r'     ∙ {:<15s} : {}'.format('dist_params',ierror_params_shape))
                 else:
-                    print('     ∙ {:<15s} : {}'.format('',ierror_params_shape))
-            print('     ∙ {:<15s} : {}'.format('dist_size', self.size))
+                    print(r'     ∙ {:<15s} : {}'.format('',ierror_params_shape))
+            print(r'     ∙ {:<15s} : {}'.format('dist_size', self.size))
 
 class Logger(object):
     def __init__(self):

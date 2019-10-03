@@ -32,7 +32,7 @@ def enablePrint():
 def nextpow2(x):
     return 2**(int(x)-1).bit_length()
 
-def num2print(n):
+def num2print(rn):
     if n<100:
         return '{:d}'.format(n)
     else:
@@ -97,10 +97,10 @@ def make_output_dir(MODEL_NAME):
         os.makedirs(MODEL_DIR)
         os.makedirs(DATA_DIR)
         os.makedirs(FIGURE_DIR)
-        # print('Data, Figure directories for model {} is created'.format(MODEL_NAME))
+        # print(r'Data, Figure directories for model {} is created'.format(MODEL_NAME))
     except FileExistsError:
         # one of the above directories already exists
-        # print('Data, Figure directories for model {} already exist'.format(MODEL_NAME))
+        # print(r'Data, Figure directories for model {} already exist'.format(MODEL_NAME))
         pass
     return MODEL_DIR_DATA_ID, DATA_DIR, FIGURE_DIR
 
@@ -125,8 +125,8 @@ def upload2gdrive(filename, data, parent_id):
     upload_success = False
     n_times2upload = 1 
 
-    # print('   ♦ {:<15s} : {}'.format('Uploading', filename[26:]))
-    print('   ♦ {:<15s} : {}'.format('Uploading', filename))
+    # print(r'   ♦ {:<15s} : {}'.format('Uploading', filename[26:]))
+    print(r'   ♦ {:<15s} : {}'.format('Uploading', filename))
     while (not upload_success) and n_times2upload <=5:
         command = ' '.join([gdrive, 'upload ', filename,' --parent ', parent_id])
         upload_message = os.popen(command).read().upper()
@@ -136,8 +136,8 @@ def upload2gdrive(filename, data, parent_id):
             rm_file_command = ' '.join(['rm ', filename])
             os.popen(rm_file_command)
         else:
-            # print("Progress {:2.1%}".format(x / 10), end="\r")
-            print('   ♦ {:<7s} : {:d}/ 5'.format('trial', n_times2upload), end='\r')
+            # print(r"Progress {:2.1%}".format(x / 10), end="\r")
+            print(r'   ♦ {:<7s} : {:d}/ 5'.format('trial', n_times2upload), end='\r')
         n_times2upload +=1
 
 def get_exceedance_data(x,prob=1e-3):

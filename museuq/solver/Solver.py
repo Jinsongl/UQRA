@@ -79,19 +79,19 @@ class Solver(object):
         self.output     = []
         self.output_stats=[]
 
-        print('------------------------------------------------------------')
-        print('►►► Initialize Solver Obejct...')
-        print('------------------------------------------------------------')
-        print(' ► Solver (system) properties:')
-        print('   ♦ {:<17s} : {:15s}'.format('Solver name', solver_name))
+        print(r'------------------------------------------------------------')
+        print(r'►►► Initialize Solver Obejct...')
+        print(r'------------------------------------------------------------')
+        print(r' ► Solver (system) properties:')
+        print(r'   ♦ {:<17s} : {:15s}'.format('Solver name', solver_name))
 
         if self.theta_m is None or self.theta_m[0] is None:
-            print('   ♦ Solver parameters: NA ' )
+            print(r'   ♦ Solver parameters: NA ' )
         else:
-            print('   ♦ Solver parameters: ndim={:d}, nsets={:d}'.format(self.theta_m.shape[1], self.theta_m.shape[0]))
-        print('   ♦ System excitation functions:')
-        print('     ∙ {:<15s} : {}'.format('function'   , self.source_func))
-        print('     ∙ {:<15s} : {}'.format('parameters' , self.theta_s))
+            print(r'   ♦ Solver parameters: ndim={:d}, nsets={:d}'.format(self.theta_m.shape[1], self.theta_m.shape[0]))
+        print(r'   ♦ System excitation functions:')
+        print(r'     ∙ {:<15s} : {}'.format('function'   , self.source_func))
+        print(r'     ∙ {:<15s} : {}'.format('parameters' , self.theta_s))
         ###------------- Error properties ----------------------------
         self.error.disp()
 
@@ -107,9 +107,9 @@ class Solver(object):
 
 
         self.output = [] # a list saving simulation results
-        print(' ► Running Simulation...')
+        print(r' ► Running Simulation...')
         for idoe, isamples_x in enumerate(doe2run):
-            print('   ♦ DoE set : {:d} / {:d}'.format(idoe, len(doe2run)), end='')
+            print(r'   ♦ DoE set : {:d} / {:d}'.format(idoe, len(doe2run)), end='')
             for isys_done, itheta_m in enumerate(self.theta_m): 
                 # ndim_solver = solvers_ndim[self.solver_name.upper()]
                 doe_method = kwargs['doe_method']
@@ -120,7 +120,7 @@ class Solver(object):
                 ### Run simulations
                 y = self._solver_wrapper(input_vars, theta_m = itheta_m, *args, **kwargs)
                 self.output.append(y)
-                print('    -> Solver output : {}'.format(y.shape))
+                print(r'    -> Solver output : {}'.format(y.shape))
         return self.output
 
     def get_stats(self, qoi2analysis='all', stats2cal=[1,1,1,1,1,1,0]):
@@ -167,11 +167,11 @@ class Solver(object):
         """
 
         # solver_name, sterm_dist = model_def #if len(model_def) == 2 else model_def[0], None
-        # print(solver_name)
+        # print(rsolver_name)
         try:
             solver = solvers_collections[self.solver_name.upper()]
         except KeyError:
-            print(f"{self.solver_name.upper()} is not defined" )
+            print(rf"{self.solver_name.upper()} is not defined" )
         assert (callable(solver)), '{:s} not callable'.format(solver.__name__)
         
         if self.solver_name.upper() == 'ISHIGAMI':
@@ -217,8 +217,8 @@ class Solver(object):
             else:
                 x0, v0, zeta, omega0, mu = (0,0,0.02,1,1)
 
-            # print(solver)
-            # print(source_func, source_kwargs, source_args)
+            # print(rsolver)
+            # print(rsource_func, source_kwargs, source_args)
             # y = duffing_oscillator(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs)
             y,dt,pstep= solver(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs,normalize=normalize)
 

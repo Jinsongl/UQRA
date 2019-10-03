@@ -51,17 +51,17 @@ class ExperimentDesign(object):
         self.samples_env = None # DoE output in space2 after calling mappingto method
         self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
         if self.method == 'MC':
-            self.filename_tags = [ num2print(iorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
+            self.filename_tags = [ num2print(riorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
         else:
-            self.filename_tags = [ num2print(iorder) for iorder in self.orders] 
+            self.filename_tags = [ num2print(riorder) for iorder in self.orders] 
 
-        print('------------------------------------------------------------')
-        print('►►► Initialize Experiment Design:')
-        print('------------------------------------------------------------')
-        print(' ► DoE parameters: ')
-        print('   ♦ {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
-        print('   ♦ {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.lower()]))
-        print('   ♦ {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders)) ))
+        print(r'------------------------------------------------------------')
+        print(r'►►► Initialize Experiment Design:')
+        print(r'------------------------------------------------------------')
+        print(r' ► DoE parameters: ')
+        print(r'   ♦ {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
+        print(r'   ♦ {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.lower()]))
+        print(r'   ♦ {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders)) ))
 
     def get_samples(self, space=None):
         """
@@ -71,7 +71,7 @@ class ExperimentDesign(object):
         Return:
             Experiment samples in space (idoe_order,[samples for each orders])
         """
-        print(' ► Running DoEs: ')
+        print(r' ► Running DoEs: ')
         self.samples = []
         ## one can update new space here
         self.space = space if space else self.space
@@ -89,11 +89,11 @@ class ExperimentDesign(object):
                 #    - MC: res.shape = (ndim, nsamples)
                 isamples = samplegen(self.method, idoe_order, self.space, rule=self.rule)
                 self.samples.append(isamples)
-                print('\r   ♦ {:<15s}: {}'.format( 'DoE completed', list(map(num2print, self.orders[:i+1]))), end='')
+                print(r'\r   ♦ {:<15s}: {}'.format( 'DoE completed', list(map(num2print, self.orders[:i+1]))), end='')
         else:
             raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
 
-        print('\n',end='')
+        print(r'\n',end='')
         # self.samples_env = self.samples
         return self.samples
 
@@ -128,7 +128,7 @@ class ExperimentDesign(object):
                 zeta_cor, zeta_weights = isamples, None
                 x_cor = self._space_transform(self.space, self.space_env, zeta_cor)
                 isample_x = x_cor
-            # print('isample_x shape: {}, coord shape: {}, weight shape {}'.format(isample_x.shape, isample_x[0].shape, isample_x[1].shape))
+            # print(r'isample_x shape: {}, coord shape: {}, weight shape {}'.format(isample_x.shape, isample_x[0].shape, isample_x[1].shape))
 
             self.samples_env.append(isample_x)
 
@@ -159,9 +159,9 @@ class ExperimentDesign(object):
         self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
         self.ndoe        = len(self.orders)   # number of doe sets
         if self.method == 'MC':
-            self.filename_tags = [ num2print(iorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
+            self.filename_tags = [ num2print(riorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
         else:
-            self.filename_tags = [ num2print(iorder) for iorder in self.orders] 
+            self.filename_tags = [ num2print(riorder) for iorder in self.orders] 
 
     def save_data(self, data_dir):
         ### save input variables to file
@@ -173,21 +173,21 @@ class ExperimentDesign(object):
         dataIO.save_data(data, self.filename, data_dir, self.filename_tags)
 
     def disp(self, decimals=4, nsamples2print=0):
-        print(' ► DoE Summary:')
-        print('   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
-        print('   ♦ {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
+        print(r' ► DoE Summary:')
+        print(r'   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
+        print(r'   ♦ {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
         for i, isamples in enumerate(self.samples):
-            # print('   ♦ Sample set No. {:d}:'.format(i))
+            # print(r'   ♦ Sample set No. {:d}:'.format(i))
             if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
-                print('     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
+                print(r'     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
             else:
                 pass
-                # print('     ∙ Coordinate: {}'.format(isamples.shape))
+                # print(r'     ∙ Coordinate: {}'.format(isamples.shape))
             if nsamples2print: 
                 for j, jcor in enumerate(isamples[0].T):
                     if j > nsamples2print:
                         break
-                    print('       - {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
+                    print(r'       - {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
 
     def _space_transform(self, dist1, dist2, var1):
         """

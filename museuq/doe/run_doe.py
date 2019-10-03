@@ -70,12 +70,12 @@ def run_doe(sim_parameters):
     ## ------------------------------------------------------------------- ###
 
     sim_output  = run_sim(sim_parameters)
-    # print(sim_output)
+    # print(rsim_output)
     # fname_sim_out = 
 
     for idoe in np.arange(sim_parameters.ndoe):
         fname_sim_out_idoe = '_'.join([sim_parameters.doe_filenames[idoe], sim_parameters.error.name,'train'])
-        print('   ♦ {:<15s} : {:d} / {:d}'.format('DoE set', idoe, sim_parameters.ndoe))
+        print(r'   ♦ {:<15s} : {:d} / {:d}'.format('DoE set', idoe, sim_parameters.ndoe))
         x   = np.squeeze(np.array(sim_parameters.sys_input_x[idoe]))
         y   = np.squeeze(np.array(sim_output[idoe]))
         zeta= np.squeeze(np.array(sim_parameters.sys_input_zeta[idoe]))
@@ -86,13 +86,13 @@ def run_doe(sim_parameters):
             #### Upload data to google drive
             upload2gdrive(os.path.join(sim_parameters.data_dir,fname_sim_out_idoe), idoe_res, sim_parameters.data_dir_id)   
             ### Calculate Exceedance (ONLY for MCS sampling)         
-            print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
+            print(r' ► Calculating ECDF of MCS data and retrieve data to plot...')
             y_mcs_ecdf = get_exceedance_data(y, prob=sim_parameters.prob_fails)
             fname_sim_out_idoe_ecdf = fname_sim_out_idoe+ '_pf' + '{:.0E}'.format(sim_parameters.prob_fails)[-1] + '_ecdf'
             np.save(os.path.join(sim_parameters.data_dir, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
 
         else:
-            # print(os.path.join(sim_parameters.data_dir, fname_sim_out_idoe))         
+            # print(ros.path.join(sim_parameters.data_dir, fname_sim_out_idoe))         
             np.save(os.path.join(sim_parameters.data_dir, fname_sim_out_idoe), idoe_res)
 
     # ## ------------------------------------------------------------------- ###
@@ -105,7 +105,7 @@ def run_doe(sim_parameters):
 
     # for idoe in np.arange(sim_parameters.ndoe):
 
-        # print('   ♦ {:<15s} : {:d} / {:d}'.format('DoE set', idoe, sim_parameters.ndoe))
+        # print(r'   ♦ {:<15s} : {:d} / {:d}'.format('DoE set', idoe, sim_parameters.ndoe))
         # x   = np.squeeze(np.array(sim_parameters.sys_input_vars[idoe]))
         # y   = np.squeeze(np.array(sim_output[0][idoe]))
         # zeta= np.squeeze(np.array(sim_parameters.sys_input_zeta[idoe]))
@@ -118,7 +118,7 @@ def run_doe(sim_parameters):
             # #### Upload data to google drive
             # upload2gdrive(os.path.join(sim_parameters.data_dir,fname_sim_out_idoe), idoe_res, DATA_DIR_ID)
             # #### Calculate Exceedance (ONLY for MCS sampling)
-            # print(' ► Calculating ECDF of MCS data and retrieve data to plot...')
+            # print(r' ► Calculating ECDF of MCS data and retrieve data to plot...')
             # y_mcs_ecdf = get_exceedance_data(y,prob_failure=pf)
             # fname_sim_out_idoe_ecdf = fname_sim_out_idoe+ '_ecdf'
             # np.save(os.path.join(sim_parameters.data_dir, fname_sim_out_idoe_ecdf+'.npy'), y_mcs_ecdf)
