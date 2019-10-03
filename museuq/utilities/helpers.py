@@ -191,7 +191,7 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
     elif data.ndim == 2:
         res = [] 
         if stats[0] == 1:
-            res.append(np.mean(data, axis=0))
+            res.append(np.mean(data, axis=0)) # column-wise
         if stats[1] == 1:
             res.append(np.std(data, axis=0))
         if stats[2] == 1:
@@ -210,7 +210,7 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
             # res = append(res, _moving_std(data), axis=1)
 
     else:
-        raise ValueError('Only 1D or 2D ndarray is accepted, given data dimension: {}'.data.ndim)
+        raise ValueError('Only 1D or 2D ndarray is accepted, given data shape: {}'.format(data.shape))
     
     return np.array(res)
 

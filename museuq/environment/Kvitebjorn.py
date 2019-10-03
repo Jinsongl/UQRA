@@ -68,8 +68,6 @@ def EC(p=1e-4, n=100):
     EC_normal   = make_circle(beta,n=n)
     EC_norm_cdf = stats.norm.cdf(EC_normal)
     EC_samples  = samples(EC_norm_cdf)
-    print(EC_normal.shape)
-    print(EC_samples.shape)
     return np.vstack((EC_normal, EC_samples))
 
 # Sequence of conditional distributions based on Rosenblatt transformation 
