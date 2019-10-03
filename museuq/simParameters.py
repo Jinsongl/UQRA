@@ -99,7 +99,7 @@ class simParameters(object):
         self.figure_dir = kwargs.get('figure_dir'   , figure_dir    )
         self.data_dir_id= kwargs.get('data_dir_id'  , data_dir_id   )
 
-    def st_params(self, **kwargs):
+    def set_params(self, **kwargs):
         """
         Taking key word arguments to set parameters like time, post process etc.
         """

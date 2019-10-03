@@ -14,7 +14,7 @@ from scipy.stats.mstats import mquantiles
 from numpy.linalg import norm
 from scipy.stats import moment
 ## import regression metrics from scikit-learn
-from sklearn.metrics import explained_variance_score, max_error, mean_absolute_error, mean_squared_error, mean_squared_log_error, median_absolute_error, r2_score
+from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, mean_squared_log_error, median_absolute_error, r2_score
 
 # ord	norm for matrices	        norm for vectors
 # None	Frobenius norm	                2-norm
