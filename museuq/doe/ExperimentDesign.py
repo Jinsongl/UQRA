@@ -12,6 +12,7 @@
 import sys, os
 import chaospy as cp, numpy as np
 from datetime import datetime
+from tqdm import tqdm
 from ..utilities.classes import ErrorType, Logger
 from ..utilities.helpers import num2print, make_output_dir, get_gdrive_folder_id 
 from ..utilities import dataIO 
@@ -51,9 +52,9 @@ class ExperimentDesign(object):
         self.samples_env = None # DoE output in space2 after calling mappingto method
         self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
         if self.method == 'MC':
-            self.filename_tags = [ num2print(riorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
+            self.filename_tags = [ num2print(iorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
         else:
-            self.filename_tags = [ num2print(riorder) for iorder in self.orders] 
+            self.filename_tags = [ num2print(iorder) for iorder in self.orders] 
 
         print(r'------------------------------------------------------------')
         print(r'►►► Initialize Experiment Design:')
@@ -80,7 +81,7 @@ class ExperimentDesign(object):
             # for isample_x in fix_point:
                 # self.samples.append(self._space_transform(self.dist_x, self.dist_zeta, isample_x))
         if const.DOE_METHOD_FULL_NAMES[self.method.lower()] in ['QUADRATURE', 'MONTE CARLO']:
-            for i, idoe_order in enumerate(self.orders): 
+            for i, idoe_order in enumerate(tqdm(self.orders, ascii=True, desc='   ♦' )): 
                 # DoE for different selected orders 
                 # doe samples, array of shape:
                 #    - Quadrature: res.shape = (2,) 
@@ -89,11 +90,11 @@ class ExperimentDesign(object):
                 #    - MC: res.shape = (ndim, nsamples)
                 isamples = samplegen(self.method, idoe_order, self.space, rule=self.rule)
                 self.samples.append(isamples)
-                print(r'\r   ♦ {:<15s}: {}'.format( 'DoE completed', list(map(num2print, self.orders[:i+1]))), end='')
+                # print('\r   ♦ {:<15s}: {}'.format( 'DoE completed', list(map(num2print, self.orders[:i+1]))), end='')
         else:
             raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
 
-        print(r'\n',end='')
+        # print('\n',end='')
         # self.samples_env = self.samples
         return self.samples
 
@@ -165,6 +166,7 @@ class ExperimentDesign(object):
 
     def save_data(self, data_dir):
         ### save input variables to file
+        print(r' ► Saving DoE to: {}'.format(data_dir))
         if self.samples_env:
             data = [self.samples, self.samples_env]
         else:
@@ -175,10 +177,11 @@ class ExperimentDesign(object):
     def disp(self, decimals=4, nsamples2print=0):
         print(r' ► DoE Summary:')
         print(r'   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
-        print(r'   ♦ {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
         for i, isamples in enumerate(self.samples):
             # print(r'   ♦ Sample set No. {:d}:'.format(i))
             if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
+                if i == 0:
+                    print(r'   ♦ {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
                 print(r'     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
             else:
                 pass
