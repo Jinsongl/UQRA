@@ -18,7 +18,7 @@ from ..utilities.classes import ErrorType
 from ..utilities import helpers as museuq_helpers
 from ..utilities import constants as const
 
-ALL_SOLVERS = {
+solvers_collections = {
     'ISHIGAMI'  : ishigami,
     'BENCH1'    : bench1,
     'BENCH2'    : bench2,
@@ -28,6 +28,17 @@ ALL_SOLVERS = {
     'SDOF'      : linear_oscillator,
     'LINEAR_OSCILLATOR' : linear_oscillator,
     }
+
+# solvers_ndim  = {
+    # 'ISHIGAMI'  : int(3),
+    # 'BENCH1'    : int(1),
+    # 'BENCH2'    : int(1),
+    # 'BENCH3'    : int(1),
+    # 'BENCH4'    : int(1),
+    # 'DUFFING'   : int(1),
+    # 'SDOF'      : int(2),
+    # 'LINEAR_OSCILLATOR' : int(2),
+        # }
 
 class Solver(object):
     """
@@ -94,11 +105,13 @@ class Solver(object):
         """
         doe2run = [self.input_x] if isinstance(self.input_x, (np.ndarray, np.generic)) else self.input_x
 
+
         self.output = [] # a list saving simulation results
         print(' ► Running Simulation...')
         for idoe, isamples_x in enumerate(doe2run):
             print('   ♦ DoE set : {:d} / {:d}'.format(idoe, len(doe2run)), end='')
             for isys_done, itheta_m in enumerate(self.theta_m): 
+                # ndim_solver = solvers_ndim[self.solver_name.upper()]
                 doe_method = kwargs['doe_method']
                 if doe_method.lower() == 'QUADRATURE':
                     input_vars, input_vars_weights = isamples_x[:-1,:], isamples_x[-1,:]
@@ -125,7 +138,7 @@ class Solver(object):
             idoe_output_stats = []
             for data in idoe_output:
                 data = data if qoi2analysis == 'all' else data[qoi2analysis]
-                stat = museuq_helpers.get_stats(data, stats=stats2cal)
+                stat = museuq_helpers.get_stats(np.squeeze(data), stats=stats2cal)
                 idoe_output_stats.append(stat)
             self.output_stats.append(np.array(idoe_output_stats))
 
@@ -156,7 +169,7 @@ class Solver(object):
         # solver_name, sterm_dist = model_def #if len(model_def) == 2 else model_def[0], None
         # print(solver_name)
         try:
-            solver = ALL_SOLVERS[self.solver_name.upper()]
+            solver = solvers_collections[self.solver_name.upper()]
         except KeyError:
             print(f"{self.solver_name.upper()} is not defined" )
         assert (callable(solver)), '{:s} not callable'.format(solver.__name__)
@@ -182,7 +195,8 @@ class Solver(object):
         elif self.solver_name.upper() == 'LINEAR_OSCILLATOR':
             tmax,dt =1000, 0.1
             t = np.arange(0,tmax, dt)
-            y = np.array([linear_oscillator(t,ix) for ix in tqdm(x.T)])
+            pbar_x = tqdm(x.T, ascii=True, desc="   > ")
+            y = np.array([linear_oscillator(t,ix) for ix in pbar_x])
 
 
         elif self.solver_name.upper() ==  'DUFFING_OSCILLATOR':
