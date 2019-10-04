@@ -80,18 +80,18 @@ class Solver(object):
         self.output_stats=[]
 
         print(u'------------------------------------------------------------')
-        print(u'►►► Initialize Solver Obejct...')
+        print(u'>>> Initialize Solver Obejct...')
         print(u'------------------------------------------------------------')
-        print(u' ► Solver (system) properties:')
-        print(u'   ♦ {:<17s} : {:15s}'.format('Solver name', solver_name))
+        print(u' > Solver (system) properties:')
+        print(u'   * {:<17s} : {:15s}'.format('Solver name', solver_name))
 
         if self.theta_m is None or self.theta_m[0] is None:
-            print(u'   ♦ Solver parameters: NA ' )
+            print(u'   * Solver parameters: NA ' )
         else:
-            print(u'   ♦ Solver parameters: ndim={:d}, nsets={:d}'.format(self.theta_m.shape[1], self.theta_m.shape[0]))
-        print(u'   ♦ System excitation functions:')
-        print(u'     ∙ {:<15s} : {}'.format('function'   , self.source_func))
-        print(u'     ∙ {:<15s} : {}'.format('parameters' , self.theta_s))
+            print(u'   * Solver parameters: ndim={:d}, nsets={:d}'.format(self.theta_m.shape[1], self.theta_m.shape[0]))
+        print(u'   * System excitation functions:')
+        print(u'     - {:<15s} : {}'.format('function'   , self.source_func))
+        print(u'     - {:<15s} : {}'.format('parameters' , self.theta_s))
         ###------------- Error properties ----------------------------
         self.error.disp()
 
@@ -107,9 +107,9 @@ class Solver(object):
 
 
         self.output = [] # a list saving simulation results
-        print(u' ► Running Simulation...')
+        print(u' > Running Simulation...')
         for idoe, isamples_x in enumerate(doe2run):
-            print(u'   ♦ DoE set : {:d} / {:d}'.format(idoe, len(doe2run)), end='')
+            print(u'   * DoE set : {:d} / {:d}'.format(idoe, len(doe2run)))
             for isys_done, itheta_m in enumerate(self.theta_m): 
                 # ndim_solver = solvers_ndim[self.solver_name.upper()]
                 doe_method = kwargs['doe_method']

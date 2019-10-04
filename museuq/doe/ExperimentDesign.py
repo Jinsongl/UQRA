@@ -12,7 +12,7 @@
 import sys, os
 import chaospy as cp, numpy as np
 from datetime import datetime
-from tqdm import tqdm
+from tqdm import tqdm,tqdm_notebook
 from ..utilities.classes import ErrorType, Logger
 from ..utilities.helpers import num2print, make_output_dir, get_gdrive_folder_id 
 from ..utilities import dataIO 
@@ -72,7 +72,7 @@ class ExperimentDesign(object):
         Return:
             Experiment samples in space (idoe_order,[samples for each orders])
         """
-        print(u' > Running DoEs: ')
+        print(' > Running DoEs: ')
         self.samples = []
         ## one can update new space here
         self.space = space if space else self.space
@@ -81,7 +81,7 @@ class ExperimentDesign(object):
             # for isample_x in fix_point:
                 # self.samples.append(self._space_transform(self.dist_x, self.dist_zeta, isample_x))
         if const.DOE_METHOD_FULL_NAMES[self.method.lower()] in ['QUADRATURE', 'MONTE CARLO']:
-            for i, idoe_order in enumerate(tqdm(self.orders, ascii=True, desc='   *' )): 
+            for i, idoe_order in enumerate(tqdm(self.orders, ascii=True, desc='   *')): 
                 # DoE for different selected orders 
                 # doe samples, array of shape:
                 #    - Quadrature: res.shape = (2,) 
@@ -90,6 +90,7 @@ class ExperimentDesign(object):
                 #    - MC: res.shape = (ndim, nsamples)
                 isamples = samplegen(self.method, idoe_order, self.space, rule=self.rule)
                 self.samples.append(isamples)
+            tqdm._instances.clear()
                 # print('\r   * {:<15s}: {}'.format( 'DoE completed', list(map(num2print, self.orders[:i+1]))), end='')
         else:
             raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.lower()]))

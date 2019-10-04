@@ -79,7 +79,7 @@ def make_output_dir(MODEL_NAME):
     # DATA_DIR  = os.path.join(MODEL_DIR,r'Data')
     current_os  = sys.platform
     if current_os.upper()[:3] == 'WIN':
-        DATA_DIR= "G:\My Drive\MUSE_UQ_DATA"
+        DATA_DIR= os.path.join('G:','My Drive','MUSE_UQ_DATA')
     elif current_os.upper() == 'DARWIN':
         DATA_DIR= '/Users/jinsongliu/External/MUSE_UQ_DATA'
     elif current_os.upper() == 'LINUX':
@@ -89,8 +89,8 @@ def make_output_dir(MODEL_NAME):
     
     DATA_DIR  = os.path.join(DATA_DIR,MODEL_NAME,r'Data')
     # MODEL_DIR_DATA_ID = GDRIVE_DIR_ID[MODEL_NAME.upper()] 
-    MODEL_DIR_DATA_ID = get_gdrive_folder_id(MODEL_NAME)
 
+    MODEL_DIR_DATA_ID = get_gdrive_folder_id(MODEL_NAME)
 
     # Create directory for model  
     try:
