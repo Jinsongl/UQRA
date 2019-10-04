@@ -159,7 +159,7 @@ class SurrogateModel(object):
         else:
             raise NotImplementedError
 
-    def predict(self,X, return_std=False, return_cov=False):
+    def predict(self,X, y_true=None, return_std=False, return_cov=False, **kwargs):
         """
         Predict using surrogate models 
 
@@ -173,22 +173,31 @@ class SurrogateModel(object):
         """
         if not self.metamodels:
             raise ValueError('No surrogate models exist')
+        dist_zeta = self.kwparams['dist_zeta']
+        if len(dist_zeta) != X.shape[0]:
+            raise ValueError('Model expecting {} random variables but {} was given'.format(len(dist_zeta), X.shape[0]))
+        
 
-        f_pred_all = []
+        surrogates_pred = []
         print(r' ► Evaluating with surrogate models ... ')
         print(r'   ♦ {:<17s} : {}'.format('Query points ', X.shape))
         for i, imetamodel in enumerate(self.metamodels):
-            print(r'   ♦ {:<17s} : {:d}/{:d} '.format('Surrogate model', i, len(self.metamodels)))
             if self.name.upper() == 'PCE':
                 ## See explainations about Poly above
-                f_pred = imetamodel(*X)
+                pred = imetamodel(*X)
             elif self.name.upper() == 'GPR':
                 f_mean, f_std = imetamodel.predict(X.T, return_std=return_std, return_cov=return_cov)
-                f_pred = np.hstack((f_mean, f_std.reshape(f_mean.shape))).T
-            f_pred_all.append(f_pred)
-        return f_pred_all
+                pred = np.hstack((f_mean, f_std.reshape(f_mean.shape))).T
+            print(r'   ♦ {:<17s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model', i, len(self.metamodels), pred.shape))
+            surrogates_pred.append(pred)
 
-    def score(self,X,y_true,metrics=['mean_squared_error'],prob=[0.9,0.99,0.999], moment=1):
+        if y_true is not None:
+            scores = self.score(surrogates_pred, y_true, **kwargs)
+            return surrogates_pred, scores
+        else:
+            return surrogates_pred
+
+    def score(self,y_pred,y_true,**kwargs):
         """
         Calculate error metrics_value used to evaluate the accuracy of the approximation
         Reference: "On the accuracy of the polynomial chaos approximation R.V. Field Jr., M. Grigoriu"
@@ -208,7 +217,6 @@ class SurrogateModel(object):
 
         The coefficient R^2 is defined as (1 - u/v), where u is the residual sum of squares ((y_true - y_pred) ** 2).sum() and v is the total sum of squares ((y_true - y_true.mean()) ** 2).sum(). The best possible score is 1.0 and it can be negative (because the model can be arbitrarily worse). A constant model that always predicts the expected value of y, disregarding the input features, would get a R^2 score of 0.0.
 
-
         Returns:	
         score : float
         R^2 of self.predict(X) wrt. y.
@@ -219,15 +227,20 @@ class SurrogateModel(object):
         4 | ecdf 
         5 | kernel density estimator pdf
         """
-        self.metrics    = []
-        y_pred              = self.predict(X,return_std=False,return_cov=False)
+        self.metrics        = []
+        # y_pred              = self.predict(X,return_std=False,return_cov=False)
         self.metrics_value  = [[] for _ in range(len(y_pred))]   
+
+        metrics = kwargs.get('metrics'  , ['mean_squared_error'])
+        prob    = kwargs.get('prob'     , [0.9,0.99,0.999]) 
+        moment  = kwargs.get('moment'   , 1)
 
         print(r' ► Calculating scores...')
 
         for imetric_name in metrics:
             imetric2call = getattr(metrics_collections, imetric_name.lower())
             for i, iy_pred in enumerate(y_pred):
+                assert iy_pred.shape == y_true.shape, "Predict values and true values must have same shape, but get {} and {} instead".format(iy_pred.shape, y_true.shape)
                 if imetric_name.lower() == 'upper_tails':
                     imetric_value = imetric2call(y_true, iy_pred, prob=prob)
                     print(r'   ♦ {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetric_name, 'True', 'Prediction', '%Error'))
@@ -481,8 +494,9 @@ class SurrogateModel(object):
         # len(f_hat): n_output
 
         cal_coeffs = self.kwparams.get('cal_coeffs')
+        print(r'   ♦ {:<17s} : '.format('PCE model order'), end='')
         for i, iorthpoly in enumerate(self.basis):
-            print(r'   ♦ {:<17s} : {:d}'.format('PCE model order', self.basis_orders[i]))
+            print(r' {:d}'.format(self.basis_orders[i]), end='')
             if cal_coeffs.upper() in ['GP','GALERKIN']:
                 if w is None:
                     raise ValueError("Quadrature weights are needed for Galerkin method")
@@ -500,6 +514,7 @@ class SurrogateModel(object):
                 self.poly_coeffs.append(f_hat.coeffs())
             else:
                 raise ValueError('Method to calculate PCE coefficients {:s} is not defined'.format(cal_coeffs))
+        print('\n')
 
     def __build_apce_model(self, x, y):
         print(r'\tBuilding aPCE surrogate model')

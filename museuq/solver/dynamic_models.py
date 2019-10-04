@@ -60,7 +60,7 @@ def linear_oscillator(t, x, args=(100, 0.3, 2.25), kwargs={'spec_name': 'JONSWAP
     Solving linear oscillator in frequency domain
     m x'' + c x' + k x = f => 
     x'' + 2*zeta*w_n x' + w_n**2 x = 1/m f, where, w_n = sqrt(k/m), zeta = c/(2*sqrt(m*k))
-    default value: omega_n = 0.15 Hz, zeta = 0.1
+    default value: omega_n = 0.15 Hz, zeta = 0.01
 
     f: frequency in Hz
     t: array, A sequence of time points for which to solve for y. 
