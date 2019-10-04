@@ -72,10 +72,12 @@ def save_data(data, filename, dir_name=None, tags=None):
             data_= np.concatenate(il1,il2)
             save data_
     """
+    ## if data is ndarray type, direct save data with given filename, no tag needed
     if isinstance(data, (np.ndarray, np.generic)):
         np.save(os.path.join(dir_name, filename), data)
+    ## if data is list of ndarray type, save each ndarray in list with given filename differentaed with tag 
     elif isinstance(data, list) and isinstance(data[0], (np.ndarray, np.generic)):
-        assert len(data) == len(tags)
+        assert len(data) == len(tags), "Length of data set to save and length of tags available must be same, but len(data)={}, len(tags)={}".format(len(data), len(tags))
         for idata, i in zip(data, tags):
             np.save(os.path.join(dir_name, filename + '{}'.format(i) ), idata)
     elif isinstance(data, list) and isinstance(data[0], list):
