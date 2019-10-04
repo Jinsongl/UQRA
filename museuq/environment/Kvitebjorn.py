@@ -64,7 +64,7 @@ def dist_Tp(Hs):
 
 def EC(p=1e-4, n=100):
     beta        = stats.norm.ppf(1-p)
-    print(r'{:<20s}:{:.4f}'.format('Reliability Index', beta))
+    print(u'{:<20s}:{:.4f}'.format('Reliability Index', beta))
     EC_normal   = make_circle(beta,n=n)
     EC_norm_cdf = stats.norm.cdf(EC_normal)
     EC_samples  = samples(EC_norm_cdf)

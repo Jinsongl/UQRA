@@ -49,42 +49,42 @@ def run_solver(sim_parameters):
 
     """
     run_sim_res = [] # a list saving simulation results
-    print(r'------------------------------------------------------------')
-    print(r'►►► Run Real Model')
-    print(r'------------------------------------------------------------')
+    print(u'------------------------------------------------------------')
+    print(u'►►► Run Real Model')
+    print(u'------------------------------------------------------------')
     ###-------------Systerm input params ----------------------------
     ### sys_def_params is of shape (m,n),
     ###     m: number of set, 
     ###     n: number of system parameters per set
-    print(r' ► Solver (system) properties:')
-    print(r'   ♦ {:<17s} : {:15s}'.format('Solver name', sim_parameters.model_name))
+    print(u' ► Solver (system) properties:')
+    print(u'   ♦ {:<17s} : {:15s}'.format('Solver name', sim_parameters.model_name))
 
     if sim_parameters.sys_def_params is None or sim_parameters.sys_def_params[0] is None:
-        print(r'   ♦ System definition parameters: NA ' )
+        print(u'   ♦ System definition parameters: NA ' )
     else:
-        print(r'   ♦ System definition parameters: ndim={:d}, nsets={:d}'\
+        print(u'   ♦ System definition parameters: ndim={:d}, nsets={:d}'\
                 .format(sim_parameters.sys_def_params.shape[1], sim_parameters.sys_def_params.shape[0]))
                 # .format(sim_parameters.sys_def_params.shape[0], len(sim_parameters.sys_def_params)))
-    print(r'   ♦ System input parameters:')
-    print(r'     ∙ {:<15s} : {}'.format('function',sim_parameters.sys_excit_params[0]))
-    print(r'     ∙ {:<15s} : {}'.format('kwargs', sim_parameters.sys_excit_params[1]))
+    print(u'   ♦ System input parameters:')
+    print(u'     ∙ {:<15s} : {}'.format('function',sim_parameters.sys_excit_params[0]))
+    print(u'     ∙ {:<15s} : {}'.format('kwargs', sim_parameters.sys_excit_params[1]))
 
     ###------------- Time domain step ----------------------------
     if sim_parameters.time_max:
-        print(r'     ∙ {:<15s} : {:s}, Tmax={:.1e}, dt={:.2f}'\
+        print(u'     ∙ {:<15s} : {:s}, Tmax={:.1e}, dt={:.2f}'\
             .format('time steps', sim_parameters.time_max, sim_parameters.dt))
     else:
-        print(r'     ∙ {:<15s} : NA'.format('time steps'))
-    # print(r'     ∙ {:<15s} : ndoe={:d}, ndim={:d}, nsets={}'\
+        print(u'     ∙ {:<15s} : NA'.format('time steps'))
+    # print(u'     ∙ {:<15s} : ndoe={:d}, ndim={:d}, nsets={}'\
             # .format('input variables', sim_parameters.ndoe, sim_parameters.ndim_sys_inputs, sim_parameters.doe_order))
 
     ###------------- Error properties ----------------------------
     sim_parameters.error.disp()
 
-    print(r' ► Running Simulation...')
-    print(r'   ♦ Job list: [{:^20} {:^20}]'.format('# Sys params sets', '# DoE sets'))
-    print(r'   ♦ Target  : [{:^20d} {:^20d}]'.format(len(sim_parameters.sys_def_params), sim_parameters.ndoe))
-    print(r'   ' + '·'*55)
+    print(u' ► Running Simulation...')
+    print(u'   ♦ Job list: [{:^20} {:^20}]'.format('# Sys params sets', '# DoE sets'))
+    print(u'   ♦ Target  : [{:^20d} {:^20d}]'.format(len(sim_parameters.sys_def_params), sim_parameters.ndoe))
+    print(u'   ' + '·'*55)
 
 
     for isys_done, isys_def_params in enumerate(sim_parameters.sys_def_params): 
@@ -100,7 +100,7 @@ def run_solver(sim_parameters):
                     sys_excit_params= sim_parameters.sys_excit_params,\
                     sys_def_params  = isys_def_params)
 
-            print(r'   ♦ Achieved: [{:^20d} {:^20d}]'.format(isys_done+1,idoe+1))
+            print(u'   ♦ Achieved: [{:^20d} {:^20d}]'.format(isys_done+1,idoe+1))
             run_sim_1doe_res.append(y)
         run_sim_res.append(run_sim_1doe_res)
     ## 
@@ -108,7 +108,7 @@ def run_solver(sim_parameters):
         run_sim_res = run_sim_res[0]
     if len(run_sim_res) ==1:
         run_sim_res = run_sim_res[0]
-    print(r' ► Simulation Done, Output shape: {}'.format(np.array(run_sim_res).shape) )
+    print(u' ► Simulation Done, Output shape: {}'.format(np.array(run_sim_res).shape) )
     return run_sim_res
 
 

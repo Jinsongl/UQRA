@@ -56,13 +56,13 @@ class ExperimentDesign(object):
         else:
             self.filename_tags = [ num2print(iorder) for iorder in self.orders] 
 
-        print(r'------------------------------------------------------------')
-        print(r'►►► Initialize Experiment Design:')
-        print(r'------------------------------------------------------------')
-        print(r' ► DoE parameters: ')
-        print(r'   ♦ {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
-        print(r'   ♦ {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.lower()]))
-        print(r'   ♦ {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders)) ))
+        print(u'------------------------------------------------------------')
+        print(u'►►► Initialize Experiment Design:')
+        print(u'------------------------------------------------------------')
+        print(u' ► DoE parameters: ')
+        print(u'   ♦ {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
+        print(u'   ♦ {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.lower()]))
+        print(u'   ♦ {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders)) ))
 
     def get_samples(self, space=None):
         """
@@ -72,7 +72,7 @@ class ExperimentDesign(object):
         Return:
             Experiment samples in space (idoe_order,[samples for each orders])
         """
-        print(r' ► Running DoEs: ')
+        print(u' ► Running DoEs: ')
         self.samples = []
         ## one can update new space here
         self.space = space if space else self.space
@@ -129,7 +129,7 @@ class ExperimentDesign(object):
                 zeta_cor, zeta_weights = isamples, None
                 x_cor = self._space_transform(self.space, self.space_env, zeta_cor)
                 isample_x = x_cor
-            # print(r'isample_x shape: {}, coord shape: {}, weight shape {}'.format(isample_x.shape, isample_x[0].shape, isample_x[1].shape))
+            # print(u'isample_x shape: {}, coord shape: {}, weight shape {}'.format(isample_x.shape, isample_x[0].shape, isample_x[1].shape))
 
             self.samples_env.append(isample_x)
 
@@ -160,13 +160,13 @@ class ExperimentDesign(object):
         self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
         self.ndoe        = len(self.orders)   # number of doe sets
         if self.method == 'MC':
-            self.filename_tags = [ num2print(riorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
+            self.filename_tags = [ num2print(uiorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
         else:
-            self.filename_tags = [ num2print(riorder) for iorder in self.orders] 
+            self.filename_tags = [ num2print(uiorder) for iorder in self.orders] 
 
     def save_data(self, data_dir):
         ### save input variables to file
-        print(r' ► Saving DoE to: {}'.format(data_dir))
+        print(u' ► Saving DoE to: {}'.format(data_dir))
         if self.samples_env:
             data = [self.samples, self.samples_env]
         else:
@@ -175,22 +175,22 @@ class ExperimentDesign(object):
         dataIO.save_data(data, self.filename, data_dir, self.filename_tags)
 
     def disp(self, decimals=4, nsamples2print=0):
-        print(r' ► DoE Summary:')
-        print(r'   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
+        print(u' ► DoE Summary:')
+        print(u'   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
         for i, isamples in enumerate(self.samples):
-            # print(r'   ♦ Sample set No. {:d}:'.format(i))
+            # print(u'   ♦ Sample set No. {:d}:'.format(i))
             if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
                 if i == 0:
-                    print(r'   ♦ {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
-                print(r'     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
+                    print(u'   ♦ {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
+                print(u'     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
             else:
                 pass
-                # print(r'     ∙ Coordinate: {}'.format(isamples.shape))
+                # print(u'     ∙ Coordinate: {}'.format(isamples.shape))
             if nsamples2print: 
                 for j, jcor in enumerate(isamples[0].T):
                     if j > nsamples2print:
                         break
-                    print(r'       - {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
+                    print(u'       - {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
 
     def _space_transform(self, dist1, dist2, var1):
         """

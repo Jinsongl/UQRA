@@ -61,7 +61,7 @@ dic_chaospy_quad_name = {
     # else:
         # raise NotImplementedError("Quadrature rule '{:s}' not defined".format(rule))
     # quad_order = [order,] * distribution.length if np.isscalar(order) else order
-    # print(r'   ♦ Quadrature points complete  : {}'.format(quad_order))
+    # print(u'   ♦ Quadrature points complete  : {}'.format(quad_order))
 
 
 # def doe_montecarlo(size, distribution, rule='R', antithetic=None, criterion=None, iterations=5):
@@ -101,10 +101,10 @@ dic_chaospy_quad_name = {
         # 'correlation' or 'corr': minimize the maximum correlation coefficient
     # """
     # # rule = 'R' if rule is None else rule
-    # # print(r'************************************************************')
-    # # print(r'Design of experiment with Monte Carlo method')
-    # # print(r'Rule : {:s}, Number of monte carlo points (1d): {:d}'.format(rule, order))
-    # # print(r"Generating Monte Carlo samples...")
+    # # print(u'************************************************************')
+    # # print(u'Design of experiment with Monte Carlo method')
+    # # print(u'Rule : {:s}, Number of monte carlo points (1d): {:d}'.format(rule, order))
+    # # print(u"Generating Monte Carlo samples...")
     
     # if rule.upper() == 'L':
         # nfactors = distribution.ndim
@@ -225,18 +225,18 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         else:
             raise NotImplementedError("Quadrature rule '{:s}' not defined".format(rule))
         quad_order = [order,] * domain.length if np.isscalar(order) else order
-        # print(r'   ♦ Quadrature points complete  : {}'.format(quad_order))
-        # print(rdoe_samples[0].shape)
-        # print(r'------------------------------------------------------------')
+        # print(u'   ♦ Quadrature points complete  : {}'.format(quad_order))
+        # print(udoe_samples[0].shape)
+        # print(u'------------------------------------------------------------')
     elif doe_method in ['MONTE CARLO', 'MC']:
         """
         Monte Carlo Sampling 
         """
         rule = 'R' if rule is None else rule
-        # print(r'************************************************************')
-        # print(r'Design of experiment with Monte Carlo method')
-        # print(r'Rule : {:s}, Number of monte carlo points (1d): {:d}'.format(rule, order))
-        # print(r"Generating Monte Carlo samples...")
+        # print(u'************************************************************')
+        # print(u'Design of experiment with Monte Carlo method')
+        # print(u'Rule : {:s}, Number of monte carlo points (1d): {:d}'.format(rule, order))
+        # print(u"Generating Monte Carlo samples...")
         
         doe_samples = domain.sample(order,rule=rule)
         # doe_samples = doe_samples.reshape(domain.length,-1)
@@ -245,13 +245,13 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         # """
         # Fixed points in doe_order will be used
         # """
-        # # print(r'************************************************************')
-        # # print(r'Design of experiment with Fixed points given in doe_order')
+        # # print(u'************************************************************')
+        # # print(u'Design of experiment with Fixed points given in doe_order')
         # doe_samples = np.array(rule).reshape(domain.length, -1)
-        # print(r'DOE samples shape:{}'.format(doe_samples.shape))
+        # print(u'DOE samples shape:{}'.format(doe_samples.shape))
         
-        # print(r'Design of experiment done with Fixed points')
-        # print(r'------------------------------------------------------------')
+        # print(u'Design of experiment done with Fixed points')
+        # print(u'------------------------------------------------------------')
     else:
         raise NotImplementedError("DOE method '{:s}' not defined".format(doe_method))
     return doe_samples 

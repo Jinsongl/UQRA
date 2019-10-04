@@ -71,9 +71,9 @@ def main(simparam):
                     # np.array(pce_model.predict(zeta_samples))]
     np.save(os.path.join(simparam.data_dir, fname_train_out), train_data)
 
-    print(r'------------------------------------------------------------')
-    print(r'►►► MCS with Surrogate Models')
-    print(r'------------------------------------------------------------')
+    print(u'------------------------------------------------------------')
+    print(u'►►► MCS with Surrogate Models')
+    print(u'------------------------------------------------------------')
     np.random.seed(100)
     fname_test      = fname_train + '_test' 
     fname_test_path = os.path.join(simparam.data_dir, fname_test)
@@ -85,7 +85,7 @@ def main(simparam):
         y_pred_mcs= pce_model.predict(zeta_mcs)
 
         upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
-        print(r' ► Calculating ECDF of MCS data and retrieve data to plot...')
+        print(u' ► Calculating ECDF of MCS data and retrieve data to plot...')
         y_pred_mcs_ecdf = get_exceedance_data(np.array(y_pred_mcs), prob=simparam.prob_fails)
         rfname_mcs  = fname_test_path + '{:d}_ecdf'.format(r) 
         np.save(rfname_mcs, y_pred_mcs_ecdf)
@@ -131,22 +131,22 @@ def main(simparam):
     # np.save(os.path.join(simparam.data_dir, fname_train_out + r'{:d}_params'.format(idoe)), gpr_model.metamodel_coeffs)
 
 
-    # print(r'------------------------------------------------------------')
-    # print(r'►►► MCS with Surrogate Models')
-    # print(r'------------------------------------------------------------')
+    # print(u'------------------------------------------------------------')
+    # print(u'►►► MCS with Surrogate Models')
+    # print(u'------------------------------------------------------------')
     # np.random.seed(100)
     # fname_test     = '_'.join([metamodel_class, doe_type])
     # fname_test_path = os.path.join(simparam.data_dir, fname_test+r'{:d}'.format(idoe) + '_MCS')
     # for r in range(data_test_params[1]):
         # _x_samples = dist_x.sample(data_test_params[0], data_test_params[2])[np.newaxis,:]
-        # # print(r'x_samples.shape: {}'.format(_x_samples.shape))
+        # # print(u'x_samples.shape: {}'.format(_x_samples.shape))
         # y_pred_mcs    = gpr_model.predict(_x_samples, return_std=True)
         # ## y_pred_mcs shape (2, n_samples) (mean, std)
-        # # print(ry_pred_mcs.shape)
-        # # print(r'y_pred_mcs shape: {}'.format(y_pred_mcs.shape))
+        # # print(uy_pred_mcs.shape)
+        # # print(u'y_pred_mcs shape: {}'.format(y_pred_mcs.shape))
         # upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, DATA_DIR_ID)
 
-        # print(r' ► Calculating ECDF of MCS data and retrieve data to plot...')
+        # print(u' ► Calculating ECDF of MCS data and retrieve data to plot...')
         # y_pred_mcs_ecdf = get_exceedance_data(y_pred_mcs[0,:], prob_failure=pf)
         # rfname_mcs  = fname_test_path + '{:d}_ecdf'.format(r) + '.npy' 
         # np.save(rfname_mcs, y_pred_mcs_ecdf)

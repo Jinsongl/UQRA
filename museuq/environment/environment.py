@@ -150,11 +150,11 @@ class Environment(object):
             cdists,_ = self.get_cdists(val, key='phy')
             for i, dist in enumerate(cdists):
                 q = float(dist.cdf(val[i]))
-                # print(rq)
+                # print(uq)
                 try:
                     v.append(float(dist_norm.inv(q)))
                 except AssertionError:
-                    print(r'Invalid sea states: Uw = {:.2f}, Hs = {:.2f}'.format(val[0], val[1]))
+                    print(u'Invalid sea states: Uw = {:.2f}, Hs = {:.2f}'.format(val[0], val[1]))
                     invalid.append(i)
             u.append(v)
         ## remove invalid sea state sets 
@@ -210,8 +210,8 @@ class Environment(object):
         ## third variable taken median, u3 = 0
         u = np.vstack((u, 0*u[0,:]))
         q = dist_norm.cdf(u)
-        print(r"Generating 2D Environmental Contour...")
-        # print(rp.shape)
+        print(u"Generating 2D Environmental Contour...")
+        # print(up.shape)
         phy = self.get_invcdf(q)
         if dist_zeta:
             zeta = np.array([float(dist.inv(q[i,:])) for i, dist in enumerate(dist_zeta)])
@@ -229,7 +229,7 @@ class Environment(object):
             cdists,_ = self.get_cdists(val, key='phy')
             tp_ = float(cdists[-1].inv(0.5))
             if np.isnan(tp_):
-                print(r'Invalid sea states: Uw = {:.2f}, Hs = {:.2f}'.format(val[0], val[1]))
+                print(u'Invalid sea states: Uw = {:.2f}, Hs = {:.2f}'.format(val[0], val[1]))
                 invalid.append(i)
             tp.append(tp_)
 
@@ -245,7 +245,7 @@ class Environment(object):
     
         """
         if not np.all(var[-1,:]==0):
-            print(r'Warning: The last variable is not taken the distribution median ')
+            print(u'Warning: The last variable is not taken the distribution median ')
         
         p3_norm = np.sqrt(beta**2 - nla.norm(var, axis=0)**2)
         dist_norm = cp.Normal()
@@ -263,28 +263,28 @@ def main():
     # v = test.getEC2D(numPts=3600,isSave=True,filename='test.csv')
     # v = test.getEC2D(numPts=3600)
     # v = test.get_invcdf(q)
-    # print(r"2D: ", v.shape)
+    # print(u"2D: ", v.shape)
     # v = test.phy2norm(v,isSave=False)
     # v = test.phy2norm(v)
-    # print(r"2D: ", dist_norm.cdf(v))
+    # print(u"2D: ", dist_norm.cdf(v))
     uw = np.arange(3,26) ## Hub-height wind speed
     # uw = np.array([3]) ## Hub-height wind speed
     u10 = uw/(133.5/10)**0.1
     hs = np.arange(0.5, 14, 0.5)
     # hs = np.array([5])
     # cdists,_ = test.get_cdists(np.array([2.31512,5]), key='phy')
-    # print(rdist_norm.inv(cdists[0].cdf(2.31512)))
-    # print(rcdists[1].cdf(5))
-    # print(rdist_norm.inv(cdists[1].cdf(5)))
-    # print(rcdists[2])
+    # print(udist_norm.inv(cdists[0].cdf(2.31512)))
+    # print(ucdists[1].cdf(5))
+    # print(udist_norm.inv(cdists[1].cdf(5)))
+    # print(ucdists[2])
     var_phy,invalid = test.get_tp(u10,hs)
     # uw_hs = np.column_stack((uw_hs_grid, tp)).T
     var_norm,_ = test.phy2norm(var_phy)
     var_phy[0,:] = var_phy[0,:]*(133.5/10)**0.1
     np.savetxt('Grid_2D.txt', var_phy.T, fmt='%.4e')
     np.savetxt('Grid_2D_norm.txt', var_norm.T, fmt='%.4e')
-    # print(rvar_norm.shape)
-    # print(rnp.all(var_norm[2,:] == 0))
+    # print(uvar_norm.shape)
+    # print(unp.all(var_norm[2,:] == 0))
     # p3 = test.cal_p3(var_norm, 4.58)
 if __name__=='__main__':
     main()
