@@ -57,9 +57,9 @@ class ErrorType():
 
     def disp(self):
         if self.name.upper() == 'FREE':
-            print(u'   ♦ Short-term/error distribution parameters: noise free')
+            print(u'   * Short-term/error distribution parameters: noise free')
         else:
-            print(u'   ♦ Short-term/error distribution parameters:')
+            print(u'   * Short-term/error distribution parameters:')
             print(u'     ∙ {:<15s} : {}'.format('dist_name', self.name))
             for i, ierror_params in enumerate(self.params):
                 ierror_params_shape = []

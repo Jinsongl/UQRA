@@ -120,7 +120,7 @@ class SurrogateModel(object):
                 quadrature weights for PCE 
         """
 
-        print(u' ► Building surrogate models ...')
+        print(u' > Building surrogate models ...')
         if not self.setting:
             self.__get_metamodel_basis() 
         x_train = np.array(x_train)
@@ -140,13 +140,13 @@ class SurrogateModel(object):
         # else:
             # raise ValueError
 
-        # print(u'   ♦ {:<17s} : (X, Y, W) = {} x {} x {}'.format('Traning data:', x_train.shape, y_train.shape))
+        # print(u'   * {:<17s} : (X, Y, W) = {} x {} x {}'.format('Traning data:', x_train.shape, y_train.shape))
         # print(u'     ∙ {:<15s} : {}'.format('X shape:', x_train.shape ))
         # print(u'     ∙ {:<15s} : {}'.format('Y shape:', y_train.shape ))
         if weight is not None:
-            print(u'   ♦ {:<17s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x_train.shape, y_train.shape, weight.shape))
+            print(u'   * {:<17s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x_train.shape, y_train.shape, weight.shape))
         else:
-            print(u'   ♦ {:<17s} : (X, Y, W) = {} x {} '.format('Train data shape', x_train.shape, y_train.shape))
+            print(u'   * {:<17s} : (X, Y, W) = {} x {} '.format('Train data shape', x_train.shape, y_train.shape))
 
         if self.name.upper() == 'PCE':
             weight = np.squeeze(weight)
@@ -179,8 +179,8 @@ class SurrogateModel(object):
         
 
         surrogates_pred = []
-        print(u' ► Evaluating with surrogate models ... ')
-        print(u'   ♦ {:<17s} : {}'.format('Query points ', X.shape))
+        print(u' > Evaluating with surrogate models ... ')
+        print(u'   * {:<17s} : {}'.format('Query points ', X.shape))
         for i, imetamodel in enumerate(self.metamodels):
             if self.name.upper() == 'PCE':
                 ## See explainations about Poly above
@@ -188,7 +188,7 @@ class SurrogateModel(object):
             elif self.name.upper() == 'GPR':
                 f_mean, f_std = imetamodel.predict(X.T, return_std=return_std, return_cov=return_cov)
                 pred = np.hstack((f_mean, f_std.reshape(f_mean.shape))).T
-            print(u'   ♦ {:<17s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model', i, len(self.metamodels), pred.shape))
+            print(u'   * {:<17s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model', i, len(self.metamodels), pred.shape))
             surrogates_pred.append(pred)
 
         if y_true is not None:
@@ -235,7 +235,7 @@ class SurrogateModel(object):
         prob    = kwargs.get('prob'     , [0.9,0.99,0.999]) 
         moment  = kwargs.get('moment'   , 1)
 
-        print(u' ► Calculating scores...')
+        print(u' > Calculating scores...')
 
         for imetric_name in metrics:
             imetric2call = getattr(metrics_collections, imetric_name.lower())
@@ -243,7 +243,7 @@ class SurrogateModel(object):
                 assert iy_pred.shape == y_true.shape, "Predict values and true values must have same shape, but get {} and {} instead".format(iy_pred.shape, y_true.shape)
                 if imetric_name.lower() == 'upper_tails':
                     imetric_value = imetric2call(y_true, iy_pred, prob=prob)
-                    print(u'   ♦ {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetric_name, 'True', 'Prediction', '%Error'))
+                    print(u'   * {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetric_name, 'True', 'Prediction', '%Error'))
                     for iprob, iupper_tail in zip(prob, np.array(imetric_value).T):
                         error_perc = abs((iupper_tail[1]-iupper_tail[0])/iupper_tail[0]) * 100.0 if iupper_tail[0] else np.inf
                         print(u'     ∙ {:<18f}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(iprob, iupper_tail[0], iupper_tail[1], error_perc))
@@ -251,13 +251,13 @@ class SurrogateModel(object):
                 elif imetric_name.lower() == 'moments': 
                     imetric_value = imetric2call(y_true, iy_pred, m=moment)
 
-                    print(u'   ♦ {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetric_name, 'True', 'Prediction', '%Error'))
+                    print(u'   * {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetric_name, 'True', 'Prediction', '%Error'))
                     for imoment, imoment_value in zip(moment, np.array(imetric_value).T):
                         error_perc = abs((imoment_value[1]-imoment_value[0])/imoment_value[0])* 100.0 if imoment_value[0] else np.inf
                         print(u'     ∙ {:<18s}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(ordinal(imoment), imoment_value[0], imoment_value[1], error_perc))
                 else:
                     imetric_value = imetric2call(y_true, iy_pred)
-                    print(u'   ♦ {:<20s}: {}'.format(imetric_name, np.around(imetric_value,2)))
+                    print(u'   * {:<20s}: {}'.format(imetric_name, np.around(imetric_value,2)))
                 self.metrics_value[i].append(imetric_value)
         return self.metrics_value
     
@@ -296,11 +296,11 @@ class SurrogateModel(object):
         theta_shape = theta_meshgrid[0].shape 
 
 
-        print(u' ► Evaluating log marginal likelihood with surrogate models ... ')
-        print(u'   ♦ {:<15s} : {}'.format('Kernel hyperparameters ', theta_shape))
-        print(u'   ♦ {:<15s} : {}'.format('Evaluate gradient', eval_gradient))
+        print(u' > Evaluating log marginal likelihood with surrogate models ... ')
+        print(u'   * {:<15s} : {}'.format('Kernel hyperparameters ', theta_shape))
+        print(u'   * {:<15s} : {}'.format('Evaluate gradient', eval_gradient))
         for i, imetamodel in enumerate(self.metamodels):
-            print(u'   ♦ Surrogate model {:d}/{:d} '.format(i, len(self.metamodels)))
+            print(u'   * Surrogate model {:d}/{:d} '.format(i, len(self.metamodels)))
             imetamodel_log_marginal_likelihood = []
             for itheta in theta_flatten:
                 imetamodel_log_marginal_likelihood.append(imetamodel.log_marginal_likelihood(theta=np.log(itheta), eval_gradient=eval_gradient))
@@ -334,12 +334,12 @@ class SurrogateModel(object):
             raise ValueError('No surrogate model exists')
 
         X = np.array(X)
-        print(u' ► Draw samples from Gaussian process models... ')
-        print(u'   ♦ {:<15s} : {}'.format('nsamples', nsamples))
-        print(u'   ♦ {:<15s} : {}'.format('random_state', random_state))
+        print(u' > Draw samples from Gaussian process models... ')
+        print(u'   * {:<15s} : {}'.format('nsamples', nsamples))
+        print(u'   * {:<15s} : {}'.format('random_state', random_state))
         y_samples = []
         for i, imetamodel in enumerate(self.metamodels):
-            print(u'   ♦ Surrogate model {:d}/{:d} '.format(i, len(self.metamodels)))
+            print(u'   * Surrogate model {:d}/{:d} '.format(i, len(self.metamodels)))
             imeta_y_samples = imetamodel.sample_y(X.T, nsamples=nsamples, random_state=random_state)
             n_output_dims = imeta_y_samples.shape[1]
             if n_output_dims == 1:
@@ -369,10 +369,10 @@ class SurrogateModel(object):
         # __________________________________________________________________________________________________________________
         # For PCE model, following parameters are required:
         print(u'------------------------------------------------------------')
-        print(u'►►► Initialize SurrogateModel Object...')
+        print(u'>>> Initialize SurrogateModel Object...')
         print(u'------------------------------------------------------------')
-        print(u' ► Surrogate model properties:')
-        print(u'   ♦ {:<17s} : {:<15s}'.format('Model name', self.name))
+        print(u' > Surrogate model properties:')
+        print(u'   * {:<17s} : {:<15s}'.format('Model name', self.name))
 
         if self.name.upper() == 'PCE':
             ## make sure setting is a list
@@ -385,7 +385,7 @@ class SurrogateModel(object):
             self.basis_orders = self.setting
 
             # Following parameters are required
-            print(u'   ♦ Requried parameters:')
+            print(u'   * Requried parameters:')
             try:
                 print(u'     ∙ {:<15s} : {}'.format('Solve coeffs:', CAL_COEFFS_METHODS.get(self.kwparams['cal_coeffs'])))
                 print(u'     ∙ {:<15s} : {}'.format('Zeta dist'    , self.kwparams['dist_zeta']))
@@ -397,7 +397,7 @@ class SurrogateModel(object):
             self.kwparams['dist_zeta_J' ] = self.kwparams.get('dist_zeta_J'   ,self.kwparams['dist_zeta'])
             self.kwparams['dist_x'      ] = self.kwparams.get('dist_x'        , None)
             self.kwparams['dist_x_J'    ] = self.kwparams.get('dist_x_J'      , None)
-            print(u'   ♦ Optional parameters:')
+            print(u'   * Optional parameters:')
             for key, value in self.kwparams.items():
                 if key in ['cal_coeffs', 'dist_zeta','Basis order']:
                     pass
@@ -422,9 +422,9 @@ class SurrogateModel(object):
             self.kwparams[ 'random_state' ] = self.kwparams.get('random_state', None           )
             self.kwparams[ 'n_restarts_optimizer' ] = self.kwparams.get('n_restarts_optimizer', 0)
 
-            print(u'   ♦ Parameters:')
-            print(u'   ♦ {:<15s} : {}'.format('Kernels', self.kernels))
-            print(u'   ♦ Optional parameters:')
+            print(u'   * Parameters:')
+            print(u'   * {:<15s} : {}'.format('Kernels', self.kernels))
+            print(u'   * Optional parameters:')
             for key, value in self.kwparams.items():
                 print(u'     ∙ {:<15s} : {}'.format(key,value))
 
@@ -468,8 +468,8 @@ class SurrogateModel(object):
             self.basis_coeffs.append(kernel_params)
 
             # kernel_params = gp.get_params()
-            print(u'   ♦ {:<15s} : {:d}'.format('Kernel (Initial)', ikernel))
-            print(u'   ♦ Optimum values:')
+            print(u'   * {:<15s} : {:d}'.format('Kernel (Initial)', ikernel))
+            print(u'   * Optimum values:')
             for key, value in kernel_params.items():
                 print(u'     ∙ {:<25} : {}'.format(key,value))
 
@@ -494,7 +494,7 @@ class SurrogateModel(object):
         # len(f_hat): n_output
 
         cal_coeffs = self.kwparams.get('cal_coeffs')
-        print(u'   ♦ {:<17s} : '.format('PCE model order'), end='')
+        print(u'   * {:<17s} : '.format('PCE model order'), end='')
         for i, iorthpoly in enumerate(self.basis):
             print(u' {:d}'.format(self.basis_orders[i]), end='')
             if cal_coeffs.upper() in ['GP','GALERKIN']:

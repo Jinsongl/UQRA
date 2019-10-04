@@ -61,7 +61,7 @@ dic_chaospy_quad_name = {
     # else:
         # raise NotImplementedError("Quadrature rule '{:s}' not defined".format(rule))
     # quad_order = [order,] * distribution.length if np.isscalar(order) else order
-    # print(u'   ♦ Quadrature points complete  : {}'.format(quad_order))
+    # print(u'   * Quadrature points complete  : {}'.format(quad_order))
 
 
 # def doe_montecarlo(size, distribution, rule='R', antithetic=None, criterion=None, iterations=5):
@@ -225,7 +225,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         else:
             raise NotImplementedError("Quadrature rule '{:s}' not defined".format(rule))
         quad_order = [order,] * domain.length if np.isscalar(order) else order
-        # print(u'   ♦ Quadrature points complete  : {}'.format(quad_order))
+        # print(u'   * Quadrature points complete  : {}'.format(quad_order))
         # print(udoe_samples[0].shape)
         # print(u'------------------------------------------------------------')
     elif doe_method in ['MONTE CARLO', 'MC']:

@@ -57,12 +57,12 @@ class ExperimentDesign(object):
             self.filename_tags = [ num2print(iorder) for iorder in self.orders] 
 
         print(u'------------------------------------------------------------')
-        print(u'►►► Initialize Experiment Design:')
+        print(u'>>> Initialize Experiment Design:')
         print(u'------------------------------------------------------------')
-        print(u' ► DoE parameters: ')
-        print(u'   ♦ {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
-        print(u'   ♦ {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.lower()]))
-        print(u'   ♦ {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders)) ))
+        print(u' > DoE parameters: ')
+        print(u'   * {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
+        print(u'   * {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.lower()]))
+        print(u'   * {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders)) ))
 
     def get_samples(self, space=None):
         """
@@ -72,7 +72,7 @@ class ExperimentDesign(object):
         Return:
             Experiment samples in space (idoe_order,[samples for each orders])
         """
-        print(u' ► Running DoEs: ')
+        print(u' > Running DoEs: ')
         self.samples = []
         ## one can update new space here
         self.space = space if space else self.space
@@ -81,7 +81,7 @@ class ExperimentDesign(object):
             # for isample_x in fix_point:
                 # self.samples.append(self._space_transform(self.dist_x, self.dist_zeta, isample_x))
         if const.DOE_METHOD_FULL_NAMES[self.method.lower()] in ['QUADRATURE', 'MONTE CARLO']:
-            for i, idoe_order in enumerate(tqdm(self.orders, ascii=True, desc='   ♦' )): 
+            for i, idoe_order in enumerate(tqdm(self.orders, ascii=True, desc='   *' )): 
                 # DoE for different selected orders 
                 # doe samples, array of shape:
                 #    - Quadrature: res.shape = (2,) 
@@ -90,7 +90,7 @@ class ExperimentDesign(object):
                 #    - MC: res.shape = (ndim, nsamples)
                 isamples = samplegen(self.method, idoe_order, self.space, rule=self.rule)
                 self.samples.append(isamples)
-                # print('\r   ♦ {:<15s}: {}'.format( 'DoE completed', list(map(num2print, self.orders[:i+1]))), end='')
+                # print('\r   * {:<15s}: {}'.format( 'DoE completed', list(map(num2print, self.orders[:i+1]))), end='')
         else:
             raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
 
@@ -166,7 +166,7 @@ class ExperimentDesign(object):
 
     def save_data(self, data_dir):
         ### save input variables to file
-        print(u' ► Saving DoE to: {}'.format(data_dir))
+        print(u' > Saving DoE to: {}'.format(data_dir))
         if self.samples_env:
             data = [self.samples, self.samples_env]
         else:
@@ -175,13 +175,13 @@ class ExperimentDesign(object):
         dataIO.save_data(data, self.filename, data_dir, self.filename_tags)
 
     def disp(self, decimals=4, nsamples2print=0):
-        print(u' ► DoE Summary:')
-        print(u'   ♦ Number of sample sets : {:d}'.format(len(self.samples)))
+        print(u' > DoE Summary:')
+        print(u'   * Number of sample sets : {:d}'.format(len(self.samples)))
         for i, isamples in enumerate(self.samples):
-            # print(u'   ♦ Sample set No. {:d}:'.format(i))
+            # print(u'   * Sample set No. {:d}:'.format(i))
             if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
                 if i == 0:
-                    print(u'   ♦ {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
+                    print(u'   * {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
                 print(u'     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
             else:
                 pass

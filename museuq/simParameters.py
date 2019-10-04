@@ -142,30 +142,30 @@ class simParameters(object):
             self.error = ErrorType(name=name, params=params, size=size)
     def disp(self):
         print(u'------------------------------------------------------------')
-        print(u'U+25BAU+25BAU+25BA SimParameter setting for model: {}'.format(self.model_name))
+        print(u'>>> SimParameter setting for model: {}'.format(self.model_name))
         print(u'------------------------------------------------------------')
-        print(u' ► Required parameters:')
-        print(u'   ♦ {:<25s} : {}'.format('Model Name:', self.model_name))
-        print(u'   ♦ {:<25s} : {} '.format('Target Exceedance prob', self.prob_fails))
-        print(u'   ♦ {:<25s} : {} '.format('Joint zeta distribution', self.dist_zeta_J))
-        # print(u'   ♦ {:<25s} : {} '.format('Joint x distribution', self.dist_x_J))
+        print(u' > Required parameters:')
+        print(u'   * {:<25s} : {}'.format('Model Name:', self.model_name))
+        print(u'   * {:<25s} : {} '.format('Target Exceedance prob', self.prob_fails))
+        print(u'   * {:<25s} : {} '.format('Joint zeta distribution', self.dist_zeta_J))
+        # print(u'   * {:<25s} : {} '.format('Joint x distribution', self.dist_x_J))
 
-        print(u' ► Working directory:')
+        print(u' > Working directory:')
         print(u'   WORKING_DIR: {}'.format(os.getcwd()))
         print(u'   +-- MODEL: {}'.format(self.figure_dir[:-7]))
         print(u'   |   +-- {:<6s}: {}'.format('FIGURE',self.figure_dir))
         print(u'   |   +-- {:<6s}: {}'.format('DATA',self.data_dir))
 
-        print(u' ► Optional parameters:')
+        print(u' > Optional parameters:')
         if self.time_params:
-            print(u'   ♦ {:<15s} : '.format('time parameters'))
-            print(u'     ∙ {:<8s} : {:.2f} ∙ {:<8s} : {:.2f}'.format('start', self.time_start, 'end', self.time_max ))
-            print(u'     ∙ {:<8s} : {:.2f} ∙ {:<8s} : {:.2f}'.format('ramp ', self.time_ramp , 'dt ', self.dt ))
+            print(u'   * {:<15s} : '.format('time parameters'))
+            print(u'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('start', self.time_start, 'end', self.time_max ))
+            print(u'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('ramp ', self.time_ramp , 'dt ', self.dt ))
         if self.post_params:
-            print(u'   ♦ {:<15s} '.format('post analysis parameters'))
+            print(u'   * {:<15s} '.format('post analysis parameters'))
             qoi2analysis = self.qoi2analysis if self.qoi2analysis is not None else 'All'
-            print(u'     ∙ {:<15s} : {} '.format('qoi2analysis', qoi2analysis))
+            print(u'     - {:<15s} : {} '.format('qoi2analysis', qoi2analysis))
             stats_list = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
-            print(u'     ∙ {:<15s} : {} '.format('statistics'  , list(compress(stats_list, self.stats)) ))
+            print(u'     - {:<15s} : {} '.format('statistics'  , list(compress(stats_list, self.stats)) ))
     
 
