@@ -171,7 +171,7 @@ class Solver(object):
         try:
             solver = solvers_collections[self.solver_name.upper()]
         except KeyError:
-            print(uf"{self.solver_name.upper()} is not defined" )
+            print(f"{self.solver_name.upper()} is not defined" )
         assert (callable(solver)), '{:s} not callable'.format(solver.__name__)
         
         if self.solver_name.upper() == 'ISHIGAMI':
