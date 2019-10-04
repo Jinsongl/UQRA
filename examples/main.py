@@ -42,48 +42,59 @@ def main():
     simparams.disp()
 
     ## ------------------------ Define DoE parameters ---------------------- ###
-    doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [5,6,7,8]
-    # doe_method, doe_rule, doe_orders = 'MC', 'R', [1e2]*3
-    quad_doe    = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
-    samples_zeta= quad_doe.get_samples()
-    # print(samples_zeta.shape)
-    shapes = [isamples_zeta.shape for isamples_zeta in samples_zeta]
-    print(shapes)
-    samples_x   = [Kvitebjorn.samples(dist_zeta.cdf(isamples_zeta[:2,:])) for isamples_zeta in samples_zeta] 
-    quad_doe.set_samples(env=samples_x)
-    # print(quad_doe.samples_env)
-    quad_doe.save_data(simparams.data_dir)
-    quad_doe.disp()
-    assert len(samples_x) == len(samples_zeta)
+    # doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [5,6,7,8]
+    doe_method, doe_rule, doe_orders = 'MC', 'R', [1e6]*10
+    sdof_doe    = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
+
+    # ## comment below out to skip DoE process 
+    # samples_zeta= sdof_doe.get_samples()
+    # samples_x   = [Kvitebjorn.samples(dist_zeta.cdf(isamples_zeta[:2,:])) for isamples_zeta in samples_zeta] 
+    # sdof_doe.set_samples(env=samples_x)
+    # sdof_doe.disp()
+    # sdof_doe.save_data(simparams.data_dir)
+    # assert len(samples_x) == len(samples_zeta)
 
     ## ---------------------- Define Solver parameters ---------------------- ###
-    solver      = museuq.Solver(model_name, samples_x)
-    samples_y   = solver.run(doe_method=doe_method)
-    filename_tags = [itag+'_y' for itag in quad_doe.filename_tags]
-    museuq_dataio.save_data(samples_y, quad_doe.filename, simparams.data_dir, filename_tags)
-    samples_y_stats = solver.get_stats(simparams.qoi2analysis, simparams.stats)
-    filename_tags = [itag+'_y_stats' for itag in quad_doe.filename_tags]
-    museuq_dataio.save_data(samples_y_stats, quad_doe.filename, simparams.data_dir, filename_tags)
+    repeat = range(0,10)
+    for r in repeat:
+        data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_McRE6R{:d}.npy'.format(r)))
+        samples_zeta= data_set[:2,:]
+        samples_x   = data_set[2:,:]
+
+        sdof_solver   = museuq.Solver(model_name, samples_x)
+        samples_y     = sdof_solver.run(doe_method=doe_method)
+        print(len(samples_y))
+        # filename_tags = [itag+'_y' for itag in sdof_doe.filename_tags]
+        print(sdof_doe.filename_tags)
+        filename_tags = [sdof_doe.filename_tags[r] + '_y']
+        museuq_dataio.save_data(samples_y, sdof_doe.filename, simparams.data_dir, filename_tags)
+        samples_y_stats = sdof_solver.get_stats(simparams.qoi2analysis, simparams.stats)
+        filename_tags = [sdof_doe.filename_tags[r] + '_y_stats']
+        museuq_dataio.save_data(samples_y_stats, sdof_doe.filename, simparams.data_dir, filename_tags)
 
 
-    # ------------------------ Define surrogate model parameters ---------------------- ###
+    # # ------------------------ Define surrogate model parameters ---------------------- ###
 
     # metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_zeta}
+    # metamodel_class = 'PCE'
+    # metamodel_basis_setting = [4,5,6]
+    
+    # data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem5.npy'))
+    # train_zeta  = data_set[:2,:]
+    # train_w     = data_set[2,:]
+    # train_x     = data_set[3:5,:]
+    # data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem5_y_stats.npy'))
+    # train_eta   = np.squeeze(data_set[:, 4, 1])
+    # train_y     = np.squeeze(data_set[:, 4, 2])
 
-    # samples_zeta = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem5.npy')
+    # eta_pce_model   = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
+    # eta_pce_model.fit(train_zeta, train_eta, weight=train_w)
+    # eta_validate, eta_validate_scores = eta_pce_model.predict(train_zeta, train_eta)
 
-    # for idoe_sample_zeta, idoe_samplex, idoe_sampley_stats, ipoly_order in zip(samples_zeta, samples_x, samples_y_stats, [4,5,6]):
-        # metamodel_class, metamodel_basis_setting = 'PCE', ipoly_order 
-        # pce_model  = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
-        # x_train    = np.squeeze(idoe_samplex[:-1,:])
-        # x_weight   = np.squeeze(idoe_samplex[-1,:])
-        # zeta_weight= x_weight 
-        # y_train    = np.squeeze(idoe_sampley_stats[:, 4, 2])
-        # zeta_train = np.squeeze(idoe_sample_zeta[:-1,:])
-        # pce_model.fit(zeta_train, y_train, weight=zeta_weight)
-        # y_validate = pce_model.predict(zeta_train)
-        # pce_model_scores = pce_model.score(zeta_train, y_train)
-    # train_data  = [ x_train, x_weight , y_train, zeta_train, np.array(y_validate)]
+    # pce_model.fit(train_zeta, train_y, weight=train_w)
+    # y_validate, y_validate_scores = pce_model.predict(train_zeta, train_y)
+    # pce_model_scores = pce_model.score(train_zeta, train_y)
+    # train_data  = [ train_x, train_w , train_y, train_zeta, np.array(y_validate)]
         # np.save(os.path.join(simparams.data_dir, fname_train_out), train_data)
 
         # data_test_params= [1e2, 10, 'R'] ##[nsamples, repeat, sampling rule]

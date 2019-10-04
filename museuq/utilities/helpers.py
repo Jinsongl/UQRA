@@ -32,7 +32,7 @@ def enablePrint():
 def nextpow2(x):
     return 2**(int(x)-1).bit_length()
 
-def num2print(rn):
+def num2print(n):
     if n<100:
         return '{:d}'.format(n)
     else:
