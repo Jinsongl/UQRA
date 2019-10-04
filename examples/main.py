@@ -43,34 +43,40 @@ def main():
 
     ## ------------------------ Define DoE parameters ---------------------- ###
     # doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [5,6,7,8]
-    doe_method, doe_rule, doe_orders = 'MC', 'R', [1e6]*10
+    doe_method, doe_rule, doe_orders = 'MC', 'R', [1e5]*10
     sdof_doe    = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
 
-    # ## comment below out to skip DoE process 
-    # samples_zeta= sdof_doe.get_samples()
-    # samples_x   = [Kvitebjorn.samples(dist_zeta.cdf(isamples_zeta[:2,:])) for isamples_zeta in samples_zeta] 
-    # sdof_doe.set_samples(env=samples_x)
-    # sdof_doe.disp()
-    # sdof_doe.save_data(simparams.data_dir)
-    # assert len(samples_x) == len(samples_zeta)
+    ## comment below out to skip DoE process 
+    samples_zeta= sdof_doe.get_samples()
+    samples_x   = [Kvitebjorn.samples(dist_zeta.cdf(isamples_zeta[:2,:])) for isamples_zeta in samples_zeta] 
+    sdof_doe.set_samples(env=samples_x)
+    sdof_doe.disp()
+    sdof_doe.save_data(simparams.data_dir)
+    assert len(samples_x) == len(samples_zeta)
 
-    ## ---------------------- Define Solver parameters ---------------------- ###
+    #### ---------------------- Run solver directly after DoE ---------------------- ###
+    # sdof_solver   = museuq.Solver(model_name, samples_x)
+    # samples_y     = sdof_solver.run(doe_method=doe_method)
+    # filename_tags = [itag+'_y_stats' for itag in sdof_doe.filename_tags]
+    # museuq_dataio.save_data(samples_y, sdof_doe.filename, simparams.data_dir, filename_tags)
+
+    #### ---------------------- Run solver with samples from data files---------------------- ###
     repeat = range(0,10)
     for r in repeat:
-        data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_McRE6R{:d}.npy'.format(r)))
+        data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_McRE5R{:d}.npy'.format(r)))
         samples_zeta= data_set[:2,:]
         samples_x   = data_set[2:,:]
 
         sdof_solver   = museuq.Solver(model_name, samples_x)
         samples_y     = sdof_solver.run(doe_method=doe_method)
-        print(len(samples_y))
+        # print(len(samples_y))
         # filename_tags = [itag+'_y' for itag in sdof_doe.filename_tags]
-        print(sdof_doe.filename_tags)
-        filename_tags = [sdof_doe.filename_tags[r] + '_y']
-        museuq_dataio.save_data(samples_y, sdof_doe.filename, simparams.data_dir, filename_tags)
-        samples_y_stats = sdof_solver.get_stats(simparams.qoi2analysis, simparams.stats)
+        # print(sdof_doe.filename_tags)
         filename_tags = [sdof_doe.filename_tags[r] + '_y_stats']
-        museuq_dataio.save_data(samples_y_stats, sdof_doe.filename, simparams.data_dir, filename_tags)
+        museuq_dataio.save_data(samples_y, sdof_doe.filename, simparams.data_dir, filename_tags)
+        # samples_y_stats = sdof_solver.get_stats(simparams.qoi2analysis, simparams.stats)
+        # filename_tags = [sdof_doe.filename_tags[r] + '_y_stats']
+        # museuq_dataio.save_data(samples_y_stats, sdof_doe.filename, simparams.data_dir, filename_tags)
 
 
     # # ------------------------ Define surrogate model parameters ---------------------- ###
