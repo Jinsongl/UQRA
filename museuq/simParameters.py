@@ -142,7 +142,7 @@ class simParameters(object):
             self.error = ErrorType(name=name, params=params, size=size)
     def disp(self):
         print(u'------------------------------------------------------------')
-        print(u'►►► SimParameter setting for model: {}'.format(self.model_name))
+        print(u'U+25BAU+25BAU+25BA SimParameter setting for model: {}'.format(self.model_name))
         print(u'------------------------------------------------------------')
         print(u' ► Required parameters:')
         print(u'   ♦ {:<25s} : {}'.format('Model Name:', self.model_name))
