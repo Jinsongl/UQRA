@@ -224,7 +224,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
             doe_samples = _gen_quad_numpy(order, domain, rule)
         else:
             raise NotImplementedError("Quadrature rule '{:s}' not defined".format(rule))
-        quad_order = [order,] * domain.length if np.isscalar(order) else order
+        quad_order = [order,] * len(domain) if np.isscalar(order) else order
         # print(u'   * Quadrature points complete  : {}'.format(quad_order))
         # print(udoe_samples[0].shape)
         # print(u'------------------------------------------------------------')
@@ -239,7 +239,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         # print(u"Generating Monte Carlo samples...")
         
         doe_samples = domain.sample(order,rule=rule)
-        # doe_samples = doe_samples.reshape(domain.length,-1)
+        # doe_samples = doe_samples.reshape(len(domain),-1)
         
     # elif doe_method == 'FIXED POINT':
         # """
@@ -247,7 +247,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         # """
         # # print(u'************************************************************')
         # # print(u'Design of experiment with Fixed points given in doe_order')
-        # doe_samples = np.array(rule).reshape(domain.length, -1)
+        # doe_samples = np.array(rule).reshape(len(domain), -1)
         # print(u'DOE samples shape:{}'.format(doe_samples.shape))
         
         # print(u'Design of experiment done with Fixed points')
@@ -266,26 +266,26 @@ def _gen_quad_numpy(order, domain, rule):
     if rule in ['hem', 'hermite']:
         coord1d, weight1d = np.polynomial.hermite_e.hermegauss(order) ## probabilists , chaospy orth_ttr generate probabilists orthogonal polynomial
         # coord1d, weight1d = np.polynomial.hermite.hermgauss(order) ## physicist
-        coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T
-        weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T
+        coord   = np.array(list(itertools.product(*[coord1d]*len(domain)))).T
+        weights = np.array(list(itertools.product(*[weight1d]*len(domain)))).T
         weights = np.prod(weights, axis=0)
     elif rule in ['jac', 'jacobi']:
         coord1d, weight1d = sp.special.roots_jacobi(order,4,2) #  np.polynomial.laguerre.laggauss(order)
-        coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T
-        weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T
+        coord   = np.array(list(itertools.product(*[coord1d]*len(domain)))).T
+        weights = np.array(list(itertools.product(*[weight1d]*len(domain)))).T
         weights = np.prod(weights, axis=0)
 
         # raise NotImplementedError("Quadrature method '{:s}' based on numpy hasn't been implemented yet".format(rule))
     elif rule in ['lag', 'laguerre']:
         coord1d, weight1d = np.polynomial.laguerre.laggauss(order)
-        coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T
-        weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T
+        coord   = np.array(list(itertools.product(*[coord1d]*len(domain)))).T
+        weights = np.array(list(itertools.product(*[weight1d]*len(domain)))).T
         weights = np.prod(weights, axis=0)
 
     elif rule in ['cheb', 'chebyshev']:
         coord1d, weight1d = np.polynomial.chebyshev.chebgauss(order)
-        coord   = np.array(list(itertools.product(*[coord1d]*domain.length))).T
-        weights = np.array(list(itertools.product(*[weight1d]*domain.length))).T
+        coord   = np.array(list(itertools.product(*[coord1d]*len(domain)))).T
+        weights = np.array(list(itertools.product(*[weight1d]*len(domain)))).T
         weights = np.prod(weights, axis=0)
     else:
         raise NotImplementedError("Quadrature rule '{:s}' is not defined".format(rule))
