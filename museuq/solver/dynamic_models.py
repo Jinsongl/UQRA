@@ -17,6 +17,7 @@ from scipy.optimize import brentq
 from ..utilities.PowerSpectrum import PowerSpectrum
 from ..utilities import power_spectrum as psd
 from ..utilities.psd2process import psd2process
+from ..utilities.helpers import get_stats
 data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
 
 def _cal_normalize_values(zeta,omega0,source_kwargs, *source_args):
@@ -55,7 +56,7 @@ def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *source
     x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,source_func=source_func,t_trans=t_trans)
     return x
 
-def linear_oscillator(t, x, args=(100, 0.3, 2.25), kwargs={'spec_name': 'JONSWAP'}):
+def linear_oscillator(t, x, return_all=False, args=(100, 0.3, 2.25), kwargs={'spec_name': 'JONSWAP'}):
     """
     Solving linear oscillator in frequency domain
     m x'' + c x' + k x = f => 
@@ -104,8 +105,14 @@ def linear_oscillator(t, x, args=(100, 0.3, 2.25), kwargs={'spec_name': 'JONSWAP
     # np.save(os.path.join(data_dir, 'sdof_frequency'), y2)
 
     y  = np.concatenate((t,x_t,y_t, f,x_pxx,y_pxx), axis=1)
+    if return_all:
+        return y
+    else:
+        y_stats = get_stats(np.concatenate((x_t, y_t), axis=1)) 
+        return y_stats
+        
     # y = np.array([y1,y2])
-    return y
+    # return y
 
 def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,\
         *source_args, source_func=None, source_kwargs=None,t_trans=0, normalize=False):
