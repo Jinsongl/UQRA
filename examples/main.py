@@ -28,6 +28,7 @@ def main():
     ## 1. Choose Wiener-Askey scheme random variable
     # dist_zeta = cp.Uniform(-1,1)
     # dist_zeta = cp.Gamma(4,1)
+    dist_normal = cp.Normal()
     dist_zeta = cp.Iid(cp.Normal(),2) 
 
     ## 2. If transformation needed, like Rosenblatt, need to be done here
@@ -48,7 +49,9 @@ def main():
 
     ## comment below out to skip DoE process 
     samples_zeta= sdof_doe.get_samples()
-    samples_x   = [Kvitebjorn.samples(dist_zeta.cdf(isamples_zeta[:2,:])) for isamples_zeta in samples_zeta] 
+    # isamples_zeta = samples_zeta[1]
+    # a = dist_zeta.cdf(isamples_zeta[:2,:])
+    samples_x   = [Kvitebjorn.samples(np.array([dist_normal.cdf(isamples_zeta[0,:]), dist_normal.cdf(isamples_zeta[1,:])])) for isamples_zeta in samples_zeta] 
     sdof_doe.set_samples(env=samples_x)
     sdof_doe.disp()
     sdof_doe.save_data(simparams.data_dir)
