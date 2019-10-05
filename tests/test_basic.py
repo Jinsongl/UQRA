@@ -129,11 +129,11 @@ class BasicTestSuite(unittest.TestCase):
         np.save('test_linear_oscillator_y',y)
 
     def test_exceedance(self):
-        y = np.load('DoE_McRE3R0_y_stats.npy')
-        y = np.squeeze(y[:,4,:2]).T
+        y = np.load('DoE_McRE6R0_stats.npy')
+        y = np.squeeze(y[:,4,0]).T
         print('y shape: {}'.format(y.shape))
-        y_excd=uqhelpers.get_exceedance_data(y, 1e-2)
-        np.save('test_linear_oscillator_excd', y_excd)
+        y_excd=uqhelpers.get_exceedance_data(y, 1e-5)
+        np.save('test_sdof_eta_ecdf_pf5', y_excd)
 
 
     def test_Solver_run(self):
