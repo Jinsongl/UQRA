@@ -148,13 +148,15 @@ def get_exceedance_data(x,prob=1e-3):
         x: array-like data set 
         prob: exceedance probability
     Return:
+        if x.ndim == 1, return (3,n)
+        else, return a list of (3,n) arrays
         
     """
     exceedance = []
     x = np.array(x)
 
     if x.ndim == 1:
-        exceedance.append(_get_exceedance_data(x, prob=prob))
+        exceedance = _get_exceedance_data(x, prob=prob)
     else:
         exceedance.append([_get_exceedance_data(iset, prob=prob) for iset in x])
 
@@ -222,6 +224,10 @@ def _get_exceedance_data(x,prob=1e-3):
         prob: exceedance probability
 
     Return:
+        ndarray of shape (3,n)
+        (0,:): ecdf.x, sorted values for x
+        (1,:): ecdf.y, corresponding probability for each x
+        (2,:): exceedance value corresponding to specified prob (just one number, to be able to return array, duplicate that number to have same size as of (1,:))
 
     """
     assert np.array(x).ndim == 1
