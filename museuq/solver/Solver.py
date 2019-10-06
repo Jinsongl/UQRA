@@ -205,10 +205,19 @@ class Solver(object):
             y = solver(time_max,dt,x0,v0,zeta,omega0,add_f=x[0],*x[1:])
 
         elif self.solver_name.upper() == 'LINEAR_OSCILLATOR':
+
             tmax,dt = 1000, 0.1
             t       = np.arange(0,tmax, dt)
+
+            zeta    = 0.01
+            omega_n = 2 # rad/s
+            m       = 1 
+            k       = (omega_n/2/np.pi) **2 * m 
+            c       = zeta * 2 * np.sqrt(m * k)
+            mck     = (m,c,k)
+
             pbar_x  = tqdm(x.T, ascii=True, desc="   - ")
-            y = np.array([linear_oscillator(t,ix, **kwargs) for ix in pbar_x])
+            y = np.array([linear_oscillator(t,ix, mck=mck, return_all=True) for ix in pbar_x])
 
 
         elif self.solver_name.upper() ==  'DUFFING_OSCILLATOR':
