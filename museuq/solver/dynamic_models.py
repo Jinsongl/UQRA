@@ -56,7 +56,7 @@ def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *source
     x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,source_func=source_func,t_trans=t_trans)
     return x
 
-def linear_oscillator(t, x, return_all=False, args=(100, 0.3, 2.25), kwargs={'spec_name': 'JONSWAP'}):
+def linear_oscillator(t, x,args=(100, 0.3, 2.25), **kwargs):
     """
     Solving linear oscillator in frequency domain
     m x'' + c x' + k x = f => 
@@ -80,8 +80,10 @@ def linear_oscillator(t, x, return_all=False, args=(100, 0.3, 2.25), kwargs={'sp
     # spec_dict = psd.get_spec_dict() 
     # spec_func = spec_dict.get(kwargs.get('spec_name', 'JONSWAP'))
     # f,x_pxx   = spec_func(f, *x)
-    
-    input_psd   = PowerSpectrum('JONSWAP', *x)
+    spec_name   = kwargs.get('spec_name', 'JONSWAP')
+    return_all  = kwargs.get('return_all', False)
+
+    input_psd   = PowerSpectrum(spec_name, *x)
     x_pxx       = input_psd.get_pxx(f)
     t, x_t      = input_psd.gen_process()
     output_psd  = PowerSpectrum('SDOF_out')
