@@ -11,12 +11,12 @@
 """
 import numpy as np
 from tqdm import tqdm
-
 from .dynamic_models import lin_oscillator, duffing_oscillator, linear_oscillator
 from .benchmark import bench1, bench2, bench3, bench4, ishigami
 from ..utilities.classes import ErrorType
 from ..utilities import helpers as museuq_helpers
 from ..utilities import constants as const
+from itertools import compress
 
 solvers_collections = {
     'ISHIGAMI'  : ishigami,
@@ -79,19 +79,19 @@ class Solver(object):
         self.output     = []
         self.output_stats=[]
 
-        print(u'------------------------------------------------------------')
-        print(u'>>> Initialize Solver Obejct...')
-        print(u'------------------------------------------------------------')
-        print(u' > Solver (system) properties:')
-        print(u'   * {:<17s} : {:15s}'.format('Solver name', solver_name))
+        print(r'------------------------------------------------------------')
+        print(r'>>> Initialize Solver Obejct...')
+        print(r'------------------------------------------------------------')
+        print(r' > Solver (system) properties:')
+        print(r'   * {:<17s} : {:15s}'.format('Solver name', solver_name))
 
         if self.theta_m is None or self.theta_m[0] is None:
-            print(u'   * Solver parameters: NA ' )
+            print(r'   * Solver parameters: NA ' )
         else:
-            print(u'   * Solver parameters: ndim={:d}, nsets={:d}'.format(self.theta_m.shape[1], self.theta_m.shape[0]))
-        print(u'   * System excitation functions:')
-        print(u'     - {:<15s} : {}'.format('function'   , self.source_func))
-        print(u'     - {:<15s} : {}'.format('parameters' , self.theta_s))
+            print(r'   * Solver parameters: ndim={:d}, nsets={:d}'.format(self.theta_m.shape[1], self.theta_m.shape[0]))
+        print(r'   * System excitation functions:')
+        print(r'     - {:<15s} : {}'.format('function'   , self.source_func))
+        print(r'     - {:<15s} : {}'.format('parameters' , self.theta_s))
         ###------------- Error properties ----------------------------
         self.error.disp()
 
@@ -107,20 +107,23 @@ class Solver(object):
 
 
         self.output = [] # a list saving simulation results
-        print(u' > Running Simulation...')
+        print(r' > Running Simulation...')
         for idoe, isamples_x in enumerate(doe2run):
-            print(u'   * DoE set : {:d} / {:d}'.format(idoe, len(doe2run)))
             for isys_done, itheta_m in enumerate(self.theta_m): 
                 # ndim_solver = solvers_ndim[self.solver_name.upper()]
+                # print(kwargs)
                 doe_method = kwargs['doe_method']
                 if doe_method.lower() == 'QUADRATURE':
                     input_vars, input_vars_weights = isamples_x[:-1,:], isamples_x[-1,:]
                 else:
                     input_vars, input_vars_weights = isamples_x, None
                 ### Run simulations
+                # kwargs.pop('doe_method')
+                # print(kwargs)
                 y = self._solver_wrapper(input_vars, theta_m = itheta_m, *args, **kwargs)
                 self.output.append(y)
-                print(u'    -> Solver output : {}'.format(y.shape))
+                print(r'   ^ DoE set : {:d} / {:d}'.format(idoe, len(doe2run)), end='')
+                print(r'    -> Solver output : {}'.format(y.shape))
         return self.output
 
     def get_stats(self, qoi2analysis='all', stats2cal=[1,1,1,1,1,1,0]):
@@ -134,12 +137,21 @@ class Solver(object):
             list of calculated statistics [ np.array(nstats, nqoi2analysis)] 
         """
 
-        for idoe_output  in self.output:
+        print(r' > Calculating statistics...')
+        print(r'   * {:<15s} '.format('post analysis parameters'))
+        qoi2analysis = qoi2analysis if qoi2analysis is not None else 'All'
+        print(r'     - {:<15s} : {} '.format('qoi2analysis', qoi2analysis))
+        stats_list = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
+        print(r'     - {:<15s} : {} '.format('statistics'  , list(compress(stats_list, stats2cal)) ))
+
+        for idoe, idoe_output  in enumerate(self.output):
+            print(r'     - DoE set : {:d} / {:d}'.format(idoe, len(self.output)), end='')
             idoe_output_stats = []
             for data in idoe_output:
                 data = data if qoi2analysis == 'all' else data[qoi2analysis]
                 stat = museuq_helpers.get_stats(np.squeeze(data), stats=stats2cal)
                 idoe_output_stats.append(stat)
+            print(r'    -> DoE Statistics output : {}'.format(np.array(idoe_output_stats).shape))
             self.output_stats.append(np.array(idoe_output_stats))
 
         return self.output_stats
@@ -167,7 +179,7 @@ class Solver(object):
         """
 
         # solver_name, sterm_dist = model_def #if len(model_def) == 2 else model_def[0], None
-        # print(usolver_name)
+        # print(rsolver_name)
         try:
             solver = solvers_collections[self.solver_name.upper()]
         except KeyError:
@@ -195,8 +207,8 @@ class Solver(object):
         elif self.solver_name.upper() == 'LINEAR_OSCILLATOR':
             tmax,dt =100, 0.1
             t = np.arange(0,tmax, dt)
-            pbar_x = tqdm(x.T, ascii=True, desc="   > ")
-            y = np.array([linear_oscillator(t,ix) for ix in pbar_x])
+            pbar_x = tqdm(x.T, ascii=True, desc="   - ")
+            y = np.array([linear_oscillator(t,ix, **kwargs) for ix in pbar_x])
 
 
         elif self.solver_name.upper() ==  'DUFFING_OSCILLATOR':
@@ -217,8 +229,8 @@ class Solver(object):
             else:
                 x0, v0, zeta, omega0, mu = (0,0,0.02,1,1)
 
-            # print(usolver)
-            # print(usource_func, source_kwargs, source_args)
+            # print(rsolver)
+            # print(rsource_func, source_kwargs, source_args)
             # y = duffing_oscillator(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs)
             y,dt,pstep= solver(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs,normalize=normalize)
 
