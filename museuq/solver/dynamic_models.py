@@ -56,7 +56,7 @@ def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *source
     x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,source_func=source_func,t_trans=t_trans)
     return x
 
-def linear_oscillator(t, x,args=(100, 0.3, 2.25), **kwargs):
+def linear_oscillator(t, x, **kwargs):
     """
     Solving linear oscillator in frequency domain
     m x'' + c x' + k x = f => 
@@ -68,20 +68,22 @@ def linear_oscillator(t, x,args=(100, 0.3, 2.25), **kwargs):
     args, tuple, oscillator arguments in order of (mass, damping, stiffness) 
     kwargs, dictionary, spectrum definitions for the input excitation functions
     """
-    tmax, dt = t[-1], t[1] - t[0]
-    df = 0.5/tmax
-    f  = np.arange(len(t)+1) * df
-    ##--------- oscillator properties -----------
-    m, c, k = args
-    w_n     = np.sqrt(k/m)          # natural frequency
-    zeta    = c/(2*np.sqrt(m*k))    # damping ratio
-    H_square= 1.0/np.sqrt( (k-m*f**2)**2 + (c*f)**2 )
 
     # spec_dict = psd.get_spec_dict() 
     # spec_func = spec_dict.get(kwargs.get('spec_name', 'JONSWAP'))
     # f,x_pxx   = spec_func(f, *x)
     spec_name   = kwargs.get('spec_name', 'JONSWAP')
     return_all  = kwargs.get('return_all', False)
+    m,c,k       = kwargs.get('mck', (100, 0.3, 2.25))
+
+
+    tmax, dt    = t[-1], t[1] - t[0]
+    df          = 0.5/tmax
+    f           = np.arange(len(t)+1) * df
+    ##--------- oscillator properties -----------
+    w_n         = np.sqrt(k/m)          # natural frequency
+    zeta        = c/(2*np.sqrt(m*k))    # damping ratio
+    H_square    = 1.0/np.sqrt( (k-m*f**2)**2 + (c*f)**2 )
 
     input_psd   = PowerSpectrum(spec_name, *x)
     x_pxx       = input_psd.get_pxx(f)
@@ -113,9 +115,6 @@ def linear_oscillator(t, x,args=(100, 0.3, 2.25), **kwargs):
         y_stats = get_stats(np.concatenate((x_t, y_t), axis=1)) 
         return y_stats
         
-    # y = np.array([y1,y2])
-    # return y
-
 def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,\
         *source_args, source_func=None, source_kwargs=None,t_trans=0, normalize=False):
     if normalize:
