@@ -216,8 +216,9 @@ class Solver(object):
             c       = zeta * 2 * np.sqrt(m * k)
             mck     = (m,c,k)
 
+            kwargs['mck'] = mck
             pbar_x  = tqdm(x.T, ascii=True, desc="   - ")
-            y = np.array([linear_oscillator(t,ix, mck=mck, return_all=True) for ix in pbar_x])
+            y = np.array([linear_oscillator(t,ix, **kwargs) for ix in pbar_x])
 
 
         elif self.solver_name.upper() ==  'DUFFING_OSCILLATOR':
