@@ -129,12 +129,21 @@ class BasicTestSuite(unittest.TestCase):
         np.save('test_linear_oscillator_y',y)
 
     def test_exceedance(self):
-        y = np.load('DoE_McRE6R0_stats.npy')
-        y = np.squeeze(y[:,4,0]).T
-        print('y shape: {}'.format(y.shape))
-        y_excd=uqhelpers.get_exceedance_data(y, 1e-5)
-        np.save('test_sdof_eta_ecdf_pf5', y_excd)
+        print('========================TESTING: Lienar Oscillator =======================')
+        p = 1e-5
+        print('Target exceedance prob : {:.1e}'.format(p))
+        for r in range(12):
+            data_set = np.load('DoE_McRE6R{:d}_stats.npy'.format(r))
 
+            eta = np.squeeze(data_set[:,4,0]).T
+            print('Input data shape: {}'.format(eta.shape))
+            eta_excd = uqhelpers.get_exceedance_data(eta, p)
+            np.save('DoE_McRE6R{:d}_eta_ecdf_pf5'.format(r), eta_excd)
+
+            y   = np.squeeze(data_set[:,4,1]).T
+            print('Input data shape: {}'.format(y.shape))
+            y_excd=uqhelpers.get_exceedance_data(y, p)
+            np.save('DoE_McRE6R{:d}_y_ecdf_pf5'.format(r), y_excd)
 
     def test_Solver_run(self):
         # data_set  = np.load('EC_pfe4.npy')
