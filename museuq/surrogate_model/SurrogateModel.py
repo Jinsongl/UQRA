@@ -159,7 +159,7 @@ class SurrogateModel(object):
         else:
             raise NotImplementedError
 
-    def predict(self,X, y_true=None, return_std=False, return_cov=False, **kwargs):
+    def predict(self,X, y_true=None, **kwargs):
         """
         Predict using surrogate models 
 
@@ -173,9 +173,9 @@ class SurrogateModel(object):
         """
         if not self.metamodels:
             raise ValueError('No surrogate models exist')
-        dist_zeta = self.kwparams['dist_zeta']
-        if len(dist_zeta) != X.shape[0]:
-            raise ValueError('Model expecting {} random variables but {} was given'.format(len(dist_zeta), X.shape[0]))
+        # dist_zeta = self.kwparams['dist_zeta']
+        # if len(dist_zeta) != X.shape[0]:
+            # raise ValueError('Model expecting {} random variables but {} was given'.format(len(dist_zeta), X.shape[0]))
         
 
         surrogates_pred = []
@@ -184,12 +184,21 @@ class SurrogateModel(object):
         for i, imetamodel in enumerate(self.metamodels):
             if self.name.upper() == 'PCE':
                 ## See explainations about Poly above
-                pred = imetamodel(*X)
+                y_pred = imetamodel(*X)
             elif self.name.upper() == 'GPR':
-                f_mean, f_std = imetamodel.predict(X.T, return_std=return_std, return_cov=return_cov)
-                pred = np.hstack((f_mean, f_std.reshape(f_mean.shape))).T
-            print(r'   * {:<17s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model', i, len(self.metamodels), pred.shape))
-            surrogates_pred.append(pred)
+                return_std = kwargs.get('return_std', False)
+                return_cov = kwargs.get('return_cov', False)
+                y_pred_ = imetamodel.predict(X.T, return_std=return_std, return_cov=return_cov)
+                if return_cov:
+                    y_mean, y_cov = y_pred_ 
+                elif return_std:
+                    y_mean, y_std = y_pred_
+                else:
+                    y_mean = y_pred_
+                y_pred = np.squeeze(np.array(y_pred_))
+                # y_pred = np.hstack((y_mean, y_std.reshape(y_mean.shape))).T
+            print(r'   * {:<17s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model', i, len(self.metamodels), y_pred.shape))
+            surrogates_pred.append(y_pred)
 
         if y_true is not None:
             scores = self.score(surrogates_pred, y_true, **kwargs)
@@ -472,7 +481,7 @@ class SurrogateModel(object):
             self.basis_coeffs.append(kernel_params)
 
             # kernel_params = gp.get_params()
-            print(r'   * {:<15s} : {:d}'.format('Kernel (Initial)', ikernel))
+            print(r'   * {:<15s} : {}'.format('Kernel (Initial)', ikernel))
             print(r'   * Optimum values:')
             for key, value in kernel_params.items():
                 print(r'     ∙ {:<25} : {}'.format(key,value))

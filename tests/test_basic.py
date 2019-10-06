@@ -137,10 +137,12 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_exceedance(self):
         print('========================TESTING: Lienar Oscillator =======================')
+        data_dir = '/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA/linear_oscillator'
         p = 1e-5
         print('Target exceedance prob : {:.1e}'.format(p))
-        for r in range(12):
-            data_set = np.load('DoE_McRE6R{:d}_stats.npy'.format(r))
+        for r in range(1):
+            filename = 'DoE_McRE6R{:d}_stats.npy'.format(r)
+            data_set = np.load(os.path.join(data_dir, filename))
 
             eta = np.squeeze(data_set[:,4,0]).T
             print('Input data shape: {}'.format(eta.shape))
