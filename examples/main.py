@@ -142,7 +142,7 @@ def main():
         for r in pbar:
             museuq_helpers.blockPrint()
             dist_zeta   = eta_pce_model.kwparams['dist_zeta']
-            zeta_mcs    = dist_zeta.sample(data_test_params[0], data_test_params[2])
+            zeta_mcs    = dist_zeta.sample(data_test_params[0], rule=data_test_params[2])
             eta_pred_mcs= eta_pce_model.predict(zeta_mcs)
             y_pred_mcs  = y_pce_model.predict(zeta_mcs)
             data_pred   = np.array([eta_pred_mcs, y_pred_mcs])

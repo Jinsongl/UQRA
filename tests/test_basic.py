@@ -122,10 +122,17 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_linear_oscillator(self):
         print('========================TESTING: Lienar Oscillator =======================')
-        x = (Hs,Tp) = (4, 12)
-        tmax,dt =1000, 0.1
-        t = np.arange(0,tmax, dt)
-        y = museuq.solver.dynamic_models.linear_oscillator(t,x)
+        x       = (Hs,Tp) = (4, 12)
+        tmax,dt = 1000, 0.1
+        t       = np.arange(0,tmax, dt)
+
+        zeta    = 0.01
+        omega_n = 2 # rad/s
+        m       = 1 
+        k       = (omega_n/2/np.pi) **2 * m 
+        c       = zeta * 2 * np.sqrt(m * k)
+        mck     = (m,c,k)
+        y = museuq.solver.dynamic_models.linear_oscillator(t,x, mck=mck, return_all=True)
         np.save('test_linear_oscillator_y',y)
 
     def test_exceedance(self):
