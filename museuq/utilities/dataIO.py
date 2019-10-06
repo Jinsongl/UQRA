@@ -73,6 +73,8 @@ def save_data(data, filename, dir_name=None, tags=None):
             save data_
     """
     ## if data is ndarray type, direct save data with given filename, no tag needed
+    print('===>>> Saving data to: {}'.format(dir_name))
+
     if isinstance(data, (np.ndarray, np.generic)):
         np.save(os.path.join(dir_name, filename), data)
     ## if data is list of ndarray type, save each ndarray in list with given filename differentaed with tag 
