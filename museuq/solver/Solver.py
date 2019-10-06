@@ -205,9 +205,9 @@ class Solver(object):
             y = solver(time_max,dt,x0,v0,zeta,omega0,add_f=x[0],*x[1:])
 
         elif self.solver_name.upper() == 'LINEAR_OSCILLATOR':
-            tmax,dt =100, 0.1
-            t = np.arange(0,tmax, dt)
-            pbar_x = tqdm(x.T, ascii=True, desc="   - ")
+            tmax,dt = 1000, 0.1
+            t       = np.arange(0,tmax, dt)
+            pbar_x  = tqdm(x.T, ascii=True, desc="   - ")
             y = np.array([linear_oscillator(t,ix, **kwargs) for ix in pbar_x])
 
 
