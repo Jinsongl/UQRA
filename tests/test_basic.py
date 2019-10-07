@@ -137,43 +137,56 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_exceedance(self):
         print('========================TESTING: Lienar Oscillator =======================')
-        data_dir = '/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA/linear_oscillator'
+        # data_dir = '/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA/linear_oscillator'
+        data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
         p = 1e-5
         print('Target exceedance prob : {:.1e}'.format(p))
-        for r in range(1):
+        for r in range(10):
             filename = 'DoE_McRE6R{:d}_stats.npy'.format(r)
             data_set = np.load(os.path.join(data_dir, filename))
 
+            print(r'Calculating exceedance: {}'.format(filename))
             eta = np.squeeze(data_set[:,4,0]).T
-            print('Input data shape: {}'.format(eta.shape))
+            print(r'    - exceedance for eta: ')
             eta_excd = uqhelpers.get_exceedance_data(eta, p)
-            np.save('DoE_McRE6R{:d}_eta_ecdf_pf5'.format(r), eta_excd)
+            np.save(os.path.join(data_dir,'DoE_McRE6R{:d}_eta_ecdf_pf5'.format(r)), eta_excd)
 
             y   = np.squeeze(data_set[:,4,1]).T
-            print('Input data shape: {}'.format(y.shape))
+            print(r'    - exceedance for y: ')
             y_excd=uqhelpers.get_exceedance_data(y, p)
-            np.save('DoE_McRE6R{:d}_y_ecdf_pf5'.format(r), y_excd)
+            np.save(os.path.join(data_dir, 'DoE_McRE6R{:d}_y_ecdf_pf5'.format(r)), y_excd)
 
-    def test_Solver_run(self):
-        # data_set  = np.load('EC_pfe4.npy')
-        # x_samples = data_set.T
-        # print(x_samples.shape)
+    def test_Solver(self):
 
-        data_set  = np.load('DoE_McRE3R0.npy')
-        x_samples = data_set[2:,:]
-
+        P, nsim     = 10, 25
+        data_dir    = '/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/environment'
+        data_set    = np.load(os.path.join(data_dir, 'Kvitebjørn_EC_P{:d}.npy'.format(P)))
+        EC_x        = data_set[2:,:]
         model_name  = 'linear_oscillator'
-        solver      = museuq.Solver(model_name, x_samples)
-        kwargs      = {'doe_method': 'MCS'}
-        samples_y   = solver.run(**kwargs )
-        np.save('test_linear_oscillator_y', samples_y)
-        # filename_tags = ['R0']
-        # filename_tags = [itag+'_y' for itag in filename_tags]
-        # museuq_dataio.save_data(samples_y, 'test_linear_oscillator', os.getcwd(), filename_tags)
-        samples_y_stats = solver.get_stats()
-        np.save('test_linear_oscillator_y_stats', samples_y_stats)
-        # filename_tags = [itag+'_y_stats' for itag in filename_tags]
-        # museuq_dataio.save_data(samples_y_stats, 'test_linear_oscillator', os.getcwd(), filename_tags)
+        solver      = museuq.Solver(model_name, EC_x)
+        EC_y        = np.array([solver.run(doe_method = 'EC') for _ in range(nsim)])
+
+        data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        np.save(os.path.join(data_dir,'Kvitebjørn_EC_P{:d}_{:d}'.format(P, nsim)), EC_y)
+
+
+
+
+        # data_set  = np.load('DoE_McRE3R0.npy')
+        # x_samples = data_set[2:,:]
+
+        # model_name  = 'linear_oscillator'
+        # solver      = museuq.Solver(model_name, x_samples)
+        # kwargs      = {'doe_method': 'MCS'}
+        # samples_y   = solver.run(**kwargs )
+        # np.save('test_linear_oscillator_y', samples_y)
+        # # filename_tags = ['R0']
+        # # filename_tags = [itag+'_y' for itag in filename_tags]
+        # # museuq_dataio.save_data(samples_y, 'test_linear_oscillator', os.getcwd(), filename_tags)
+        # samples_y_stats = solver.get_stats()
+        # np.save('test_linear_oscillator_y_stats', samples_y_stats)
+        # # filename_tags = [itag+'_y_stats' for itag in filename_tags]
+        # # museuq_dataio.save_data(samples_y_stats, 'test_linear_oscillator', os.getcwd(), filename_tags)
 
     def test_surrogate_model(self):
         print('========================TESTING: SurrogateModel.fit(), ~Normal =======================')
@@ -210,19 +223,20 @@ class BasicTestSuite(unittest.TestCase):
     def test_Kvitebjorn(self):
         print('========================TESTING: Kvitebjorn =======================')
 
+        data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/environment'
+        # hs1     = np.linspace(0,2.9,291)
+        # hs2     = np.linspace(2.90,20, 1711)
+        # hs      = np.hstack((hs1, hs2))
+        # hs_pdf  = Kvitebjorn.hs_pdf(hs) 
+        # np.save(os.path.join(data_dir, 'Kvitebjorn_hs'), np.vstack((hs, hs_pdf)))
 
-        hs1     = np.linspace(0,2.9,291)
-        hs2     = np.linspace(2.90,20, 1711)
-        hs      = np.hstack((hs1, hs2))
-        hs_pdf  = Kvitebjorn.hs_pdf(hs) 
-        np.save(os.path.join(data_dir, 'Kvitebjorn_hs'), np.vstack((hs, hs_pdf)))
+        # n = 1e6 
+        # samples_x = Kvitebjorn.samples(n)
+        # np.save(os.path.join(data_dir, 'Kvitebjorn_samples_n'), samples_x)
 
-        n = 1e6 
-        samples_x = Kvitebjorn.samples(n)
-        np.save(os.path.join(data_dir, 'Kvitebjorn_samples_n'), samples_x)
-
-        EC_samples = Kvitebjorn.EC()
-        np.save(os.path.join(data_dir, 'Kvitebjorn_samples_EC'), EC_samples)
+        P = 10
+        EC_samples = Kvitebjorn.EC(P)
+        np.save(os.path.join(data_dir, 'Kvitebjørn_EC_P{:d}'.format(P)), EC_samples)
 
 
 
