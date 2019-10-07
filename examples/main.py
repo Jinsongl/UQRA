@@ -48,7 +48,7 @@ def main():
     simparams.disp()
 
     ## ------------------------ Define DoE parameters ---------------------- ###
-    doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [5,6,7,8,9,10]
+    doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [10]
     # doe_method, doe_rule, doe_orders = 'MC', 'R', [1e6]*10
     sdof_doe    = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
 
@@ -166,7 +166,8 @@ def main():
     metamodel_params= {'n_restarts_optimizer': 10}
 
     metamodel_class = 'GPR'
-    metamodel_basis_setting = [1.0 * RBF(length_scale=1.0, length_scale_bounds=(1e-1, 1e4))]
+    metamodel_basis_setting = [1.0 * RBF(length_scale=1.0, length_scale_bounds=(1e-1, 1e4)) + 
+            WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e+1)) ]
     
     for iquad_order in doe_orders:
         data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}.npy'.format(iquad_order)))
@@ -181,24 +182,24 @@ def main():
         print('Surrogate Model for eta: ') 
         # print('==============================================================')
         eta_gpr_model = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
-        eta_gpr_model.fit(train_zeta, train_eta)
+        eta_gpr_model.fit(train_x, train_eta)
         print('>>> Validating surrogate model...')
-        eta_validate, eta_validate_scores = eta_gpr_model.predict(train_zeta, train_eta)
+        eta_validate, eta_validate_scores = eta_gpr_model.predict(train_x, train_eta)
 
         # print('==============================================================')
         print('Surrogate Model for SDOF response: ') 
         # print('==============================================================')
         y_gpr_model = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
-        y_gpr_model.fit(train_zeta, train_y)
+        y_gpr_model.fit(train_x, train_y)
         print('>>> Validating surrogate model...')
-        y_validate, y_validate_scores = y_gpr_model.predict(train_zeta, train_y)
+        y_validate, y_validate_scores = y_gpr_model.predict(train_x, train_y)
 
 
         data_valid = np.array([eta_validate,y_validate]).T
         data_scores = np.array([eta_validate_scores, y_validate_scores]).T
 
-        np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}_valid.npy'.format(iquad_order, metamodel_class)),data_valid)
-        np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}_scores.npy'.format(iquad_order, metamodel_class)),data_scores)
+        np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}x_valid.npy'.format(iquad_order, metamodel_class)),data_valid)
+        np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}x_scores.npy'.format(iquad_order, metamodel_class)),data_scores)
 
         print('>>> Prediction with surrogate models... ') 
 
@@ -207,18 +208,19 @@ def main():
         for r in pbar:
             museuq_helpers.blockPrint()
             zeta_mcs    = dist_zeta.sample(data_test_params[0], rule=data_test_params[2])
-            eta_pred_mcs= eta_gpr_model.predict(zeta_mcs)
-            y_pred_mcs  = y_gpr_model.predict(zeta_mcs)
+            x_mcs       = Kvitebjorn.samples(np.array([dist_normal.cdf(zeta_mcs[0,:]), dist_normal.cdf(zeta_mcs[1,:])]))
+            eta_pred_mcs= eta_gpr_model.predict(x_mcs)
+            y_pred_mcs  =   y_gpr_model.predict(x_mcs)
             data_pred   = np.array([eta_pred_mcs, y_pred_mcs])
-            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}_pred_r{:d}.npy'.format(iquad_order,metamodel_class, r)),data_pred)
+            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}x_pred_r{:d}.npy'.format(iquad_order,metamodel_class, r)),data_pred)
             museuq_helpers.enablePrint()
 
             # museuq_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
             # print(' > Calculating ECDF of MCS data and retrieve data to plot...')
             eta_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
-            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}_pred_r{:d}_ecdf_pf{}_eta.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
+            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}x_pred_r{:d}_ecdf_pf{}_eta.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
             y_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
-            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}_pred_r{:d}_ecdf_pf{}_y.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
+            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}x_pred_r{:d}_ecdf_pf{}_y.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
             # rfname_mcs  = fname_test_path + '{:d}_ecdf'.format(r) 
             # # np.save(rfname_mcs, y_pred_mcs_ecdf)
 
