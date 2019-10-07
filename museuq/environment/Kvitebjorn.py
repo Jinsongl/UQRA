@@ -62,13 +62,28 @@ def dist_Tp(Hs):
 
 ## Environment Contour
 
-def EC(p=1e-4, n=100):
+def EC(P,T=1000,n=100):
+    """
+    Return samples for Environment Contours method
+    
+    arguments:
+        P: return period in years
+        T: simulation duration in seconds
+        n: no. of samples on the contour
+    """
+    print(r'Calculating Environment Contour samples for Kvitebjørn:')
+    print(r' - {:<25s}: {}'.format('Return period (years)', P))
+    print(r' - {:<25s}: {}'.format('Simulation duration (s)', T))
+    p           = 1.0/(P * 365.25*24*3600/T)
     beta        = stats.norm.ppf(1-p)
-    print(u'{:<20s}:{:.4f}'.format('Reliability Index', beta))
+    print(r' - {:<25s}: {:.2e}'.format('Failure probability', p))
+    print(r' - {:<25s}: {:.2f}'.format('Reliability index', beta))
     EC_normal   = make_circle(beta,n=n)
     EC_norm_cdf = stats.norm.cdf(EC_normal)
     EC_samples  = samples(EC_norm_cdf)
-    return np.vstack((EC_normal, EC_samples))
+    res         = np.vstack((EC_normal, EC_samples))
+    print(r' - {:<25s}: {}'.format('Results', res.shape))
+    return res 
 
 # Sequence of conditional distributions based on Rosenblatt transformation 
 
