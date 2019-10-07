@@ -141,8 +141,8 @@ class SurrogateModel(object):
             # raise ValueError
 
         # print(r'   * {:<17s} : (X, Y, W) = {} x {} x {}'.format('Traning data:', x_train.shape, y_train.shape))
-        # print(r'     ∙ {:<15s} : {}'.format('X shape:', x_train.shape ))
-        # print(r'     ∙ {:<15s} : {}'.format('Y shape:', y_train.shape ))
+        # print(r'     - {:<15s} : {}'.format('X shape:', x_train.shape ))
+        # print(r'     - {:<15s} : {}'.format('Y shape:', y_train.shape ))
         if weight is not None:
             print(r'   * {:<17s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x_train.shape, y_train.shape, weight.shape))
         else:
@@ -259,7 +259,7 @@ class SurrogateModel(object):
                     print(r'   * {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetric_name, 'True', 'Prediction', '%Error'))
                     for iprob, iupper_tail in zip(prob, np.array(imetric_value).T):
                         error_perc = abs((iupper_tail[1]-iupper_tail[0])/iupper_tail[0]) * 100.0 if iupper_tail[0] else np.inf
-                        print(r'     ∙ {:<18f}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(iprob, iupper_tail[0], iupper_tail[1], error_perc))
+                        print(r'     - {:<18f}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(iprob, iupper_tail[0], iupper_tail[1], error_perc))
 
                 elif imetric_name.lower() == 'moments': 
                     imetric_value = imetric2call(y_true, iy_pred, m=moment)
@@ -267,7 +267,7 @@ class SurrogateModel(object):
                     print(r'   * {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetric_name, 'True', 'Prediction', '%Error'))
                     for imoment, imoment_value in zip(moment, np.array(imetric_value).T):
                         error_perc = abs((imoment_value[1]-imoment_value[0])/imoment_value[0])* 100.0 if imoment_value[0] else np.inf
-                        print(r'     ∙ {:<18s}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(ordinal(imoment), imoment_value[0], imoment_value[1], error_perc))
+                        print(r'     - {:<18s}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(ordinal(imoment), imoment_value[0], imoment_value[1], error_perc))
                 else:
                     imetric_value = imetric2call(y_true, iy_pred)
                     print(r'   * {:<20s}: {}'.format(imetric_name, np.around(imetric_value,2)))
@@ -400,11 +400,11 @@ class SurrogateModel(object):
             # Following parameters are required
             print(r'   * Requried parameters:')
             try:
-                print(r'     ∙ {:<15s} : {}'.format('Solve coeffs:', CAL_COEFFS_METHODS.get(self.kwparams['cal_coeffs'])))
-                print(r'     ∙ {:<15s} : {}'.format('Zeta dist'    , self.kwparams['dist_zeta']))
-                print(r'     ∙ {:<15s} : {}'.format('Basis order'  , self.basis_orders))
+                print(r'     - {:<15s} : {}'.format('Solve coeffs:', CAL_COEFFS_METHODS.get(self.kwparams['cal_coeffs'])))
+                print(r'     - {:<15s} : {}'.format('Zeta dist'    , self.kwparams['dist_zeta']))
+                print(r'     - {:<15s} : {}'.format('Basis order'  , self.basis_orders))
             except KeyError:
-                print(r'     ∙ cal_coeffs, dist_zeta, basis_orders are required parameters for PCE model...')
+                print(r'     - cal_coeffs, dist_zeta, basis_orders are required parameters for PCE model...')
 
             # Following parameters are optional
             self.kwparams['dist_zeta_J' ] = self.kwparams.get('dist_zeta_J'   ,self.kwparams['dist_zeta'])
@@ -415,7 +415,7 @@ class SurrogateModel(object):
                 if key in ['cal_coeffs', 'dist_zeta','Basis order']:
                     pass
                 else:
-                    print(r'     ∙ {:<15s} : {}'.format(key,value))
+                    print(r'     - {:<15s} : {}'.format(key,value))
 
         elif self.name.upper() == 'GPR' :
             ## make sure setting is a list
@@ -439,7 +439,7 @@ class SurrogateModel(object):
             print(r'   * {:<15s} : {}'.format('Kernels', self.kernels))
             print(r'   * Optional parameters:')
             for key, value in self.kwparams.items():
-                print(r'     ∙ {:<15s} : {}'.format(key,value))
+                print(r'     - {:<15s} : {}'.format(key,value))
 
         elif self.name.upper() == 'APCE':
             raise NotImplementedError
@@ -484,7 +484,7 @@ class SurrogateModel(object):
             print(r'   * {:<15s} : {}'.format('Kernel (Initial)', ikernel))
             print(r'   * Optimum values:')
             for key, value in kernel_params.items():
-                print(r'     ∙ {:<25} : {}'.format(key,value))
+                print(r'     - {:<25} : {}'.format(key,value))
 
     def __build_pce_model(self, x, y, w=None):
         """
