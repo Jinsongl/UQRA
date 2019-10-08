@@ -124,6 +124,8 @@ class Solver(object):
                 self.output.append(y)
                 print(r'   ^ DoE set : {:d} / {:d}'.format(idoe, len(doe2run)), end='')
                 print(r'    -> Solver output : {}'.format(y.shape))
+        if len(self.output) == 1: # if only one doe set, just return the result, instead of list with length 1
+            self.output = self.output[0]
         return self.output
 
     def get_stats(self, qoi2analysis='all', stats2cal=[1,1,1,1,1,1,0]):
