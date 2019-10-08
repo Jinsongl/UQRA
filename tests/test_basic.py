@@ -158,16 +158,27 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_Solver(self):
 
-        P, nsim     = 10, 25
-        data_dir    = '/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/environment'
-        data_set    = np.load(os.path.join(data_dir, 'Kvitebjørn_EC_P{:d}.npy'.format(P)))
-        EC_x        = data_set[2:,:]
-        model_name  = 'linear_oscillator'
-        solver      = museuq.Solver(model_name, EC_x)
-        EC_y        = np.array([solver.run(doe_method = 'EC') for _ in range(nsim)])
+        # ## run solver for EC cases
+        # P, nsim     = 10, 25
+        # data_dir    = '/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/environment'
+        # data_set    = np.load(os.path.join(data_dir, 'Kvitebjørn_EC_P{:d}.npy'.format(P)))
+        # EC_x        = data_set[2:,:]
+        # model_name  = 'linear_oscillator'
+        # solver      = museuq.Solver(model_name, EC_x)
+        # EC_y        = np.array([solver.run(doe_method = 'EC') for _ in range(nsim)])
 
+        # data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        # np.save(os.path.join(data_dir,'Kvitebjørn_EC_P{:d}_{:d}'.format(P, nsim)), EC_y)
+
+        ## run solver for Hs Tp grid points
+        nsim        = 25
         data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
-        np.save(os.path.join(data_dir,'Kvitebjørn_EC_P{:d}_{:d}'.format(P, nsim)), EC_y)
+        filename    = 'HsTp_grid.npy'
+        data_set    = np.load(os.path.join(data_dir, filename))
+        model_name  = 'linear_oscillator'
+        solver      = museuq.Solver(model_name, data_set)
+        grid_out    = np.array([solver.run(doe_method = 'GRID') for _ in range(nsim)])
+        np.save(os.path.join(data_dir,'HsTp_grid_out'), grid_out)
 
 
 
