@@ -89,9 +89,8 @@ def EC(P,T=1000,n=100):
 
 def hs_pdf(hs):
     """
-
+    Return pdf value for give hs
     """
-
     mu_Hs    = 0.77
     sigma_Hs = 0.6565
     Hs_shape = 1.503
@@ -102,6 +101,45 @@ def hs_pdf(hs):
     hs2_pdf = stats.weibull_min.pdf(hs, c=Hs_shape, scale=Hs_scale) 
     hs_pdf  = np.where(hs<=h0, hs1_pdf, hs2_pdf)
     return hs_pdf
+
+def _hs_cdf(hs):
+    """
+    Return pdf value for give hs
+    """
+    mu_Hs    = 0.77
+    sigma_Hs = 0.6565
+    Hs_shape = 1.503
+    Hs_scale = 2.691
+    h0       = 2.9
+
+    hs1_cdf = stats.lognorm.cdf(hs, s=sigma_Hs, loc=0, scale=np.exp(mu_Hs)) 
+    hs2_cdf = stats.weibull_min.cdf(hs, c=Hs_shape, scale=Hs_scale) 
+    hs_cdf  = np.where(hs<=h0, hs1_cdf, hs2_cdf)
+    return hs_cdf
+
+def _tp_cdf(tp, hs):
+    res = np.array([dist_Tp(ihs).cdf(itp) for itp, ihs in zip(tp, hs)])
+    res = np.where(res==np.NaN, 1, res)
+    return res
+
+def cdf(x):
+    """
+    Return cdf values for given random variables x
+    parameters:
+        x, ndarray of shape (2, n)
+    Return:
+        y, ndarray of shape(2, n)
+    """
+    if x.shape[0] != 2:
+        raise ValueError('Kvitebjørn site expects two random variables (Hs, Tp), but {:d} were given'.format(x.shape[0]))
+    
+    hs = np.squeeze(x[0,:])
+    tp = np.squeeze(x[1,:])
+    hs_cdf = np.squeeze(_hs_cdf(hs))
+    tp_cdf = np.squeeze(_tp_cdf(tp, hs))
+    y = np.array([hs_cdf, tp_cdf])
+    return y
+
 
 # Sequence of conditional distributions based on Rosenblatt transformation 
 def samples_hs(u):
