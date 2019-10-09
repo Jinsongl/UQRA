@@ -171,14 +171,14 @@ class BasicTestSuite(unittest.TestCase):
         # np.save(os.path.join(data_dir,'Kvitebjørn_EC_P{:d}_{:d}'.format(P, nsim)), EC_y)
 
         ## run solver for Hs Tp grid points
-        nsim        = 25
+        nsim        = 30
         data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
-        filename    = 'HsTp_grid.npy'
+        filename    = 'HsTp_grid118.npy'
         data_set    = np.load(os.path.join(data_dir, filename))
         model_name  = 'linear_oscillator'
         solver      = museuq.Solver(model_name, data_set)
         grid_out    = np.array([solver.run(doe_method = 'GRID') for _ in range(nsim)])
-        np.save(os.path.join(data_dir,'HsTp_grid_out'), grid_out)
+        np.save(os.path.join(data_dir,'HsTp_grid118_out'), grid_out)
 
 
 
@@ -245,9 +245,20 @@ class BasicTestSuite(unittest.TestCase):
         # samples_x = Kvitebjorn.samples(n)
         # np.save(os.path.join(data_dir, 'Kvitebjorn_samples_n'), samples_x)
 
-        P = 10
-        EC_samples = Kvitebjorn.EC(P)
-        np.save(os.path.join(data_dir, 'Kvitebjørn_EC_P{:d}'.format(P)), EC_samples)
+        ## return EC from Kvitebjorn
+        # P = 10
+        # EC_samples = Kvitebjorn.EC(P)
+        # np.save(os.path.join(data_dir, 'Kvitebjørn_EC_P{:d}'.format(P)), EC_samples)
+
+        ## test cdf method for Kvitebjørn
+        u = np.array([np.linspace(0,0.99999,11), np.linspace(0,0.99999,11)])
+        x = Kvitebjorn.samples(u)
+        u_= Kvitebjorn.cdf(x)
+        print(np.around(u,2))
+        print(np.around(x,2))
+        print(np.around(u_,2))
+
+
 
 
 
