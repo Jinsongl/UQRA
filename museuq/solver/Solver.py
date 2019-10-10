@@ -119,8 +119,6 @@ class Solver(object):
         doe2run     = [self.input_x] if isinstance(self.input_x, (np.ndarray, np.generic)) else self.input_x
         self.output = [] # a list saving simulation results
         print(r' > Running Simulation...')
-        for key, value in kwargs.items():
-            print(r'     - {:<15s} : {}'.format(key, value))
 
         for idoe, isamples_x in enumerate(doe2run):
             for isys_done, itheta_m in enumerate(self.theta_m): 
@@ -220,34 +218,53 @@ class Solver(object):
             y = solver(time_max,dt,x0,v0,zeta,omega0,add_f=x[0],*x[1:])
 
         elif self.solver_name.upper() == 'LINEAR_OSCILLATOR':
-            tmax = kwargs.get('time_max', 1000)
-            dt   = kwargs.get('dt', 0.1)
-            t    = np.arange(0,int(tmax/dt) +1) * dt
 
-            if not 'mck' in kwargs.keys():
-                m       = kwargs.get('m', 1)
-                ### two ways defining mck
-                if 'k' in kwargs.keys() and 'c' in kwargs.keys():
-                    k   = kwargs['k'] 
-                    c   = kwargs['c']
-                elif 'zeta' in kwargs.keys() and 'omega_n' in kwargs.keys():
-                    zeta    = kwargs['zeta']
-                    omega_n = kwargs['omega_n'] # rad/s
-                    k       = (omega_n/2/np.pi) **2 * m
-                    c       = zeta * 2 * np.sqrt(m * k)
-                else:
-                    zeta    = 0.01 
-                    omega_n = 2  # rad/s
-                    k       = (omega_n/2/np.pi) **2 * m
-                    c       = zeta * 2 * np.sqrt(m * k)
-                kwargs['mck'] = (m,c,k)
+            kwargs_default = {
+                    'time_max'  : 1000,
+                    'dt'        : 0.1,
+                    'spec_name' : 'JONSWAP',
+                    'return_all': False,
+                    'm'         : 1,
+                    'c'         : 0.02/np.pi,
+                    'k'         : 1.0/np.pi**2, 
+                    'mck'       : (1, 0.02/np.pi, 1.0/np.pi**2),
+                    'zeta'      : 0.01,
+                    'omega_n'   : 2
+                    }
+            kwargs_default.update(kwargs)
+
+            tmax = kwargs_default['time_max']
+            dt   = kwargs_default['dt']
+            m    = kwargs_default['m']
+            c    = kwargs_default['c']
+            k    = kwargs_default['k']
+            ### two ways defining mck
+            if 'k' in kwargs.keys() and 'c' in kwargs.keys():
+                k   = kwargs_default['k'] 
+                c   = kwargs_default['c']
+                zeta= c/(2*np.sqrt(m*k))
+                kwargs_default['zeta'] = zeta
+                omega_n = 2*np.pi*np.sqrt(k/m)
+                kwargs_default['omega_n'] = omega_n
+            elif 'zeta' in kwargs.keys() and 'omega_n' in kwargs.keys():
+                zeta    = kwargs_default['zeta']
+                omega_n = kwargs_default['omega_n'] # rad/s
+                k       = (omega_n/2/np.pi) **2 * m
+                c       = zeta * 2 * np.sqrt(m * k)
+                kwargs_default['k'] = k
+                kwargs_default['c'] = c
+            kwargs_default['mck'] = (m,c,k)
             
+            for key, value in kwargs_default.items():
+                print(r'     - {:<15s} : {}'.format(key, value))
+
+            t = np.arange(0,int(tmax/dt) +1) * dt
             x = np.array(x)
             if x.size == 2 or x.shape[1] == 1:
-                y = linear_oscillator(t,x, **kwargs)
+                y = linear_oscillator(t,x, **kwargs_default)
             else:
                 pbar_x  = tqdm(x.T, ascii=True, desc="   - ")
-                y = np.array([linear_oscillator(t,ix, **kwargs) for ix in pbar_x])
+                y = np.array([linear_oscillator(t,ix, **kwargs_default) for ix in pbar_x])
 
 
         elif self.solver_name.upper() ==  'DUFFING_OSCILLATOR':
