@@ -29,16 +29,16 @@ solvers_collections = {
     'LINEAR_OSCILLATOR' : linear_oscillator,
     }
 
-# solvers_ndim  = {
-    # 'ISHIGAMI'  : int(3),
-    # 'BENCH1'    : int(1),
-    # 'BENCH2'    : int(1),
-    # 'BENCH3'    : int(1),
-    # 'BENCH4'    : int(1),
-    # 'DUFFING'   : int(1),
-    # 'SDOF'      : int(2),
-    # 'LINEAR_OSCILLATOR' : int(2),
-        # }
+solvers_ndim  = {
+    'ISHIGAMI'  : int(3),
+    'BENCH1'    : int(1),
+    'BENCH2'    : int(1),
+    'BENCH3'    : int(1),
+    'BENCH4'    : int(1),
+    'DUFFING'   : int(1),
+    'SDOF'      : int(2),
+    'LINEAR_OSCILLATOR' : int(2),
+        }
 
 class Solver(object):
     """
@@ -72,6 +72,7 @@ class Solver(object):
     def __init__(self,solver_name, x, **kwargs):
         self.solver_name= solver_name
         self.input_x    = x
+        self.ndim       = solvers_ndim[solver_name.upper()] 
 
         ## kwargs: 
         self.theta_m    = kwargs.get('theta_m'  , [None])
@@ -90,17 +91,19 @@ class Solver(object):
 
 
         if self.theta_m is None or self.theta_m[0] is None:
-            print(r'   * Solver parameters: NA ' )
+            print(r'   * {:<17s} : {:d}'.format('No. Solver set', 1))
         else:
-            print(r'   * Solver parameters: ndim={:d}, nsets={:d}'.format(self.theta_m.shape[1], self.theta_m.shape[0]))
+            print(r'   * {:<17s} : {}'.format('No. Solver set', self.theta_m.T.shape))
+            # print(r'   * Solver parameters: ndim={:d}, nsets={:d}'.format(self.theta_m.shape[1], self.theta_m.shape[0]))
         if self.source_func:
             print(r'   * System excitation functions:')
             print(r'     - {:<15s} : {}'.format('function'   , self.source_func))
             print(r'     - {:<15s} : {}'.format('parameters' , self.theta_s))
 
-        print(r'   * Solver kwargs:')
-        for key, value in kwargs:
-            print(r'     - {:<15s} : {}'.format(key, value))
+        if kwargs:
+            print(r'   * Solver kwargs:')
+            for key, value in kwargs.items():
+                print(r'     - {:<15s} : {}'.format(key, value))
 
         ###------------- Error properties ----------------------------
         self.error.disp()
@@ -116,16 +119,18 @@ class Solver(object):
         doe2run     = [self.input_x] if isinstance(self.input_x, (np.ndarray, np.generic)) else self.input_x
         self.output = [] # a list saving simulation results
         print(r' > Running Simulation...')
-        for key, value in kwargs:
+        for key, value in kwargs.items():
             print(r'     - {:<15s} : {}'.format(key, value))
 
         for idoe, isamples_x in enumerate(doe2run):
             for isys_done, itheta_m in enumerate(self.theta_m): 
-                doe_method = kwargs['doe_method'] ## kind of ugly
-                if doe_method.lower() == 'QUADRATURE':
-                    input_vars, input_vars_weights = isamples_x[:-1,:], isamples_x[-1,:]
-                else:
-                    input_vars, input_vars_weights = isamples_x, None
+                input_vars = isamples_x[:self.ndim,:]
+
+                # doe_method = kwargs['doe_method'] ## kind of ugly
+                # if doe_method.lower() == 'QUADRATURE':
+                    # input_vars, input_vars_weights = isamples_x[:-1,:], isamples_x[-1,:]
+                # else:
+                    # input_vars, input_vars_weights = isamples_x, None
                 ### Run simulations
                 y = self._solver_wrapper(input_vars, *args, **kwargs)
                 self.output.append(y)
@@ -217,7 +222,7 @@ class Solver(object):
         elif self.solver_name.upper() == 'LINEAR_OSCILLATOR':
             tmax = kwargs.get('time_max', 1000)
             dt   = kwargs.get('dt', 0.1)
-            t    = np.arange(0,tmax, dt)
+            t    = np.arange(0,int(tmax/dt) +1) * dt
 
             if not 'mck' in kwargs.keys():
                 m       = kwargs.get('m', 1)
@@ -235,11 +240,14 @@ class Solver(object):
                     omega_n = 2  # rad/s
                     k       = (omega_n/2/np.pi) **2 * m
                     c       = zeta * 2 * np.sqrt(m * k)
-                mck     = (m,c,k)
-                kwargs['mck'] = mck
+                kwargs['mck'] = (m,c,k)
             
-            pbar_x  = tqdm(x.T, ascii=True, desc="   - ")
-            y = np.array([linear_oscillator(t,ix, **kwargs) for ix in pbar_x])
+            x = np.array(x)
+            if x.size == 2 or x.shape[1] == 1:
+                y = linear_oscillator(t,x, **kwargs)
+            else:
+                pbar_x  = tqdm(x.T, ascii=True, desc="   - ")
+                y = np.array([linear_oscillator(t,ix, **kwargs) for ix in pbar_x])
 
 
         elif self.solver_name.upper() ==  'DUFFING_OSCILLATOR':
