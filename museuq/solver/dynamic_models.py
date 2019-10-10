@@ -72,10 +72,9 @@ def linear_oscillator(t, x, **kwargs):
     # spec_dict = psd.get_spec_dict() 
     # spec_func = spec_dict.get(kwargs.get('spec_name', 'JONSWAP'))
     # f,x_pxx   = spec_func(f, *x)
-    spec_name   = kwargs.get('spec_name', 'JONSWAP')
-    return_all  = kwargs.get('return_all', False)
-    m,c,k       = kwargs.get('mck', (100, 0.3, 2.25))
-
+    spec_name   = kwargs['spec_name']
+    return_all  = kwargs['return_all']
+    m,c,k       = kwargs['mck']
 
     tmax, dt    = t[-1], t[1] - t[0]
     df          = 0.5/tmax
@@ -108,7 +107,11 @@ def linear_oscillator(t, x, **kwargs):
     y2  = np.concatenate((f,x_pxx,y_pxx), axis=1)
     # np.save(os.path.join(data_dir, 'sdof_frequency'), y2)
 
-    y  = np.concatenate((t,x_t,y_t, f,x_pxx,y_pxx), axis=1)
+    try:
+        y  = np.concatenate((t,x_t,y_t, f,x_pxx,y_pxx), axis=1)
+    except:
+        print('{:<15s} : {} '.format('t', t.shape))
+        print('{:<15s} : {} '.format('f', f.shape))
     if return_all:
         return y
     else:
