@@ -69,13 +69,16 @@ class Solver(object):
             b). 
     """
 
-    def __init__(self,solver_name, x, theta_m=None, error=None, source_func=None, theta_s=None):
+    def __init__(self,solver_name, x, **kwargs):
         self.solver_name= solver_name
         self.input_x    = x
-        self.theta_m    = [theta_m] if theta_m is None else theta_m
-        self.error      = error if error else ErrorType()
-        self.source_func= source_func
-        self.theta_s    = theta_s
+
+        ## kwargs: 
+        self.theta_m    = kwargs.get('theta_m'  , [None])
+        self.error      = kwargs.get('error'    , ErrorType())
+        self.source_func= kwargs.get('source_func', None)
+        self.theta_s    = kwargs.get('theta_s'  , None)
+
         self.output     = []
         self.output_stats=[]
 
@@ -85,13 +88,20 @@ class Solver(object):
         print(r' > Solver (system) properties:')
         print(r'   * {:<17s} : {:15s}'.format('Solver name', solver_name))
 
+
         if self.theta_m is None or self.theta_m[0] is None:
             print(r'   * Solver parameters: NA ' )
         else:
             print(r'   * Solver parameters: ndim={:d}, nsets={:d}'.format(self.theta_m.shape[1], self.theta_m.shape[0]))
-        print(r'   * System excitation functions:')
-        print(r'     - {:<15s} : {}'.format('function'   , self.source_func))
-        print(r'     - {:<15s} : {}'.format('parameters' , self.theta_s))
+        if self.source_func:
+            print(r'   * System excitation functions:')
+            print(r'     - {:<15s} : {}'.format('function'   , self.source_func))
+            print(r'     - {:<15s} : {}'.format('parameters' , self.theta_s))
+
+        print(r'   * Solver kwargs:')
+        for key, value in kwargs:
+            print(r'     - {:<15s} : {}'.format(key, value))
+
         ###------------- Error properties ----------------------------
         self.error.disp()
 
@@ -103,24 +113,21 @@ class Solver(object):
         Returns:
 
         """
-        doe2run = [self.input_x] if isinstance(self.input_x, (np.ndarray, np.generic)) else self.input_x
-
-
+        doe2run     = [self.input_x] if isinstance(self.input_x, (np.ndarray, np.generic)) else self.input_x
         self.output = [] # a list saving simulation results
         print(r' > Running Simulation...')
+        for key, value in kwargs:
+            print(r'     - {:<15s} : {}'.format(key, value))
+
         for idoe, isamples_x in enumerate(doe2run):
             for isys_done, itheta_m in enumerate(self.theta_m): 
-                # ndim_solver = solvers_ndim[self.solver_name.upper()]
-                # print(kwargs)
-                doe_method = kwargs['doe_method']
+                doe_method = kwargs['doe_method'] ## kind of ugly
                 if doe_method.lower() == 'QUADRATURE':
                     input_vars, input_vars_weights = isamples_x[:-1,:], isamples_x[-1,:]
                 else:
                     input_vars, input_vars_weights = isamples_x, None
                 ### Run simulations
-                # kwargs.pop('doe_method')
-                # print(kwargs)
-                y = self._solver_wrapper(input_vars, theta_m = itheta_m, *args, **kwargs)
+                y = self._solver_wrapper(input_vars, *args, **kwargs)
                 self.output.append(y)
                 print(r'   ^ DoE set : {:d} / {:d}'.format(idoe, len(doe2run)), end='')
                 print(r'    -> Solver output : {}'.format(y.shape))
@@ -157,7 +164,7 @@ class Solver(object):
             self.output_stats.append(np.array(idoe_output_stats))
 
         return self.output_stats
-    def _solver_wrapper(self, x, theta_m=None, *args, **kwargs):
+    def _solver_wrapper(self, x, *args, **kwargs):
         """
         a wrapper for all solvers
 
@@ -189,7 +196,8 @@ class Solver(object):
         assert (callable(solver)), '{:s} not callable'.format(solver.__name__)
         
         if self.solver_name.upper() == 'ISHIGAMI':
-            p = theta_m if theta_m else [7,0.1]
+            p = kwargs.get('theta_m', [7,0.1])
+            # p = theta_m if theta_m else [7,0.1]
             y = solver(x, p=p)
 
         elif self.solver_name.upper()[:5] == 'BENCH':
@@ -207,18 +215,29 @@ class Solver(object):
             y = solver(time_max,dt,x0,v0,zeta,omega0,add_f=x[0],*x[1:])
 
         elif self.solver_name.upper() == 'LINEAR_OSCILLATOR':
+            tmax = kwargs.get('time_max', 1000)
+            dt   = kwargs.get('dt', 0.1)
+            t    = np.arange(0,tmax, dt)
 
-            tmax,dt = 1000, 0.1
-            t       = np.arange(0,tmax, dt)
-
-            zeta    = 0.01
-            omega_n = 2 # rad/s
-            m       = 1 
-            k       = (omega_n/2/np.pi) **2 * m 
-            c       = zeta * 2 * np.sqrt(m * k)
-            mck     = (m,c,k)
-
-            kwargs['mck'] = mck
+            if not 'mck' in kwargs.keys():
+                m       = kwargs.get('m', 1)
+                ### two ways defining mck
+                if 'k' in kwargs.keys() and 'c' in kwargs.keys():
+                    k   = kwargs['k'] 
+                    c   = kwargs['c']
+                elif 'zeta' in kwargs.keys() and 'omega_n' in kwargs.keys():
+                    zeta    = kwargs['zeta']
+                    omega_n = kwargs['omega_n'] # rad/s
+                    k       = (omega_n/2/np.pi) **2 * m
+                    c       = zeta * 2 * np.sqrt(m * k)
+                else:
+                    zeta    = 0.01 
+                    omega_n = 2  # rad/s
+                    k       = (omega_n/2/np.pi) **2 * m
+                    c       = zeta * 2 * np.sqrt(m * k)
+                mck     = (m,c,k)
+                kwargs['mck'] = mck
+            
             pbar_x  = tqdm(x.T, ascii=True, desc="   - ")
             y = np.array([linear_oscillator(t,ix, **kwargs) for ix in pbar_x])
 
