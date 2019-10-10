@@ -167,6 +167,7 @@ class Solver(object):
             self.output_stats.append(np.array(idoe_output_stats))
 
         return self.output_stats
+
     def _solver_wrapper(self, x, *args, **kwargs):
         """
         a wrapper for all solvers

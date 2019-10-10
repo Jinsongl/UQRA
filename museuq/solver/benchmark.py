@@ -132,7 +132,7 @@ def bench4(x, error_type):
     """
     x = np.array(x)
     e = gen_error(error_type)
-    y = -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
+    y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
     y = y + e
     return y
 # def benchmark1_normal(x,mu=0,sigma=0.5):
