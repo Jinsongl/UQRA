@@ -128,7 +128,7 @@ def bench3(x, error_type):
 
 def bench4(x, error_type):
     """
-    y = -5*x + 2.5*x^2 -0.36*x^3 + 0.015*x^4
+    y = 5 + -5*x + 2.5*x^2 -0.36*x^3 + 0.015*x^4
     """
     x = np.array(x)
     e = gen_error(error_type)
