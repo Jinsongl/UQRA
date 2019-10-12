@@ -13,7 +13,7 @@ import sys, os
 import chaospy as cp, numpy as np
 from datetime import datetime
 from tqdm import tqdm,tqdm_notebook
-from ..utilities.classes import ErrorType, Logger
+from ..utilities.classes import ObserveError, Logger
 from ..utilities.helpers import num2print, make_output_dir, get_gdrive_folder_id 
 from ..utilities import dataIO 
 from ..utilities import constants as const
@@ -56,13 +56,13 @@ class ExperimentDesign(object):
         else:
             self.filename_tags = [ num2print(iorder) for iorder in self.orders] 
 
-        print(u'------------------------------------------------------------')
-        print(u'>>> Initialize Experiment Design:')
-        print(u'------------------------------------------------------------')
-        print(u' > DoE parameters: ')
-        print(u'   * {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
-        print(u'   * {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.lower()]))
-        print(u'   * {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders)) ))
+        print(r'------------------------------------------------------------')
+        print(r'>>> Initialize Experiment Design:')
+        print(r'------------------------------------------------------------')
+        print(r' > DoE parameters: ')
+        print(r'   * {:<15s} : {:<15s}'.format('DoE method', const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
+        print(r'   * {:<15s} : {:<15s}'.format('DoE rule',const.DOE_RULE_FULL_NAMES[self.rule.lower()]))
+        print(r'   * {:<15s} : {}'.format('DoE order', list(map(num2print, self.orders)) ))
 
     def get_samples(self, space=None):
         """
@@ -95,8 +95,7 @@ class ExperimentDesign(object):
         else:
             raise ValueError('DoE method: {:s} not implemented'.format(const.DOE_METHOD_FULL_NAMES[self.method.lower()]))
 
-        # print('\n',end='')
-        # self.samples_env = self.samples
+        self.samples = self.samples[0] if len(self.samples)==1 else self.samples
         return self.samples
 
     def mappingto(self, space2):
@@ -105,10 +104,8 @@ class ExperimentDesign(object):
         """
         self.space_env   = space2
         self.samples_env = []
-        assert len(self.space) == len(self.space_env)
-        ## Get samples in zeta space first
-        if not self.samples:
-            self.get_samples() 
+        ## if self.samples is not a list (in the case of only 1 DOE set), change it to 1 elememnt list first 
+        self.samples = [self.samples,] if not isinstance(self.samples, list) else self.samples
 
         # # n_sys_excit_func_name = len(self.sys_excit_params[0]) if self.sys_excit_params[0] else 1
         # n_sys_excit_func_name = len(self.sys_excit_params[0]) 
@@ -130,10 +127,12 @@ class ExperimentDesign(object):
                 zeta_cor, zeta_weights = isamples, None
                 x_cor = self._space_transform(self.space, self.space_env, zeta_cor)
                 isample_x = x_cor
-            # print(u'isample_x shape: {}, coord shape: {}, weight shape {}'.format(isample_x.shape, isample_x[0].shape, isample_x[1].shape))
+            # print(r'isample_x shape: {}, coord shape: {}, weight shape {}'.format(isample_x.shape, isample_x[0].shape, isample_x[1].shape))
 
             self.samples_env.append(isample_x)
 
+        self.samples = self.samples[0] if len(self.samples)==1 else self.samples
+        self.samples_env = self.samples_env[0] if len(self.samples_env)==1 else self.samples_env
         return self.samples_env
 
     def set_samples(self, **kwargs):
@@ -161,41 +160,46 @@ class ExperimentDesign(object):
         self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
         self.ndoe        = len(self.orders)   # number of doe sets
         if self.method == 'MC':
-            self.filename_tags = [ num2print(uiorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
+            self.filename_tags = [ num2print(riorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
         else:
-            self.filename_tags = [ num2print(uiorder) for iorder in self.orders] 
+            self.filename_tags = [ num2print(riorder) for iorder in self.orders] 
 
     def save_data(self, data_dir):
         ### save input variables to file
-        print(u' > Saving DoE to: {}'.format(data_dir))
-        if self.samples_env:
-            data = [self.samples, self.samples_env]
+        print(r' > Saving DoE to: {}'.format(data_dir))
+        if self.samples_env is not None:
+            if isinstance(self.samples, (np.ndarray, np.generic)):
+                data = np.concatenate((self.samples, self.samples_env), axis=0)
+            else:
+                data = []
+                for idata in zip(self.samples, self.samples_env):
+                    data.append(np.concatenate(idata, axis=0))
         else:
             data = self.samples
 
         dataIO.save_data(data, self.filename, data_dir, self.filename_tags)
 
     def disp(self, decimals=4, nsamples2print=0):
-        print(u' > DoE Summary:')
-        print(u'   * Number of sample sets : {:d}'.format(len(self.samples)))
+        print(r' > DoE Summary:')
+        print(r'   * Number of sample sets : {:d}'.format(len(self.samples)))
         for i, isamples in enumerate(self.samples):
-            # print(u'   * Sample set No. {:d}:'.format(i))
+            # print(r'   * Sample set No. {:d}:'.format(i))
             if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
                 if i == 0:
-                    print(u'   * {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
-                print(u'     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
+                    print(r'   * {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
+                print(r'     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
             else:
                 pass
-                # print(u'     ∙ Coordinate: {}'.format(isamples.shape))
+                # print(r'     ∙ Coordinate: {}'.format(isamples.shape))
             if nsamples2print: 
                 for j, jcor in enumerate(isamples[0].T):
                     if j > nsamples2print:
                         break
-                    print(u'       - {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
+                    print(r'       - {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
 
     def _space_transform(self, dist1, dist2, var1):
         """
-        Transform variables (var1) from list of dist1 to correponding variables in dist2. based on same icdf
+        Transform variables (var1) from list of dist1 to correponding variables in dist2. F1(x) = F2(x) , same cdf
 
         Arguments:
             dist2: list of independent distributions (destination)
@@ -204,11 +208,14 @@ class ExperimentDesign(object):
         Return:
             
         """
-        var1 = np.array(var1)
+        var1  = np.array(var1)
+        dist1 = [dist1,] if len(dist1) == 1 else dist1
+        dist2 = [dist2,] if len(dist2) == 1 else dist2
+        assert (len(dist1) == len(dist2)), "No. of original and target distributions must be equal, but origianl sets: {:d}, target sets: {:}".format(len(dist1), len(dist2))
 
-        dist1  = [dist1,] if len(dist1) == 1 else dist1
-        dist2  = [dist2,] if len(dist2) == 1 else dist2
-        assert (len(dist1) == len(dist2) == var1.shape[0]), 'Dimension of variable not equal. dist1.ndim={}, dist2.ndim={}, var1.ndim={}'.format(len(dist1), len(dist2), var1.shape[0])
+        var1 = var1.reshape(1,-1) if var1.ndim == 1 else var1
+        assert (len(dist1) == var1.shape[0]), 'Dimension of variable not equal. dist1.ndim={}, dist2.ndim={}, var1.ndim={}'.format(len(dist1), len(dist2), var1.shape[0])
+
         var2 = []
         for i in range(var1.shape[0]):
             _dist1 = dist1[i]
