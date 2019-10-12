@@ -78,17 +78,21 @@ def save_data(data, filename, dir_name=None, tags=None):
     if isinstance(data, (np.ndarray, np.generic)):
         np.save(os.path.join(dir_name, filename), data)
     ## if data is list of ndarray type, save each ndarray in list with given filename differentaed with tag 
-    elif isinstance(data, list) and isinstance(data[0], (np.ndarray, np.generic)):
+    elif isinstance(data, list) :
         assert len(data) == len(tags), "Length of data set to save and length of tags available must be same, but len(data)={}, len(tags)={}".format(len(data), len(tags))
         for idata, i in zip(data, tags):
             np.save(os.path.join(dir_name, filename + '{}'.format(i) ), idata)
-    elif isinstance(data, list) and isinstance(data[0], list):
-        assert len(data[0]) == len(data[1]) == len(tags)
-        # i = 0
-        for i, data_ in enumerate(zip(*data)):
-            idata = np.concatenate(data_, axis=0)
-            np.save(os.path.join(dir_name, filename + '{}'.format(tags[i])), idata )
-            # i +=1
+    # elif isinstance(data, list) and isinstance(data[0], (np.ndarray, np.generic)):
+        # assert len(data) == len(tags), "Length of data set to save and length of tags available must be same, but len(data)={}, len(tags)={}".format(len(data), len(tags))
+        # for idata, i in zip(data, tags):
+            # np.save(os.path.join(dir_name, filename + '{}'.format(i) ), idata)
+    # elif isinstance(data, list) and isinstance(data[0], list):
+        # assert len(data[0]) == len(data[1]) == len(tags)
+        # # i = 0
+        # for i, data_ in enumerate(zip(*data)):
+            # idata = np.concatenate(data_, axis=0)
+            # np.save(os.path.join(dir_name, filename + '{}'.format(tags[i])), idata )
+            # # i +=1
     else:
         raise ValueError('Input data type not defined')
 
