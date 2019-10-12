@@ -141,9 +141,21 @@ class BasicTestSuite(unittest.TestCase):
             y_excd=uqhelpers.get_exceedance_data(y, p)
             np.save(os.path.join(data_dir, 'DoE_McRE6R{:d}_y_ecdf_pf5'.format(r)), y_excd)
 
+
+    def test_bench4(self):
+        print('========================TESTING: BENCH 4 =======================')
+        data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data'
+        x           = np.linspace(-10,20,300).reshape((1,-1))
+        model_name  = 'BENCH4'
+        solver      = museuq.Solver(model_name, x)
+        y           = solver.run()
+        res         = np.concatenate((x,y), axis=0)
+        np.save(os.path.join(data_dir,model_name.lower()), res)
+
     def test_Solver(self):
         ### General Solver run testing 
         print('========================TESTING: Solver =======================')
+
         x       = (Hs,Tp) = np.array((4, 12)).reshape(2,1)
         model_name  = 'linear_oscillator'
         kwargs  = {
@@ -186,9 +198,6 @@ class BasicTestSuite(unittest.TestCase):
         # solver      = museuq.Solver(model_name, data_set)
         # grid_out    = np.array([solver.run(doe_method = 'GRID') for _ in range(nsim)])
         # np.save(os.path.join(data_dir,'HsTp_grid118_out'), grid_out)
-
-
-
 
         # data_set  = np.load('DoE_McRE3R0.npy')
         # x_samples = data_set[2:,:]
