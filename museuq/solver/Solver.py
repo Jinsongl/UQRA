@@ -205,7 +205,7 @@ class Solver(object):
             y = solver(x, p=p)
 
         elif self.solver_name.upper()[:5] == 'BENCH':
-            y = solver(x, error)
+            y = solver(x, self.error)
 
         elif self.solver_name.upper() == 'LIN_OSCILLATOR':
             time_max= simParameters.time_max

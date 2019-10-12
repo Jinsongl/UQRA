@@ -186,7 +186,7 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
     # if data is just a column or row vector (samples, ), get the stats for that vector
     # return would be of shape (nstats,)
     if data.ndim == 1:
-        res = np.array(np.mean(data), np.std(data), scistats.skew(data), scistats.kurtosis(data), np.max(abs(data)), np.min(abs(data)), up_crossing(data))
+        res = np.array(np.mean(data), np.std(data), scistats.skew(data), scistats.kurtosis(data), np.max(abs(data)), np.min(abs(data)))
         # use filter to select stats
         res = [istat for i, istat in enumerate(res) if stats[i]]
     elif data.ndim == 2:
@@ -203,8 +203,8 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
             res.append(np.max(abs(data), axis=0))
         if stats[5] == 1:
             res.append(np.min(abs(data), axis=0))
-        if stats[6] == 1:
-            res.append(_up_crossing(data, axis=0))
+        # if stats[6] == 1:
+            # res.append(_up_crossing(data, axis=0))
         # if stats[7] == 1:
             # res = append(res, _moving_avg(data), axis=1)
         # if stats[8] == 1:
