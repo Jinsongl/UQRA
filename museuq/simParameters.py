@@ -134,6 +134,15 @@ class simParameters(object):
     def set_error(self, name=None, **kwargs):
         """
         Set observe error 
+        Parameters:
+            name: error distribution name, error-free if name=None
+            kwargs: 
+              - (loc, scale): error distribution is iid with parameters (Loc, scale)
+              - cov: error distribution has zero mean and varying scale, cov=std/abs(mu)
+        e.g. 
+            simparams.set_error()
+            simparams.set_error('normal',loc=0, scale=50)
+            simparams.set_error('normal',cov=0.1)
         """
         self.error = ObserveError(name=name,**kwargs)
 
