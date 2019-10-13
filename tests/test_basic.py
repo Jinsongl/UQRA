@@ -122,30 +122,39 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_exceedance(self):
         print('========================TESTING: Lienar Oscillator =======================')
-        # data_dir = '/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA/linear_oscillator'
-        data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        # p = 1e-5
+        # print('Target exceedance prob : {:.1e}'.format(p))
+        # for r in range(10):
+            # filename = 'DoE_McRE6R{:d}_stats.npy'.format(r)
+            # data_set = np.load(os.path.join(data_dir, filename))
+
+            # print(r'Calculating exceedance: {}'.format(filename))
+            # eta = np.squeeze(data_set[:,4,0]).T
+            # print(r'    - exceedance for eta: ')
+            # eta_excd = uqhelpers.get_exceedance_data(eta, p)
+            # np.save(os.path.join(data_dir,'DoE_McRE6R{:d}_eta_ecdf_pf5'.format(r)), eta_excd)
+
+            # y   = np.squeeze(data_set[:,4,1]).T
+            # print(r'    - exceedance for y: ')
+            # y_excd=uqhelpers.get_exceedance_data(y, p)
+            # np.save(os.path.join(data_dir, 'DoE_McRE6R{:d}_y_ecdf_pf5'.format(r)), y_excd)
+
+        data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data' 
         p = 1e-5
         print('Target exceedance prob : {:.1e}'.format(p))
         for r in range(10):
-            filename = 'DoE_McRE6R{:d}_stats.npy'.format(r)
+            filename = 'DoE_McRE6R{:d}_y_Normal.npy'.format(r)
             data_set = np.load(os.path.join(data_dir, filename))
-
-            print(r'Calculating exceedance: {}'.format(filename))
-            eta = np.squeeze(data_set[:,4,0]).T
-            print(r'    - exceedance for eta: ')
-            eta_excd = uqhelpers.get_exceedance_data(eta, p)
-            np.save(os.path.join(data_dir,'DoE_McRE6R{:d}_eta_ecdf_pf5'.format(r)), eta_excd)
-
-            y   = np.squeeze(data_set[:,4,1]).T
+            y        = np.squeeze(data_set)
             print(r'    - exceedance for y: ')
             y_excd=uqhelpers.get_exceedance_data(y, p)
-            np.save(os.path.join(data_dir, 'DoE_McRE6R{:d}_y_ecdf_pf5'.format(r)), y_excd)
-
+            np.save(os.path.join(data_dir, 'DoE_McRE6R{:d}_y_Normal_ecdf_pf5'.format(r)), y_excd)
 
     def test_bench4(self):
         print('========================TESTING: BENCH 4 =======================')
         data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data'
-        x           = np.linspace(-10,20,300).reshape((1,-1))
+        x           = np.linspace(-10,20,600).reshape((1,-1))
         model_name  = 'BENCH4'
         solver      = museuq.Solver(model_name, x)
         y           = solver.run()
