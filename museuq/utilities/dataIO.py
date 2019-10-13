@@ -66,22 +66,17 @@ def save_data(data, filename, dir_name=None, tags=None):
     data:
       1. ndarray: directly save data
       2. list of ndarray: save each element in list individually
-      3. list of list [l1, l2, ...]
-         e.g.
-         for il1, il2 in zip(l1, l2):
-            data_= np.concatenate(il1,il2)
-            save data_
     """
     ## if data is ndarray type, direct save data with given filename, no tag needed
     print('===>>> Saving data to: {}'.format(dir_name))
 
     if isinstance(data, (np.ndarray, np.generic)):
-        np.save(os.path.join(dir_name, filename), data)
+        np.save(os.path.join(dir_name, filename + '{}'.format(tags[0]) ), data)
     ## if data is list of ndarray type, save each ndarray in list with given filename differentaed with tag 
     elif isinstance(data, list) :
         assert len(data) == len(tags), "Length of data set to save and length of tags available must be same, but len(data)={}, len(tags)={}".format(len(data), len(tags))
-        for idata, i in zip(data, tags):
-            np.save(os.path.join(dir_name, filename + '{}'.format(i) ), idata)
+        for idata, itag in zip(data, tags):
+            np.save(os.path.join(dir_name, filename + '{}'.format(itag) ), idata)
     # elif isinstance(data, list) and isinstance(data[0], (np.ndarray, np.generic)):
         # assert len(data) == len(tags), "Length of data set to save and length of tags available must be same, but len(data)={}, len(tags)={}".format(len(data), len(tags))
         # for idata, i in zip(data, tags):
