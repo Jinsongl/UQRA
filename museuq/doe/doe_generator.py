@@ -239,6 +239,7 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         # print(u"Generating Monte Carlo samples...")
         
         doe_samples = domain.sample(order,rule=rule)
+        doe_samples = doe_samples.reshape(len(domain), -1)
         # doe_samples = doe_samples.reshape(len(domain),-1)
         
     # elif doe_method == 'FIXED POINT':
