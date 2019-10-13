@@ -179,23 +179,25 @@ class ExperimentDesign(object):
 
         dataIO.save_data(data, self.filename, data_dir, self.filename_tags)
 
-    def disp(self, decimals=4, nsamples2print=0):
+    def info(self, decimals=4, nsamples2print=0):
         print(r' > DoE Summary:')
-        print(r'   * Number of sample sets : {:d}'.format(len(self.samples)))
-        for i, isamples in enumerate(self.samples):
-            # print(r'   * Sample set No. {:d}:'.format(i))
-            if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
-                if i == 0:
-                    print(r'   * {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
-                print(r'     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
+        print(r'   * Number of sample sets : {:d}'.format( 1 if isinstance(self.samples, np.ndarray) else len(self.samples)))
+        if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
+            print(r'   * {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
+            if isinstance(self.samples, np.ndarray):
+                print(r'     ∙ {} & {}'.format(self.samples[:-1,:].shape,self.samples[-1,:].shape))
             else:
-                pass
-                # print(r'     ∙ Coordinate: {}'.format(isamples.shape))
-            if nsamples2print: 
-                for j, jcor in enumerate(isamples[0].T):
-                    if j > nsamples2print:
-                        break
-                    print(r'       - {} | {:<.2f}'.format(np.around(jcor,decimals), isamples[1][j] ))
+                for isamples in self.samples:
+                    print(r'     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
+        elif const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'MONTE CARLO':
+            if isinstance(self.samples, np.ndarray):
+                for jcor in self.samples[:,:nsamples2print].T:
+                    print(r'         {}'.format(np.around(jcor,decimals)))
+            else:
+                for isamples in self.samples:
+                    print(r'       - sample size: {:d} '.format(isamples.shape[1]))
+                    for jcor in isamples[:,:nsamples2print].T:
+                        print(r'         {}'.format(np.around(jcor,decimals)))
 
     def _space_transform(self, dist1, dist2, var1):
         """
