@@ -22,42 +22,6 @@ Return:
     y: array-like (nsamples,) or (nsamples, nQoI)
 """
 
-# class ErrorType():
-    # def __init__(self, name=None, params=(),size=None):
-        # self.name = name
-        # self.params = params
-        # self.size = None
-
-def gen_error(error_type):
-    """
-    Generate error samples from specified process 
-
-    Arguments:
-        size : int or tuple of ints, optional
-            -- Output shape:
-            If the given shape is, e.g., (m, n, k), then m * n * k samples are drawn. 
-            If size is None (default), a single value is returned if loc and scale are both scalars. 
-            Otherwise, np.broadcast(loc, scale).size samples are drawn.
-        error_type: ErrorType instance
-            .name: error distribution name
-            .params: float or array_like of floats
-    """
-    # error_name = error_type.name if error_type.name else None
-    if error_type.name.upper() == 'FREE':
-        samples = 0
-    elif error_name.upper() == 'NORMAL':
-        mu, sigma = error_type.params if error_type.params else (0.0, 1.0)
-        samples = np.random.normal(loc=mu,scale=sigma, size=error_type.size) 
-    elif error_name.upper() == 'GUMBEL':
-        loc, scale = error_type.params if error_type.params else (0.0, 1.0)
-        samples = np.random.gumbel(loc,scale,size=error_type.size)
-    elif error_name.upper() == 'WEIBULL':
-        shape, scale = error_type.params if error_type.params else (1.0, 1.0)
-        samples = scale * np.random.weibull(shape, size=error_type.size)
-    else:
-        raise NotImplementedError
-    return samples
-    
 
 def ishigami(x, p=None):
     """
@@ -126,13 +90,16 @@ def bench3(x, error_type):
     y = y + e
     return y
 
-def bench4(x, error_type):
+def bench4(x, error):
     """
     y = 5 + -5*x + 2.5*x^2 -0.36*x^3 + 0.015*x^4
     """
     x = np.array(x)
-    e = gen_error(error_type)
     y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
+    sigma = abs(y) * error.cov
+    params = (np.squeeze(y), np.squeeze(sigma))
+    e = error.error(x.size, *params)
+    # print(np.mean(e), np.std(e))
     y = y + e
     return y
 # def benchmark1_normal(x,mu=0,sigma=0.5):

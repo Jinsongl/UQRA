@@ -13,7 +13,7 @@ import numpy as np
 from tqdm import tqdm
 from .dynamic_models import lin_oscillator, duffing_oscillator, linear_oscillator
 from .benchmark import bench1, bench2, bench3, bench4, ishigami
-from ..utilities.classes import ErrorType
+from ..utilities.classes import ObserveError
 from ..utilities import helpers as museuq_helpers
 from ..utilities import constants as const
 from itertools import compress
@@ -76,7 +76,7 @@ class Solver(object):
 
         ## kwargs: 
         self.theta_m    = kwargs.get('theta_m'  , [None])
-        self.error      = kwargs.get('error'    , ErrorType())
+        self.error      = kwargs.get('error'    , ObserveError())
         self.source_func= kwargs.get('source_func', None)
         self.theta_s    = kwargs.get('theta_s'  , None)
 
@@ -106,7 +106,6 @@ class Solver(object):
                 print(r'     - {:<15s} : {}'.format(key, value))
 
         ###------------- Error properties ----------------------------
-        self.error.disp()
 
     def run(self, *args, **kwargs):
         """
@@ -123,12 +122,6 @@ class Solver(object):
         for idoe, isamples_x in enumerate(doe2run):
             for isys_done, itheta_m in enumerate(self.theta_m): 
                 input_vars = isamples_x[:self.ndim,:]
-
-                # doe_method = kwargs['doe_method'] ## kind of ugly
-                # if doe_method.lower() == 'QUADRATURE':
-                    # input_vars, input_vars_weights = isamples_x[:-1,:], isamples_x[-1,:]
-                # else:
-                    # input_vars, input_vars_weights = isamples_x, None
                 ### Run simulations
                 y = self._solver_wrapper(input_vars, *args, **kwargs)
                 self.output.append(y)
@@ -205,7 +198,7 @@ class Solver(object):
             y = solver(x, p=p)
 
         elif self.solver_name.upper()[:5] == 'BENCH':
-            y = solver(x, self.error)
+            y = solver(x, self.error, **kwargs)
 
         elif self.solver_name.upper() == 'LIN_OSCILLATOR':
             time_max= simParameters.time_max
