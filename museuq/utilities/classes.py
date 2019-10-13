@@ -17,7 +17,7 @@ class ObserveError():
         """
         name:   string, error distribution name or None if not defined
         """
-        self.name   = name if name else 'None' 
+        self.name   = name.capitalize() if name else 'None' 
         self.loc    = kwargs.get('loc', 0)
         self.scale  = kwargs.get('scale', 1)
         self.cov    = kwargs.get('cov', False)
