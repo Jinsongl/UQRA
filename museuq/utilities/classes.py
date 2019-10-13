@@ -41,7 +41,7 @@ class ObserveError():
             Otherwise, np.broadcast(loc, scale).size observe errors.
 
         """
-        loc, scale = params if self.cov else (self.loc, self.scale)
+        loc, scale = (0, params[1]) if self.cov else (self.loc, self.scale)
 
         if self.name.upper() == 'NONE':
             observe_errors = 0
@@ -73,9 +73,15 @@ class ObserveError():
 
 
     def __repr__(self):
-        return "ObserveError({:s})".format(self.name)
+        if self.cov:
+            return "ObserveError({:s}(mu=0, cov={:.2f}))".format(self.name, self.cov)
+        else:
+            return "ObserveError({:s}(loc={:.2f}, scale={:.2f}))".format(self.name, self.loc, self.scale)
     def __str__(self):
-        return "ObserveError({:s})".format(self.name)
+        if self.cov:
+            return "ObserveError({:s}(mu=0, cov={:.2f}))".format(self.name, self.cov)
+        else:
+            return "ObserveError({:s}(loc={:.2f}, scale={:.2f}))".format(self.name, self.loc, self.scale)
 
     # def disp(self):
         # if self.name.upper() == 'NONE':
