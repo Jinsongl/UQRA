@@ -14,7 +14,7 @@ import chaospy as cp
 import numpy as np
 from datetime import datetime
 from .doe.doe_generator import samplegen
-from .utilities.classes import ErrorType, Logger
+from .utilities.classes import ObserveError, Logger
 from .utilities.helpers import num2print, make_output_dir, get_gdrive_folder_id 
 from itertools import compress
 ## Define parameters class
@@ -70,11 +70,11 @@ class simParameters(object):
         self.sys_input_x      = []
         self.sys_input_zeta   = []
 
-        ###-------------Error type paramters ----------------------------
-        self.error = ErrorType()
-
+        ###-------------Observation Error ----------------------------
+        self.set_error()
         ###-------------Others ------------------------------------------
         self.set_params()
+        self.update_dir()
 
     def update_outfilename(self,filename):
         self.outfilename = filename
@@ -131,16 +131,13 @@ class simParameters(object):
         ###-------------Other special params ----------------------------
         self.normalize = kwargs.get('normalize', False)
 
-    def set_error(self, params=None):
+    def set_error(self, name=None, **kwargs):
         """
-        Set error distributions 
+        Set observe error 
         """
-        if params is None:
-            self.error = ErrorType()
-        else:
-            name, params, size = params
-            self.error = ErrorType(name=name, params=params, size=size)
-    def disp(self):
+        self.error = ObserveError(name=name,**kwargs)
+
+    def info(self):
         print(r'------------------------------------------------------------')
         print(r'>>> SimParameter setting for model: {}'.format(self.model_name))
         print(r'------------------------------------------------------------')
