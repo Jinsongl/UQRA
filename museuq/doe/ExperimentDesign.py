@@ -11,6 +11,7 @@
 """
 import sys, os
 import chaospy as cp, numpy as np
+import collections
 from datetime import datetime
 from tqdm import tqdm,tqdm_notebook
 from ..utilities.classes import ObserveError, Logger
@@ -45,16 +46,24 @@ class ExperimentDesign(object):
         self.params = [] 
         self.method = method
         self.rule   = rule
-        self.orders = [int(orders),] if np.isscalar(orders) else orders
+        self.orders = [int(orders),] if np.isscalar(orders) else sorted(orders)
         self.space  = space
         self.ndoe   = len(self.orders)   # number of doe sets
         self.samples=[]  # DoE output in space1
         self.samples_env = None # DoE output in space2 after calling mappingto method
         self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
-        if self.method == 'MC':
-            self.filename_tags = [ num2print(iorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
-        else:
-            self.filename_tags = [ num2print(iorder) for iorder in self.orders] 
+        self.filename_tags = []
+        for item, count in collections.Counter(self.orders).items():
+            if count == 1:
+                itag = [ num2print(item)]
+            else:
+                itag = [ num2print(item) + 'R{}'.format(i) for i in range(count)]
+            self.filename_tags += itag
+
+        # if self.method == 'MC':
+            # self.filename_tags = [ num2print(iorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
+        # else:
+            # self.filename_tags = [ num2print(iorder) for iorder in self.orders] 
 
         print(r'------------------------------------------------------------')
         print(r'>>> Initialize Experiment Design:')
