@@ -9,11 +9,12 @@
 """
 import chaospy as cp, numpy as np, sklearn.gaussian_process as skgp
 import scipy.stats as scistats
+import random
 from scipy.stats.kde import gaussian_kde
 from statsmodels.distributions.empirical_distribution import ECDF
 from sklearn.gaussian_process import GaussianProcessRegressor
 from ..utilities import metrics_collections 
-from ..utilities.helpers import ordinal
+from ..utilities.helpers import ordinal, blockPrint, enablePrint
 import warnings
 warnings.filterwarnings(action="ignore",  message="^internal gelsd")
 
@@ -123,37 +124,21 @@ class SurrogateModel(object):
         print(r' > Building surrogate models ...')
         if not self.setting:
             self.__get_metamodel_basis() 
-        x_train = np.array(x_train)
-        y_train = np.array(y_train)
 
-        if x_train.shape[-1] != y_train.shape[0]:
-            raise ValueError("x.T and y must have same first dimension, but have shapes {} and {}".format(x_train.T.shape, y_train.shape))
-
-        # if x_train.ndim == y_train.ndim == 1:
-            # assert len(x_train) == len(y_train), 'Number of data points in x and y is not same: {}!={}'.format(len(x_train), len(y_train))
-        # elif x_train.ndim == 1 and y_train.ndim != 1: 
-            # assert len(x_train) == y_train.shape[0],  'Number of data points in x and y is not same: {}!={} '.format(len(x_train), y_train.shape[0])
-        # elif x_train.ndim != 1 and y_train.ndim == 1:
-            # assert x_train.shape[1] == len(y_train),  'Number of data points in x and y is not same: {}!={} '.format(x_train.shape[1], len(y_train))
-        # elif x_train.ndim != 1 and y_train.ndim != 1:
-            # assert x_train.shape[1] == y_train.shape[0], 'Number of data points in x and y is not same: {}!={} '.format(x_train.shape[1], y_train.shape[0])
-        # else:
-            # raise ValueError
-
-        # print(r'   * {:<17s} : (X, Y, W) = {} x {} x {}'.format('Traning data:', x_train.shape, y_train.shape))
-        # print(r'     - {:<15s} : {}'.format('X shape:', x_train.shape ))
-        # print(r'     - {:<15s} : {}'.format('Y shape:', y_train.shape ))
+        x_shape = x_train[0].shape if isinstance(x_train, list) else x_train.shape
+        y_shape = y_train[0].shape if isinstance(y_train, list) else y_train.shape
         if weight is not None:
-            print(r'   * {:<17s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x_train.shape, y_train.shape, weight.shape))
+            w_shape = weight[0].shape if isinstance(weight, list) else weight.shape
+            print(r'   * {:<17s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x_shape, y_shape, w_shape))
         else:
-            print(r'   * {:<17s} : (X, Y, W) = {} x {} '.format('Train data shape', x_train.shape, y_train.shape))
-
+            print(r'   * {:<17s} : (X, Y) = {} x {} '.format('Train data shape', x_shape, y_shape))
         if self.name.upper() == 'PCE':
             weight = np.squeeze(weight)
             self.__build_pce_model(x_train,y_train,w=weight) 
         elif self.name.upper() == "GPR":
             self.__build_gpr_model(x_train,y_train)
-
+        elif self.name.upper() == 'MPCE':
+            self.__build_mpce_model(x_train,y_train,w=weight)
         elif self.name.upper() == 'APCE':
             raise NotImplementedError
         else:
@@ -178,26 +163,41 @@ class SurrogateModel(object):
             # raise ValueError('Model expecting {} random variables but {} was given'.format(len(dist_zeta), X.shape[0]))
         
 
-        surrogates_pred = []
         print(r' > Evaluating with surrogate models ... ')
         print(r'   * {:<17s} : {}'.format('Query points ', X.shape))
-        for i, imetamodel in enumerate(self.metamodels):
-            if self.name.upper() == 'PCE':
-                ## See explainations about Poly above
-                y_pred = imetamodel(*X)
-            elif self.name.upper() == 'GPR':
-                return_std = kwargs.get('return_std', False)
-                return_cov = kwargs.get('return_cov', False)
+
+        surrogates_pred = []
+        if self.name.upper() == 'GPR':
+            return_std = kwargs.get('return_std', False)
+            return_cov = kwargs.get('return_cov', False)
+            for i, imetamodel in enumerate(self.metamodels):
                 y_pred_ = imetamodel.predict(X.T, return_std=return_std, return_cov=return_cov)
-                if return_cov:
-                    y_mean, y_cov = y_pred_ 
-                elif return_std:
-                    y_mean, y_std = y_pred_
-                else:
-                    y_mean = y_pred_
+                # if return_cov:
+                    # y_mean, y_cov = y_pred_ 
+                # elif return_std:
+                    # y_mean, y_std = y_pred_
+                # else:
+                    # y_mean = y_pred_
+                print(r'   * {:<17s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model (GPR)', i, len(self.metamodels), y_pred.shape))
                 y_pred = np.squeeze(np.array(y_pred_))
-                # y_pred = np.hstack((y_mean, y_std.reshape(y_mean.shape))).T
-            print(r'   * {:<17s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model', i, len(self.metamodels), y_pred.shape))
+            surrogates_pred.append(y_pred)
+
+        elif self.name.upper() == 'PCE':
+            ## See explainations about Poly above
+            for i, imetamodel in enumerate(self.metamodels):
+                y_pred = imetamodel(*X)
+                print(r'   * {:<17s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model (PCE)', i, len(self.metamodels), y_pred.shape))
+                surrogates_pred.append(y_pred)
+
+        elif self.name.upper() == 'MPCE':
+            metamodel_candidate = [] 
+            for i, imetamodel in enumerate(self.metamodels):
+                y_pred = imetamodel(*X)
+                metamodel_candidate.append(y_pred)
+            metamodel_candidate = np.array(metamodel_candidate)
+            idx = np.random.randint(0, metamodel_candidate.shape[0],size=metamodel_candidate.shape[1])
+            y_pred = np.choose(idx, metamodel_candidate)
+            print(r'   * {:<17s} : m = {:d}    -> Output: {}'.format('Surrogate model (mPCE)', metamodel_candidate.shape[0], y_pred.shape))
             surrogates_pred.append(y_pred)
 
         if y_true is not None:
@@ -387,7 +387,7 @@ class SurrogateModel(object):
         print(r' > Surrogate model properties:')
         print(r'   * {:<17s} : {:<15s}'.format('Model name', self.name))
 
-        if self.name.upper() == 'PCE':
+        if 'PCE' in self.name.upper():
             ## make sure setting is a list
             self.setting = []
             if np.isscalar(setting):
@@ -454,6 +454,7 @@ class SurrogateModel(object):
         # Target values: array-like, shape = (nsamples, [n_output_dims])
        
         # Reshape input data array
+
         x_train = x_train.T
         if x_train.ndim == 1:
             x_train = x_train[:, np.newaxis]
@@ -506,6 +507,9 @@ class SurrogateModel(object):
         # y: (nsamples, n_output)
         # len(f_hat): n_output
 
+        if x.shape[-1] != y.shape[0]:
+            raise ValueError("x.T and y must have same first dimension, but have shapes {} and {}".format(x.T.shape, y.shape))
+
         cal_coeffs = self.kwparams.get('cal_coeffs')
         print(r'   * {:<17s} : '.format('PCE model order'), end='')
         for i, iorthpoly in enumerate(self.basis):
@@ -534,9 +538,21 @@ class SurrogateModel(object):
         metamodels = []
         l2_ers = []
 
-
-
         return (metamodels, l2_ers)
+
+    def __build_mpce_model(self, x, y, w):
+        """
+        build multiple pce models for each pair of zip(x,y) 
+        """
+        print(r'   * {:<17s} : {}'.format('PCE model order', self.basis_orders))
+
+        blockPrint()
+        if isinstance(x, (np.ndarray, np.generic)):
+            self.__build_pce_model(x, y, w)
+        else:
+            for ix, iy, iw in zip(x, y, w):
+                self.__build_pce_model(ix, iy, iw)
+        enablePrint()
 
     def __get_metamodel_basis(self):
         """
@@ -544,12 +560,12 @@ class SurrogateModel(object):
         For PCE: orthogonal basis functions for the specified underlying distributions (dist_zeta) with specifed orders (setting)
         For GPR: list of kernels
         """
-        if self.name.upper() == 'PCE':
+        if 'PCE' in self.name.upper():
             for p_order in self.basis_orders:
                 poly, norm = cp.orth_ttr(p_order, self.kwparams['dist_zeta_J'], retall=True)
                 self.basis.append(poly)
                 self.orthpoly_norms.append(norm)
-        elif self.name.upper() == 'GPR':
+        elif 'GPR' in self.name.upper():
             self.kernels = self.setting 
 
 
