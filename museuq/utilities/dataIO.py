@@ -91,9 +91,6 @@ def save_data(data, filename, dir_name=None, tags=None):
     else:
         raise ValueError('Input data type not defined')
 
-
-
-
 def _save_datax(data, filename, dirname=None):
     for idata in data:
         print('saving data of shape: {}'.format(idata.shape))
