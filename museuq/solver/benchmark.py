@@ -96,8 +96,16 @@ def bench4(x, error):
     """
     x = np.array(x)
     y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
-    sigma = abs(y) * error.cov
-    params = (np.squeeze(y), np.squeeze(sigma))
+    if error.name.upper() == 'NORMAL':
+        mu    = y
+        sigma = abs(mu) * error.cov
+        params= (np.squeeze(mu), np.squeeze(sigma))
+    elif error.name.upper() == 'GUMBEL':
+        mu   = y
+        beta = error.cov * abs(mu) / (np.pi/np.sqrt(6) - error.cov * 0.5772) 
+        params = (np.squeeze(mu), np.squeeze(beta))
+    else:
+        pass
     e = error.error(x.size, *params)
     # print(np.mean(e), np.std(e))
     y = y + e
