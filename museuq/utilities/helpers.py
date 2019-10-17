@@ -80,6 +80,7 @@ def make_output_dir(MODEL_NAME):
     current_os  = sys.platform
     if current_os.upper()[:3] == 'WIN':
         DATA_DIR= os.path.join('G:','My Drive','MUSE_UQ_DATA')
+        MODEL_DIR_DATA_ID = get_gdrive_folder_id(MODEL_NAME)
     elif current_os.upper() == 'DARWIN':
         DATA_DIR= '/Users/jinsongliu/External/MUSE_UQ_DATA'
         MODEL_DIR_DATA_ID = get_gdrive_folder_id(MODEL_NAME)
