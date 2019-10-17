@@ -46,19 +46,19 @@ def main():
     simparams.info()
 
     ## ------------------------ Define DoE parameters ---------------------- ###
-    doe_method, doe_rule, doe_orders = 'QUAD', 'hem', sorted([4,5,6,8,9] * 25)
-    # doe_method, doe_rule, doe_orders = 'MC', 'R', [1e6]*10 + [1e7]*3 + [1e8]
+    # doe_method, doe_rule, doe_orders = 'QUAD', 'hem', sorted([5,6,7,8,9,10])
+    doe_method, doe_rule, doe_orders = 'MC', 'R', [1e6]*10 
     doe    = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
     print(doe.filename_tags)
 
     #  >>> comment below out to skip DoE process 
-    samples_zeta= doe.get_samples()
-    samples_x   = [Kvitebjorn.samples(np.array([dist_normal.cdf(isamples_zeta[0,:]), dist_normal.cdf(isamples_zeta[1,:])])) for isamples_zeta in samples_zeta] 
-    doe.set_samples(env=samples_x)
+    train_zeta= doe.get_samples()
+    train_x   = [Kvitebjorn.samples(np.array([dist_normal.cdf(itrain_zeta[0,:]), dist_normal.cdf(itrain_zeta[1,:])])) for itrain_zeta in train_zeta] 
+    doe.set_samples(env=train_x)
     doe.info()
     doe.save_data(simparams.data_dir)
     # doe.save_data(os.getcwd())
-    assert len(samples_x) == len(samples_zeta)
+    assert len(train_x) == len(train_zeta)
 
     #### --------------------------------------------------------------------------- ###
     #### -------------------------------- Run Solver ------------------------------- ###
@@ -66,195 +66,199 @@ def main():
 
     #### >>> option 1: Run solver directly after DoE 
 
-    solver   = museuq.Solver(model_name, samples_x)
-    # samples_y     = solver.run()
-    # filename_tags = [itag+'_y' for itag in doe.filename_tags]
-    # museuq_dataio.save_data(samples_y, doe.filename, simparams.data_dir, filename_tags)
-
-
-    samples_stats =  solver.run()
+    solver      = museuq.Solver(model_name, train_x)
+    ## for sdof, if want to return full time series, specify return_all=True. 
+    ## Otherwise only statistics of time sereis will be returned and time series data will be discarded
+    train_y     = solver.run() 
     filename_tags = [itag+'_stats' for itag in doe.filename_tags]
-    museuq_dataio.save_data(samples_stats, doe.filename, simparams.data_dir, filename_tags)
+    museuq_dataio.save_data(train_y, doe.filename, simparams.data_dir, filename_tags)  
 
     #### >>> option 2: Run solver with samples from data files
 
-    # repeat = range(0,10)
-    # for r in repeat:
-        # data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_McRE5R{:d}.npy'.format(r)))
-        # # data_set    = np.load(os.path.join(os.getcwd(), 'DoE_McRE6R{:d}.npy'.format(r)))
-        # samples_zeta= data_set[:2,:]
-        # samples_x   = data_set[2:,:]
-
-        # solver   = museuq.Solver(model_name, samples_x)
-        # samples_y     = solver.run(doe_method=doe_method)
-        # # print(len(samples_y))
-        # # filename_tags = [itag+'_y' for itag in doe.filename_tags]
-        # # print(doe.filename_tags)
-        # filename_tags = [doe.filename_tags[r] + '_y_stats']
-        # print(simparams.data_dir)
-        # museuq_dataio.save_data(samples_y, doe.filename, simparams.data_dir, filename_tags)
-        # # museuq_dataio.save_data(samples_y, doe.filename, os.getcwd(), filename_tags)
-        # # samples_y_stats = solver.get_stats(simparams.qoi2analysis, simparams.stats)
-        # # filename_tags = [doe.filename_tags[r] + '_y_stats']
-        # # museuq_dataio.save_data(samples_y_stats, doe.filename, simparams.data_dir, filename_tags)
-
+    # for itag in doe.filename_tags:
+        # data_set    = np.load(os.path.join(simparams.data_dir, doe.filename + '{:s}.npy'.format(itag)))
+        # train_zeta  = data_set[:2,:]
+        # train_x     = data_set[2:,:]
+        # solver      = museuq.Solver(model_name, train_x)
+        # train_y     = solver.run(doe_method=doe_method)
+        # museuq_dataio.save_data(train_y, doe.filename, simparams.data_dir, itag+'_stats')
 
     ###------------------------ Define surrogate model parameters ---------------------- ###
 
-    ## -------------------------------- PCE Surrogate Model -------------------- ###
-    metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_zeta}
-    metamodel_class = 'PCE'
-    metamodel_basis_setting = doe_orders
+    ### -------------------------------- PCE Surrogate Model -------------------- ###
+
+    # metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_zeta}
+    # metamodel_class = 'PCE'
+    # metamodel_basis_setting = doe_orders
     
-    for itag, iquad_order in zip(doe.filename_tags, metamodel_basis_setting):
-        ### ============ Get training points ============
-        data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}.npy'.format(itag)))
-        train_zeta  = data_set[:2,:]
-        train_w     = data_set[2 ,:]
-        train_x     = data_set[3:5,:]
-        data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_stats.npy'.format(itag)))
-        train_eta   = np.squeeze(data_set[:, 4, 0])
-        train_y     = np.squeeze(data_set[:, 4, 1])
+    # for itag, iquad_order in zip(doe.filename_tags, metamodel_basis_setting):
+        # ### ============ Get training points ============
+        # data_set    = np.load(os.path.join(simparams.data_dir, doe.filename + '{:s}.npy'.format(itag)))
+        # train_zeta  = data_set[:2,:]
+        # train_w     = data_set[2 ,:]
+        # train_x     = data_set[3:5,:]
+        # data_set    = np.load(os.path.join(simparams.data_dir, doe.filename + '{:s}_stats.npy'.format(itag)))
+        # train_eta   = np.squeeze(data_set[:, 4, 0])
+        # train_y     = np.squeeze(data_set[:, 4, 1])
 
-        ### ============ Get Surrogate Model for each QoI============
-        print('Surrogate Model for eta: ') 
-        eta_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
-        eta_pce_model.fit(train_zeta, train_eta, weight=train_w)
+        # ### ============ Get Surrogate Model for each QoI============
+        # print('Surrogate Model for eta: ') 
+        # eta_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
+        # eta_pce_model.fit(train_zeta, train_eta, weight=train_w)
 
-        ### ============ Validating surrogate models at training points ============
-        print('>>> Validating surrogate model...')
-        # eta_validate, eta_validate_scores = eta_pce_model.predict(train_zeta, train_eta)
+        # ### ============ Validating surrogate models at training points ============
+        # print('>>> Validating surrogate model...')
+        # eta_valid, eta_valid_score = eta_pce_model.predict(train_zeta, train_eta)
 
 
-        ### ============ Make prediction at specified points (hs, tp) ============
-        hstp_grid   = np.load(os.path.join(simparams.data_dir, 'HsTp_grid118.npy'))
-        hstp_grid_u = Kvitebjorn.cdf(hstp_grid)
-        hstp_grid_z = np.array([cp.Normal().inv(hstp_grid_u[0,:]), cp.Normal().inv(hstp_grid_u[1,:])])
-        eta_grid = eta_pce_model.predict(hstp_grid_z)
+        # ### ============ Make prediction at specified points (hs, tp) ============
+        # hstp_grid   = np.load(os.path.join(simparams.data_dir, 'HsTp_grid118.npy'))
+        # hstp_grid_u = Kvitebjorn.cdf(hstp_grid)
+        # hstp_grid_z = np.array([cp.Normal().inv(hstp_grid_u[0,:]), cp.Normal().inv(hstp_grid_u[1,:])])
+        # eta_grid    = eta_pce_model.predict(hstp_grid_z)
 
-        ### ============ Get Surrogate Model for each QoI============
-        print('Surrogate Model for SDOF response: ') 
-        y_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
-        y_pce_model.fit(train_zeta, train_y, weight=train_w)
+        # ### ============ Get Surrogate Model for each QoI============
+        # print('Surrogate Model for SDOF response: ') 
+        # y_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
+        # y_pce_model.fit(train_zeta, train_y, weight=train_w)
 
-        ### ============ Validating surrogate models at training points ============
-        print('>>> Validating surrogate model...')
-        # y_validate, y_validate_scores = y_pce_model.predict(train_zeta, train_y)
+        # ### ============ Validating surrogate models at training points ============
+        # print('>>> Validating surrogate model...')
+        # y_valid, y_valid_score = y_pce_model.predict(train_zeta, train_y)
 
-        ### ============ Make prediction at specified points (hs, tp) ============
-        y_grid = y_pce_model.predict(hstp_grid_z)
+        # ### ============ Make prediction at specified points (hs, tp) ============
+        # y_grid  = y_pce_model.predict(hstp_grid_z)
+        # ### ============ Save data  ============
+        # # data_scores = np.array([eta_valid_score, y_valid_score]).T
+        # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{}_{}_scores.npy'.format(itag, metamodel_class)),data_scores)
 
-        ### ============ Save data  ============
-        # data_scores = np.array([eta_validate_scores, y_validate_scores]).T
-        # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{}_{}_scores.npy'.format(itag, metamodel_class)),data_scores)
+        # # data_valid = np.array([eta_valid,y_valid]).T
 
-        # data_valid = np.array([eta_validate,y_validate]).T
-        data_valid = np.array([eta_grid,y_grid]).T
-        filename_ = doe.filename + '{:s}_{:s}_grid.npy'.format(itag, metamodel_class)
-        np.save(os.path.join(simparams.data_dir, filename_),data_valid)
+        # valid_scores= np.array([eta_valid_score, y_valid_score])
+        # filename_   = doe.filename+'{:s}_y_{:s}_score.npy'.format(itag, metamodel_class)
+        # np.save(os.path.join(simparams.data_dir, filename_),valid_scores)
 
-        ## ============ Make prediction with monte carlo samples ============
-        print('>>> Prediction with surrogate models... ') 
-        data_test_params= [1e7, 10, 'R'] ##[nsamples, repeat, sampling rule]
-        pbar = tqdm(range(data_test_params[1]), ascii=True, desc="   - ")
-        for r in pbar:
-            museuq_helpers.blockPrint()
-            dist_zeta   = eta_pce_model.kwparams['dist_zeta']
-            zeta_mcs    = dist_zeta.sample(data_test_params[0], rule=data_test_params[2])
-            eta_pred_mcs= eta_pce_model.predict(zeta_mcs)
-            y_pred_mcs  = y_pce_model.predict(zeta_mcs)
-            data_pred   = np.array([eta_pred_mcs, y_pred_mcs])
-            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_{:s}_pred_r{:d}.npy'.format(itag, metamodel_class, r)),data_pred)
-            museuq_helpers.enablePrint()
+        # valid_data  = np.array([eta_valid, y_valid])
+        # filename_   = doe.filename+'{:s}_y_{:s}_valid.npy'.format(itag, metamodel_class)
+        # np.save(os.path.join(simparams.data_dir, filename_),valid_data)
+
+        # grid_data   = np.array([hstp_grid_z, hstp_grid, eta_grid, y_grid])
+        # filename_   = doe.filename+'{:s}_{:s}_grid.npy'.format(itag, metamodel_class)
+        # np.save(os.path.join(simparams.data_dir, filename_),grid_data)
+
+        # ## ============ Make prediction with monte carlo samples ============
+        # print('>>> Prediction with surrogate models... ') 
+        # data_test_params= [1e6, 10, 'R'] ##[nsamples, repeat, sampling rule]
+        # # pbar = tqdm(range(data_test_params[1]), ascii=True, desc="   - ")
+        # mcs_filenames = [ 'DoE_McRE6R{:d}.npy'.format(r) for r in range(10)] 
+        # pbar = tqdm(mcs_filenames, ascii=True, desc="   - ")
+        # for r in pbar:
+            # museuq_helpers.blockPrint()
+            # ### >>> option1: regenerate MCS samples randomly
+            # # dist_zeta   = y_pce_model.kwparams['dist_zeta']
+            # # zeta_mcs    = dist_zeta.sample(data_test_params[0], rule=data_test_params[2]).reshape(1,-1)
+
+            # ### >>> option2: load MCS samples from files
+            # zeta_mcs, x_mcs = np.load(os.path.join(simparams.data_dir, ifilename))
+            # zeta_mcs = zeta_mcs.reshape(1,-1)
+            # ????
+            # train_zeta  = data_set[:2,:]
+
+            # eta_pred_mcs= eta_pce_model.predict(zeta_mcs)
+            # y_pred_mcs  = y_pce_model.predict(zeta_mcs)
+            # data_pred   = np.array([eta_pred_mcs, y_pred_mcs])
+            # filename_   = doe.filename + '{:s}_{:s}_pred_r{:d}.npy'.format(itag, metamodel_class, r)
+            # np.save(os.path.join(simparams.data_dir, filename_), data_pred)
+            # museuq_helpers.enablePrint()
 
             # museuq_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
             # print(' > Calculating ECDF of MCS data and retrieve data to plot...')
-            eta_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
-            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_eta.npy'.format(itag,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
-            y_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
-            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_y.npy'.format(itag,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
+            # eta_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
+            # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_eta.npy'.format(itag,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
+            # y_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
+            # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_y.npy'.format(itag,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
 
 
 
     ##### -------------------------------- mPCE Surrogate Model -------------------- ###
-    metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_zeta}
-    metamodel_class = 'mPCE'
-    metamodel_basis_setting = doe_orders
+    # metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_zeta}
+    # metamodel_class = 'mPCE'
+    # metamodel_basis_setting = doe_orders
     
-    for iquad_order in np.unique(metamodel_basis_setting):
-        ### ============ Get training points ============
-        tags        = [i for i in doe.filename_tags if i.startswith(str(iquad_order))]
-        train_zeta  = []
-        train_w     = [] 
-        train_x     = [] 
-        train_eta   = []
-        train_y     = [] 
+    # for iquad_order in np.unique(metamodel_basis_setting):
+        # ### ============ Get training points ============
+        # tags        = [i for i in doe.filename_tags if i.startswith(str(iquad_order))]
+        # train_zeta  = []
+        # train_w     = [] 
+        # train_x     = [] 
+        # train_eta   = []
+        # train_y     = [] 
 
-        for itag in tags:
-            data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}.npy'.format(itag)))
-            train_zeta.append(data_set[:2,:])
-            train_w.append(data_set[2 ,:])
-            train_x.append(data_set[3:5,:])
-            data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_stats.npy'.format(itag)))
-            train_eta.append(np.squeeze(data_set[:, 4, 0]))
-            train_y.append(np.squeeze(data_set[:, 4, 1]))
+        # for itag in tags:
+            # data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}.npy'.format(itag)))
+            # train_zeta.append(data_set[:2,:])
+            # train_w.append(data_set[2 ,:])
+            # train_x.append(data_set[3:5,:])
+            # data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_stats.npy'.format(itag)))
+            # train_eta.append(np.squeeze(data_set[:, 4, 0]))
+            # train_y.append(np.squeeze(data_set[:, 4, 1]))
 
-        ### ============ Get Surrogate Model for each QoI============
-        print('Surrogate Model for eta: ') 
-        eta_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
-        eta_pce_model.fit(train_zeta, train_eta, weight=train_w)
+        # ### ============ Get Surrogate Model for each QoI============
+        # print('Surrogate Model for eta: ') 
+        # eta_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
+        # eta_pce_model.fit(train_zeta, train_eta, weight=train_w)
 
-        ### ============ Validating surrogate models at training points ============
-        print('>>> Validating surrogate model...')
-        # eta_validate, eta_validate_scores = eta_pce_model.predict(train_zeta, train_eta)
+        # ### ============ Validating surrogate models at training points ============
+        # print('>>> Validating surrogate model...')
+        # # eta_valid, eta_valid_score = eta_pce_model.predict(train_zeta, train_eta)
 
 
-        ### ============ Make prediction at specified points (hs, tp) ============
-        hstp_grid   = np.load(os.path.join(simparams.data_dir, 'HsTp_grid118.npy'))
-        hstp_grid_u = Kvitebjorn.cdf(hstp_grid)
-        hstp_grid_z = np.array([cp.Normal().inv(hstp_grid_u[0,:]), cp.Normal().inv(hstp_grid_u[1,:])])
-        eta_grid = eta_pce_model.predict(hstp_grid_z)
+        # ### ============ Make prediction at specified points (hs, tp) ============
+        # hstp_grid   = np.load(os.path.join(simparams.data_dir, 'HsTp_grid118.npy'))
+        # hstp_grid_u = Kvitebjorn.cdf(hstp_grid)
+        # hstp_grid_z = np.array([cp.Normal().inv(hstp_grid_u[0,:]), cp.Normal().inv(hstp_grid_u[1,:])])
+        # eta_grid = eta_pce_model.predict(hstp_grid_z)
 
-        ### ============ Get Surrogate Model for each QoI============
-        print('Surrogate Model for SDOF response: ') 
-        y_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
-        y_pce_model.fit(train_zeta, train_y, weight=train_w)
+        # ### ============ Get Surrogate Model for each QoI============
+        # print('Surrogate Model for SDOF response: ') 
+        # y_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
+        # y_pce_model.fit(train_zeta, train_y, weight=train_w)
 
-        ### ============ Validating surrogate models at training points ============
-        print('>>> Validating surrogate model...')
-        # y_validate, y_validate_scores = y_pce_model.predict(train_zeta, train_y)
+        # ### ============ Validating surrogate models at training points ============
+        # print('>>> Validating surrogate model...')
+        # # y_valid, y_valid_score = y_pce_model.predict(train_zeta, train_y)
 
-        ### ============ Make prediction at specified points (hs, tp) ============
-        y_grid = y_pce_model.predict(hstp_grid_z)
+        # ### ============ Make prediction at specified points (hs, tp) ============
+        # y_grid = y_pce_model.predict(hstp_grid_z)
 
-        ### ============ Save data  ============
-        # data_scores = np.array([eta_validate_scores, y_validate_scores]).T
-        # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{}_{}_scores.npy'.format(itag, metamodel_class)),data_scores)
+        # ### ============ Save data  ============
+        # # data_scores = np.array([eta_valid_score, y_valid_score]).T
+        # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{}_{}_scores.npy'.format(itag, metamodel_class)),data_scores)
 
-        # data_valid = np.array([eta_validate,y_validate]).T
-        data_valid = np.array([eta_grid,y_grid]).T
-        np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}_grid.npy'.format(iquad_order, metamodel_class)),data_valid)
+        # # data_valid = np.array([eta_valid,y_valid]).T
+        # data_valid = np.array([eta_grid,y_grid]).T
+        # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}_grid.npy'.format(iquad_order, metamodel_class)),data_valid)
 
-        ## ============ Make prediction with monte carlo samples ============
-        print('>>> Prediction with surrogate models... ') 
-        data_test_params= [1e6, 10, 'R'] ##[nsamples, repeat, sampling rule]
-        pbar = tqdm(range(data_test_params[1]), ascii=True, desc="   - ")
-        for r in pbar:
-            museuq_helpers.blockPrint()
-            dist_zeta   = eta_pce_model.kwparams['dist_zeta']
-            zeta_mcs    = dist_zeta.sample(data_test_params[0], rule=data_test_params[2])
-            eta_pred_mcs= eta_pce_model.predict(zeta_mcs)
-            y_pred_mcs  = y_pce_model.predict(zeta_mcs)
-            data_pred   = np.array([eta_pred_mcs, y_pred_mcs])
-            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{:s}_pred_r{:d}.npy'.format(iquad_order, metamodel_class, r)),data_pred)
-            museuq_helpers.enablePrint()
+        # ## ============ Make prediction with monte carlo samples ============
+        # print('>>> Prediction with surrogate models... ') 
+        # data_test_params= [1e6, 10, 'R'] ##[nsamples, repeat, sampling rule]
+        # pbar = tqdm(range(data_test_params[1]), ascii=True, desc="   - ")
+        # for r in pbar:
+            # museuq_helpers.blockPrint()
+            # dist_zeta   = eta_pce_model.kwparams['dist_zeta']
+            # zeta_mcs    = dist_zeta.sample(data_test_params[0], rule=data_test_params[2])
+            # eta_pred_mcs= eta_pce_model.predict(zeta_mcs)
+            # y_pred_mcs  = y_pce_model.predict(zeta_mcs)
+            # data_pred   = np.array([eta_pred_mcs, y_pred_mcs])
+            # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{:s}_pred_r{:d}.npy'.format(iquad_order, metamodel_class, r)),data_pred)
+            # museuq_helpers.enablePrint()
 
-            # museuq_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
-            # print(' > Calculating ECDF of MCS data and retrieve data to plot...')
-            eta_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
-            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{:s}_pred_r{:d}_ecdf_pf{}_eta.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
-            y_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
-            np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{:s}_pred_r{:d}_ecdf_pf{}_y.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
+            # # museuq_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
+            # # print(' > Calculating ECDF of MCS data and retrieve data to plot...')
+            # eta_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
+            # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{:s}_pred_r{:d}_ecdf_pf{}_eta.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
+            # y_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
+            # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{:s}_pred_r{:d}_ecdf_pf{}_y.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
 
 
 
@@ -285,7 +289,7 @@ def main():
 
         # #### ============ Validating surrogate models at training points ============
         # print('>>> Validating surrogate model...')
-        # eta_validate, eta_validate_scores = eta_gpr_model.predict(train_x, train_eta)
+        # eta_valid, eta_valid_score = eta_gpr_model.predict(train_x, train_eta)
 
         # ### ============ Make prediction at specified points (hs, tp) ============
         # hstp_grid   = np.load(os.path.join(simparams.data_dir, 'HsTp_grid118.npy'))
@@ -302,17 +306,17 @@ def main():
 
         # #### ============ Validating surrogate models at training points ============
         # print('>>> Validating surrogate model...')
-        # y_validate, y_validate_scores = y_gpr_model.predict(train_x, train_y)
+        # y_valid, y_valid_score = y_gpr_model.predict(train_x, train_y)
 
         # ### ============ Make prediction at specified points (hs, tp) ============
         # y_grid = y_gpr_model.predict(hstp_grid)
 
 
         # #### ============ Save data  ============
-        # # data_valid = np.array([eta_validate,y_validate]).T
+        # # data_valid = np.array([eta_valid,y_valid]).T
         # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}x_valid.npy'.format(iquad_order, metamodel_class)),data_valid)
 
-        # # data_scores = np.array([eta_validate_scores, y_validate_scores]).T
+        # # data_scores = np.array([eta_valid_score, y_valid_score]).T
         # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}x_scores.npy'.format(iquad_order, metamodel_class)),data_scores)
 
         # data_valid = np.array([eta_grid,y_grid]).T
