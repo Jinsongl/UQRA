@@ -153,7 +153,7 @@ class Solver(object):
             print(r'     - DoE set : {:d} / {:d}'.format(idoe, len(self.output)), end='')
             idoe_output_stats = []
             for data in idoe_output:
-                data = data if qoi2analysis == 'all' else data[qoi2analysis]
+                data = data if qoi2analysis.lower() == 'all' else data[qoi2analysis]
                 stat = museuq_helpers.get_stats(np.squeeze(data), stats=stats2cal)
                 idoe_output_stats.append(stat)
             print(r'    -> DoE Statistics output : {}'.format(np.array(idoe_output_stats).shape))

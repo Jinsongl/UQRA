@@ -318,18 +318,18 @@ class BasicTestSuite(unittest.TestCase):
         # samples_x = Kvitebjorn.samples(n)
         # np.save(os.path.join(data_dir, 'Kvitebjorn_samples_n'), samples_x)
 
-        ## return EC from Kvitebjorn
-        # P = 10
-        # EC_samples = Kvitebjorn.EC(P)
-        # np.save(os.path.join(data_dir, 'Kvitebjørn_EC_P{:d}'.format(P)), EC_samples)
+        # return EC from Kvitebjorn
+        P = 10
+        EC_samples = Kvitebjorn.EC(P)
+        np.save(os.path.join(data_dir, 'Kvitebjorn_EC_P{:d}'.format(P)), EC_samples)
 
-        ## test cdf method for Kvitebjørn
-        u = np.array([np.linspace(0,0.99999,11), np.linspace(0,0.99999,11)])
-        x = Kvitebjorn.samples(u)
-        u_= Kvitebjorn.cdf(x)
-        print(np.around(u,2))
-        print(np.around(x,2))
-        print(np.around(u_,2))
+        # ## test cdf method for Kvitebjørn
+        # u = np.array([np.linspace(0,0.99999,11), np.linspace(0,0.99999,11)])
+        # x = Kvitebjorn.samples(u)
+        # u_= Kvitebjorn.cdf(x)
+        # print(np.around(u,2))
+        # print(np.around(x,2))
+        # print(np.around(u_,2))
 
 
 
