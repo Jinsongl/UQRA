@@ -122,6 +122,33 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_exceedance(self):
         print('========================TESTING: Lienar Oscillator =======================')
+
+        print('Testing: 1D')
+        a = np.random.randint(0,10,size=10)
+        print(a)
+        a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3)
+        print('1D: return_index=False')
+        print(a_excd)
+        a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, return_index=True)
+        print('1D: return_index=True')
+        print(a_excd)
+
+        print('Testing: 2D')
+        a = np.random.randint(0,10,size=(2,10))
+        print(a)
+        a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3)
+        print('2D: isExpand=False, return_index=False')
+        print(a_excd)
+        a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, return_index=True)
+        print('2D: isExpand=False, return_index=True')
+        print(a_excd)
+        a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, isExpand=True, return_index=True)
+        print('2D: isExpand=True, return_index=True')
+        print(a_excd)
+
+
+        # a = np.random.randint(0,10,size=(3,10))
+
         # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
         # p = 1e-5
         # print('Target exceedance prob : {:.1e}'.format(p))
@@ -140,21 +167,21 @@ class BasicTestSuite(unittest.TestCase):
             # y_excd=uqhelpers.get_exceedance_data(y, p)
             # np.save(os.path.join(data_dir, 'DoE_McRE6R{:d}_y_ecdf_pf5'.format(r)), y_excd)
 
-        data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data' 
-        p = 1e-5
-        print('Target exceedance prob : {:.1e}'.format(p))
-        # error_name = 'None'
-        # error_name = 'Normal'
-        error_name = 'Gumbel'
-        for r in range(10):
-            # filename = 'DoE_McRE7R{:d}_y_{:s}.npy'.format(r, error_name.capitalize())
-            # filename = 'DoE_QuadHem5_PCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
-            filename = 'DoE_QuadHem5R24_mPCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
-            data_set = np.load(os.path.join(data_dir, filename))
-            y        = np.squeeze(data_set)
-            print(r'    - exceedance for y: {:s}'.format(filename))
-            y_excd=uqhelpers.get_exceedance_data(y, p)
-            np.save(os.path.join(data_dir, filename[:-4]+'_ecdf_pf5.npy'), y_excd)
+        # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data' 
+        # p = 1e-5
+        # print('Target exceedance prob : {:.1e}'.format(p))
+        # # error_name = 'None'
+        # # error_name = 'Normal'
+        # error_name = 'Gumbel'
+        # for r in range(10):
+            # # filename = 'DoE_McRE7R{:d}_y_{:s}.npy'.format(r, error_name.capitalize())
+            # # filename = 'DoE_QuadHem5_PCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
+            # filename = 'DoE_QuadHem5R24_mPCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
+            # data_set = np.load(os.path.join(data_dir, filename))
+            # y        = np.squeeze(data_set)
+            # print(r'    - exceedance for y: {:s}'.format(filename))
+            # y_excd=uqhelpers.get_exceedance_data(y, p)
+            # np.save(os.path.join(data_dir, filename[:-4]+'_ecdf_pf5.npy'), y_excd)
 
     def test_bench4(self):
         print('========================TESTING: BENCH 4 =======================')

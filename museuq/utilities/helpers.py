@@ -139,28 +139,49 @@ def upload2gdrive(filename, data, parent_id):
             print('   * {:<7s} : {:d}/ 5'.format('trial', n_times2upload),end="\r")
         n_times2upload +=1
 
-def get_exceedance_data(x,prob=1e-3):
+def get_exceedance_data(x,prob=1e-3,isExpand=False, return_index=False):
     """
-    Retrieve the exceedance data value for specified prob from data set x
+    Retrieve the exceedance data for specified prob from data set x
     if x is 2D array, calculate exceedance row-wise
     Arguments:
-        x: array-like data set 
+        x: array-like data set of shape(m, n)
         prob: exceedance probability
+        isExpand: boolean type, default False
+          if True: retrieve exceedance data for 1st row, and sort the rest rows based on first row  
+          if False: retrieve exceeance data for each row 
     Return:
-        if x.ndim == 1, return (3,n)
-        else, return a list of (3,n) arrays
-        
+        if x.ndim == 1, return [ecdf.x, ecdf.y [,ecdf_index]],
+            np.ndarray of shape (2,k) or (3,k), k: number of exceedance samples to plot easily
+        else
+            if isExpand:
+                return (m, k)
+            else:
+                return a list of (3,n) arrays
     """
-    exceedance = []
     x = np.array(x)
-
-    if x.ndim == 1:
-        exceedance = _get_exceedance_data(x, prob=prob)
+    if x.ndim == 1 or np.squeeze(x).ndim == 1:
+        result = _get_exceedance1d(np.squeeze(x), prob=prob, return_index=return_index)
     else:
-        exceedance.append([_get_exceedance_data(iset, prob=prob) for iset in x])
-
-    ## each exceedance element corresponds to one result for each row in x. Number of element in exceedance could be different. Can only return list
-    return exceedance
+        if isExpand:
+            res1row_x, res1row_y, res1row_idx = _get_exceedance1d(x[0,:], prob=prob, return_index=True)
+            res1row_idx = np.array(res1row_idx, dtype=np.int32)
+            result = [res1row_x,]
+            for irow in x[1:,:]:
+                irow_sorted = irow[res1row_idx[1:]]
+                irow_sorted = np.insert(irow_sorted, 0, irow_sorted.size)
+                result.append(irow_sorted) 
+            result.append(res1row_y)
+            result = np.vstack(result)
+        else:
+            if np.isscalar(prob):
+                prob = [prob,] * x.shape[0]
+            elif len(prob) == 1:
+                prob = [prob[0],] * x.shape[0]
+            else:
+                assert (len(prob) == x.shape[0]), "Length of target probability should either be 1 or equal to number of rows in x, but len(prob)={:d}, x.shape[0]={:d}".format(len(prob), x.shape[0])
+            result = [_get_exceedance1d(irow, prob=iprob, return_index=return_index) for irow,iprob in zip(x, prob)]
+    ## each result element corresponds to one result for each row in x. Number of element in result could be different. Can only return list
+    return result
 
 def get_stats(data, stats=[1,1,1,1,1,1,0]):
     """ Calculate the statistics of data
@@ -215,42 +236,55 @@ def get_stats(data, stats=[1,1,1,1,1,1,0]):
     
     return np.array(res)
 
-def _get_exceedance_data(x,prob=1e-3):
+def _get_exceedance1d(x,prob=1e-3, return_index=False):
     """
     return sub data set retrieved from data set x
     Parameters:
-        data: 1d array
+        data: 1d array of shape(n,)
         prob: exceedance probability
 
     Return:
-        ndarray of shape (3,n)
+        ndarray of shape (3,k)
         (0,:): ecdf.x, sorted values for x
         (1,:): ecdf.y, corresponding probability for each x
         (2,:): exceedance value corresponding to specified prob (just one number, to be able to return array, duplicate that number to have same size as of (1,:))
 
     """
     assert np.array(x).ndim == 1
-    x_ecdf    = ECDF(x)
-    n_samples = len(x_ecdf.x)
+    x_ecdf  = ECDF(x)
+    n       = len(x_ecdf.x)
+    sort_idx= np.argsort(x)
 
-    if n_samples <= 1.0/prob:
-        exceedance = (x_ecdf.x, x_ecdf.y, x_ecdf.y)
-        warnings.warn('\n Not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(n_samples, prob))
+    if n <= 1.0/prob:
+        if return_index:
+            index_ =np.insert(sort_idx, 0, sort_idx.size)
+            result = np.vstack((x_ecdf.x, x_ecdf.y, index_ ))
+        else:
+            result = np.vstack((x_ecdf.x, x_ecdf.y))
+        warnings.warn('\n Not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(n, prob))
     else:
-        exceedance_index = -int(prob * n_samples)   # index of the exceedance value
-        exceedance_value = x_ecdf.x[exceedance_index] # exceedance x value
-        _, idx1 = np.unique(np.round(x_ecdf.x[:exceedance_index], decimals=2), return_index=True)
-        # remove 'duplicate' values up to index exceedance_index, wish to have much smaller size of data when making plot
+        ### When there are a large number of points, exceedance plot with all data points will lead to large figures. Usually, it is not necessary to use all data points to have a decent exceedance plots since large portion of the data points will be located in the 'middle' region. Here we collapse data points to a reasonal number
+        prob_index = -int(prob * n)   # index of the result value at targeted exceedance prob
+        prob_value = x_ecdf.x[prob_index] # result x value
+        _, index2return = np.unique(np.round(x_ecdf.x[:prob_index], decimals=2), return_index=True)
+        # remove 'duplicate' values up to index prob_index, wish to have much smaller size of data when making plot
         # append the rest to the array
-        x1 = x_ecdf.x[idx1]
-        y1 = x_ecdf.y[idx1]
-        x2 = x_ecdf.x[exceedance_index:]
-        y2 = x_ecdf.y[exceedance_index:]
+        x1 = x_ecdf.x[index2return]
+        y1 = x_ecdf.y[index2return]
+        sort_idx1 = sort_idx[index2return]
+
+        x2 = x_ecdf.x[prob_index:]
+        y2 = x_ecdf.y[prob_index:]
+        sort_idx2 = sort_idx[prob_index:]
         x  = np.hstack((x1,x2))
         y  = np.hstack((y1,y2))
-        v  = exceedance_value * np.ones(x.shape)
-        exceedance = (x,y,v) 
-    return np.array(exceedance)
+        v  = np.hstack((sort_idx1, sort_idx2)) 
+        v  = np.insert(v, 0, sort_idx.size)
+        if return_index:
+            result = np.vstack((x,y,v))
+        else:
+            result = np.vstack((x,y))
+    return result
 
 def _central_moms(dist, n=np.arange(1,5), Fisher=True):
     """
