@@ -71,7 +71,13 @@ def save_data(data, filename, dir_name=None, tags=None):
     print('===>>> Saving data to: {}'.format(dir_name))
 
     if isinstance(data, (np.ndarray, np.generic)):
-        np.save(os.path.join(dir_name, filename + '{}'.format(tags[0]) ), data)
+        if isinstance(tags, str):
+            pass
+        elif isinstance(tags, list) and len(tags) ==1:
+            tags = tags[0]
+        else:
+            raise ValueError('More than one tags provided, len(tags) = {:d}'.format(len(tags)))
+        np.save(os.path.join(dir_name, filename + tags), data)
     ## if data is list of ndarray type, save each ndarray in list with given filename differentaed with tag 
     elif isinstance(data, list) :
         assert len(data) == len(tags), "Length of data set to save and length of tags available must be same, but len(data)={}, len(tags)={}".format(len(data), len(tags))

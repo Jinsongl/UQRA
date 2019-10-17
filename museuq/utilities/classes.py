@@ -73,15 +73,22 @@ class ObserveError():
 
 
     def __repr__(self):
-        if self.cov:
-            return "ObserveError({:s}(mu=0, cov={:.2f}))".format(self.name, self.cov)
+        if self.name =='None':
+            return "ObserveError(:s)".format(self.name)
         else:
-            return "ObserveError({:s}(loc={:.2f}, scale={:.2f}))".format(self.name, self.loc, self.scale)
+            if self.cov:
+                return "ObserveError({:s}(mu=0, cov={:.2f}))".format(self.name, self.cov)
+            else:
+                return "ObserveError({:s}(loc={:.2f}, scale={:.2f}))".format(self.name, self.loc, self.scale)
+
     def __str__(self):
-        if self.cov:
-            return "ObserveError({:s}(mu=0, cov={:.2f}))".format(self.name, self.cov)
+        if self.name =='None':
+            return "ObserveError(None)"
         else:
-            return "ObserveError({:s}(loc={:.2f}, scale={:.2f}))".format(self.name, self.loc, self.scale)
+            if self.cov:
+                return "ObserveError({:s}(mu=0, cov={:.2f}))".format(self.name, self.cov)
+            else:
+                return "ObserveError({:s}(loc={:.2f}, scale={:.2f}))".format(self.name, self.loc, self.scale)
 
     # def disp(self):
         # if self.name.upper() == 'NONE':

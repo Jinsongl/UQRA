@@ -164,10 +164,10 @@ class SurrogateModel(object):
         
 
         print(r' > Evaluating with surrogate models ... ')
-        print(r'   * {:<17s} : {}'.format('Query points ', X.shape))
 
         surrogates_pred = []
         if self.name.upper() == 'GPR':
+            print(r'   * {:<17s} : {}'.format('Query points ', X.shape))
             return_std = kwargs.get('return_std', False)
             return_cov = kwargs.get('return_cov', False)
             for i, imetamodel in enumerate(self.metamodels):
@@ -183,6 +183,7 @@ class SurrogateModel(object):
             surrogates_pred.append(y_pred)
 
         elif self.name.upper() == 'PCE':
+            print(r'   * {:<17s} : {}'.format('Query points ', X.shape))
             ## See explainations about Poly above
             for i, imetamodel in enumerate(self.metamodels):
                 y_pred = imetamodel(*X)
@@ -190,6 +191,7 @@ class SurrogateModel(object):
                 surrogates_pred.append(y_pred)
 
         elif self.name.upper() == 'MPCE':
+            print(r'   * {:<17s} : {}'.format('Query points ', X.shape))
             metamodel_candidate = [] 
             for i, imetamodel in enumerate(self.metamodels):
                 y_pred = imetamodel(*X)

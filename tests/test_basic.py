@@ -143,23 +143,44 @@ class BasicTestSuite(unittest.TestCase):
         data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data' 
         p = 1e-5
         print('Target exceedance prob : {:.1e}'.format(p))
+        # error_name = 'None'
+        # error_name = 'Normal'
+        error_name = 'Gumbel'
         for r in range(10):
-            filename = 'DoE_McRE6R{:d}_y_Normal.npy'.format(r)
+            # filename = 'DoE_McRE7R{:d}_y_{:s}.npy'.format(r, error_name.capitalize())
+            # filename = 'DoE_QuadHem5_PCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
+            filename = 'DoE_QuadHem5R24_mPCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
             data_set = np.load(os.path.join(data_dir, filename))
             y        = np.squeeze(data_set)
-            print(r'    - exceedance for y: ')
+            print(r'    - exceedance for y: {:s}'.format(filename))
             y_excd=uqhelpers.get_exceedance_data(y, p)
-            np.save(os.path.join(data_dir, 'DoE_McRE6R{:d}_y_Normal_ecdf_pf5'.format(r)), y_excd)
+            np.save(os.path.join(data_dir, filename[:-4]+'_ecdf_pf5.npy'), y_excd)
 
     def test_bench4(self):
         print('========================TESTING: BENCH 4 =======================')
         data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data'
-        x           = np.linspace(-10,20,600).reshape((1,-1))
         model_name  = 'BENCH4'
-        solver      = museuq.Solver(model_name, x)
-        y           = solver.run()
-        res         = np.concatenate((x,y), axis=0)
-        np.save(os.path.join(data_dir,model_name.lower()), res)
+
+        # ### grid points
+        # x           = np.linspace(-10,20,600).reshape((1,-1))
+        # solver      = museuq.Solver(model_name, x)
+        # y           = solver.run()
+        # res         = np.concatenate((x,y), axis=0)
+        # np.save(os.path.join(data_dir,model_name.lower()), res)
+
+        ### data from files
+        for r in range(10):
+            filename = 'DoE_McRE6R{:d}.npy'.format(r)
+            data_set = np.load(os.path.join(data_dir, filename))
+            zeta     = data_set[0,:].reshape(1,-1)
+            x        = data_set[1,:].reshape(1,-1)
+            solver   = museuq.Solver(model_name, x)
+            y        = solver.run()
+            np.save(os.path.join(data_dir,'DoE_McRE6R{:d}_y_None.npy'.format(r)), y)
+
+
+
+
 
     def test_Solver(self):
         ### General Solver run testing 
