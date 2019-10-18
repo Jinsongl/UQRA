@@ -17,7 +17,7 @@ from scipy.optimize import brentq
 from ..utilities.PowerSpectrum import PowerSpectrum
 from ..utilities import power_spectrum as psd
 from ..utilities.psd2process import psd2process
-from ..utilities.helpers import get_stats
+from ..utilities import helpers
 data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
 
 def _cal_normalize_values(zeta,omega0,source_kwargs, *source_args):
@@ -115,7 +115,13 @@ def linear_oscillator(t, x, **kwargs):
     if return_all:
         return y
     else:
-        y_stats = get_stats(np.concatenate((x_t, y_t), axis=1)) 
+        qoi2analysis= kwargs.get('qoi2analysis', 'ALL')
+        stats2cal   = kwargs.get('stats2cal', [1,1,1,1,1,1,0])
+        axis        = kwargs.get('axis', 0)
+        data        = np.concatenate((x_t, y_t), axis=1)
+        helpers.blockPrint()
+        y_stats = helpers.get_stats(data, qoi2analysis =qoi2analysis, stats2cal = stats2cal, axis=axis) 
+        helpers.enablePrint()
         return y_stats
         
 def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,\
