@@ -47,7 +47,7 @@ def main():
 
     ## ------------------------ Define DoE parameters ---------------------- ###
     # doe_method, doe_rule, doe_orders = 'QUAD', 'hem', sorted([5,6,7,8,9,10] *25)
-    doe_method, doe_rule, doe_orders = 'MC', 'R', sorted([1e3]*20)
+    doe_method, doe_rule, doe_orders = 'MC', 'R', sorted([1e3]*3)
     doe    = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
     print(doe.filename_tags)
 
@@ -63,24 +63,12 @@ def main():
     #### --------------------------------------------------------------------------- ###
     #### -------------------------------- Run Solver ------------------------------- ###
     #### --------------------------------------------------------------------------- ###
-
-    #### >>> option 1: Run solver directly after DoE 
-
-    solver      = museuq.Solver(model_name, train_x)
-    ## for sdof, if want to return full time series, specify return_all=True. 
-    ## Otherwise only statistics of time sereis will be returned and time series data will be discarded
-    filenames   = [os.path.join(simparams.data_dir, doe.filename + itag + 'stats') for itag in doe.filename_tags]
-    solver.run(filenames = filenames) 
-    # filename_tags = [itag+'_stats' for itag in doe.filename_tags]
-
-    #### >>> option 2: Run solver with samples from data files
-
-    # for itag in doe.filename_tags:
-        # data_set    = np.load(os.path.join(simparams.data_dir, doe.filename + '{:s}.npy'.format(itag)))
-        # train_zeta  = data_set[:2,:]
-        # train_x     = data_set[2:,:]
-        # solver      = museuq.Solver(model_name, train_x)
-        # train_y     = solver.run(doe_method=doe_method)
+    solver = museuq.Solver(model_name)
+    ###>>> option 1: run with input data
+    solver.run(data = train_x, post_str='stats') 
+    ###>>> option 2: run with input file names
+    filenames = [os.path.join(simparams.data_dir, doe.filename + itag ) for itag in doe.filename_tags]
+    solver.run(fnames = filenames, post_str='stats', index=[2,3])
 
     ###------------------------ Define surrogate model parameters ---------------------- ###
 
