@@ -280,7 +280,6 @@ def _get_exceedance1d(x,prob=1e-3, return_index=False):
         x  = np.hstack((x1,x2))
         y  = np.hstack((y1,y2))
         v  = np.hstack((sort_idx1, sort_idx2)) 
-        v  = np.insert(v, 0, sort_idx.size)
         if return_index:
             result = np.vstack((x,y,v))
         else:
