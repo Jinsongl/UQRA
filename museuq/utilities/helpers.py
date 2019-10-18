@@ -84,6 +84,7 @@ def make_output_dir(MODEL_NAME):
         DATA_DIR= '/Users/jinsongliu/External/MUSE_UQ_DATA'
         MODEL_DIR_DATA_ID = get_gdrive_folder_id(MODEL_NAME)
     elif current_os.upper() == 'LINUX':
+        MODEL_DIR_DATA_ID = get_gdrive_folder_id(MODEL_NAME)
         DATA_DIR= '/home/jinsong/Box/MUSE_UQ_DATA'
     else:
         raise ValueError('Operating system {} not found'.format(current_os))    
