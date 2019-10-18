@@ -46,8 +46,8 @@ def main():
     simparams.info()
 
     ## ------------------------ Define DoE parameters ---------------------- ###
-    # doe_method, doe_rule, doe_orders = 'QUAD', 'hem', sorted([5,6,7,8,9,10])
-    doe_method, doe_rule, doe_orders = 'MC', 'R', [1e6]*10 
+    # doe_method, doe_rule, doe_orders = 'QUAD', 'hem', sorted([5,6,7,8,9,10] *25)
+    doe_method, doe_rule, doe_orders = 'MC', 'R', [1e3]*20
     doe    = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
     print(doe.filename_tags)
 
@@ -69,9 +69,9 @@ def main():
     solver      = museuq.Solver(model_name, train_x)
     ## for sdof, if want to return full time series, specify return_all=True. 
     ## Otherwise only statistics of time sereis will be returned and time series data will be discarded
-    train_y     = solver.run() 
-    filename_tags = [itag+'_stats' for itag in doe.filename_tags]
-    museuq_dataio.save_data(train_y, doe.filename, simparams.data_dir, filename_tags)  
+    filenames   = [os.path.join(simparams.data_dir, doe.filename + itag + 'stats') for itag in doe.filename_tags]
+    solver.run(filenames = filenames) 
+    # filename_tags = [itag+'_stats' for itag in doe.filename_tags]
 
     #### >>> option 2: Run solver with samples from data files
 
@@ -81,7 +81,6 @@ def main():
         # train_x     = data_set[2:,:]
         # solver      = museuq.Solver(model_name, train_x)
         # train_y     = solver.run(doe_method=doe_method)
-        # museuq_dataio.save_data(train_y, doe.filename, simparams.data_dir, itag+'_stats')
 
     ###------------------------ Define surrogate model parameters ---------------------- ###
 
@@ -143,40 +142,42 @@ def main():
         # np.save(os.path.join(simparams.data_dir, filename_),valid_data)
 
         # grid_data   = np.array([hstp_grid_z, hstp_grid, eta_grid, y_grid])
-        # filename_   = doe.filename+'{:s}_{:s}_grid.npy'.format(itag, metamodel_class)
+        # filename_   = doe.filename+'{:s}_y_{:s}_grid.npy'.format(itag, metamodel_class)
         # np.save(os.path.join(simparams.data_dir, filename_),grid_data)
 
         # ## ============ Make prediction with monte carlo samples ============
         # print('>>> Prediction with surrogate models... ') 
-        # data_test_params= [1e6, 10, 'R'] ##[nsamples, repeat, sampling rule]
+
+        # test_doe_method, test_doe_rule, test_doe_orders, test_repeat = 'MC', 'R', 1e6, 10
+        # # print( [test_doe_orders]*test_repeat)
+        # test_doe = museuq.DoE(test_doe_method, test_doe_rule, [test_doe_orders]*test_repeat)
         # # pbar = tqdm(range(data_test_params[1]), ascii=True, desc="   - ")
+
         # mcs_filenames = [ 'DoE_McRE6R{:d}.npy'.format(r) for r in range(10)] 
         # pbar = tqdm(mcs_filenames, ascii=True, desc="   - ")
-        # for r in pbar:
+
+        # for itest_tag, ifilename in zip(test_doe.filename_tags, pbar):
             # museuq_helpers.blockPrint()
             # ### >>> option1: regenerate MCS samples randomly
             # # dist_zeta   = y_pce_model.kwparams['dist_zeta']
-            # # zeta_mcs    = dist_zeta.sample(data_test_params[0], rule=data_test_params[2]).reshape(1,-1)
+            # # zeta_mcs    = dist_zeta.sample(test_doe_orders, rule=test_doe_rule).reshape(1,-1)
 
             # ### >>> option2: load MCS samples from files
-            # zeta_mcs, x_mcs = np.load(os.path.join(simparams.data_dir, ifilename))
-            # zeta_mcs = zeta_mcs.reshape(1,-1)
-            # ????
-            # train_zeta  = data_set[:2,:]
-
+            # data_set    = np.load(os.path.join(simparams.data_dir, ifilename))
+            # zeta_mcs    = data_set[:2,:]
             # eta_pred_mcs= eta_pce_model.predict(zeta_mcs)
             # y_pred_mcs  = y_pce_model.predict(zeta_mcs)
             # data_pred   = np.array([eta_pred_mcs, y_pred_mcs])
-            # filename_   = doe.filename + '{:s}_{:s}_pred_r{:d}.npy'.format(itag, metamodel_class, r)
+            # filename_   = doe.filename + '{:s}_{:s}_pred_{:s}.npy'.format(itag, metamodel_class, itest_tag)
             # np.save(os.path.join(simparams.data_dir, filename_), data_pred)
             # museuq_helpers.enablePrint()
 
-            # museuq_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
-            # print(' > Calculating ECDF of MCS data and retrieve data to plot...')
-            # eta_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
-            # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_eta.npy'.format(itag,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
-            # y_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
-            # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_y.npy'.format(itag,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
+            # # museuq_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
+            # # print(' > Calculating ECDF of MCS data and retrieve data to plot...')
+            # # eta_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
+            # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_eta.npy'.format(itag,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
+            # # y_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
+            # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_y.npy'.format(itag,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
 
 
 
@@ -195,11 +196,11 @@ def main():
         # train_y     = [] 
 
         # for itag in tags:
-            # data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}.npy'.format(itag)))
+            # data_set = np.load(os.path.join(simparams.data_dir, doe.filename + '{:s}.npy'.format(itag)))
             # train_zeta.append(data_set[:2,:])
             # train_w.append(data_set[2 ,:])
             # train_x.append(data_set[3:5,:])
-            # data_set    = np.load(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_stats.npy'.format(itag)))
+            # data_set = np.load(os.path.join(simparams.data_dir, doe.filename + '{:s}_stats.npy'.format(itag)))
             # train_eta.append(np.squeeze(data_set[:, 4, 0]))
             # train_y.append(np.squeeze(data_set[:, 4, 1]))
 
@@ -210,7 +211,7 @@ def main():
 
         # ### ============ Validating surrogate models at training points ============
         # print('>>> Validating surrogate model...')
-        # # eta_valid, eta_valid_score = eta_pce_model.predict(train_zeta, train_eta)
+        # eta_valid, eta_valid_score = eta_pce_model.predict(train_zeta[0], np.mean(train_eta, axis=0))
 
 
         # ### ============ Make prediction at specified points (hs, tp) ============
@@ -226,39 +227,56 @@ def main():
 
         # ### ============ Validating surrogate models at training points ============
         # print('>>> Validating surrogate model...')
-        # # y_valid, y_valid_score = y_pce_model.predict(train_zeta, train_y)
+        # y_valid, y_valid_score = y_pce_model.predict(train_zeta[0], np.mean(train_y, axis=0))
 
         # ### ============ Make prediction at specified points (hs, tp) ============
         # y_grid = y_pce_model.predict(hstp_grid_z)
 
         # ### ============ Save data  ============
-        # # data_scores = np.array([eta_valid_score, y_valid_score]).T
-        # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{}_{}_scores.npy'.format(itag, metamodel_class)),data_scores)
 
-        # # data_valid = np.array([eta_valid,y_valid]).T
-        # data_valid = np.array([eta_grid,y_grid]).T
-        # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{}_grid.npy'.format(iquad_order, metamodel_class)),data_valid)
+        # valid_scores= np.array([eta_valid_score, y_valid_score])
+        # filename_   = doe.filename+'{:s}_{:s}_y_score.npy'.format(itag, metamodel_class)
+        # np.save(os.path.join(simparams.data_dir, filename_),valid_scores)
+
+        # valid_data  = np.array([eta_valid, y_valid])
+        # filename_   = doe.filename+'{:s}_{:s}_y_valid.npy'.format(itag, metamodel_class)
+        # np.save(os.path.join(simparams.data_dir, filename_),valid_data)
+
+        # grid_data   = np.array([hstp_grid_z, hstp_grid, eta_grid, y_grid])
+        # filename_   = doe.filename+'{:s}_{:s}_y_grid.npy'.format(itag, metamodel_class)
+        # np.save(os.path.join(simparams.data_dir, filename_),grid_data)
 
         # ## ============ Make prediction with monte carlo samples ============
         # print('>>> Prediction with surrogate models... ') 
-        # data_test_params= [1e6, 10, 'R'] ##[nsamples, repeat, sampling rule]
-        # pbar = tqdm(range(data_test_params[1]), ascii=True, desc="   - ")
-        # for r in pbar:
+        # test_doe_method, test_doe_rule, test_doe_orders, test_repeat = 'MC', 'R', 1e6, 10
+        # test_doe = museuq.DoE(test_doe_method, test_doe_rule, [test_doe_orders]*test_repeat)
+        # ### >>> option1: regenerate MCS samples randomly
+        # # dist_zeta   = y_pce_model.kwparams['dist_zeta']
+        # # zeta_mcs    = dist_zeta.sample(test_doe_orders, rule=test_doe_rule).reshape(1,-1)
+
+
+        # ### >>> option2: load MCS samples from files
+        # mcs_filenames = [ 'DoE_McRE6R{:d}.npy'.format(r) for r in range(10)] 
+        # pbar = tqdm(mcs_filenames, ascii=True, desc="   - ")
+
+        # for itest_tag, ifilename in zip(test_doe.filename_tags, pbar):
             # museuq_helpers.blockPrint()
-            # dist_zeta   = eta_pce_model.kwparams['dist_zeta']
-            # zeta_mcs    = dist_zeta.sample(data_test_params[0], rule=data_test_params[2])
+            # data_set    = np.load(os.path.join(simparams.data_dir, ifilename))
+            # zeta_mcs    = data_set[:2,:]
             # eta_pred_mcs= eta_pce_model.predict(zeta_mcs)
             # y_pred_mcs  = y_pce_model.predict(zeta_mcs)
             # data_pred   = np.array([eta_pred_mcs, y_pred_mcs])
-            # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{:s}_pred_r{:d}.npy'.format(iquad_order, metamodel_class, r)),data_pred)
+            # filename_   = doe.filename + '{:s}_{:s}_pred_{:s}.npy'.format(itag, metamodel_class, itest_tag)
+            # np.save(os.path.join(simparams.data_dir, filename_), data_pred)
             # museuq_helpers.enablePrint()
 
-            # # museuq_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
+
+            # # # museuq_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
             # # print(' > Calculating ECDF of MCS data and retrieve data to plot...')
-            # eta_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
-            # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{:s}_pred_r{:d}_ecdf_pf{}_eta.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
-            # y_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
-            # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{:s}_pred_r{:d}_ecdf_pf{}_y.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
+            # # eta_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
+            # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{:s}_pred_r{:d}_ecdf_pf{}_eta.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
+            # # y_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
+            # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:d}_{:s}_pred_r{:d}_ecdf_pf{}_y.npy'.format(iquad_order,metamodel_class,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
 
 
 

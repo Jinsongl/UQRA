@@ -16,6 +16,7 @@ from .benchmark import bench1, bench2, bench3, bench4, ishigami
 from ..utilities.classes import ObserveError
 from ..utilities import helpers as museuq_helpers
 from ..utilities import constants as const
+from ..utilities import dataIO 
 from itertools import compress
 
 solvers_collections = {
@@ -107,7 +108,7 @@ class Solver(object):
 
         ###------------- Error properties ----------------------------
 
-    def run(self, *args, **kwargs):
+    def run(self, filenames=None, *args, **kwargs):
         """
         run solver for given DoE object
         Parameters:
@@ -118,18 +119,21 @@ class Solver(object):
         doe2run     = [self.input_x] if isinstance(self.input_x, (np.ndarray, np.generic)) else self.input_x
         self.output = [] # a list saving simulation results
         print(r' > Running Simulation...')
-
-        for idoe, isamples_x in enumerate(doe2run):
-            for isys_done, itheta_m in enumerate(self.theta_m): 
+        if filenames is not None:
+            assert (len(filenames) == len(doe2run) * len(self.theta_m))
+        for isys_done, itheta_m in enumerate(self.theta_m): 
+            for idoe, isamples_x in enumerate(doe2run):
                 input_vars = isamples_x[:self.ndim,:]
                 ### Run simulations
                 y = self._solver_wrapper(input_vars, *args, **kwargs)
-                self.output.append(y)
+                if filenames is None:
+                    self.output.append(y)
+                else:
+                    np.save(filenames[idoe], y)
                 print(r'   ^ DoE set : {:d} / {:d}'.format(idoe, len(doe2run)), end='')
                 print(r'    -> Solver output : {}'.format(y.shape))
-        if len(self.output) == 1: # if only one doe set, just return the result, instead of list with length 1
+        if self.output and len(self.output) == 1: # if only one doe set, just return the result, instead of list with length 1
             self.output = self.output[0]
-        return self.output
 
     def get_stats(self, qoi2analysis='all', stats2cal=[1,1,1,1,1,1,0]):
         """
