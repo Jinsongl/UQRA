@@ -47,7 +47,7 @@ def main():
 
     ## ------------------------ Define DoE parameters ---------------------- ###
     # doe_method, doe_rule, doe_orders = 'QUAD', 'hem', sorted([5,6,7,8,9,10] *25)
-    doe_method, doe_rule, doe_orders = 'MC', 'R', [1e3]*20
+    doe_method, doe_rule, doe_orders = 'MC', 'R', sorted([1e3]*20)
     doe    = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
     print(doe.filename_tags)
 
