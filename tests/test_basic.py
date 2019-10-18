@@ -123,49 +123,61 @@ class BasicTestSuite(unittest.TestCase):
     def test_exceedance(self):
         print('========================TESTING: Lienar Oscillator =======================')
 
-        print('Testing: 1D')
-        a = np.random.randint(0,10,size=10)
-        print(a)
-        a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3)
-        print('1D: return_index=False')
-        print(a_excd)
-        a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, return_index=True)
-        print('1D: return_index=True')
-        print(a_excd)
+        # print('Testing: 1D')
+        # a = np.random.randint(0,10,size=10)
+        # print(a)
+        # a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3)
+        # print('1D: return_index=False')
+        # print(a_excd)
+        # a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, return_index=True)
+        # print('1D: return_index=True')
+        # print(a_excd)
 
-        print('Testing: 2D')
-        a = np.random.randint(0,10,size=(2,10))
-        print(a)
-        a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3)
-        print('2D: isExpand=False, return_index=False')
-        print(a_excd)
-        a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, return_index=True)
-        print('2D: isExpand=False, return_index=True')
-        print(a_excd)
-        a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, isExpand=True, return_index=True)
-        print('2D: isExpand=True, return_index=True')
-        print(a_excd)
+        # print('Testing: 2D')
+        # a = np.random.randint(0,10,size=(2,10))
+        # print(a)
+        # a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3)
+        # print('2D: isExpand=False, return_index=False')
+        # print(a_excd)
+        # a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, return_index=True)
+        # print('2D: isExpand=False, return_index=True')
+        # print(a_excd)
+        # a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, isExpand=True, return_index=True)
+        # print('2D: isExpand=True, return_index=True')
+        # print(a_excd)
 
+        return_period= [1,5,10]
+        prob_fails   = [1/(p *365.25*24*3600/1000) for p in return_period]
+        quad_orders  = [5,6,7,8,9,10]
+        mcs_orders   = [6]
+        repeat       = range(10)
+        # orders       = mcs_orders
+        orders       = quad_orders 
 
-        # a = np.random.randint(0,10,size=(3,10))
+        data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        for ipf, ip in zip(prob_fails, return_period):
+            print('Target exceedance prob : {:.1e}'.format(ipf))
+            for iorder in orders:
+                for r in repeat:
+                    ## input
+                    filename = 'DoE_McRE6R{:d}.npy'.format(r)
+                    data_in  = np.load(os.path.join(data_dir, filename))
+                    ## output
 
-        # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
-        # p = 1e-5
-        # print('Target exceedance prob : {:.1e}'.format(p))
-        # for r in range(10):
-            # filename = 'DoE_McRE6R{:d}_stats.npy'.format(r)
-            # data_set = np.load(os.path.join(data_dir, filename))
+                    # filename = 'DoE_QuadHem{:d}_PCE_pred_E6R{:d}.npy'.format(iorder, r)
+                    filename = 'DoE_QuadHem{:d}R24_mPCE_pred_E6R{:d}.npy'.format(iorder, r)
+                    data_out = np.load(os.path.join(data_dir, filename))
+                    y = data_out 
 
-            # print(r'Calculating exceedance: {}'.format(filename))
-            # eta = np.squeeze(data_set[:,4,0]).T
-            # print(r'    - exceedance for eta: ')
-            # eta_excd = uqhelpers.get_exceedance_data(eta, p)
-            # np.save(os.path.join(data_dir,'DoE_McRE6R{:d}_eta_ecdf_pf5'.format(r)), eta_excd)
+                    # filename = 'DoE_McRE{:d}R{:d}_stats.npy'.format(iorder, r)
+                    # data_out = np.load(os.path.join(data_dir, filename))
+                    # y = np.squeeze(data_out[:,4,:]).T
 
-            # y   = np.squeeze(data_set[:,4,1]).T
-            # print(r'    - exceedance for y: ')
-            # y_excd=uqhelpers.get_exceedance_data(y, p)
-            # np.save(os.path.join(data_dir, 'DoE_McRE6R{:d}_y_ecdf_pf5'.format(r)), y_excd)
+                    print(r'    - exceedance for y: {:s}'.format(filename))
+                    for i, iy in enumerate(y):
+                        data_ = np.vstack((iy.reshape(1,-1), data_in))
+                        iexcd = uqhelpers.get_exceedance_data(data_, ipf, isExpand=True)
+                        np.save(os.path.join(data_dir,filename[:-4]+'_y{:d}_ecdf_P{:d}'.format(i, ip)), iexcd)
 
         # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data' 
         # p = 1e-5
