@@ -17,7 +17,6 @@ from ..utilities.classes import ObserveError
 from ..utilities import helpers as museuq_helpers
 from ..utilities import constants as const
 from ..utilities import dataIO 
-from itertools import compress
 
 solvers_collections = {
     'ISHIGAMI'  : ishigami,
@@ -70,9 +69,9 @@ class Solver(object):
             b). 
     """
 
-    def __init__(self,solver_name, x, **kwargs):
+    def __init__(self,solver_name, **kwargs):
         self.solver_name= solver_name
-        self.input_x    = x
+        # self.input_x    = x ## not needed. This will lead to large Solver object size
         self.ndim       = solvers_ndim[solver_name.upper()] 
 
         ## kwargs: 
@@ -106,64 +105,43 @@ class Solver(object):
             for key, value in kwargs.items():
                 print(r'     - {:<15s} : {}'.format(key, value))
 
-        ###------------- Error properties ----------------------------
-
-    def run(self, filenames=None, *args, **kwargs):
+    def run(self, *args, **kwargs):
         """
-        run solver for given DoE object
+        run solver with input variables
         Parameters:
+          1. Given a set of sampels directly by kwargs, x=
+          2. Given a set of input filenames and load data from them by kwargs fnames=
 
         Returns:
-
+            No returns
         """
-        doe2run     = [self.input_x] if isinstance(self.input_x, (np.ndarray, np.generic)) else self.input_x
-        self.output = [] # a list saving simulation results
+        if 'data' in kwargs.keys():
+            doe_sets = [kwargs['data'],] if isinstance(kwargs['data'], (np.ndarray, np.generic)) else kwargs['data']
+            post_str = kwargs.get('post_str', 'out')
+            fnames_out = ['{:s}_run_DoE{:d}_{:s}'.format(self.solver_name, i, post_str)  for i in range(len(doe_sets))] 
+
+        elif 'fnames' in kwargs.keys():
+            post_str = kwargs.get('post_str', 'out')
+            fnames   = kwargs['fnames']
+            fnames   = [fnames, ] if isinstance(fnames, str) else fnames
+            fnames   = [ifname[:-4] if ifname.endswith('npy') else ifname for ifname in fnames ]
+            doe_sets = [np.load(ifname + '.npy') for ifname in fnames]
+            fnames_out = [ifname + '_{:s}'.format(post_str) for ifname in fnames] 
+        else:
+            raise ValueError('Input variables must be defined to process Solver.run(), either specify data=[], or file names fnames = []')
+
+        ### Run simulations
         print(r' > Running Simulation...')
-        if filenames is not None:
-            assert (len(filenames) == len(doe2run) * len(self.theta_m))
-        for isys_done, itheta_m in enumerate(self.theta_m): 
-            for idoe, isamples_x in enumerate(doe2run):
-                input_vars = isamples_x[:self.ndim,:]
-                ### Run simulations
-                y = self._solver_wrapper(input_vars, *args, **kwargs)
-                if filenames is None:
-                    self.output.append(y)
-                else:
-                    np.save(filenames[idoe], y)
-                print(r'   ^ DoE set : {:d} / {:d}'.format(idoe, len(doe2run)), end='')
-                print(r'    -> Solver output : {}'.format(y.shape))
-        if self.output and len(self.output) == 1: # if only one doe set, just return the result, instead of list with length 1
-            self.output = self.output[0]
-
-    def get_stats(self, qoi2analysis='all', stats2cal=[1,1,1,1,1,1,0]):
-        """
-        Return column-wise statistic properties for given qoi2analysis and stats2cal
-        Parameters:
-            - qoi2analysis: array of integers, Column indices to analysis
-            - stats2cal: array of boolen, indicators of statistics to calculate
-              [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
-        Return:
-            list of calculated statistics [ np.array(nstats, nqoi2analysis)] 
-        """
-
-        print(r' > Calculating statistics...')
-        print(r'   * {:<15s} '.format('post analysis parameters'))
-        qoi2analysis = qoi2analysis if qoi2analysis is not None else 'All'
-        print(r'     - {:<15s} : {} '.format('qoi2analysis', qoi2analysis))
-        stats_list = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
-        print(r'     - {:<15s} : {} '.format('statistics'  , list(compress(stats_list, stats2cal)) ))
-
-        for idoe, idoe_output  in enumerate(self.output):
-            print(r'     - DoE set : {:d} / {:d}'.format(idoe, len(self.output)), end='')
-            idoe_output_stats = []
-            for data in idoe_output:
-                data = data if qoi2analysis.lower() == 'all' else data[qoi2analysis]
-                stat = museuq_helpers.get_stats(np.squeeze(data), stats=stats2cal)
-                idoe_output_stats.append(stat)
-            print(r'    -> DoE Statistics output : {}'.format(np.array(idoe_output_stats).shape))
-            self.output_stats.append(np.array(idoe_output_stats))
-
-        return self.output_stats
+        for i, idoe_set in enumerate(doe_sets):
+            if idoe_set.shape[0] != self.ndim:
+                try:
+                    index = kwargs['index']
+                    idoe_set = idoe_set[index]
+                except KeyError:
+                    raise ValueError('Data set dimension must equal to solver input dimension, but data.shape[0]={:d} solver.ndim={:d}'.format(idoe_set.shape[0], self.ndim))
+            y = self._solver_wrapper(idoe_set, *args, **kwargs)
+            np.save(fnames_out[i], y)
+            print(r'   ^ DoE set : {:d} / {:d}    -> Solver output : {}'.format(i, len(doe_sets), y.shape))
 
     def _solver_wrapper(self, x, *args, **kwargs):
         """
@@ -254,10 +232,14 @@ class Solver(object):
             kwargs_default['mck'] = (m,c,k)
             
             for key, value in kwargs_default.items():
-                print(r'     - {:<15s} : {}'.format(key, value))
+                if key in ['data', 'fnames']:
+                    pass
+                else:
+                    print(r'     - {:<15s} : {}'.format(key, value))
 
             t = np.arange(0,int(tmax/dt) +1) * dt
             x = np.array(x)
+            ## if x is just one set of input of shape (2, 1)
             if x.size == 2 or x.shape[1] == 1:
                 y = linear_oscillator(t,x, **kwargs_default)
             else:
