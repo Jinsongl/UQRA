@@ -42,7 +42,7 @@ class ExperimentDesign(object):
         normalize: 
     """
 
-    def __init__(self, method, rule, orders, space, **kwargs):
+    def __init__(self, method, rule, orders, space=None, **kwargs):
         self.params = [] 
         self.method = method
         self.rule   = rule
