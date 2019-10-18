@@ -11,9 +11,8 @@
 """
 
 import numpy as np, scipy as sp, scipy.stats as scistats
-import os, sys, warnings, collections, csv
+import os, sys, warnings, collections, csv, itertools, math
 from statsmodels.distributions.empirical_distribution import ECDF
-import math
 
 Ecdf2plot = collections.namedtuple('Ecdf2plot', ['x','y'])
 
@@ -184,58 +183,69 @@ def get_exceedance_data(x,prob=1e-3,isExpand=False, return_index=False):
     ## each result element corresponds to one result for each row in x. Number of element in result could be different. Can only return list
     return result
 
-def get_stats(data, stats=[1,1,1,1,1,1,0]):
-    """ Calculate the statistics of data
-        data: file type or array-like (ndim/ntime_series, nsamples/nqois)
+def get_stats(data, qoi2analysis='ALL', stats2cal=[1,1,1,1,1,1,0], axis=0):
+    """
+    Return column-wise statistic properties for given qoi2analysis and stats2cal
+    Parameters:
+        - data: file type or array-like (ndim/ntime_series, nsamples/nqois)
             > file: file full name must given, including extension
             > array-like of shape (nsampes, m,n) or (nsample,)
                 m,n: format for one solver simulation
                 nsamples: number of simulations run
-
-        stats: list, indicator of statistics to be calculated, 
-            [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
-        Return: ndarray (nstats, nsamples/nqois) 
+        - qoi2analysis: array of integers, Column indices to analysis
+        - stats2cal: array of boolen, indicators of statistics to calculate
+          [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
+    Return:
+        list of calculated statistics [ np.array(nstats, nqoi2analysis)] 
     """
-    if isinstance(data,str):
-        if data[-3:] =="csv":
-            data = np.genfromtxt(data, delimiter=',')
-        elif data[-3:] == 'npy':
-            data = np.load(data)
-        else:
-            data = np.genfromtxt(data, delimiter=None)
-    else:
-        data = np.array(data)
-    # if data is just a column or row vector (samples, ), get the stats for that vector
-    # return would be of shape (nstats,)
-    if data.ndim == 1:
-        res = np.array(np.mean(data), np.std(data), scistats.skew(data), scistats.kurtosis(data), np.max(abs(data)), np.min(abs(data)))
-        # use filter to select stats
-        res = [istat for i, istat in enumerate(res) if stats[i]]
-    elif data.ndim == 2:
-        res = [] 
-        if stats[0] == 1:
-            res.append(np.mean(data, axis=0)) # column-wise
-        if stats[1] == 1:
-            res.append(np.std(data, axis=0))
-        if stats[2] == 1:
-            res.append(scistats.skew(data, axis=0))
-        if stats[3] == 1:
-            res.append(scistats.kurtosis(data, axis=0))
-        if stats[4] == 1:
-            res.append(np.max(abs(data), axis=0))
-        if stats[5] == 1:
-            res.append(np.min(abs(data), axis=0))
-        # if stats[6] == 1:
-            # res.append(_up_crossing(data, axis=0))
-        # if stats[7] == 1:
-            # res = append(res, _moving_avg(data), axis=1)
-        # if stats[8] == 1:
-            # res = append(res, _moving_std(data), axis=1)
+    print(r' > Calculating statistics...')
+    print(r'   * {:<15s} '.format('post analysis parameters'))
+    qoi2analysis = qoi2analysis if qoi2analysis is not None else 'ALL'
+    print(r'     - {:<15s} : {} '.format('qoi2analysis', qoi2analysis))
+    stats_list = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
+    print(r'     - {:<15s} : {} '.format('statistics'  , list(itertools.compress(stats_list, stats2cal)) ))
 
+    if isinstance(data, (np.ndarray, np.generic)):
+        data_sets = [data,]
+    elif isinstance(data, str):
+        data_sets = [_load_data_from_file(data)]
+    elif isinstance(data, list) and isinstance(data[0], (np.ndarray, np.generic)):
+        data_sets = data
+    elif isinstance(data, list) and isinstance(data[0], str):
+        data_sets = [_load_data_from_file(iname) for iname in data]
     else:
-        raise ValueError('Only 1D or 2D ndarray is accepted, given data shape: {}'.format(data.shape))
-    
+        raise ValueError('Input format for get_stats are not defined, {}'.format(type(data)))
+        
+    res = []
+    for i, idata_set  in enumerate(data_sets):
+        idata_set = idata_set if qoi2analysis == 'ALL' else idata_set[qoi2analysis]
+        stat = _get_stats(np.squeeze(idata_set), stats=stats2cal, axis=axis)
+        res.append(stat)
+        print(r'     - Data set : {:d} / {:d}    -> Statistics output : {}'.format(i, len(data_sets), stat.shape))
+    res = res if len(res) > 1 else res[0]
     return np.array(res)
+
+def _get_stats(data, stats=[1,1,1,1,1,1,0], axis=0):
+    """ Calculate column-wise statistics of data
+        Parameters:
+          - data: np.ndarray of shape (m,) or (m,n)
+          - stats: list, indicator of statistics to be calculated, 
+            [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
+        Return: 
+            ndarray (nstats, nsamples/nqois) 
+    """
+    res = np.array([                               \
+            np.mean(data, axis=axis),              \
+            np.std(data, axis=axis),               \
+            scistats.skew(data, axis=axis),        \
+            scistats.kurtosis(data, axis=axis),    \
+            np.max(abs(data), axis=axis),          \
+            np.min(abs(data), axis=axis),          \
+            _up_crossing(data, axis=axis),         \
+            ])
+    idx = np.reshape(stats, res.shape[0])
+    res = res[idx==1,:]
+    return res
 
 def _get_exceedance1d(x,prob=1e-3, return_index=False):
     """
@@ -304,7 +314,8 @@ def _central_moms(dist, n=np.arange(1,5), Fisher=True):
 
     return res
 def _up_crossing(data, axis=0):
-    return 0
+
+    return np.mean(data, axis=axis) *0
 
 def _moving_avg(data, window=3,axis=None):
     ret = np.cumsum(data, dtype=float, axis=axis)
@@ -318,4 +329,22 @@ def _moving_std(data, window=3,axis=None):
     exp_x2 = _moving_square(data, window=window, axis=axis)
     expx_2 = _moving_avg(data, window=window, axis=axis) **2
     return exp_x2 - expx_2
+
+
+def _load_data_from_file(fname, data_dir=os.getcwd()):
+    """
+    load data from give file at current directory (default)
+    """
+    try:
+        data = np.load(fname)
+    except FileNotFoundError:
+        ## get a list of all files in data_dir
+        allfiles = [f for f in os.listdir(data_dir) if os.isfile(join(data_dir, f))]
+        similar_files = [f for f in allfiles if f.startswith(fname)]
+        if len(similar_files) == 1:
+            data = np.load(similar_files[0])
+        else:
+            raise ValueError('FileNotFoundError, {:d} similar files exists'.format(len(similar_files)))
+    return data
+
 
