@@ -194,10 +194,10 @@ class ExperimentDesign(object):
         if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
             print(r'   * {:10s} & {:<10s}'.format('Abscissae', 'Weights'))
             if isinstance(self.samples, np.ndarray):
-                print(r'     ∙ {} & {}'.format(self.samples[:-1,:].shape,self.samples[-1,:].shape))
+                print(r'     - {} & {}'.format(self.samples[:-1,:].shape,self.samples[-1,:].shape))
             else:
                 for isamples in self.samples:
-                    print(r'     ∙ {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
+                    print(r'     - {} & {}'.format(isamples[:-1,:].shape,isamples[-1,:].shape))
         elif const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'MONTE CARLO':
             if isinstance(self.samples, np.ndarray):
                 for jcor in self.samples[:,:nsamples2print].T:
