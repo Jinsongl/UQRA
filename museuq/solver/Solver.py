@@ -118,7 +118,7 @@ class Solver(object):
         if 'data' in kwargs.keys():
             doe_sets = [kwargs['data'],] if isinstance(kwargs['data'], (np.ndarray, np.generic)) else kwargs['data']
             post_str = kwargs.get('post_str', 'out')
-            fnames_out = ['{:s}_run_DoE{:d}_{:s}'.format(self.solver_name, i, post_str)  for i in range(len(doe_sets))] 
+            fnames_out = ['{:s}_run_DoE{:d}_{:s}'.format(self.solver_name, i, post_str)  for idoe_order in doe_sets] 
 
         elif 'fnames' in kwargs.keys():
             post_str = kwargs.get('post_str', 'out')
