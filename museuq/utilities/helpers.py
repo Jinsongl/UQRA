@@ -140,7 +140,7 @@ def upload2gdrive(filename, data, parent_id):
             print('   * {:<7s} : {:d}/ 5'.format('trial', n_times2upload),end="\r")
         n_times2upload +=1
 
-def get_exceedance_data(x,prob=1e-3,isExpand=False, return_index=False):
+def get_exceedance_data(x,prob=1e-3,**kwargs):
     """
     Retrieve the exceedance data for specified prob from data set x
     if x is 2D array, calculate exceedance row-wise
@@ -160,11 +160,15 @@ def get_exceedance_data(x,prob=1e-3,isExpand=False, return_index=False):
                 return a list of (3,n) arrays
     """
     x = np.array(x)
+    isExpand    = kwargs.get('isExpand', False)
+    return_index= kwargs.get('return_index', False)
+    return_all  = kwargs.get('return_all', False) 
+
     if x.ndim == 1 or np.squeeze(x).ndim == 1:
-        result = _get_exceedance1d(np.squeeze(x), prob=prob, return_index=return_index)
+        result = _get_exceedance1d(np.squeeze(x), prob=prob, return_index=return_index, return_all=return_all)
     else:
         if isExpand:
-            res1row_x, res1row_y, res1row_idx = _get_exceedance1d(x[0,:], prob=prob, return_index=True)
+            res1row_x, res1row_y, res1row_idx = _get_exceedance1d(x[0,:], prob=prob, return_index=True, return_all=return_all)
             res1row_idx = np.array(res1row_idx, dtype=np.int32)
             result = [res1row_x,]
             for irow in x[1:,:]:
@@ -180,11 +184,11 @@ def get_exceedance_data(x,prob=1e-3,isExpand=False, return_index=False):
                 prob = [prob[0],] * x.shape[0]
             else:
                 assert (len(prob) == x.shape[0]), "Length of target probability should either be 1 or equal to number of rows in x, but len(prob)={:d}, x.shape[0]={:d}".format(len(prob), x.shape[0])
-            result = [_get_exceedance1d(irow, prob=iprob, return_index=return_index) for irow,iprob in zip(x, prob)]
+            result = [_get_exceedance1d(irow, prob=iprob, return_index=return_index, return_all=return_all) for irow,iprob in zip(x, prob)]
     ## each result element corresponds to one result for each row in x. Number of element in result could be different. Can only return list
     return result
 
-def get_stats(data, qoi2analysis='ALL', stats2cal=[1,1,1,1,1,1,0], axis=0):
+def get_stats(data, qoi2analysis='ALL', stats2cal=[1,1,1,1,1,1,0], axis=-1):
     """
     Return column-wise statistic properties for given qoi2analysis and stats2cal
     Parameters:
@@ -226,10 +230,10 @@ def get_stats(data, qoi2analysis='ALL', stats2cal=[1,1,1,1,1,1,0], axis=0):
     res = res if len(res) > 1 else res[0]
     return np.array(res)
 
-def _get_stats(data, stats=[1,1,1,1,1,1,0], axis=0):
-    """ Calculate column-wise statistics of data
+def _get_stats(data, stats=[1,1,1,1,1,1,0], axis=-1):
+    """ Calculate statistics of data along specified axis
         Parameters:
-          - data: np.ndarray of shape (m,) or (m,n)
+          - data: np.ndarray 
           - stats: list, indicator of statistics to be calculated, 
             [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
         Return: 
@@ -248,7 +252,7 @@ def _get_stats(data, stats=[1,1,1,1,1,1,0], axis=0):
     res = res[idx==1,:]
     return res
 
-def _get_exceedance1d(x,prob=1e-3, return_index=False):
+def _get_exceedance1d(x,prob=1e-3, return_index=False, return_all=False ):
     """
     return sub data set retrieved from data set x
     Parameters:
@@ -262,6 +266,7 @@ def _get_exceedance1d(x,prob=1e-3, return_index=False):
         (2,:): exceedance value corresponding to specified prob (just one number, to be able to return array, duplicate that number to have same size as of (1,:))
 
     """
+
     assert np.array(x).ndim == 1
     x_ecdf  = ECDF(x)
     n       = len(x_ecdf.x)
@@ -275,26 +280,33 @@ def _get_exceedance1d(x,prob=1e-3, return_index=False):
             result = np.vstack((x_ecdf.x, x_ecdf.y))
         warnings.warn('\n Not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(n, prob))
     else:
-        ### When there are a large number of points, exceedance plot with all data points will lead to large figures. Usually, it is not necessary to use all data points to have a decent exceedance plots since large portion of the data points will be located in the 'middle' region. Here we collapse data points to a reasonal number
-        prob_index = -int(prob * n)   # index of the result value at targeted exceedance prob
-        prob_value = x_ecdf.x[prob_index] # result x value
-        _, index2return = np.unique(np.round(x_ecdf.x[:prob_index], decimals=2), return_index=True)
-        # remove 'duplicate' values up to index prob_index, wish to have much smaller size of data when making plot
-        # append the rest to the array
-        x1 = x_ecdf.x[index2return]
-        y1 = x_ecdf.y[index2return]
-        sort_idx1 = sort_idx[index2return]
-
-        x2 = x_ecdf.x[prob_index:]
-        y2 = x_ecdf.y[prob_index:]
-        sort_idx2 = sort_idx[prob_index:]
-        x  = np.hstack((x1,x2))
-        y  = np.hstack((y1,y2))
-        v  = np.hstack((sort_idx1, sort_idx2)) 
-        if return_index:
-            result = np.vstack((x,y,v))
+        if return_all:
+            if return_index:
+                index_ =np.insert(sort_idx, 0, sort_idx.size)
+                result = np.vstack((x_ecdf.x, x_ecdf.y, index_ ))
+            else:
+                result = np.vstack((x_ecdf.x, x_ecdf.y))
         else:
-            result = np.vstack((x,y))
+            ### When there are a large number of points, exceedance plot with all data points will lead to large figures. Usually, it is not necessary to use all data points to have a decent exceedance plots since large portion of the data points will be located in the 'middle' region. Here we collapse data points to a reasonal number
+            prob_index = -int(prob * n)   # index of the result value at targeted exceedance prob
+            prob_value = x_ecdf.x[prob_index] # result x value
+            _, index2return = np.unique(np.round(x_ecdf.x[:prob_index], decimals=2), return_index=True)
+            # remove 'duplicate' values up to index prob_index, wish to have much smaller size of data when making plot
+            # append the rest to the array
+            x1 = x_ecdf.x[index2return]
+            y1 = x_ecdf.y[index2return]
+            sort_idx1 = sort_idx[index2return]
+
+            x2 = x_ecdf.x[prob_index:]
+            y2 = x_ecdf.y[prob_index:]
+            sort_idx2 = sort_idx[prob_index:]
+            x  = np.hstack((x1,x2))
+            y  = np.hstack((y1,y2))
+            v  = np.hstack((sort_idx1, sort_idx2)) 
+            if return_index:
+                result = np.vstack((x,y,v))
+            else:
+                result = np.vstack((x,y))
     return result
 
 def _central_moms(dist, n=np.arange(1,5), Fisher=True):
