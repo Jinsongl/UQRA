@@ -178,7 +178,7 @@ class SurrogateModel(object):
                     # y_mean, y_std = y_pred_
                 # else:
                     # y_mean = y_pred_
-                print(r'   * {:<17s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model (GPR)', i, len(self.metamodels), y_pred.shape))
+                print(r'   * {:<17s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model (GPR)', i, len(self.metamodels), y_pred_.shape))
                 y_pred = np.squeeze(np.array(y_pred_))
             surrogates_pred.append(y_pred)
 
