@@ -146,32 +146,38 @@ class BasicTestSuite(unittest.TestCase):
         # print('2D: isExpand=True, return_index=True')
         # print(a_excd)
 
-        return_period= [1,5,10]
-        prob_fails   = [1/(p *365.25*24*3600/1000) for p in return_period]
+        # return_period= [1,5,10]
+        # prob_fails   = [1/(p *365.25*24*3600/1000) for p in return_period]
+        return_period= [5]
+        prob_fails   = [1e-5]
         quad_orders  = [5,6,7,8,9,10]
-        mcs_orders   = [6]
+        mcs_orders   = [7]
         repeat       = range(10)
-        # orders       = mcs_orders
-        orders       = quad_orders 
+        orders       = mcs_orders
+        # orders       = quad_orders 
 
-        data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
-        data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        # data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        # data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data'
+        data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data'
         # data_dir_in = '/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA/linear_oscillator'
         for ipf, ip in zip(prob_fails, return_period):
             print('Target exceedance prob : {:.1e}'.format(ipf))
             for iorder in orders:
                 for r in repeat:
                     ## input
-                    filename = 'DoE_McRE6R{:d}.npy'.format(r)
+                    # filename = 'DoE_McRE6R{:d}.npy'.format(r)
+                    filename = 'DoE_McRE7R{:d}.npy'.format(r)
                     data_in  = np.load(os.path.join(data_dir_in, filename))
                     ## output
 
                     # filename = 'DoE_QuadHem{:d}_PCE_pred_E6R{:d}.npy'.format(iorder, r)
-                    filename = 'DoE_QuadHem{:d}_GPR_pred_E6R{:d}.npy'.format(iorder, r)
-                    # filename = 'DoE_QuadHem{:d}R24_mPCE_pred_E6R{:d}.npy'.format(iorder, r)
-
+                    # filename = 'DoE_QuadHem{:d}_GPR_pred_E6R{:d}.npy'.format(iorder, r)
+                    # filename = 'DoE_QuadHem{:d}R24_mPCE_Normal_pred_E7R{:d}.npy'.format(iorder, r)
+                    # filename = 'DoE_QuadHem{:d}_PCE_Normal_pred_E7R{:d}.npy'.format(iorder, r)
+                    filename = 'DoE_McRE{:d}R{:d}_y_Normal.npy'.format(iorder,r)
                     data_out = np.load(os.path.join(data_dir_out, filename))
-                    y = data_out
+                    y = data_out.reshape(1,-1)
 
                     # filename = 'DoE_McRE6R{:d}_stats.npy'.format(r)
                     # data_out = np.load(os.path.join(data_dir_out, filename))
@@ -186,7 +192,7 @@ class BasicTestSuite(unittest.TestCase):
                     for i, iy in enumerate(y):
                         data_ = np.vstack((iy.reshape(1,-1), data_in))
                         iexcd = uqhelpers.get_exceedance_data(data_, ipf, isExpand=True, return_all=False)
-                        np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf_P{:d}'.format(i, ip)), iexcd)
+                        np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf_Pf{:d}'.format(i, ip)), iexcd)
 
         # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data' 
         # p = 1e-5
