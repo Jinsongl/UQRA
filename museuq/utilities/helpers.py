@@ -254,16 +254,19 @@ def _get_stats(data, stats=[1,1,1,1,1,1,0], axis=-1):
 
 def _get_exceedance1d(x,prob=1e-3, return_index=False, return_all=False ):
     """
-    return sub data set retrieved from data set x
+    return emperical cdf from dataset x
     Parameters:
-        data: 1d array of shape(n,)
+        x: 1d array of shape(n,)
         prob: exceedance probability
+        return_index: boolean [default False], If true, will return the indices of sorted data to get ecdf.x
+        return_all: boolean [default False], If true, return all ecdf.x ecdf.y, otherwise, compress dataset size and return
 
     Return:
         ndarray of shape (3,k)
         (0,:): ecdf.x, sorted values for x
         (1,:): ecdf.y, corresponding probability for each x
-        (2,:): exceedance value corresponding to specified prob (just one number, to be able to return array, duplicate that number to have same size as of (1,:))
+        if return_index:
+        (2,:): indice based on ecdf.x
 
     """
 
@@ -287,7 +290,11 @@ def _get_exceedance1d(x,prob=1e-3, return_index=False, return_all=False ):
             else:
                 result = np.vstack((x_ecdf.x, x_ecdf.y))
         else:
-            ### When there are a large number of points, exceedance plot with all data points will lead to large figures. Usually, it is not necessary to use all data points to have a decent exceedance plots since large portion of the data points will be located in the 'middle' region. Here we collapse data points to a reasonal number
+
+            ### When there are a large number of points, exceedance plot with all data points will lead to large figures. 
+            ### Usually, it is not necessary to use all data points to have a decent exceedance plots since large portion 
+            ### of the data points will be located in the 'middle' region. Here we collapse data points to a reasonal number
+
             prob_index = -int(prob * n)   # index of the result value at targeted exceedance prob
             prob_value = x_ecdf.x[prob_index] # result x value
             _, index2return = np.unique(np.round(x_ecdf.x[:prob_index], decimals=2), return_index=True)
