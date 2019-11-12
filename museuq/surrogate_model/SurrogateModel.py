@@ -403,13 +403,13 @@ class SurrogateModel(object):
             print(r'   * Requried parameters:')
             try:
                 print(r'     - {:<15s} : {}'.format('Solve coeffs:', CAL_COEFFS_METHODS.get(self.kwparams['cal_coeffs'])))
-                print(r'     - {:<15s} : {}'.format('Zeta dist'    , self.kwparams['dist_zeta']))
+                print(r'     - {:<15s} : {}'.format('Zeta Joint dist'    , self.kwparams['dist_zeta_J']))
                 print(r'     - {:<15s} : {}'.format('Basis order'  , self.basis_orders))
             except KeyError:
                 print(r'     - cal_coeffs, dist_zeta, basis_orders are required parameters for PCE model...')
 
             # Following parameters are optional
-            self.kwparams['dist_zeta_J' ] = self.kwparams.get('dist_zeta_J'   ,self.kwparams['dist_zeta'])
+            self.kwparams['dist_zeta_M' ] = self.kwparams.get('dist_zeta_M'   , None)
             self.kwparams['dist_x'      ] = self.kwparams.get('dist_x'        , None)
             self.kwparams['dist_x_J'    ] = self.kwparams.get('dist_x_J'      , None)
             print(r'   * Optional parameters:')

@@ -189,6 +189,23 @@ def get_exceedance_data(x,prob=1e-3,**kwargs):
     ## each result element corresponds to one result for each row in x. Number of element in result could be different. Can only return list
     return result
 
+def get_weighted_exceedance(x, **kwargs):
+    """
+    return row wise exceedance  
+    """
+    x = np.array(x)
+    numbins = kwargs.get('numbins', 10)
+    defaultreallimits = kwargs.get('defaultreallimits', None)
+    weights = kwargs.get('weights', None)
+
+    res = []
+    for ix in x:
+        res.append(_get_weighted_exceedance1d(ix, numbins=numbins, defaultreallimits=defaultreallimits, weights=weights))
+
+    res = res[0] if len(res) == 1 else res
+    return res
+
+
 def get_stats(data, qoi2analysis='ALL', stats2cal=[1,1,1,1,1,1,0], axis=-1):
     """
     Return column-wise statistic properties for given qoi2analysis and stats2cal
@@ -316,6 +333,31 @@ def _get_exceedance1d(x,prob=1e-3, return_index=False, return_all=False ):
             else:
                 result = np.vstack((x,y))
     return result
+
+def _get_weighted_exceedance1d(x,numbins=10, defaultreallimits=None, weights=None):
+    """
+    return emperical cdf from dataset x
+    Parameters:
+        x: 1d array of shape(n,)
+        prob: exceedance probability
+        return_index: boolean [default False], If true, will return the indices of sorted data to get ecdf.x
+        return_all: boolean [default False], If true, return all ecdf.x ecdf.y, otherwise, compress dataset size and return
+
+    Return:
+        ndarray of shape (3,k)
+        (0,:): ecdf.x, sorted values for x
+        (1,:): ecdf.y, corresponding probability for each x
+        if return_index:
+        (2,:): indice based on ecdf.x
+
+    """
+    res = scistats.cumfreq(x,numbins=numbins, defaultreallimits=defaultreallimits, weights=weights)
+    cdf_x = res.lowerlimit + np.linspace(0, res.binsize*res.cumcount.size, res.cumcount.size)
+    cdf_y = res.cumcount/x.size
+    ecdf_y = 1- cdf_y
+    ecdf_x = cdf_x
+
+    return np.array([ecdf_x, ecdf_y])
 
 def _central_moms(dist, n=np.arange(1,5), Fisher=True):
     """

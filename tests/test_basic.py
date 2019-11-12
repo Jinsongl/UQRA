@@ -120,6 +120,56 @@ class BasicTestSuite(unittest.TestCase):
             # t, eta = psd._gen_process_sum()
             print('PSD name: {:s}, args: {}, Area: {:.2f}, 4*std:{}'.format(psd_name, psd_args, psd_area, 4*np.std(eta)))
 
+    def test_weighted_exceedance(self):
+        print('========================TESTING: Weighted Exceedance =======================')
+
+        # x = np.random.normal(size=1000).reshape(1,-1)
+        # res1 = stats.cumfreq(x) 
+
+        # cdf_x = res1.lowerlimit + np.linspace(0, res1.binsize*res1.cumcount.size, res1.cumcount.size)
+        # cdf_y = res1.cumcount/x.size
+        # ecdf_y = 1- cdf_y
+        # ecdf_x = cdf_x
+
+        # print(np.around(ecdf_x,2))
+        # print(np.around(ecdf_y,2))
+        # res2 = uqhelpers.get_weighted_exceedance(x)
+        # print(res2.shape)
+        # print(np.around(res2[0],2))
+        # print(np.around(res2[1],2))
+        
+        # orders = [4] ## mcs
+        orders  = range(3,10) ## quad
+        repeat  = range(10)
+
+        data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        for iorder in orders:
+            for r in repeat:
+                filename = 'DoE_IS_McRE6R{:d}_weight.npy'.format(r)
+                weights  = np.load(os.path.join(data_dir_out, filename))
+                ##>>> MCS results from true model
+                # filename = 'DoE_IS_McRE{:d}R{:d}_stats.npy'.format(iorder,r)
+                # data_out = np.load(os.path.join(data_dir_out, filename))
+                # y = np.squeeze(data_out[:,4,:]).T
+                filename = 'DoE_IS_QuadHem{:d}_PCE_pred_E6R{:d}.npy'.format(iorder, r)
+                data_out = np.load(os.path.join(data_dir_out, filename))
+                y = data_out
+                print(y.shape)
+
+                # filename = 'DoE_McRE{:d}R{:d}_stats.npy'.format(iorder, r)
+                # data_out = np.load(os.path.join(data_dir, filename))
+                # y = np.squeeze(data_out[:,4,:]).T
+                print(r'    - exceedance for y: {:s}'.format(filename))
+                for i, iy in enumerate(y):
+                    print('iy.shape = {}'.format(iy.shape))
+                    print('weights.shape = {}'.format(weights.shape))
+                    res = stats.cumfreq(iy,numbins=iy.size,  weights=weights)
+                    cdf_x = res.lowerlimit + np.linspace(0, res.binsize*res.cumcount.size, res.cumcount.size)
+                    cdf_y = res.cumcount/res.cumcount[-1]
+                    excd = np.array([cdf_x, cdf_y])
+                    np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf'.format(i)), excd)
+
     def test_exceedance(self):
         print('========================TESTING: Lienar Oscillator =======================')
 
@@ -148,13 +198,14 @@ class BasicTestSuite(unittest.TestCase):
 
         # return_period= [1,5,10]
         # prob_fails   = [1/(p *365.25*24*3600/1000) for p in return_period]
-        return_period= [5]
+        return_period= [1]
         prob_fails   = [1e-5]
-        quad_orders  = [5,6,7,8,9,10]
-        mcs_orders   = [7]
+        quad_orders  = range(3,10)
+        mcs_orders   = [6]
         repeat       = range(10)
         orders       = mcs_orders
         # orders       = quad_orders 
+        return_all   = False 
 
         data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
         data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
@@ -169,12 +220,16 @@ class BasicTestSuite(unittest.TestCase):
                     filename = 'DoE_McRE6R{:d}.npy'.format(r)
                     # filename = 'DoE_McRE7R{:d}.npy'.format(r)
                     data_in  = np.load(os.path.join(data_dir_in, filename))  # [u1, u2,..., x1, x2...]
-                    ## output
+                    ##>>> MCS results from surrogate model
 
-                    # filename = 'DoE_QuadHem{:d}_PCE_pred_E6R{:d}.npy'.format(iorder, r)
                     # filename = 'DoE_QuadHem{:d}_GPR_pred_E6R{:d}.npy'.format(iorder, r)
                     # filename = 'DoE_QuadHem{:d}R24_mPCE_Normal_pred_E7R{:d}.npy'.format(iorder, r)
                     # filename = 'DoE_QuadHem{:d}_PCE_Normal_pred_E7R{:d}.npy'.format(iorder, r)
+                    # data_out = np.load(os.path.join(data_dir_out, filename))
+                    # y = data_out
+
+                    ##>>> MCS results from true model
+                    ## bench 4
                     # filename = 'DoE_McRE{:d}R{:d}_y_Normal.npy'.format(iorder,r)
                     # data_out = np.load(os.path.join(data_dir_out, filename))
                     # y = data_out.reshape(1,-1)
@@ -182,6 +237,7 @@ class BasicTestSuite(unittest.TestCase):
                     filename = 'DoE_McRE6R{:d}_stats.npy'.format(r)
                     data_out = np.load(os.path.join(data_dir_out, filename))
                     y = np.squeeze(data_out[:,4,:]).T
+
                     print(y.shape)
 
                     # filename = 'DoE_McRE{:d}R{:d}_stats.npy'.format(iorder, r)
@@ -191,8 +247,9 @@ class BasicTestSuite(unittest.TestCase):
                     print(r'    - exceedance for y: {:s}'.format(filename))
                     for i, iy in enumerate(y):
                         data_ = np.vstack((iy.reshape(1,-1), data_in))
-                        iexcd = uqhelpers.get_exceedance_data(data_, ipf, isExpand=True, return_all=False)
-                        np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf_P{:d}'.format(i, 1)), iexcd)
+                        iexcd = uqhelpers.get_exceedance_data(data_, ipf, isExpand=True, return_all=return_all)
+                        return_all_str = '_all' if return_all else '' 
+                        np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf_P{:d}{}'.format(i, ip, return_all_str )), iexcd)
 
         # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data' 
         # p = 1e-5

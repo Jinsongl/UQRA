@@ -38,84 +38,6 @@ dic_chaospy_quad_name = {
     "gk": "z", "gwel" : "g" , "leja": "j",
     "hem": "h"   
 }
-# def doe_quadrature(distribution, order, rule=None):
-    # """
-    # Experiment design with quadrature methods.
-    # Arguments:
-        # order: number of quadrature points for each dimension
-        # distribution: distributions for random variables
-        # rule: quadrature rules
-    # Output:
-        # array of shape()
-
-    # """
-    # chaospy_quad = ['c','e','p','z','g','j','legendre']
-    # numpy_quad = ['h', 'hermite','lgd', 'laguerre','lag','chebyshev','cheb', 'jac', 'jacobi']
-    # ## Return samples in 
-    # # rule = 'h' if rule is None else rule ## Default gauss_legendre
-    # assert rule, 'DoE rule is required '
-    # if rule in chaospy_quad:
-        # doe_samples = _gen_quad_chaospy(order, distribution, dic_chaospy_quad_name.get(rule))
-    # elif rule in numpy_quad:
-        # doe_samples = _gen_quad_numpy(order, distribution, rule)
-    # else:
-        # raise NotImplementedError("Quadrature rule '{:s}' not defined".format(rule))
-    # quad_order = [order,] * distribution.length if np.isscalar(order) else order
-    # print(u'   * Quadrature points complete  : {}'.format(quad_order))
-
-
-# def doe_montecarlo(size, distribution, rule='R', antithetic=None, criterion=None, iterations=5):
-    # """
-    # Monte Carlo sampling based experimental design. including brude MCS, low-discrepancy sampling
-
-    # Intepretation of the rule argument:
-    # +------+---------------------+--------+
-    # | Key  | Name                | Nested |
-    # +======+=====================+========+
-    # | "C"  | Chebyshev nodes     | no     |
-    # +------+---------------------+--------+
-    # | "NC" | Nested Chebyshev    | yes    |
-    # +------+---------------------+--------+
-    # | "K"  | Korobov             | no     |
-    # +------+---------------------+--------+
-    # | "R"  | (Pseudo-)Random     | no     |
-    # +------+---------------------+--------+
-    # | "RG" | Regular grid        | no     |
-    # +------+---------------------+--------+
-    # | "NG" | Nested grid         | yes    |
-    # +------+---------------------+--------+
-    # | "L"  | Latin hypercube     |        |
-    # +------+---------------------+--------+
-    # | "S"  |Sobol low-discrepancy|        |
-    # +------+---------------------+--------+
-    # | "H"  |Halton low-discrepancy|       |
-    # +------+---------------------+--------+
-    # | "M"  |Hammersley           |        |
-    # +------+---------------------+--------+
-    # DoE with pyDoE2:
-    # criterion: a string that tells lhs how to sample the points 
-        # default         : None, which simply randomizes the points within the intervals):
-        # 'center' or 'c' : center the points within the sampling intervals
-        # 'maximin' or 'm': maximize the minimum distance between points, but place the point in a randomized location within its interval
-        # 'centermaximin' or 'cm': same as 'maximin', but centered within the intervals
-        # 'correlation' or 'corr': minimize the maximum correlation coefficient
-    # """
-    # # rule = 'R' if rule is None else rule
-    # # print(u'************************************************************')
-    # # print(u'Design of experiment with Monte Carlo method')
-    # # print(u'Rule : {:s}, Number of monte carlo points (1d): {:d}'.format(rule, order))
-    # # print(u"Generating Monte Carlo samples...")
-    
-    # if rule.upper() == 'L':
-        # nfactors = distribution.ndim
-        # samples  = int(size/nfactors)
-        # doe_samples = pydoe.lhs(nfactors, samples=samples, criterion=criterion,iterations=iterations)
-        # doe_samples = doe_samples.reshape(nfactors,-1)
-
-    # else:
-        # doe_samples = distribution.sample(size, rule=rule)
-        # doe_samples = doe_samples.reshape(distribution.length,-1)
-
 
 def samplegen(doe_method, order, domain, rule=None, antithetic=None,
         verbose=False):
@@ -147,48 +69,6 @@ def samplegen(doe_method, order, domain, rule=None, antithetic=None,
                 res[1]: weights of shape (nsamples,) 
             MC: res.shape = (ndim, nsamples)
             
-    Interpretation of the doe_method argument:
-    +------------+------------------------------------------------------------+
-    | Value | Interpretation                                             |
-    +============+============================================================+
-    | "A"   | Mapped to distribution domain using inverse Rosenblatt.    |
-    +------------+------------------------------------------------------------+
-    | "C"   | No mapping, but sets the number of dimension.              |
-    +------------+------------------------------------------------------------+
-    | "D"   | Stretch samples such that they are in domain[0], domain[1] |
-    +------------+------------------------------------------------------------+
-    | "E"   | Stretch samples such that they are in domain[0], domain[1] |
-    +------------+------------------------------------------------------------+
-    | "G"   | Stretch samples such that they are in domain[0], domain[1] |
-    +------------+------------------------------------------------------------+
-    | "S"   | Stretch samples such that they are in domain[0], domain[1] |
-    +------------+------------------------------------------------------------+
-    | "BA"  | Stretch samples such that they are in domain[0], domain[1] |
-    +------------+------------------------------------------------------------+
-    | "BD"  | Stretch samples such that they are in domain[0], domain[1] |
-    +------------+------------------------------------------------------------+
-    | "BD"  | Stretch samples such that they are in domain[0], domain[1] |
-    +------------+------------------------------------------------------------+
-    | "GQ"  | Gaussian-Quadrature rule                                      |
-    +------------+------------------------------------------------------------+
-    | "Q"   | Quantile rule                                                 |
-    +------------+------------------------------------------------------------+
-    | "MC"  | Monte carlo method to get random samples                      |
-    +------------+------------------------------------------------------------+
-
-    Interpretation of the domain argument:
-    +------------+------------------------------------------------------------+
-    | Value      | Interpretation                                             |
-    +============+============================================================+
-    | Dist       | Mapped to distribution domain using inverse Rosenblatt.    |
-    +------------+------------------------------------------------------------+
-    | int        | No mapping, but sets the number of dimension.              |
-    +------------+------------------------------------------------------------+
-    | array_like | Stretch samples such that they are in domain[0], domain[1] |
-    +------------+------------------------------------------------------------+
-
-
-
     """
     # DOE_METHOD_NAMES = {
         # "GQ"    : "Quadrature",

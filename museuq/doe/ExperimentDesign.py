@@ -30,8 +30,8 @@ class ExperimentDesign(object):
 
     Arguments:
         dist_zeta: list of selected marginal distributions from Wiener-Askey scheme
-        *OPTIONAL:
         params  = [method, rule, orders]
+        *OPTIONAL:
         time_params = [time_start, time_ramp, time_max, dt]
         post_params = [qoi2analysis=[0,], stats=[1,1,1,1,1,1,0]]
             stats: [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
@@ -50,7 +50,7 @@ class ExperimentDesign(object):
         self.space  = space
         self.ndoe   = len(self.orders)   # number of doe sets
         self.samples=[]  # DoE output in space1
-        self.samples_env = None # DoE output in space2 after calling mappingto method
+        self.samples_env = None # DoE output in target_space after calling mappingto method
         self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
         self.filename_tags = []
         for item, count in collections.Counter(self.orders).items():
@@ -59,11 +59,6 @@ class ExperimentDesign(object):
             else:
                 itag = [ num2print(item) + 'R{}'.format(i) for i in range(count)]
             self.filename_tags += itag
-
-        # if self.method == 'MC':
-            # self.filename_tags = [ num2print(iorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
-        # else:
-            # self.filename_tags = [ num2print(iorder) for iorder in self.orders] 
 
         print(r'------------------------------------------------------------')
         print(r'>>> Initialize Experiment Design:')
@@ -107,28 +102,21 @@ class ExperimentDesign(object):
         self.samples = self.samples[0] if len(self.samples)==1 else self.samples
         return self.samples
 
-    def mappingto(self, space2):
+    def space_mapping(self, target_space):
         """
-        Mapping the DOE results from original space (self.space) to another specified space  
+        Mapping each dimension of the DOE results from original space (self.space) to another specified space  
         """
-        self.space_env   = space2
-        self.samples_env = []
+        self.samples_env= []
+        self.space_env  = target_space
         ## if self.samples is not a list (in the case of only 1 DOE set), change it to 1 elememnt list first 
-        self.samples = [self.samples,] if not isinstance(self.samples, list) else self.samples
-
-        # # n_sys_excit_func_name = len(self.sys_excit_params[0]) if self.sys_excit_params[0] else 1
-        # n_sys_excit_func_name = len(self.sys_excit_params[0]) 
-        # n_sys_excit_func_kwargs= len(self.sys_excit_params[1]) 
-        # n_sys_def_params      = len(self.sys_def_params) 
-        # n_total_simulations   = n_sys_excit_func_name * n_sys_excit_func_kwargs *n_sys_def_params 
+        self.samples   = [self.samples,] if not isinstance(self.samples, list) else self.samples
 
         ## Then calcuate corresponding samples in physical variable space 
-        # with open(os.path.join(self.data_dir, self.filename), 'w') as filename:
 
         for idoe, isamples in enumerate(self.samples):
             if const.DOE_METHOD_FULL_NAMES[self.method.lower()] == 'QUADRATURE':
                 zeta_cor, zeta_weights = isamples[:-1,:], isamples[-1,:] 
-                x_cor = self._space_transform(self.space, self.space_env, zeta_cor)
+                x_cor = self._space_transform(self.space, target_space, zeta_cor)
                 x_weights = zeta_weights#.reshape(zeta_cor.shape[1],1)
                 isample_x = np.concatenate((x_cor, x_weights[np.newaxis,:]), axis=0)
                 # isample_x = np.array([x_cor, x_weights])
@@ -152,26 +140,12 @@ class ExperimentDesign(object):
         self.samples     = kwargs.get('zeta', self.samples)
         self.samples_env = kwargs.get('env', self.samples_env) 
 
-    def set_method(self,params= ['QUAD','hem',[2,3]]):
+    def set_params(self, **kwargs):
         """
-        Define DoE parameters and properties
+        set specified kwargs
         """
-        self.params = params
-        self.method = params[0] 
-        self.rule   = params[1]
-        self.orders = params[2] 
-        self.filename= [] 
-        if np.isscalar(params[2]): 
-            self.orders.append(int(params[2]))
-        else:
-            self.orders = np.array(params[2])
-
-        self.filename  = 'DoE_{}{}'.format(self.method.capitalize(), self.rule.capitalize())
-        self.ndoe        = len(self.orders)   # number of doe sets
-        if self.method == 'MC':
-            self.filename_tags = [ num2print(riorder) + 'R{}'.format(i) for i, iorder in enumerate(self.orders)] 
-        else:
-            self.filename_tags = [ num2print(riorder) for iorder in self.orders] 
+        self.filename       = kwargs.get('filename', self.filename)
+        self.filename_tags  = kwargs.get('filename_tags', self.filename_tags)
 
     def save_data(self, data_dir):
         ### save input variables to file
@@ -208,34 +182,45 @@ class ExperimentDesign(object):
                     for jcor in isamples[:,:nsamples2print].T:
                         print(r'         {}'.format(np.around(jcor,decimals)))
 
-    def _space_transform(self, dist1, dist2, var1):
+    def _space_transform(self, dist1, dist2, x):
         """
-        Transform variables (var1) from list of dist1 to correponding variables in dist2. F1(x) = F2(x) , same cdf
+        Transform variables (x) from list of dist1 to correponding variables in dist2. F1(x) = F2(x) , same cdf
+        distributions are from chaospy 
 
         Arguments:
-            dist2: list of independent distributions (destination)
-            var1 : variables in dist1 of shape[ndim, nsamples]
+            dist1: distribution of the original space. In PCE method, usually all zetas are from same marginal distribution and are mutualy independent 
+            dist2: list of target marginal distributions. If only one distribution is given, assume same for all marginals
+            x : variables in dist1 of shape[ndim, nsamples]
 
         Return:
             
         """
-        var1  = np.array(var1)
-        dist1 = [dist1,] if len(dist1) == 1 else dist1
-        dist2 = [dist2,] if len(dist2) == 1 else dist2
-        assert (len(dist1) == len(dist2)), "No. of original and target distributions must be equal, but origianl sets: {:d}, target sets: {:}".format(len(dist1), len(dist2))
+        x = np.array(x)
+        x = x.reshape(1,-1) if x.ndim == 1 else x
+        x_ndim, xnsmp = x.shape
+        dist1_ndim = len(dist1)
+        dist2_ndim = len(dist2)
+        if x_ndim != dist1_ndim:
+            raise ValueError('Dimension of input variables and original space must match, Dim(x) = {:d}, Dim(space) ={:d}'.format(x_ndim, dist1_ndim))
+        if dist1_ndim != dist2_ndim:
+            raise ValueError('Dimension of target space and variables is not match. Dim(original space) ={:d}, Dim(target space) ={:d}'.format(dist1_ndim, dist2_ndim))
 
-        var1 = var1.reshape(1,-1) if var1.ndim == 1 else var1
-        assert (len(dist1) == var1.shape[0]), 'Dimension of variable not equal. dist1.ndim={}, dist2.ndim={}, var1.ndim={}'.format(len(dist1), len(dist2), var1.shape[0])
 
-        var2 = []
-        for i in range(var1.shape[0]):
-            _dist1 = dist1[i]
-            _dist2 = dist2[i]
-            _var = _dist2.inv(_dist1.cdf(var1[i,:]))
-            var2.append(_var)
-        var2 = np.array(var2)
-        assert var1.shape == var2.shape
-        return var2
+        x_res = dist2.inv(dist1.fwd(x))
+        # x_cdf_orig = dist1.fwd(x)
+
+        # if isinstance(dist2, list):
+            # x_res =  []
+            # assert (len(dist2) == x_ndim), 
+            # for ix_cdf in x_cdf_orig.reshape(x.shape).T:
+                # ix_res = [idist2.cdf(ix) for ix, idist2 in zip(ix_cdf, dist2)]
+                # x_res.append(ix_res)
+            # x_res = np.array(x_res).T
+        # else:
+            # x_res = dist2.inv(x_cdf_orig).reshape(x.shape)
+
+        # assert x.shape == x_res.shape
+        return x_res
 
 
 

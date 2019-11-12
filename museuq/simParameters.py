@@ -19,7 +19,6 @@ from .utilities.helpers import num2print, make_output_dir, get_gdrive_folder_id
 from itertools import compress
 ## Define parameters class
 
-
 class simParameters(object):
     """
     Define general parameter settings for simulation running and post data analysis. 
@@ -39,14 +38,13 @@ class simParameters(object):
         normalize: 
     """
 
-    def __init__(self, model_name, dist_zeta, prob_fails=1e-3):
+    def __init__(self, model_name, dist_zeta_J):
         sys.stdout = Logger()
         ###---------- Random system properties ------------------------
         self.seed       = [0,100]
         self.model_name = model_name
-        self.prob_fails = prob_fails
-        self.dist_zeta  = dist_zeta
-        self.dist_zeta_J= dist_zeta #if len(dist_zeta) == 1 else cp.J(*dist_zeta) 
+        self.dist_zeta_J= dist_zeta_J   ## Joint distribution
+        self.dist_zeta_M= None          ## List of marginal distributions
         # self.dist_x     = dist_x
         # self.dist_x_J   = dist_x    #if len(dist_zeta) == 1 else cp.J(*dist_zeta) 
         # assert len(self.dist_x) == len(self.dist_zeta)
@@ -130,6 +128,7 @@ class simParameters(object):
         ## 
         ###-------------Other special params ----------------------------
         self.normalize = kwargs.get('normalize', False)
+        self.dist_zeta_M = kwargs.get('dist_zeta_M', None)
 
     def set_error(self, name=None, **kwargs):
         """
@@ -152,7 +151,6 @@ class simParameters(object):
         print(r'------------------------------------------------------------')
         print(r' > Required parameters:')
         print(r'   * {:<25s} : {}'.format('Model Name:', self.model_name))
-        print(r'   * {:<25s} : {} '.format('Target Exceedance prob', self.prob_fails))
         print(r'   * {:<25s} : {} '.format('Joint zeta distribution', self.dist_zeta_J))
         # print(r'   * {:<25s} : {} '.format('Joint x distribution', self.dist_x_J))
 
@@ -163,6 +161,8 @@ class simParameters(object):
         print(r'   |   +-- {:<6s}: {}'.format('DATA',self.data_dir))
 
         print(r' > Optional parameters:')
+        if self.dist_zeta_M:
+            print(r'   * {:<15s} : '.format('Marginal distributions'))
         if self.time_params:
             print(r'   * {:<15s} : '.format('time parameters'))
             print(r'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('start', self.time_start, 'end', self.time_max ))
