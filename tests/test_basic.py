@@ -16,6 +16,49 @@ data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
+    def test_QuadratureDesign(self):
+        doe= museuq.doe.QuadratureDesign('hem',4)
+        doe.samples()
+        print(doe.x)
+        print(doe.w)
+
+        doe2= museuq.doe.QuadratureDesign(['hem', 'leg'],[2,3])
+        doe2.samples()
+        print(doe2.x)
+        print(doe2.w)
+
+    def test_RandomDesign(self):
+        doe = museuq.RandomDesign('R', 1e2, 'normal')
+        doe.samples()
+        print(np.mean(doe.x))
+        print(np.std(doe.x))
+
+        doe = museuq.RandomDesign('R', 1e7, ['normal', 'lognormal'],[[1,2], [0,1]])
+        doe.samples()
+        print(np.mean(doe.x, axis=1))
+        print(np.std(doe.x, axis=1))
+
+        doe = museuq.RandomDesign('R', 1e7, ['normal', 'lognormal'],[[1,2]])
+        doe.samples()
+        print(np.mean(doe.x, axis=1))
+        print(np.std(doe.x, axis=1))
+
+    def test_LatinHyperCube(self):
+        doe = museuq.LHS(1, 1e1)
+        doe.samples()
+        print(np.mean(doe.x))
+        print(np.std(doe.x))
+
+        doe = museuq.LHS(2, 10)
+        doe.samples()
+        print(np.mean(doe.x))
+        print(np.std(doe.x))
+
+        doe = museuq.LHS(2, 10000)
+        doe.samples(['uniform', 'norm'], [[-1,2], [2,1]])
+        print(np.mean(doe.x, axis=1))
+        print(np.std(doe.x, axis=1))
+
     def test_gauss_quadrature(self):
         """
         https://keisan.casio.com/exec/system/1329114617
