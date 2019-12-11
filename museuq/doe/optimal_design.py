@@ -11,12 +11,11 @@
 """
 from museuq.doe.base import ExperimentalDesign
 from museuq.utilities.decorators import random_state
-from museuq.doe.doe_criteria import *
 import numpy as np
+import numpy.linalg as LA
+import copy
 import itertools
-
-
-
+from tqdm import tqdm
 
 class OptimalDesign(ExperimentalDesign):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
@@ -62,15 +61,18 @@ class OptimalDesign(ExperimentalDesign):
         Return:
             Experiment samples of shape(ndim, n_samples)
         """
-        m,A,I=None,is_orth=False
-
         if self.criteria.upper() == 'S':
-            samples_candidates = kwargs['A']
+            """ Xb = Y """
+            design_matrix      = kwargs['X']
+            samples_x          = kwargs['x']
             selected_indices   = kwargs.get('I', None)
             is_basis_orth      = kwargs.get('is_orth', False)
-            selected_indices   = self._get_quasi_optimal(self.n_samples, samples_candidates, selected_indices, is_basis_orth)
-            self.x = samples_candidates[selected_indices]
+            selected_indices   = self._get_quasi_optimal(self.n_samples, design_matrix, selected_indices, is_basis_orth)
+            self.X = design_matrix[selected_indices]
+            self.x = samples_x[selected_indices]
             self.indices = selected_indices
+        else:
+            pass
 
     def _cal_logsvalue_over(self, R, A):
         """
@@ -155,7 +157,7 @@ class OptimalDesign(ExperimentalDesign):
         I_left   = list(set(range(Q.shape[0])).difference(set(I)))
         Q_left   = Q[np.array(I_left, dtype=np.int32),:]
         Q_select = Q[np.array(I,      dtype=np.int32),:]
-        svalues  = cal_svalue(Q_left,Q_select)
+        svalues  = self.S(Q_left,Q_select)
         assert(len(svalues) == len(I_left))
         # I_candi_sorted = list(map(lambda i: I_left[i], np.argsort(svalues)))
         # print(u'\tSorted S-value indices (increasing)', I_candi_sorted)
@@ -190,18 +192,21 @@ class OptimalDesign(ExperimentalDesign):
         # print(u"\tNumber of design point:\t{:2d} \n\tNumber of samples:\t{:2d} \n\tNumber of features:\t{:2d}".format(m,A.shape[0],A.shape[1]))
         # print(u'\t>>>','*'*40)
         # (Q,R) = (A, _ )if is_orth else LA.qr(A, mode='complete')
-        (Q,R) = (A, _ ) if is_orth else LA.qr(A)
+        (Q,R) = (A, None ) if is_orth else LA.qr(A)
         # print(u'\tComplete QR factorization of Design matrix A. \n\t  Q.shape = {0}, R.shape={1}'.format(Q.shape, R.shape))
         # print(u'\t>>>','*'*40)
         # print(u'\tSearching for design points based on S-value')
 
-        I = [nrand.randint(0,M)] if I is None else I ## random initialize for the first point
+        I = [np.random.randint(0,M)] if I is None else I ## random initialize for the first point
         m1 = len(I) 
         # print(u'\tRandom Initialize...')
 
         # for ipbar in pbar((i for i in range(m-m1))):
         # print(u'\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
-        while len(I) < m:
+
+        pbar_x  = tqdm(range(m-1), ascii=True, desc="   - ")
+        for _ in pbar_x:
+        # while len(I) < m:
             i = self._find_next_design_point(I,Q)
             I.append(i)
             # print(u'\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
