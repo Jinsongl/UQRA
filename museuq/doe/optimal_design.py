@@ -13,6 +13,7 @@ from museuq.doe.base import ExperimentalDesign
 from museuq.utilities.decorators import random_state
 import numpy as np
 import numpy.linalg as LA
+import scipy.linalg as scila
 import copy
 import itertools
 from tqdm import tqdm
@@ -58,21 +59,31 @@ class OptimalDesign(ExperimentalDesign):
     @random_state
     def samples(self, *args, **kwargs):
         """
+        Xb = Y
+
         Return:
             Experiment samples of shape(ndim, n_samples)
         """
+        x = kwargs['x'] ## samples input of shape(ndim, num_samples)
+        X = kwargs['X'] ## design matrix of shape(num_samples, num_features)
+        m, p = X.shape
+        assert m > p, 'Number of candidate samples are expected to be larger than number of features'
+
         if self.criteria.upper() == 'S':
             """ Xb = Y """
-            design_matrix      = kwargs['X']
-            samples_x          = kwargs['x']
             selected_indices   = kwargs.get('I', None)
             is_basis_orth      = kwargs.get('is_orth', False)
-            selected_indices   = self._get_quasi_optimal(self.n_samples, design_matrix, selected_indices, is_basis_orth)
-            self.X = design_matrix[selected_indices]
-            self.x = samples_x[selected_indices]
-            self.indices = selected_indices
+            selected_indices   = self._get_quasi_optimal(self.n_samples, X, selected_indices, is_basis_orth)
+        elif self.criteria.upper() == 'D':
+            """ D optimality based on rank revealing QR factorization  """
+            Q, R, P = scila.qr(X.T, pivoting=True)
+            selected_indices = P[:self.n_samples]
         else:
             pass
+
+        self.X = X[selected_indices,:]
+        self.x = x[selected_indices] if x.ndim == 1 else x[:, selected_indices]
+        self.indices = selected_indices
 
     def _cal_logsvalue_over(self, R, A):
         """
@@ -142,7 +153,7 @@ class OptimalDesign(ExperimentalDesign):
             svalues_log.append(d1 + d3 - d2 - d4)
         return svalues_log
 
-    def _find_next_design_point(self, I, Q):
+    def _greedy_find_next_point(self, I, Q):
         """
         find the next quasi optimal sample
 
@@ -207,7 +218,7 @@ class OptimalDesign(ExperimentalDesign):
         pbar_x  = tqdm(range(m-1), ascii=True, desc="   - ")
         for _ in pbar_x:
         # while len(I) < m:
-            i = self._find_next_design_point(I,Q)
+            i = self._greedy_find_next_point(I,Q)
             I.append(i)
             # print(u'\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
         I = sorted(I)
