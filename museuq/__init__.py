@@ -16,6 +16,7 @@ from museuq.doe.ExperimentDesign import ExperimentDesign as DoE
 from museuq.doe.quadrature import QuadratureDesign
 from museuq.doe.random_design import RandomDesign
 from museuq.doe.lhs import LatinHyperCube as LHS
+from museuq.doe.optimal_design import OptimalDesign 
 from museuq.solver.Solver import Solver
 from museuq.surrogate_model.SurrogateModel import SurrogateModel
 from museuq.simParameters import simParameters

@@ -19,9 +19,12 @@ Reference:
 from museuq.doe.base import ExperimentalDesign
 from museuq.doe.quadrature import QuadratureDesign
 from museuq.doe.random_design import RandomDesign
+from museuq.doe.optimal_design import OptimalDesign
 
 __all__= (
         'ExperimentalDesign', 
         'QuadratureDesign',
+        'RandomDesign',
+        'OptimalDesign',
         )
 

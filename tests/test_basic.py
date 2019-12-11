@@ -59,6 +59,33 @@ class BasicTestSuite(unittest.TestCase):
         print(np.mean(doe.x, axis=1))
         print(np.std(doe.x, axis=1))
 
+    def test_OptimalDesign(self):
+        np.random.seed(100)
+        # dist_x = cp.Normal()
+        alpha = [1.1, 1.5, 2]
+        dist_x = cp.Uniform(-1,1)
+        basis  = cp.orth_ttr(100,dist_x)
+
+        samples_x = dist_x.sample(1e5)
+        design_matrix = basis(samples_x).T
+        for ia in alpha:
+            doe = museuq.OptimalDesign(int(len(basis)*ia), 'S')
+            doe.samples(X=design_matrix, x=samples_x, is_orth=True)
+            np.save('Uniform_MCSR_x',  samples_x)
+            np.save('Uniform_ODES_x',  doe.x)
+            np.save('Uniform_ODES_X1', doe.X)
+            np.save('Uniform_ODES_indices', doe.indices)
+
+        # doe = museuq.LHS(2, 10)
+        # doe.samples()
+        # print(doe.x)
+        # print(doe.indices)
+
+        # doe = museuq.LHS(2, 10000)
+        # doe.samples(['uniform', 'norm'], [[-1,2], [2,1]])
+        # print(doe.x)
+        # print(doe.indices)
+
     def test_gauss_quadrature(self):
         """
         https://keisan.casio.com/exec/system/1329114617
