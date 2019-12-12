@@ -17,6 +17,7 @@ from ..utilities.classes import ObserveError
 from ..utilities import helpers as museuq_helpers
 from ..utilities import constants as const
 from ..utilities import dataIO 
+import os
 
 solvers_collections = {
     'ISHIGAMI'  : ishigami,
@@ -59,7 +60,7 @@ class Solver(object):
     Return:
         List of simulation results (Different doe_order, sample size would change, so return list)
         if more than one set of system params: 
-          - output      = [sys_params0,  sys_params1,  ... ]
+          - y      = [sys_params0,  sys_params1,  ... ]
           -- sys_param0 = [sim_res_DoE0, sim_res_DoE1, sim_res_DoE2,... ]
         1. len(res) = len(sys_def_params) 
         2. For each element in res: simulation results from 1 DoE set
@@ -80,7 +81,7 @@ class Solver(object):
         self.source_func= kwargs.get('source_func', None)
         self.theta_s    = kwargs.get('theta_s'  , None)
 
-        self.output     = []
+        self.y     = []
         self.output_stats=[]
 
         print(r'------------------------------------------------------------')
@@ -105,43 +106,62 @@ class Solver(object):
             for key, value in kwargs.items():
                 print(r'     - {:<15s} : {}'.format(key, value))
 
-    def run(self, *args, **kwargs):
+    def run(self, x, *args, **kwargs):
         """
         run solver with input variables
         Parameters:
-          1. Given a set of sampels directly by kwargs, x=
-          2. Given a set of input filenames and load data from them by kwargs fnames=
-
+            x: np.ndarray input data of shape(ndim, nsamples) 
+              or str for input filename
         Returns:
             No returns
         """
-        if 'data' in kwargs.keys():
-            doe_sets = [kwargs['data'],] if isinstance(kwargs['data'], (np.ndarray, np.generic)) else kwargs['data']
-            post_str = kwargs.get('post_str', 'out')
-            fnames_out = ['{:s}_run_DoE{:d}_{:s}'.format(self.solver_name, i, post_str)  for idoe_order in doe_sets] 
-
-        elif 'fnames' in kwargs.keys():
-            post_str = kwargs.get('post_str', 'out')
-            fnames   = kwargs['fnames']
-            fnames   = [fnames, ] if isinstance(fnames, str) else fnames
-            fnames   = [ifname[:-4] if ifname.endswith('npy') else ifname for ifname in fnames ]
-            doe_sets = [np.load(ifname + '.npy') for ifname in fnames]
-            fnames_out = [ifname + '_{:s}'.format(post_str) for ifname in fnames] 
+        if isinstance(x, str):
+            fname   = x if x.endswith('npy') else x + '.npy' 
+            data_x  = np.load(fname)
+        elif isinstance(x, (np.generic, np.ndarray)):
+            data_x  = x
         else:
-            raise ValueError('Input variables must be defined to process Solver.run(), either specify data=[], or file names fnames = []')
+            raise ValueError('Input x takes either str for filename or np.ndarray, however, {} is given'.format(type(x)))
 
-        ### Run simulations
-        print(r' > Running Simulation...')
-        for i, idoe_set in enumerate(doe_sets):
-            if idoe_set.shape[0] != self.ndim:
-                try:
-                    index = kwargs['index']
-                    idoe_set = idoe_set[index]
-                except KeyError:
-                    raise ValueError('Data set dimension must equal to solver input dimension, but data.shape[0]={:d} solver.ndim={:d}'.format(idoe_set.shape[0], self.ndim))
-            y = self._solver_wrapper(idoe_set, *args, **kwargs)
-            np.save(fnames_out[i], y)
-            print(r'   ^ DoE set : {:d} / {:d}    -> Solver output : {}'.format(i, len(doe_sets), y.shape))
+        if data_x.shape[0] != self.ndim:
+            try:
+                index = kwargs['index']
+                data_x = data_x[index]
+            except KeyError:
+                raise ValueError('Data set dimension must equal to solver input dimension, but data.shape[0]={:d} solver.ndim={:d}'.format(data_x.shape[0], self.ndim))
+        y = self._solver_wrapper(data_x, *args, **kwargs)
+        self.y = y
+
+
+        ### following codes work for multiple DOE sets
+
+        # if 'data' in kwargs.keys():
+            # doe_sets = [kwargs['data'],] if isinstance(kwargs['data'], (np.ndarray, np.generic)) else kwargs['data']
+            # ending = kwargs.get('ending', 'out')
+            # fnames_out = ['{:s}_run_DoE{:d}_{:s}'.format(self.solver_name, i, ending)  for idoe_order in doe_sets] 
+
+        # elif 'fnames' in kwargs.keys():
+            # ending = kwargs.get('ending', 'out')
+            # fnames   = kwargs['fnames']
+            # fnames   = [fnames, ] if isinstance(fnames, str) else fnames
+            # fnames   = [ifname[:-4] if ifname.endswith('npy') else ifname for ifname in fnames ]
+            # doe_sets = [np.load(ifname + '.npy') for ifname in fnames]
+            # fnames_out = [ifname + '_{:s}'.format(ending) for ifname in fnames] 
+        # else:
+            # raise ValueError('Input variables must be defined to process Solver.run(), either specify data=[], or file names fnames = []')
+
+        # ### Run simulations
+        # print(r' > Running Simulation...')
+        # for i, idoe_set in enumerate(doe_sets):
+            # if idoe_set.shape[0] != self.ndim:
+                # try:
+                    # index = kwargs['index']
+                    # idoe_set = idoe_set[index]
+                # except KeyError:
+                    # raise ValueError('Data set dimension must equal to solver input dimension, but data.shape[0]={:d} solver.ndim={:d}'.format(idoe_set.shape[0], self.ndim))
+            # y = self._solver_wrapper(idoe_set, *args, **kwargs)
+            # np.save(fnames_out[i], y)
+            # print(r'   ^ DoE set : {:d} / {:d}    -> Solver y : {}'.format(i, len(doe_sets), y.shape))
 
     def _solver_wrapper(self, x, *args, **kwargs):
         """
