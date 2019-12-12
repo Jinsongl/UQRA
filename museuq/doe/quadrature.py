@@ -11,7 +11,9 @@
 """
 import numpy as np
 from museuq.doe.base import ExperimentalDesign
+from museuq.utilities.helpers import num2print
 import itertools
+import collections
 DOE_METHOD_FULL_NAMES = {
     "GQ"    : "Quadrature"  , "QUAD"  : "Quadrature",
     "MC"    : "Monte Carlo" , "FIX"   : "Fixed point"
@@ -29,34 +31,51 @@ DOE_RULE_FULL_NAMES = {
     "FIX": "Fixed point"
     }
 class QuadratureDesign(ExperimentalDesign):
-    """ Experimental Design with Quadrature poly_types """
+    """ Experimental Design with Quadrature forms """
 
-    def __init__(self, types, p, params=None, *args, **kwargs):
+    def __init__(self, forms, p, ndim, dist_params=None, *args, **kwargs):
         """
-        Space: 
-            1. cp.distributions
+        Parameters:
+            forms: str or list of str, polynomial basis form. hem: Hermtie, leg: Legendre
+            p:      int, number of quadrature points in each dimension
+            ndim:   int, dimension of variable
+            dist_params: list: corresponding distribution parameters
         """
         super().__init__(*args, **kwargs)
-        self.poly_types  = [types, ] if isinstance(types, str) else types ### str or list of str
-        self.poly_orders = [p,] if isinstance(p, int) else p ### int or list of int 
-        self.poly_orders = self.poly_orders * len(self.poly_types) if len(self.poly_orders) == 1 else self.poly_orders
-        self.poly_params = [None,] if params is None else params
-        self.poly_params = self.poly_params * len(self.poly_types) if len(self.poly_params) == 1 else self.poly_params 
-        self.poly_names  = [DOE_RULE_FULL_NAMES[ipoly_type.upper()] for ipoly_type in self.poly_types]
+        self.ndim   = ndim
+        self.p      = p
+        if self.ndim ==1 :
+            assert isinstance(forms, str)
+            self.forms       = forms
+            self.dist_params = dist_params
+        else:
+            if isinstance(forms, list):
+                if len(forms) == 1:
+                    self.forms = forms * self.ndim
+                else:
+                    assert len(forms) == self.ndim
+            elif isinstance(forms, str):
+                self.forms = [forms,] * self.ndim
+            else:
+                raise ValueError('QuadratureDesign.forms takes either str or list of str, but {} is given'.format(type(forms)))
+
+            if dist_params is None:
+                self.dist_params = [None,] * self.ndim
+            elif isinstance(dist_params, list) and isinstance(dist_params[0], list):
+                assert len(dist_params) == self.ndim
+                self.dist_params = dist_params
+            elif isinstance(dist_params, list) and not isinstance(dist_params[0], list):
+                self.dist_params = [dist_params,] * self.ndim
+            else:
+                raise ValueError('Wrong format given for dist_params')
+
+
         ## results
         self.w           = []  # Gaussian quadrature weights corresponding to each quadrature node 
-        # self.filename    = 'DoE_Quad{}'.format(self.poly_types.capitalize())
-        # self.filename_tags = []
-
-        # for item, count in collections.Counter(self.orders).items():
-            # if count == 1:
-                # itag = [ num2print(item)]
-            # else:
-                # itag = [ num2print(item) + 'R{}'.format(i) for i in range(count)]
-            # self.filename_tags += itag
+        self.filename    = '_'.join(['DoE_Quad', self.forms[0].capitalize() + num2print(self.p)])
 
     def __str__(self):
-        return('Gauss Quadrature: {}, p-order: {} '.format(self.poly_names, self.poly_orders))
+        return('Gauss Quadrature: {}, p={:d}, ndim={:d} '.format(self.forms, self.p, self.ndim))
 
     def samples(self):
         """
@@ -65,26 +84,32 @@ class QuadratureDesign(ExperimentalDesign):
         """
         coords, weights = [], [] 
 
-        for ipoly_type, ipoly_order, ipoly_params in zip(self.poly_types, self.poly_orders, self.poly_params):
-            ix, iw = self._gen_quad_1d(ipoly_type, ipoly_order, ipoly_params) 
-            coords.append(ix)
-            weights.append(iw)
-        self.x = np.array(list(itertools.product(*coords))).T
-        self.w = np.prod(np.array(list(itertools.product(*weights))).T, axis=0)
+        if self.ndim == 1:
+            x, w = self._gen_quad_1d(self.forms, self.p, self.dist_params) 
+            self.x = np.squeeze(x) 
+            self.w = np.squeeze(w)
+        else:
+            for ipoly_form, idist_params in zip(self.forms, self.dist_params):
+                ix, iw = self._gen_quad_1d(ipoly_form, self.p, idist_params) 
+                coords.append(ix)
+                weights.append(iw)
+            self.x = np.array(list(itertools.product(*coords))).T
+            self.w = np.prod(np.array(list(itertools.product(*weights))).T, axis=0).reshape(1,-1)
 
-    def _gen_quad_1d(self, poly_type, p, params=None):
-        if poly_type in ['hem', 'hermite']:
+
+    def _gen_quad_1d(self, poly_type, p, dist_params=None):
+        if poly_type.lower() in ['hem', 'hermite']:
             ## probabilists , chaospy orth_ttr generate probabilists orthogonal polynomial
             x, w = np.polynomial.hermite_e.hermegauss(p) 
-            mu, sigma = params if params else (0,1)
+            mu, sigma = dist_params if dist_params else (0,1)
             x = mu + sigma * x
             w = sigma * w
             # coord   = np.array(list(itertools.product(*[coord1d]*len(domain)))).T
             # weights = np.array(list(itertools.product(*[weight1d]*len(domain)))).T
             # weights = np.prod(weights, axis=0)
-        elif poly_type in ['leg', 'legendre']:
+        elif poly_type.lower() in ['leg', 'legendre']:
             x, w = np.polynomial.legendre.leggauss(p)
-            a, b = params if params else (-1,1)
+            a, b = dist_params if dist_params else (-1,1)
             x = (b-a)/2 * x + (a+b)/2
             w = (b-a)/2 * w
 
@@ -106,5 +131,5 @@ class QuadratureDesign(ExperimentalDesign):
             # weights = np.array(list(itertools.product(*[weight1d]*len(domain)))).T
             # weights = np.prod(weights, axis=0)
         else:
-            raise NotImplementedError("Quadrature poly_types '{:s}' is not defined".format(poly_types))
+            raise NotImplementedError("Quadrature forms '{:s}' is not defined".format(forms))
         return x, w
