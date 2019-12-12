@@ -11,6 +11,7 @@
 """
 import numpy as np
 from museuq.utilities.decorators import (NotFittedError, check_valid_values, missing_method_scipy_wrapper)
+from museuq.utilities import dataIO 
 
 class ExperimentalDesign(object):
     """
@@ -22,6 +23,7 @@ class ExperimentalDesign(object):
         self.x      =[]  # DoE values in physical space 
         self.u      =[]  # DoE values in u-space
         self.y      =[]  # DoE output corresponding to DoE x values 
+        self.filename      = ''
 
     def samples(self):
         """
@@ -34,4 +36,9 @@ class ExperimentalDesign(object):
         """
         raise NotImplementedError
 
+    def save_data(self, data_dir):
+        """
+        save input variables to file
+        """
+        raise NotImplementedError
 
