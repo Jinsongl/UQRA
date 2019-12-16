@@ -14,7 +14,7 @@ import chaospy as cp
 import numpy as np
 from datetime import datetime
 from .doe.doe_generator import samplegen
-from .utilities.classes import ObserveError, Logger
+from .utilities.classes import Logger
 from .utilities.helpers import num2print, make_output_dir, get_gdrive_folder_id 
 from itertools import compress
 ## Define parameters class
@@ -129,21 +129,6 @@ class simParameters(object):
         ###-------------Other special params ----------------------------
         self.normalize = kwargs.get('normalize', False)
         self.dist_zeta_M = kwargs.get('dist_zeta_M', None)
-
-    # def set_error(self, name=None, **kwargs):
-        # """
-        # Set observe error 
-        # Parameters:
-            # name: error distribution name, error-free if name=None
-            # kwargs: 
-              # - (loc, scale): error distribution is iid with parameters (Loc, scale)
-              # - cov: error distribution has zero mean and varying scale, cov=std/abs(mu)
-        # e.g. 
-            # simparams.set_error()
-            # simparams.set_error('normal',loc=0, scale=50)
-            # simparams.set_error('normal',cov=0.1)
-        # """
-        # self.error = ObserveError(name=name,**kwargs)
 
     def info(self):
         print(r'------------------------------------------------------------')
