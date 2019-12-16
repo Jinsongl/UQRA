@@ -212,69 +212,6 @@ class SurrogateModel(object):
                 surrogates_pred = surrogates_pred[0]
             return surrogates_pred
 
-    def score(self,y_pred,y_true,**kwargs):
-        """
-        Calculate error metrics_value used to evaluate the accuracy of the approximation
-        Reference: "On the accuracy of the polynomial chaos approximation R.V. Field Jr., M. Grigoriu"
-        Parameters:	
-        X : array-like, shape = (n_samples, n_features)
-        Test samples. For some estimators this may be a precomputed kernel matrix instead, shape = (n_samples, n_samples_fitted], where n_samples_fitted is the number of samples used in the fitting for the estimator.
-
-        y : array-like, shape = (n_samples) or (n_samples, n_outputs)
-        True values for X.
-
-        sample_weight : array-like, shape = [n_samples], optional
-        Sample weights.
-
-        [values, moments, norms, upper tails, ecdf, pdf, R2] 
-        -----------------------------------------------------------------------
-        Returns the coefficient of determination R^2 of the prediction.
-
-        The coefficient R^2 is defined as (1 - u/v), where u is the residual sum of squares ((y_true - y_pred) ** 2).sum() and v is the total sum of squares ((y_true - y_true.mean()) ** 2).sum(). The best possible score is 1.0 and it can be negative (because the model can be arbitrarily worse). A constant model that always predicts the expected value of y, disregarding the input features, would get a R^2 score of 0.0.
-
-        Returns:	
-        score : float
-        R^2 of self.predict(X) wrt. y.
-        0 | values 
-        1 | moments, e = [1 - pce_moment(i)/real_moment(i)], for i in range(n)
-        2 | norms : numpy.linalg.norm(x, ord=None, axis=None, keepdims=False)
-        3 | upper fractile 
-        4 | ecdf 
-        5 | kernel density estimator pdf
-        """
-        self.metrics        = []
-        # y_pred              = self.predict(X,return_std=False,return_cov=False)
-        self.metrics_value  = [[] for _ in range(len(y_pred))]   
-
-        metrics = kwargs.get('metrics'  , ['mean_squared_error'])
-        prob    = kwargs.get('prob'     , [0.9,0.99,0.999]) 
-        moment  = kwargs.get('moment'   , 1)
-
-        print(r' > Calculating scores...')
-
-        for imetric_name in metrics:
-            imetric2call = getattr(metrics_collections, imetric_name.lower())
-            for i, iy_pred in enumerate(y_pred):
-                assert iy_pred.shape == y_true.shape, "Predict values and true values must have same shape, but get {} and {} instead".format(iy_pred.shape, y_true.shape)
-                if imetric_name.lower() == 'upper_tails':
-                    imetric_value = imetric2call(y_true, iy_pred, prob=prob)
-                    print(r'   * {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetric_name, 'True', 'Prediction', '%Error'))
-                    for iprob, iupper_tail in zip(prob, np.array(imetric_value).T):
-                        error_perc = abs((iupper_tail[1]-iupper_tail[0])/iupper_tail[0]) * 100.0 if iupper_tail[0] else np.inf
-                        print(r'     - {:<18f}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(iprob, iupper_tail[0], iupper_tail[1], error_perc))
-
-                elif imetric_name.lower() == 'moments': 
-                    imetric_value = imetric2call(y_true, iy_pred, m=moment)
-
-                    print(r'   * {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetric_name, 'True', 'Prediction', '%Error'))
-                    for imoment, imoment_value in zip(moment, np.array(imetric_value).T):
-                        error_perc = abs((imoment_value[1]-imoment_value[0])/imoment_value[0])* 100.0 if imoment_value[0] else np.inf
-                        print(r'     - {:<18s}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(ordinal(imoment), imoment_value[0], imoment_value[1], error_perc))
-                else:
-                    imetric_value = imetric2call(y_true, iy_pred)
-                    print(r'   * {:<20s}: {}'.format(imetric_name, np.around(imetric_value,2)))
-                self.metrics_value[i].append(imetric_value)
-        return self.metrics_value
     
     def log_marginal_likelihood(self, theta, eval_gradient=False):
         """
