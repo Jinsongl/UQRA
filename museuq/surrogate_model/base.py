@@ -128,25 +128,25 @@ class SurrogateModel(object):
                 if imetrics.lower() == 'mquantiles':
                     imetrics_value = imetric2call(iy_pred, prob=self.mquantiles_probs)
                     imetrics_value = imetrics_value.ravel().tolist()
-                    print(r'     - {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetrics, 'True', 'Prediction', '%Error'))
+                    print(r'     - {:<30s}: {:^10s} {:^10s} {:^10s}'.format(imetrics, 'True', 'Prediction', '%Error'))
                     for iprob, imquantiles in zip(self.mquantiles_probs, imetrics_value):
                         imetrics_value_true = next(metrics_value_true_iter)
                         error_perc = abs((imquantiles-imetrics_value_true)/imetrics_value_true) * 100.0 if imetrics_value_true else np.inf
-                        print(r'       {:<18f}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(iprob, imetrics_value_true, imquantiles, error_perc))
+                        print(r'       {:<30f}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(iprob, imetrics_value_true, imquantiles, error_perc))
 
                 elif imetrics.lower() == 'moment': 
                     imetrics_value = imetric2call(iy_pred, moment=self.moments2cal)
                     imetrics_value = imetrics_value.ravel().tolist()
 
-                    print(r'     - {:<20s}: {:^10s} {:^10s} {:^10s}'.format(imetrics, 'True', 'Prediction', '%Error'))
+                    print(r'     - {:<30s}: {:^10s} {:^10s} {:^10s}'.format(imetrics, 'True', 'Prediction', '%Error'))
                     for imoment, imoment_pred in zip(self.moments2cal,imetrics_value):
                         imetrics_value_true = next(metrics_value_true_iter)
                         error_perc = abs((imoment_pred-imetrics_value_true)/imetrics_value_true)* 100.0 if imetrics_value_true else np.inf
-                        print(r'       {:<18s}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(ordinal(imoment), imetrics_value_true, imoment_pred, error_perc))
+                        print(r'       {:<30s}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(ordinal(imoment), imetrics_value_true, imoment_pred, error_perc))
                 else:
                     imetrics_value = imetric2call(y_true, iy_pred)
                     imetrics_value_true = next(metrics_value_true_iter)
-                    print(r'     - {:<20s}: {}'.format(imetrics, np.around(imetrics_value,2)))
+                    print(r'     - {:<30s}: {}'.format(imetrics, np.around(imetrics_value,2)))
                     imetrics_value = [imetrics_value,]
 
                 metrics_value_pred = metrics_value_pred+ imetrics_value
