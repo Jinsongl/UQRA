@@ -69,7 +69,7 @@ class simParameters(object):
         self.sys_input_zeta   = []
 
         ###-------------Observation Error ----------------------------
-        self.set_error()
+        # self.set_error()
         ###-------------Others ------------------------------------------
         self.set_params()
         self.update_dir()
@@ -130,20 +130,20 @@ class simParameters(object):
         self.normalize = kwargs.get('normalize', False)
         self.dist_zeta_M = kwargs.get('dist_zeta_M', None)
 
-    def set_error(self, name=None, **kwargs):
-        """
-        Set observe error 
-        Parameters:
-            name: error distribution name, error-free if name=None
-            kwargs: 
-              - (loc, scale): error distribution is iid with parameters (Loc, scale)
-              - cov: error distribution has zero mean and varying scale, cov=std/abs(mu)
-        e.g. 
-            simparams.set_error()
-            simparams.set_error('normal',loc=0, scale=50)
-            simparams.set_error('normal',cov=0.1)
-        """
-        self.error = ObserveError(name=name,**kwargs)
+    # def set_error(self, name=None, **kwargs):
+        # """
+        # Set observe error 
+        # Parameters:
+            # name: error distribution name, error-free if name=None
+            # kwargs: 
+              # - (loc, scale): error distribution is iid with parameters (Loc, scale)
+              # - cov: error distribution has zero mean and varying scale, cov=std/abs(mu)
+        # e.g. 
+            # simparams.set_error()
+            # simparams.set_error('normal',loc=0, scale=50)
+            # simparams.set_error('normal',cov=0.1)
+        # """
+        # self.error = ObserveError(name=name,**kwargs)
 
     def info(self):
         print(r'------------------------------------------------------------')
