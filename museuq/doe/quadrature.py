@@ -95,7 +95,7 @@ class QuadratureDesign(ExperimentalDesign):
                 coords.append(iu)
                 weights.append(iw)
             self.u = np.array(list(itertools.product(*coords))).T
-            self.w = np.prod(np.array(list(itertools.product(*weights))).T, axis=0).reshape(1,-1)
+            self.w = np.prod(np.array(list(itertools.product(*weights))).T, axis=0)
 
 
     def _gen_quad_1d(self, poly_type, p, dist_params=None):
