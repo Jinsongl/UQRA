@@ -21,9 +21,9 @@ class ExperimentalDesign(object):
     def __init__(self, random_seed=None):
         self.random_seed = random_seed
         self.x      =[]  # DoE values in physical space 
-        self.u      =[]  # DoE values in u-space
+        self.u      =[]  # DoE values in u-space (Askey)
         self.y      =[]  # DoE output corresponding to DoE x values 
-        self.filename      = ''
+        self.filename = ''
 
     def samples(self):
         """
