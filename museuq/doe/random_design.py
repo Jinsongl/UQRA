@@ -85,14 +85,14 @@ class RandomDesign(ExperimentalDesign):
             Experiment samples of shape(ndim, n_samples)
         """
         if self.method.upper() in ['R', 'MC', 'MCS']:
-            u_samples = []
+            x_samples = []
             for idist_name, idist_params in itertools.zip_longest(self.dist_names, self.dist_params):
                 dist_random = getattr(np.random, idist_name)
                 if idist_params is None:
-                    u_samples.append(dist_random(size=self.n_samples))
+                    x_samples.append(dist_random(size=self.n_samples))
                 else:
-                    u_samples.append(dist_random(*idist_params, size=self.n_samples))
-            self.u = np.array(u_samples) 
+                    x_samples.append(dist_random(*idist_params, size=self.n_samples))
+            self.x = np.array(x_samples) 
         elif self.method.upper() in ['HALTON', 'HAL', 'H']:
             raise NotImplementedError 
 
