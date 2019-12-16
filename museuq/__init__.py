@@ -12,7 +12,7 @@ import importlib
 import numpy as np
 import pandas as pd
 
-from museuq.doe.ExperimentDesign import ExperimentDesign as DoE
+# from museuq.doe.ExperimentDesign import ExperimentDesign as DoE
 from museuq.doe.quadrature import QuadratureDesign
 from museuq.doe.random_design import RandomDesign
 from museuq.doe.lhs import LatinHyperCube as LHS
