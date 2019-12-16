@@ -13,10 +13,11 @@ import numpy as np
 from tqdm import tqdm
 from .dynamic_models import lin_oscillator, duffing_oscillator, linear_oscillator
 from .benchmark import bench1, bench2, bench3, bench4, ishigami
-from ..utilities.classes import ObserveError
+# from ..utilities.classes import ObserveError
 from ..utilities import helpers as museuq_helpers
 from ..utilities import constants as const
 from ..utilities import dataIO 
+from ..utilities.ErrorClass import NullError, IidError, CovError
 import os
 
 solvers_collections = {
@@ -77,7 +78,7 @@ class Solver(object):
 
         ## kwargs: 
         self.theta_m    = kwargs.get('theta_m'  , [None])
-        self.error      = kwargs.get('error'    , ObserveError())
+        self.error      = kwargs.get('error'    , NullError())
         self.source_func= kwargs.get('source_func', None)
         self.theta_s    = kwargs.get('theta_s'  , None)
 
