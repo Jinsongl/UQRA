@@ -62,20 +62,49 @@ class BasicTestSuite(unittest.TestCase):
     def test_OptimalDesign(self):
         np.random.seed(100)
         # dist_x = cp.Normal()
-        alpha = [1.1, 1.5, 2]
-        dist_x = cp.Uniform(-1,1)
-        basis  = cp.orth_ttr(100,dist_x)
+
+
+        # alpha = [1.1, 1.5]
+        # dist_x = cp.Uniform(-1,1)
+        # basis  = cp.orth_ttr(100,dist_x)
+
+        # samples_x = dist_x.sample(1e5)
+        # design_matrix = basis(samples_x).T
+        # for ia in alpha:
+            # doe_size = int(len(basis)*ia)
+            # doe = museuq.OptimalDesign(doe_size, 'S')
+            # doe.samples(X=design_matrix, x=samples_x, is_orth=True)
+            # np.save('Uniform_MCSR_x_{:d}'.format(doe_size),  samples_x)
+            # np.save('Uniform_ODES_x_{:d}'.format(doe_size),  doe.x)
+            # np.save('Uniform_ODES_X1_{:d}'.format(doe_size), doe.X)
+            # np.save('Uniform_ODES_indices_{:d}'.format(doe_size), doe.indices)
+
+        ### 2D
+        alpha = [1.1, 1.5]
+        dist_x = cp.Iid(cp.Uniform(-1,1),2)
+        basis  = cp.orth_ttr(10,dist_x)
 
         samples_x = dist_x.sample(1e5)
-        design_matrix = basis(samples_x).T
+        print(samples_x.shape)
+        design_matrix = basis(*samples_x).T
+        print(design_matrix.shape)
         for ia in alpha:
-            doe = museuq.OptimalDesign(int(len(basis)*ia), 'S')
+            doe_size = int(len(basis)*ia)
+            doe = museuq.OptimalDesign(doe_size, 'S')
             doe.samples(X=design_matrix, x=samples_x, is_orth=True)
-            np.save('Uniform_MCSR_x',  samples_x)
-            np.save('Uniform_ODES_x',  doe.x)
-            np.save('Uniform_ODES_X1', doe.X)
-            np.save('Uniform_ODES_indices', doe.indices)
+            np.save('Uniform2D_MCSR_x_{:d}'.format(doe_size),  samples_x)
+            np.save('Uniform2D_ODES_x_{:d}'.format(doe_size),  doe.x)
+            np.save('Uniform2D_ODES_X1_{:d}'.format(doe_size), doe.X)
+            np.save('Uniform2D_ODES_indices_{:d}'.format(doe_size), doe.indices)
 
+        for ia in alpha:
+            doe_size = int(len(basis)*ia)
+            doe = museuq.OptimalDesign(doe_size, 'S')
+            doe.samples(X=design_matrix, x=samples_x, is_orth=True)
+            np.save('Uniform2D_MCSR_x_{:d}'.format(doe_size),  samples_x)
+            np.save('Uniform2D_ODED_x_{:d}'.format(doe_size),  doe.x)
+            np.save('Uniform2D_ODED_X1_{:d}'.format(doe_size), doe.X)
+            np.save('Uniform2D_ODED_indices_{:d}'.format(doe_size), doe.indices)
         # doe = museuq.LHS(2, 10)
         # doe.samples()
         # print(doe.x)
