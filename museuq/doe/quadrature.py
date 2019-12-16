@@ -48,6 +48,7 @@ class QuadratureDesign(ExperimentalDesign):
             assert isinstance(forms, str)
             self.forms       = forms
             self.dist_params = dist_params
+            self.filename    = '_'.join(['DoE_Quad', self.forms.capitalize() + num2print(self.p)])
         else:
             if isinstance(forms, list):
                 if len(forms) == 1:
@@ -59,6 +60,8 @@ class QuadratureDesign(ExperimentalDesign):
             else:
                 raise ValueError('QuadratureDesign.forms takes either str or list of str, but {} is given'.format(type(forms)))
 
+            self.filename    = '_'.join(['DoE_Quad', self.forms[0].capitalize() + num2print(self.p)])
+
             if dist_params is None:
                 self.dist_params = [None,] * self.ndim
             elif isinstance(dist_params, list) and isinstance(dist_params[0], list):
@@ -69,10 +72,8 @@ class QuadratureDesign(ExperimentalDesign):
             else:
                 raise ValueError('Wrong format given for dist_params')
 
-
         ## results
         self.w           = []  # Gaussian quadrature weights corresponding to each quadrature node 
-        self.filename    = '_'.join(['DoE_Quad', self.forms[0].capitalize() + num2print(self.p)])
 
     def __str__(self):
         return('Gauss Quadrature: {}, p={:d}, ndim={:d} '.format(self.forms, self.p, self.ndim))
@@ -85,15 +86,15 @@ class QuadratureDesign(ExperimentalDesign):
         coords, weights = [], [] 
 
         if self.ndim == 1:
-            x, w = self._gen_quad_1d(self.forms, self.p, self.dist_params) 
-            self.x = np.squeeze(x) 
+            u, w = self._gen_quad_1d(self.forms, self.p, self.dist_params) 
+            self.u = u.reshape(1, -1) 
             self.w = np.squeeze(w)
         else:
             for ipoly_form, idist_params in zip(self.forms, self.dist_params):
-                ix, iw = self._gen_quad_1d(ipoly_form, self.p, idist_params) 
-                coords.append(ix)
+                iu, iw = self._gen_quad_1d(ipoly_form, self.p, idist_params) 
+                coords.append(iu)
                 weights.append(iw)
-            self.x = np.array(list(itertools.product(*coords))).T
+            self.u = np.array(list(itertools.product(*coords))).T
             self.w = np.prod(np.array(list(itertools.product(*weights))).T, axis=0).reshape(1,-1)
 
 
