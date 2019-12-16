@@ -71,29 +71,21 @@ def save_data(data, filename, dir_name=None, tags=None):
     print('===>>> Saving data to: {}'.format(dir_name))
 
     if isinstance(data, (np.ndarray, np.generic)):
-        if isinstance(tags, str):
-            pass
-        elif isinstance(tags, list) and len(tags) ==1:
-            tags = tags[0]
+        if tags is None:
+            np.save(os.path.join(dir_name, filename), data)
         else:
-            raise ValueError('More than one tags provided, len(tags) = {:d}'.format(len(tags)))
-        np.save(os.path.join(dir_name, filename + tags), data)
+            if isinstance(tags, str):
+                pass
+            elif isinstance(tags, list) and len(tags) ==1:
+                tags = tags[0]
+            else:
+                raise ValueError('More than one tags provided, len(tags) = {:d}'.format(len(tags)))
+            np.save(os.path.join(dir_name, filename + tags), data)
     ## if data is list of ndarray type, save each ndarray in list with given filename differentaed with tag 
     elif isinstance(data, list) :
         assert len(data) == len(tags), "Length of data set to save and length of tags available must be same, but len(data)={}, len(tags)={}".format(len(data), len(tags))
         for idata, itag in zip(data, tags):
             np.save(os.path.join(dir_name, filename + '{}'.format(itag) ), idata)
-    # elif isinstance(data, list) and isinstance(data[0], (np.ndarray, np.generic)):
-        # assert len(data) == len(tags), "Length of data set to save and length of tags available must be same, but len(data)={}, len(tags)={}".format(len(data), len(tags))
-        # for idata, i in zip(data, tags):
-            # np.save(os.path.join(dir_name, filename + '{}'.format(i) ), idata)
-    # elif isinstance(data, list) and isinstance(data[0], list):
-        # assert len(data[0]) == len(data[1]) == len(tags)
-        # # i = 0
-        # for i, data_ in enumerate(zip(*data)):
-            # idata = np.concatenate(data_, axis=0)
-            # np.save(os.path.join(dir_name, filename + '{}'.format(tags[i])), idata )
-            # # i +=1
     else:
         raise ValueError('Input data type not defined')
 

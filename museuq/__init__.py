@@ -20,4 +20,6 @@ from museuq.doe.optimal_design import OptimalDesign
 from museuq.solver.Solver import Solver
 from museuq.surrogate_model.SurrogateModel import SurrogateModel
 from museuq.simParameters import simParameters
+from museuq.surrogate_model.polynomial_chaos_expansion import PolynomialChaosExpansion as PCE
+from museuq.utilities.ErrorClass import NullError, IidError, CovError
 
