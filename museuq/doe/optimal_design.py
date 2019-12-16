@@ -31,6 +31,7 @@ class OptimalDesign(ExperimentalDesign):
         super().__init__(*args, **kwargs)
         self.criteria   = opt_criteria 
         self.n_samples  = int(n)
+        self.filename   = '_'.join(['DoE_Opt', self.criteria.capitalize() + num2print(self.n_samples)])
 
     def __str__(self):
         return('Optimal Criteria: {:<15s}, num. samples: {:d} '.format(self.criteria, self.n_samples))
