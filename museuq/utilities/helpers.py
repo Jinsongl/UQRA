@@ -161,24 +161,29 @@ def get_exceedance_data(x,prob=1e-3,**kwargs):
                 return a list of (3,n) arrays
     """
     x = np.array(x)
-    isExpand    = kwargs.get('isExpand', False)
-    return_index= kwargs.get('return_index', False)
-    return_all  = kwargs.get('return_all', False) 
+    isExpand    = kwargs.get('isExpand'     , False)
+    return_index= kwargs.get('return_index' , False)
+    return_all  = kwargs.get('return_all'   , False) 
 
     if x.ndim == 1 or np.squeeze(x).ndim == 1:
         result = _get_exceedance1d(np.squeeze(x), prob=prob, return_index=return_index, return_all=return_all)
     else:
         if isExpand:
+            ## get sorting index with the first row
             res1row_x, res1row_y, res1row_idx = _get_exceedance1d(x[0,:], prob=prob, return_index=True, return_all=return_all)
             res1row_idx = np.array(res1row_idx, dtype=np.int32)
             result = [res1row_x,]
+            ## taking care of the rest rows
             for irow in x[1:,:]:
-                irow_sorted = irow[res1row_idx[1:]]
+                irow_sorted = irow[res1row_idx[1:]] ## the first element is the total number of samples
                 irow_sorted = np.insert(irow_sorted, 0, irow_sorted.size)
                 result.append(irow_sorted) 
             result.append(res1row_y)
             result = np.vstack(result)
         else:
+            ## Geting exceedance for each row of x
+            ##   If only one prob number is given, same prob will be applied to all rows
+            ##   If a list of prob is given, each prob is applied to corresponding row
             if np.isscalar(prob):
                 prob = [prob,] * x.shape[0]
             elif len(prob) == 1:
@@ -295,7 +300,8 @@ def _get_exceedance1d(x,prob=1e-3, return_index=False, return_all=False ):
 
     if n <= 1.0/prob:
         if return_index:
-            index_ =np.insert(sort_idx, 0, sort_idx.size)
+            ## ECDF return size will always adding one point (ECDF=0 or ECDF=1). To make it possible to stack, inserting the total number of samples in index_
+            index_ = np.insert(sort_idx, 0, sort_idx.size)
             result = np.vstack((x_ecdf.x, x_ecdf.y, index_ ))
         else:
             result = np.vstack((x_ecdf.x, x_ecdf.y))
