@@ -11,6 +11,7 @@
 """
 from museuq.doe.base import ExperimentalDesign
 from museuq.utilities.decorators import random_state
+from museuq.utilities.helpers import num2print
 import numpy as np
 import numpy.linalg as LA
 import scipy.linalg as scila
@@ -21,7 +22,7 @@ from tqdm import tqdm
 class OptimalDesign(ExperimentalDesign):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
 
-    def __init__(self, n, opt_criteria,*args, **kwargs):
+    def __init__(self, opt_criteria,*args, **kwargs):
         """
         Optimal/Quasi Optimal Experimental design:
         Arguments:
@@ -30,8 +31,7 @@ class OptimalDesign(ExperimentalDesign):
         """
         super().__init__(*args, **kwargs)
         self.criteria   = opt_criteria 
-        self.n_samples  = int(n)
-        self.filename   = '_'.join(['DoE_Opt', self.criteria.capitalize() + num2print(self.n_samples)])
+        self.filename   = '_'.join(['DoE', 'Opt'+self.criteria.capitalize() + num2print(self.n_samples)])
 
     def __str__(self):
         return('Optimal Criteria: {:<15s}, num. samples: {:d} '.format(self.criteria, self.n_samples))
@@ -58,33 +58,36 @@ class OptimalDesign(ExperimentalDesign):
         return svalues
 
     @random_state
-    def samples(self, *args, **kwargs):
+    def samples(self, A, *args, **kwargs):
         """
-        Xb = Y
+        Ax = Y
+        A: Design matrix A(u) of shape(num_samples, num_features)
 
         Return:
             Experiment samples of shape(ndim, n_samples)
         """
-        x = kwargs['x'] ## samples input of shape(ndim, num_samples)
-        X = kwargs['X'] ## design matrix of shape(num_samples, num_features)
-        m, p = X.shape
+        u    = kwargs.get('u', None) ## samples input of shape(ndim, num_samples)
+        m, p = A.shape
         assert m > p, 'Number of candidate samples are expected to be larger than number of features'
 
         if self.criteria.upper() == 'S':
-            """ Xb = Y """
+            """ Ax = Y """
             selected_indices   = kwargs.get('I', None)
             is_basis_orth      = kwargs.get('is_orth', False)
-            selected_indices   = self._get_quasi_optimal(self.n_samples, X, selected_indices, is_basis_orth)
+            selected_indices   = self._get_quasi_optimal(self.n_samples, A, selected_indices, is_basis_orth)
         elif self.criteria.upper() == 'D':
             """ D optimality based on rank revealing QR factorization  """
-            Q, R, P = scila.qr(X.T, pivoting=True)
+            Q, R, P = scila.qr(A.T, pivoting=True)
             selected_indices = P[:self.n_samples]
         else:
             pass
 
-        self.X = X[selected_indices,:]
-        self.x = x[selected_indices] if x.ndim == 1 else x[:, selected_indices]
-        self.indices = selected_indices
+        self.A = A[selected_indices,:]
+        if u is not None:
+            self.u = u[selected_indices] if u.ndim == 1 else u[:, selected_indices]
+        else:
+            pass
+        self.I = selected_indices
 
     def _cal_logsvalue_over(self, R, A):
         """
@@ -185,7 +188,7 @@ class OptimalDesign(ExperimentalDesign):
         m -- size of quasi optimal subset
         A -- design matrix with candidates samples of shape (M,p)
              M: number of samples, p: number of features
-        I -- indices, list of corresponding row selection matrix of length m
+        I -- indices, nt ndarray of shape (N,) corresponding row selection matrix of length m
             if I is None, an empty list will be created first and m items will be appended 
             Otherwise, additional (m-m0) items (row index in design matrix A) will be appended 
         is_orth -- Boolean indicating if the basis space is orthogonal
@@ -225,4 +228,4 @@ class OptimalDesign(ExperimentalDesign):
         I = sorted(I)
         # print(u'\tQuasi-Optimal Experiment design done!')
         # print(u'\tSelected subset indice (first 10): ', I[:10] if len(I) > 10 else I)
-        return I 
+        return np.array(I) 
