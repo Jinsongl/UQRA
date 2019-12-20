@@ -17,49 +17,75 @@ class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
     def test_QuadratureDesign(self):
-        doe= museuq.doe.QuadratureDesign('hem',4)
-        doe.samples()
-        print(doe.x)
-        print(doe.w)
 
-        doe2= museuq.doe.QuadratureDesign(['hem', 'leg'],[2,3])
-        doe2.samples()
-        print(doe2.x)
-        print(doe2.w)
+        print('>>> 1D quadrature design:') 
+
+        p   = 4
+        doe = museuq.QuadratureDesign(p, ndim=1, dist_names=['uniform',])
+        doe.samples()
+        print(' Legendre:')
+        print('  {:<15s} : {}'.format('Abscissa', np.around(doe.u, 2)))
+        print('  {:<15s} : {}'.format('Weights' , np.around(doe.w, 2)))
+
+        doe = museuq.QuadratureDesign(p, ndim=1, dist_names=['normal',])
+        doe.samples()
+        print(' Hermite:')
+        print('  {:<15s} : {}'.format('Abscissa', np.around(doe.u, 2)))
+        print('  {:<15s} : {}'.format('Weights' , np.around(doe.w, 2)))
+
+        print('>>> 1D quadrature design: Changing interval ') 
+        a = -np.pi
+        b =  np.pi
+        loc   = a
+        scale = b - loc
+        print(' Legendre ({},{})'.format(np.around(a,2), np.around(b,2)))
+
+        doe = museuq.QuadratureDesign(p, ndim=1, dist_names=['uniform',])
+        doe.samples()
+        print(' From chaning inverval after museuq.doe:')
+        print('  {:<15s} : {}'.format('Abscissa', np.around((b-a)/2*doe.u + (a+b)/2, 2)))
+        print('  {:<15s} : {}'.format('Weights' , np.around((b-a)/2*doe.w, 2)))
+        
+        doe = museuq.QuadratureDesign(p, ndim=1, dist_names=['uniform',], dist_theta=[(loc, scale)])
+        doe.samples()
+        print(' Directly from museuq.doe:')
+        print('  {:<15s} : {}'.format('Abscissa', np.around(doe.u, 2)))
+        print('  {:<15s} : {}'.format('Weights' , np.around(doe.w, 2)))
+
+        print('>>> 2D quadrature design:') 
+
+        p   = 4
+        doe = museuq.QuadratureDesign(p, ndim=2, dist_names=['uniform',])
+        doe.samples()
+        print(' Legendre:')
+        print('  {:<15s} :\n {}'.format('Abscissa', np.around(doe.u, 2)))
+        print('  {:<15s} :\n {}'.format('Weights' , np.around(doe.w, 2)))
+
+        doe = museuq.QuadratureDesign(p, ndim=2, dist_names=['normal',])
+        doe.samples()
+        print(' Hermite:')
+        print('  {:<15s} :\n {}'.format('Abscissa', np.around(doe.u, 2)))
+        print('  {:<15s} :\n {}'.format('Weights' , np.around(doe.w, 2)))
 
     def test_RandomDesign(self):
-        doe = museuq.RandomDesign('R', 1e2, 'normal')
-        doe.samples()
-        print(np.mean(doe.x))
-        print(np.std(doe.x))
 
-        doe = museuq.RandomDesign('R', 1e7, ['normal', 'lognormal'],[[1,2], [0,1]])
+        doe = museuq.RandomDesign('MCS', n_samples=1e6, ndim=3, dist_names='uniform', dist_theta=[(-np.pi, 2*np.pi),]*3)
         doe.samples()
-        print(np.mean(doe.x, axis=1))
-        print(np.std(doe.x, axis=1))
-
-        doe = museuq.RandomDesign('R', 1e7, ['normal', 'lognormal'],[[1,2]])
-        doe.samples()
-        print(np.mean(doe.x, axis=1))
-        print(np.std(doe.x, axis=1))
 
     def test_LatinHyperCube(self):
-        doe = museuq.LHS(1, 1e1)
+        doe = museuq.LHS(n_samples=1e3,dist_names=['uniform']*3,ndim=3,dist_theta=[(-1, 2*2)]*3)
         doe.samples()
         print(np.mean(doe.x))
         print(np.std(doe.x))
 
-        doe = museuq.LHS(2, 10)
-        doe.samples()
-        print(np.mean(doe.x))
-        print(np.std(doe.x))
 
-        doe = museuq.LHS(2, 10000)
-        doe.samples(['uniform', 'norm'], [[-1,2], [2,1]])
+        doe = museuq.LHS(n_samples=1e3,dist_names=['uniform', 'norm'],ndim=2,dist_theta=[(-1, 2*2), (2,1)])
+        doe.samples()
         print(np.mean(doe.x, axis=1))
         print(np.std(doe.x, axis=1))
 
     def test_OptimalDesign(self):
+        data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/Ishigami/Data'
         np.random.seed(100)
         # dist_x = cp.Normal()
 
@@ -80,40 +106,41 @@ class BasicTestSuite(unittest.TestCase):
             # np.save('Uniform_ODES_indices_{:d}'.format(doe_size), doe.indices)
 
         ### 2D
-        alpha = [1.1, 1.5]
-        dist_x = cp.Iid(cp.Uniform(-1,1),2)
-        basis  = cp.orth_ttr(10,dist_x)
+        p_orders=range(13,15)
+        alpha = [1.0, 1.1, 1.3, 1.5, 2.0,2.5, 3.0,3.5, 5]
+        dist_u= cp.Iid(cp.Uniform(-1,1),3)
+        for p in p_orders:
+            basis = cp.orth_ttr(p,dist_u)
+            for r in range(1):
+                filename  = 'DoE_McsE4R{:d}.npy'.format(r)
+                data_set  = np.load(os.path.join(data_dir, filename))
+                samples_u = data_set[0:3, :]
+                samples_x = data_set[3:6, :]
+                samples_y = data_set[6  , :].reshape(1,-1)
+                print('Candidate sample set shape: {}'.format(samples_u.shape))
+                design_matrix = basis(*samples_u).T
+                print('Candidate Design matrix shape: {}'.format(design_matrix.shape))
+                for ia in alpha:
+                    doe_size = min(int(len(basis)*ia), 10000)
+                    doe = museuq.OptimalDesign('S', n_samples = doe_size )
+                    doe.samples(design_matrix, u=samples_u, is_orth=True)
+                    data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
+                    filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_p{:d}_OptS{:d}'.format(r,p,doe_size))
+                    np.save(filename, data)
 
-        samples_x = dist_x.sample(1e5)
-        print(samples_x.shape)
-        design_matrix = basis(*samples_x).T
-        print(design_matrix.shape)
-        for ia in alpha:
-            doe_size = int(len(basis)*ia)
-            doe = museuq.OptimalDesign(doe_size, 'S')
-            doe.samples(X=design_matrix, x=samples_x, is_orth=True)
-            np.save('Uniform2D_MCSR_x_{:d}'.format(doe_size),  samples_x)
-            np.save('Uniform2D_ODES_x_{:d}'.format(doe_size),  doe.x)
-            np.save('Uniform2D_ODES_X1_{:d}'.format(doe_size), doe.X)
-            np.save('Uniform2D_ODES_indices_{:d}'.format(doe_size), doe.indices)
-
-        for ia in alpha:
-            doe_size = int(len(basis)*ia)
-            doe = museuq.OptimalDesign(doe_size, 'S')
-            doe.samples(X=design_matrix, x=samples_x, is_orth=True)
-            np.save('Uniform2D_MCSR_x_{:d}'.format(doe_size),  samples_x)
-            np.save('Uniform2D_ODED_x_{:d}'.format(doe_size),  doe.x)
-            np.save('Uniform2D_ODED_X1_{:d}'.format(doe_size), doe.X)
-            np.save('Uniform2D_ODED_indices_{:d}'.format(doe_size), doe.indices)
-        # doe = museuq.LHS(2, 10)
-        # doe.samples()
-        # print(doe.x)
-        # print(doe.indices)
-
-        # doe = museuq.LHS(2, 10000)
-        # doe.samples(['uniform', 'norm'], [[-1,2], [2,1]])
-        # print(doe.x)
-        # print(doe.indices)
+                for ia in alpha:
+                    doe_size = min(int(len(basis)*ia), 10000)
+                    doe = museuq.OptimalDesign('D', n_samples = doe_size )
+                    doe.samples(design_matrix, u=samples_u, is_orth=True)
+                    data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
+                    filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_p{:d}_OptD{:d}'.format(r,p,doe_size))
+                    np.save(filename, data)
+                    # filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_OptD{:d}_p{:d}_x0'.format(r,doe_size, p))
+                    # np.save(filename, samples_u)
+                    # filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_OptD{:d}_p{:d}_x'.format(r,doe_size, p))
+                    # np.save(filename, doe.x)
+                    # filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_OptD{:d}_p{:d}_I'.format(r,doe_size, p))
+                    # np.save(filename, doe.indices)
 
     def test_gauss_quadrature(self):
         """
@@ -295,31 +322,31 @@ class BasicTestSuite(unittest.TestCase):
         # print('2D: isExpand=True, return_index=True')
         # print(a_excd)
 
-        # return_period= [1,5,10]
-        # prob_fails   = [1/(p *365.25*24*3600/1000) for p in return_period]
-        return_period= [1]
-        prob_fails   = [1e-5]
-        quad_orders  = range(3,10)
-        mcs_orders   = [6]
-        repeat       = range(10)
-        orders       = mcs_orders
-        # orders       = quad_orders 
-        return_all   = False 
+        # # return_period= [1,5,10]
+        # # prob_fails   = [1/(p *365.25*24*3600/1000) for p in return_period]
+        # return_period= [1]
+        # prob_fails   = [1e-5]
+        # quad_orders  = range(3,10)
+        # mcs_orders   = [6]
+        # repeat       = range(10)
+        # orders       = mcs_orders
+        # # orders       = quad_orders 
+        # return_all   = False 
 
-        data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
-        data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
-        # data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data'
-        # data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data'
-        # data_dir_in = '/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA/linear_oscillator'
-        for ipf, ip in zip(prob_fails, return_period):
-            print('Target exceedance prob : {:.1e}'.format(ipf))
-            for iorder in orders:
-                for r in repeat:
-                    ## input
-                    filename = 'DoE_McRE6R{:d}.npy'.format(r)
-                    # filename = 'DoE_McRE7R{:d}.npy'.format(r)
-                    data_in  = np.load(os.path.join(data_dir_in, filename))  # [u1, u2,..., x1, x2...]
-                    ##>>> MCS results from surrogate model
+        # data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        # data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        # # data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data'
+        # # data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data'
+        # # data_dir_in = '/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA/linear_oscillator'
+        # for ipf, ip in zip(prob_fails, return_period):
+            # print('Target exceedance prob : {:.1e}'.format(ipf))
+            # for iorder in orders:
+                # for r in repeat:
+                    # ## input
+                    # filename = 'DoE_McRE6R{:d}.npy'.format(r)
+                    # # filename = 'DoE_McRE7R{:d}.npy'.format(r)
+                    # data_in  = np.load(os.path.join(data_dir_in, filename))  # [u1, u2,..., x1, x2...]
+                    # ##>>> MCS results from surrogate model
 
                     # filename = 'DoE_QuadHem{:d}_GPR_pred_E6R{:d}.npy'.format(iorder, r)
                     # filename = 'DoE_QuadHem{:d}R24_mPCE_Normal_pred_E7R{:d}.npy'.format(iorder, r)
@@ -327,28 +354,28 @@ class BasicTestSuite(unittest.TestCase):
                     # data_out = np.load(os.path.join(data_dir_out, filename))
                     # y = data_out
 
-                    ##>>> MCS results from true model
-                    ## bench 4
-                    # filename = 'DoE_McRE{:d}R{:d}_y_Normal.npy'.format(iorder,r)
+                    # ##>>> MCS results from true model
+                    # ## bench 4
+                    # # filename = 'DoE_McRE{:d}R{:d}_y_Normal.npy'.format(iorder,r)
+                    # # data_out = np.load(os.path.join(data_dir_out, filename))
+                    # # y = data_out.reshape(1,-1)
+
+                    # filename = 'DoE_McRE6R{:d}_stats.npy'.format(r)
                     # data_out = np.load(os.path.join(data_dir_out, filename))
-                    # y = data_out.reshape(1,-1)
-
-                    filename = 'DoE_McRE6R{:d}_stats.npy'.format(r)
-                    data_out = np.load(os.path.join(data_dir_out, filename))
-                    y = np.squeeze(data_out[:,4,:]).T
-
-                    print(y.shape)
-
-                    # filename = 'DoE_McRE{:d}R{:d}_stats.npy'.format(iorder, r)
-                    # data_out = np.load(os.path.join(data_dir, filename))
                     # y = np.squeeze(data_out[:,4,:]).T
 
-                    print(r'    - exceedance for y: {:s}'.format(filename))
-                    for i, iy in enumerate(y):
-                        data_ = np.vstack((iy.reshape(1,-1), data_in))
-                        iexcd = uqhelpers.get_exceedance_data(data_, ipf, isExpand=True, return_all=return_all)
-                        return_all_str = '_all' if return_all else '' 
-                        np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf_P{:d}{}'.format(i, ip, return_all_str )), iexcd)
+                    # print(y.shape)
+
+                    # # filename = 'DoE_McRE{:d}R{:d}_stats.npy'.format(iorder, r)
+                    # # data_out = np.load(os.path.join(data_dir, filename))
+                    # # y = np.squeeze(data_out[:,4,:]).T
+
+                    # print(r'    - exceedance for y: {:s}'.format(filename))
+                    # for i, iy in enumerate(y):
+                        # data_ = np.vstack((iy.reshape(1,-1), data_in))
+                        # iexcd = uqhelpers.get_exceedance_data(data_, ipf, isExpand=True, return_all=return_all)
+                        # return_all_str = '_all' if return_all else '' 
+                        # np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf_P{:d}{}'.format(i, ip, return_all_str )), iexcd)
 
         # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data' 
         # p = 1e-5
@@ -365,6 +392,24 @@ class BasicTestSuite(unittest.TestCase):
             # print(r'    - exceedance for y: {:s}'.format(filename))
             # y_excd=uqhelpers.get_exceedance_data(y, p)
             # np.save(os.path.join(data_dir, filename[:-4]+'_ecdf_pf5.npy'), y_excd)
+
+        data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/Ishigami/Data' 
+        pf = 1e-3
+        print('Target exceedance prob : {:.1e}'.format(pf))
+        # error_name = 'None'
+        # error_name = 'Normal'
+        # error_name = 'Gumbel'
+        for p in range(10):
+            # filename = 'DoE_McRE7R{:d}_y_{:s}.npy'.format(r, error_name.capitalize())
+            # filename = 'DoE_QuadHem5_PCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
+            # filename = 'DoE_QuadHem5R24_mPCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
+            # filename = 'DoE_Quad_Leg{:d}_PCE_GLK_valid_y.npy'.format(p)
+            filename = 'DoE_LHSE4R{:d}_y.npy'.format(p)
+            data_set = np.load(os.path.join(data_dir, filename))
+            y        = np.squeeze(data_set)
+            print(r'    - exceedance for y: {:s}'.format(filename))
+            y_excd   = uqhelpers.get_exceedance_data(y, prob=pf)
+            np.save(os.path.join(data_dir, filename[:-4]+'_ecdf.npy'), y_excd)
 
     def test_bench4(self):
         print('========================TESTING: BENCH 4 =======================')
@@ -387,10 +432,6 @@ class BasicTestSuite(unittest.TestCase):
             solver   = museuq.Solver(model_name, x)
             y        = solver.run()
             np.save(os.path.join(data_dir,'DoE_McRE6R{:d}_y_None.npy'.format(r)), y)
-
-
-
-
 
     def test_Solver(self):
         ### General Solver run testing 
