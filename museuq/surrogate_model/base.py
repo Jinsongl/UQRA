@@ -110,8 +110,14 @@ class SurrogateModel(object):
                 imetrics_value = imetrics_value.ravel().tolist()
 
             elif imetrics.lower() == 'moment': 
-                imetrics_value = imetric2call(y_true, moment=self.moments2cal)
+                moments2cal = np.sort(self.moments2cal)
+                if 1 in moments2cal:
+                    mean_idx = np.where(np.array(moments2cal)==1)[0]
+                    mean = np.mean(y_true)
+                imetrics_value = imetric2call(y_true, moment=moments2cal)
+                imetrics_value[mean_idx] = mean
                 imetrics_value = imetrics_value.ravel().tolist()
+
             else:
                 imetrics_value = [0,]
             metrics_value_true= metrics_value_true+ imetrics_value
@@ -135,7 +141,12 @@ class SurrogateModel(object):
                         print(r'       {:<30f}: {:^10.2f} {:^10.2f} {:^10.2f}'.format(iprob, imetrics_value_true, imquantiles, error_perc))
 
                 elif imetrics.lower() == 'moment': 
-                    imetrics_value = imetric2call(iy_pred, moment=self.moments2cal)
+                    moments2cal = np.sort(self.moments2cal)
+                    if 1 in moments2cal:
+                        mean_idx = np.where(np.array(moments2cal)==1)[0]
+                        mean = np.mean(y_true)
+                    imetrics_value = imetric2call(iy_pred, moment=moments2cal)
+                    imetrics_value[mean_idx] = mean
                     imetrics_value = imetrics_value.ravel().tolist()
 
                     print(r'     - {:<30s}: {:^10s} {:^10s} {:^10s}'.format(imetrics, 'True', 'Prediction', '%Error'))
