@@ -104,9 +104,9 @@ def main():
     #### ----------------------- Build PCE Surrogate Model -------------------- ###
     p_orders= range(3,12)
     solver  = museuq.Solver(model_name)
-    alpha   = [1.0, 1.1, 1.3, 1.5, 2.0,2.5, 3.0,3.5, 5]
+    alpha   = [1.0, 1.1, 1.3, 1.5]
     dist_u  = cp.Iid(cp.Uniform(-1,1),3)
-    opt_cri = 'S'
+    opt_cri = 'D'
     for p in p_orders:
         for r in range(1):
             basis = cp.orth_ttr(p,dist_u)
@@ -114,7 +114,7 @@ def main():
                 ### ============ Get training points ============
                 num_basis= min(int(len(basis)*ia), 10000)
                 filename = 'DoE_McsE4R{:d}_p{:d}_Opt{:s}{:d}.npy'.format(r, p,opt_cri, num_basis)
-                data_set = np.load(os.path.join(simparams.data_dir, filename))
+                data_set = np.load(os.path.join(simparams.data_dir,'DoE_McsE4_PCE_OLS_OPT', filename))
                 print('  > {:<10s}: {:s}'.format('filename', filename))
                 print('    {:<10s}: {}'.format('data shape', data_set.shape))
                 train_u  = data_set[1:4,:] 
@@ -149,10 +149,10 @@ def main():
 
                 pce_valid_y, pce_valid_score = pce_model.predict(valid_u, valid_y, \
                         metrics=metrics,prob=upper_tail_probs,moment=moment)
-                filename = 'DoE_McsE4R{:d}_p{:d}_Opt{:s}{:d}_{:s}_{:s}_valid_y.npy'.format(r, p, opt_cri, num_basis,metamodel_class, pce_fit_method)
+                filename = 'DoE_McsE4R{:d}_p{:d}_Opt{:s}{:d}_{:s}_{:s}_E4R{:d}_y.npy'.format(r, p, opt_cri, num_basis,metamodel_class, pce_fit_method, r)
                 np.save(os.path.join(simparams.data_dir, filename), pce_valid_y)
 
-                filename = 'DoE_McsE4R{:d}_p{:d}_Opt{:s}{:d}_{:s}_{:s}_valid_score.npy'.format(r, p, opt_cri, num_basis,metamodel_class, pce_fit_method)
+                filename = 'DoE_McsE4R{:d}_p{:d}_Opt{:s}{:d}_{:s}_{:s}_E4R{:d}_score.npy'.format(r, p, opt_cri, num_basis,metamodel_class, pce_fit_method, r)
                 np.save(os.path.join(simparams.data_dir, filename), pce_valid_score)
 
                 # pce_valid_y_ecdf = uqhelpers.get_exceedance_data(pce_valid_y, 1e-5)
