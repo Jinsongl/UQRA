@@ -17,7 +17,6 @@ class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
     def test_QuadratureDesign(self):
-
         print('>>> 1D quadrature design:') 
 
         p   = 4
@@ -68,7 +67,6 @@ class BasicTestSuite(unittest.TestCase):
         print('  {:<15s} :\n {}'.format('Weights' , np.around(doe.w, 2)))
 
     def test_RandomDesign(self):
-
         doe = museuq.RandomDesign('MCS', n_samples=1e6, ndim=3, dist_names='uniform', dist_theta=[(-np.pi, 2*np.pi),]*3)
         doe.samples()
 
@@ -135,12 +133,6 @@ class BasicTestSuite(unittest.TestCase):
                     data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
                     filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_p{:d}_OptD{:d}'.format(r,p,doe_size))
                     np.save(filename, data)
-                    # filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_OptD{:d}_p{:d}_x0'.format(r,doe_size, p))
-                    # np.save(filename, samples_u)
-                    # filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_OptD{:d}_p{:d}_x'.format(r,doe_size, p))
-                    # np.save(filename, doe.x)
-                    # filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_OptD{:d}_p{:d}_I'.format(r,doe_size, p))
-                    # np.save(filename, doe.indices)
 
     def test_gauss_quadrature(self):
         """
