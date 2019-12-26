@@ -99,6 +99,84 @@ def bench4(x, error):
     e = error.samples()
     y = y + e
     return y
+
+def polynomial_square_root_function(x, error):
+    """
+    y = - [ (-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2 ]**0.5 + 14 
+    x1,x2 ~ N(0,1)
+    
+    Benchmarks:
+    prob(y>6) = 2.35E-6
+    """
+    x = np.array(x).reshape(2, -1)
+    x1 = x[0,:]
+    x2 = x[1,:]
+
+    y = -np.sqrt( (-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)) + 14
+    e = error.samples()
+    y = y + e
+    return y
+
+def four_branch_system(x, error):
+    """
+    y = 10 - min{ 3 + 0.1(x1 - x2)**2 - (x1+x2)/sqrt(2)
+                  3 + 0.1(x1 - x2)**2 + (x1+x2)/sqrt(2)
+                  (x1 - x2) + 7/sqrt(2) 
+                  (x2 - x1) + 7/sqrt(2) 
+                  }
+
+    This toy case allows us to test the ability of the rare event estimation methods to accurately estimate the probability in the case of disconnected failure region 􏱎f .
+
+    Benchmarks:
+    prob(y > 10) = 2.22E-3
+    prob(y > 12) = 1.18E-6
+
+    """
+    x = np.array(x).reshape(2,-1)
+    x1 = x[0,:]
+    x2 = x[1,:]
+
+    y1 = 3 + 0.1(x1 - x2)**2 - (x1+x2)/np.sqrt(2)
+    y2 = 3 + 0.1(x1 - x2)**2 + (x1+x2)/np.sqrt(2)
+    y3 = (x1 - x2) + 7.0/sqrt(2) 
+    y4 = (x2 - x1) + 7.0/sqrt(2) 
+
+    y = 10 - min(y1, y2, y3, y4)
+
+    e = error.samples()
+    y = y + e
+    return y
+
+
+def polynomial_product_function(x, error):
+    """
+    y = 1/2 * sum( xi**4 + xi**2 + 5xi), i = 1, ..., d
+
+    This toy case is useful to evaluate the ability of the methods to cope with high dimensional problems. 
+    x: ndarray of shape(ndim, n_samples)
+
+    Benchmarks:
+    d        T        prob(y > T)
+    ____________________________
+    5       400         8.44E-7
+    20      500         1.09E-6
+    50      700         3.56E-7
+    200     1000        4.85E-6
+
+    """
+    x = np.array(x)
+    y = np.array([ix**4 + ix**2 + 5*ix for ix in x])
+    y = 0.5 * np.sum(y, axis=0)
+    e = error.samples()
+    y = y + e
+
+    return y
+
+
+
+
+
+
 # def benchmark1_normal(x,mu=0,sigma=0.5):
     # """
     # Benchmar problem #1 with normal error
