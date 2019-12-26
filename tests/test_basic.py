@@ -83,7 +83,11 @@ class BasicTestSuite(unittest.TestCase):
         print(np.std(doe.x, axis=1))
 
     def test_OptimalDesign(self):
-        data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/Ishigami/Data'
+        
+        ### Ishigami function
+        # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/Ishigami/Data'
+        ### SDOF system
+        data_dir = 'E:\Run_MUSEUQ'
         np.random.seed(100)
         # dist_x = cp.Normal()
 
@@ -104,35 +108,45 @@ class BasicTestSuite(unittest.TestCase):
             # np.save('Uniform_ODES_indices_{:d}'.format(doe_size), doe.indices)
 
         ### 2D
-        p_orders=range(13,15)
+        quad_orders = range(4,11)
         alpha = [1.0, 1.1, 1.3, 1.5, 2.0,2.5, 3.0,3.5, 5]
-        dist_u= cp.Iid(cp.Uniform(-1,1),3)
-        for p in p_orders:
-            basis = cp.orth_ttr(p,dist_u)
-            for r in range(1):
+        dist_u= cp.Iid(cp.Normal(),2)
+        for iquad_orders in quad_orders:
+            basis = cp.orth_ttr(iquad_orders-1,dist_u)
+            for r in range(10):
+                filename  = 'DoE_McsE4R{:d}_stats.npy'.format(r)
+                data_set  = np.load(os.path.join(data_dir, filename))
+                samples_y = np.squeeze(data_set[:,4,:]).T
+                
                 filename  = 'DoE_McsE4R{:d}.npy'.format(r)
                 data_set  = np.load(os.path.join(data_dir, filename))
-                samples_u = data_set[0:3, :]
-                samples_x = data_set[3:6, :]
-                samples_y = data_set[6  , :].reshape(1,-1)
-                print('Candidate sample set shape: {}'.format(samples_u.shape))
+                samples_u = data_set[0:2, :]
+                samples_x = data_set[2:4, :]
+                # samples_y = data_set[6  , :].reshape(1,-1)
+                print('Quadrature Order: {:d}'.format(iquad_orders))
+                print('Candidate samples filename: {:s}'.format(filename))
+                print('   >> Candidate sample set shape: {}'.format(samples_u.shape))
                 design_matrix = basis(*samples_u).T
-                print('Candidate Design matrix shape: {}'.format(design_matrix.shape))
+                print('   >> Candidate Design matrix shape: {}'.format(design_matrix.shape))
                 for ia in alpha:
+                    print('   >> Oversampling rate : {:.2f}'.format(ia))
                     doe_size = min(int(len(basis)*ia), 10000)
                     doe = museuq.OptimalDesign('S', n_samples = doe_size )
                     doe.samples(design_matrix, u=samples_u, is_orth=True)
                     data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
-                    filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_p{:d}_OptS{:d}'.format(r,p,doe_size))
+                    filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_p{:d}_OptS{:d}'.format(r,iquad_orders,doe_size))
                     np.save(filename, data)
 
                 for ia in alpha:
+                    print('   >> Oversampling rate : {:.2f}'.format(ia))
                     doe_size = min(int(len(basis)*ia), 10000)
                     doe = museuq.OptimalDesign('D', n_samples = doe_size )
                     doe.samples(design_matrix, u=samples_u, is_orth=True)
                     data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
-                    filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_p{:d}_OptD{:d}'.format(r,p,doe_size))
+                    filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_p{:d}_OptD{:d}'.format(r,iquad_orders,doe_size))
                     np.save(filename, data)
+                    
+                    
 
     def test_gauss_quadrature(self):
         """
