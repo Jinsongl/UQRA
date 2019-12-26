@@ -27,11 +27,8 @@ sys.stdout  = museuq.utilities.classes.Logger()
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
-    prob_fails  = 1e-5              # failure probabilities
     model_name  = 'linear_oscillator'
     ## 1. Choose Wiener-Askey scheme random variable
-    # dist_zeta = cp.Uniform(-1,1)
-    # dist_zeta = cp.Gamma(4,1)
     dist_normal = cp.Normal()
     dist_zeta = cp.Iid(cp.Normal(),2) 
 
@@ -41,16 +38,27 @@ def main():
     ## 3. Define independent random variable in physical problems
     # dist_x = cp.Uniform(-np.pi, np.pi)
 
-    simparams = museuq.simParameters(model_name, dist_zeta, prob_fails=prob_fails)
+    simparams = museuq.simParameters(model_name, dist_zeta)
     # simparams.set_error()  # no observation error for sdof
     simparams.info()
 
-    ## ------------------------ Define DoE parameters ---------------------- ###
-    nsim = 1
-    doe_method, doe_rule, doe_orders = 'QUAD', 'hem', [8,9,10]
-    # doe_method, doe_rule, doe_orders = 'MC', 'R', sorted([1e3]*3)
-    doe    = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta)
-    print(doe.filename_tags)
+    #### --------------------------------------------------------------------------- ###
+    #### --------------------------------- Run DoE --------------------------------- ###
+    #### --------------------------------------------------------------------------- ###
+    quad_orders = range(4,6)
+
+    for iquad_orders in quad_orders:
+        doe = museuq.QuadratureDesign(iquad_orders, ndim=2, dist_names=['normal', 'normal'])
+        doe.samples()
+        # print(doe.u.shape)
+        # print(doe.w.shape)
+        # print(doe.filename)
+        # print(doe.u)
+        # print(doe.w)
+        # print(doe.filename)
+
+
+
 
     #  >>> comment below out to skip DoE process 
     # train_zeta= doe.get_samples()
@@ -75,26 +83,26 @@ def main():
 
     ## -------------------------------- PCE Surrogate Model -------------------- ###
 
-    metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_zeta}
-    metamodel_class = 'PCE'
-    metamodel_basis_setting = doe_orders
+    # metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_zeta}
+    # metamodel_class = 'PCE'
+    # metamodel_basis_setting = doe_orders
     
-    for itag, iquad_order in zip(doe.filename_tags, metamodel_basis_setting):
-        ### ============ Get training points ============
-        data_set    = np.load(os.path.join(simparams.data_dir, doe.filename + '{:s}.npy'.format(itag)))
-        train_zeta  = data_set[:2,:]
-        train_w     = data_set[2 ,:]
-        train_x     = data_set[3:5,:]
-        data_set    = np.load(os.path.join(simparams.data_dir, doe.filename + '{:s}_stats.npy'.format(itag)))
-        train_eta   = np.squeeze(data_set[:, 4, 0])
-        train_y     = np.squeeze(data_set[:, 4, 1])
+    # for itag, iquad_order in zip(doe.filename_tags, metamodel_basis_setting):
+        # ### ============ Get training points ============
+        # data_set    = np.load(os.path.join(simparams.data_dir, doe.filename + '{:s}.npy'.format(itag)))
+        # train_zeta  = data_set[:2,:]
+        # train_w     = data_set[2 ,:]
+        # train_x     = data_set[3:5,:]
+        # data_set    = np.load(os.path.join(simparams.data_dir, doe.filename + '{:s}_stats.npy'.format(itag)))
+        # train_eta   = np.squeeze(data_set[:, 4, 0])
+        # train_y     = np.squeeze(data_set[:, 4, 1])
 
-        ### ============ Get Surrogate Model for each QoI============
-        print('Surrogate Model for eta: ') 
-        eta_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
-        eta_pce_model.fit(train_zeta, train_eta, weight=train_w)
-        print(eta_pce_model.poly_coeffs)
-        print(eta_pce_model.basis_coeffs)
+        # ### ============ Get Surrogate Model for each QoI============
+        # print('Surrogate Model for eta: ') 
+        # eta_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
+        # eta_pce_model.fit(train_zeta, train_eta, weight=train_w)
+        # print(eta_pce_model.poly_coeffs)
+        # print(eta_pce_model.basis_coeffs)
 
         # ### ============ Validating surrogate models at training points ============
         # print('>>> Validating surrogate model...')
