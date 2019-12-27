@@ -87,7 +87,8 @@ class BasicTestSuite(unittest.TestCase):
         ### Ishigami function
         # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/Ishigami/Data'
         ### SDOF system
-        data_dir = 'E:\Run_MUSEUQ'
+        data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        # data_dir = 'E:\Run_MUSEUQ'
         np.random.seed(100)
         # dist_x = cp.Normal()
 
@@ -114,11 +115,11 @@ class BasicTestSuite(unittest.TestCase):
         for iquad_orders in quad_orders:
             basis = cp.orth_ttr(iquad_orders-1,dist_u)
             for r in range(10):
-                filename  = 'DoE_McsE4R{:d}_stats.npy'.format(r)
+                filename  = 'DoE_McsE6R{:d}_stats.npy'.format(r)
                 data_set  = np.load(os.path.join(data_dir, filename))
                 samples_y = np.squeeze(data_set[:,4,:]).T
                 
-                filename  = 'DoE_McsE4R{:d}.npy'.format(r)
+                filename  = 'DoE_McsE6R{:d}.npy'.format(r)
                 data_set  = np.load(os.path.join(data_dir, filename))
                 samples_u = data_set[0:2, :]
                 samples_x = data_set[2:4, :]
@@ -134,7 +135,7 @@ class BasicTestSuite(unittest.TestCase):
                     doe = museuq.OptimalDesign('S', n_samples = doe_size )
                     doe.samples(design_matrix, u=samples_u, is_orth=True)
                     data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
-                    filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_p{:d}_OptS{:d}'.format(r,iquad_orders,doe_size))
+                    filename = os.path.join(data_dir, 'DoE_McsE6R{:d}_p{:d}_OptS{:d}'.format(r,iquad_orders,doe_size))
                     np.save(filename, data)
 
                 for ia in alpha:
@@ -143,7 +144,7 @@ class BasicTestSuite(unittest.TestCase):
                     doe = museuq.OptimalDesign('D', n_samples = doe_size )
                     doe.samples(design_matrix, u=samples_u, is_orth=True)
                     data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
-                    filename = os.path.join(data_dir, 'DoE_McsE4R{:d}_p{:d}_OptD{:d}'.format(r,iquad_orders,doe_size))
+                    filename = os.path.join(data_dir, 'DoE_McsE6R{:d}_p{:d}_OptD{:d}'.format(r,iquad_orders,doe_size))
                     np.save(filename, data)
                     
                     
