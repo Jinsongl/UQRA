@@ -13,6 +13,7 @@ import numpy as np
 from tqdm import tqdm
 from .dynamic_models import lin_oscillator, duffing_oscillator, linear_oscillator
 from .benchmark import bench1, bench2, bench3, bench4, ishigami
+from .benchmark import polynomial_square_root_function, four_branch_system, polynomial_product_function
 # from ..utilities.classes import ObserveError
 from ..utilities import helpers as museuq_helpers
 from ..utilities import constants as const
@@ -29,6 +30,10 @@ solvers_collections = {
     'DUFFING'   : duffing_oscillator,
     'SDOF'      : linear_oscillator,
     'LINEAR_OSCILLATOR' : linear_oscillator,
+    'POLYNOMIAL_SQUARE_ROOT_FUNCTION': polynomial_square_root_function, 
+    'SQUARE_ROOT_FUNCTION': polynomial_square_root_function, 
+    'FOUR_BRANCH_SYSTEM':four_branch_system, 
+    'POLYNOMIAL_PRODUCT_FUNCTION': polynomial_product_function, 
     }
 
 solvers_ndim  = {
@@ -40,6 +45,10 @@ solvers_ndim  = {
     'DUFFING'   : int(1),
     'SDOF'      : int(2),
     'LINEAR_OSCILLATOR' : int(2),
+    'POLYNOMIAL_SQUARE_ROOT_FUNCTION': int(2) , 
+    'SQUARE_ROOT_FUNCTION': int(2) , 
+    'FOUR_BRANCH_SYSTEM': int(2), 
+    'POLYNOMIAL_PRODUCT_FUNCTION': int(2) ,
         }
 
 class Solver(object):
@@ -290,6 +299,9 @@ class Solver(object):
             # print(rsource_func, source_kwargs, source_args)
             # y = duffing_oscillator(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs)
             y,dt,pstep= solver(time_max,dt,x0,v0,zeta,omega0,mu, *source_args,source_func=source_func,source_kwargs=source_kwargs,normalize=normalize)
+
+        elif self.solver_name.upper() == 'POLYNOMIAL_SQUARE_ROOT_FUNCTION':
+            y = solver(x, self.error, **kwargs)
 
         else:
             raise ValueError('Function {} not defined'.format(solver.__name__)) 

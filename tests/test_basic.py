@@ -83,7 +83,9 @@ class BasicTestSuite(unittest.TestCase):
         print(np.std(doe.x, axis=1))
 
     def test_OptimalDesign(self):
-        
+        """
+        Optimal Design
+        """
         ### Ishigami function
         # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/Ishigami/Data'
         ### SDOF system
@@ -91,22 +93,6 @@ class BasicTestSuite(unittest.TestCase):
         # data_dir = 'E:\Run_MUSEUQ'
         np.random.seed(100)
         # dist_x = cp.Normal()
-
-
-        # alpha = [1.1, 1.5]
-        # dist_x = cp.Uniform(-1,1)
-        # basis  = cp.orth_ttr(100,dist_x)
-
-        # samples_x = dist_x.sample(1e5)
-        # design_matrix = basis(samples_x).T
-        # for ia in alpha:
-            # doe_size = int(len(basis)*ia)
-            # doe = museuq.OptimalDesign(doe_size, 'S')
-            # doe.samples(X=design_matrix, x=samples_x, is_orth=True)
-            # np.save('Uniform_MCSR_x_{:d}'.format(doe_size),  samples_x)
-            # np.save('Uniform_ODES_x_{:d}'.format(doe_size),  doe.x)
-            # np.save('Uniform_ODES_X1_{:d}'.format(doe_size), doe.X)
-            # np.save('Uniform_ODES_indices_{:d}'.format(doe_size), doe.indices)
 
         ### 2D
         quad_orders = range(4,11)
