@@ -37,113 +37,148 @@ def main():
     simparams.info()
 
     ### ----------------------------- Run Solver -------------------------- ###
-    solver = museuq.Solver(model_name)
+    # solver = museuq.Solver(model_name)
 
-    for r in range(10):
-        filename = 'DoE_McsE6R{:d}.npy'.format(r)
-        data_set = np.load(os.path.join(simparams.data_dir, filename))
-        samples_u= data_set[0:2,:] 
-        samples_x= data_set[2:4,:] 
+    # for r in range(10):
+        # filename = 'DoE_McsE6R{:d}.npy'.format(r)
+        # data_set = np.load(os.path.join(simparams.data_dir, filename))
+        # samples_u= data_set[0:2,:] 
+        # samples_x= data_set[2:4,:] 
 
-        print('input file: {}'.format(filename))
-        print(samples_x.shape)
+        # print('input file: {}'.format(filename))
+        # print(samples_x.shape)
 
-        solver.run(samples_x)
-        np.save(os.path.join(simparams.data_dir, filename[:-4]+'_y'), solver.y)
+        # solver.run(samples_x)
+        # np.save(os.path.join(simparams.data_dir, filename[:-4]+'_y'), solver.y)
 
 
-    for r in range(10):
-        filename = 'DoE_LhsE3R{:d}.npy'.format(r)
-        data_set = np.load(os.path.join(simparams.data_dir, filename))
-        samples_u= data_set[0:2,:] 
-        samples_x= data_set[2:4,:] 
+    # for r in range(10):
+        # filename = 'DoE_LhsE3R{:d}.npy'.format(r)
+        # data_set = np.load(os.path.join(simparams.data_dir, filename))
+        # samples_u= data_set[0:2,:] 
+        # samples_x= data_set[2:4,:] 
 
-        print('input file: {}'.format(filename))
-        print(samples_x.shape)
+        # print('input file: {}'.format(filename))
+        # print(samples_x.shape)
 
-        solver.run(samples_x)
-        np.save(os.path.join(simparams.data_dir, filename[:-4]+'_y'), solver.y)
+        # solver.run(samples_x)
+        # np.save(os.path.join(simparams.data_dir, filename[:-4]+'_y'), solver.y)
 
-    quad_orders = range(3,20)
-    for iquad_orders in quad_orders:
+    # quad_orders = range(3,20)
+    # for iquad_orders in quad_orders:
 
-        filename = 'DoE_QuadHem{:d}.npy'.format(iquad_orders)
-        data_set = np.load(os.path.join(simparams.data_dir, filename))
-        samples_u= data_set[0:2,:] 
-        samples_x= data_set[2:4,:] 
-        samples_w= data_set[4,:]
+        # filename = 'DoE_QuadHem{:d}.npy'.format(iquad_orders)
+        # data_set = np.load(os.path.join(simparams.data_dir, filename))
+        # samples_u= data_set[0:2,:] 
+        # samples_x= data_set[2:4,:] 
+        # samples_w= data_set[4,:]
 
-        print('input file: {}'.format(filename))
-        print(samples_x.shape)
+        # print('input file: {}'.format(filename))
+        # print(samples_x.shape)
 
-        solver.run(samples_x)
-        np.save(os.path.join(simparams.data_dir, filename[:-4]+'_y'), solver.y)
+        # solver.run(samples_x)
+        # np.save(os.path.join(simparams.data_dir, filename[:-4]+'_y'), solver.y)
 
 
     #### ----------------------- Build PCE Surrogate Model -------------------- ###
-    # metamodel_class = 'PCE'
+    metamodel_class = 'PCE'
+    quad_orders     = range(3,8)
+    upper_tail_probs= [0.99,0.999]
+    moment2cal      = [1,2,3,4]
+    metrics2cal     = [ 'explained_variance_score', 'mean_absolute_error', 'mean_squared_error',
+                'median_absolute_error', 'r2_score', 'moment', 'mquantiles']
+
+    ### 1. PCE model based on quadrature design points, fitting with GLK and OLS
+
     # pce_fit_method  = 'OLS'
+    # for iquad_orders in quad_orders:
+        # poly_order = iquad_orders - 1
+        # ### ============ Get training points ============
+        # filename = 'DoE_QuadHem{:d}.npy'.format(iquad_orders)
+        # data_set = np.load(os.path.join(simparams.data_dir, filename))
+        # print('  > {:<10s}: {:s}'.format('filename', filename))
+        # train_u  = data_set[0:2,:] 
+        # train_x  = data_set[2:4,:] 
+        # train_w  = data_set[4,:]
+        # train_y  = data_set[5,:]
 
-    # p_orders= range(3,12)
-    # solver  = museuq.Solver(model_name)
-    # alpha   = [1.0, 1.1, 1.3, 1.5]
-    # dist_u  = cp.Iid(cp.Uniform(-1,1),3)
-    # opt_cri = 'D'
-    # for p in p_orders:
-        # for r in range(1):
-            # basis = cp.orth_ttr(p,dist_u)
-            # for ia in alpha:
-                # ### ============ Get training points ============
-                # num_basis= min(int(len(basis)*ia), 10000)
-                # filename = 'DoE_McsE4R{:d}_p{:d}_Opt{:s}{:d}.npy'.format(r, p,opt_cri, num_basis)
-                # data_set = np.load(os.path.join(simparams.data_dir,'DoE_McsE4_PCE_OLS_OPT', filename))
-                # print('  > {:<10s}: {:s}'.format('filename', filename))
-                # print('    {:<10s}: {}'.format('data shape', data_set.shape))
-                # train_u  = data_set[1:4,:] 
-                # train_x  = data_set[4:7,:] 
-                # train_y  = data_set[7  ,:] 
-                # # # print('Train x: {}'.format(train_x.shape))
-                # # # print('Train Y: {}'.format(train_y.shape))
-                # # # print('Train w: {}'.format(train_w.shape))
+        # ### ============ Get Surrogate Model for each QoI============
+        # pce_model = museuq.PCE(poly_order, dist_zeta)
+        # # print(len(pce_model.basis[0]))
+        # # pce_model.fit(train_u, train_y, w=train_w, fit_method=pce_fit_method)
+        # pce_model.fit(train_u, train_y, fit_method=pce_fit_method)
+        # # print(pce_model.poly_coeffs)
+        # # print(pce_model.basis_coeffs)
 
-                # ### ============ Get Surrogate Model for each QoI============
-                # pce_model = museuq.PCE(p, dist_zeta)
-                # # print(len(pce_model.basis[0]))
-                # # pce_model.fit(train_u, train_y, w=train_w, fit_method=pce_fit_method)
-                # pce_model.fit(train_u, train_y, fit_method=pce_fit_method)
-                # # print(pce_model.poly_coeffs)
-                # # print(pce_model.basis_coeffs)
+        # ### ============ Validating surrogate models at training points ============
 
-                # ### ============ Validating surrogate models at training points ============
-                # metrics = [ 'explained_variance_score',
-                            # 'mean_absolute_error',
-                            # 'mean_squared_error',
-                            # 'median_absolute_error',
-                            # 'r2_score', 'moment', 'mquantiles']
-                # upper_tail_probs = [0.99,0.999]
-                # moment = [1,2,3,4]
+        # for r in range(10):
+            # filename = 'DoE_McsE6R{:d}.npy'.format(r)
+            # data_set = np.load(os.path.join(simparams.data_dir, filename))
+            # valid_u  = data_set[0:2,:]
+            # valid_x  = data_set[2:4,:]
+            # valid_y  = data_set[4  ,:]
 
-                # filename = 'DoE_McsE4R{:d}.npy'.format(r)
-                # data_set = np.load(os.path.join(simparams.data_dir, filename))
-                # valid_u  = data_set[0:3,:]
-                # valid_x  = data_set[3:6,:]
-                # valid_y  = data_set[6  ,:]
+            # pce_valid_y, pce_valid_score = pce_model.predict(valid_u, valid_y, metrics=metrics2cal, prob=upper_tail_probs, moment=moment2cal)
+            # filename = 'DoE_QuadHem{:d}_{:s}_{:s}_E6R{:d}_y.npy'.format(iquad_orders, metamodel_class, pce_fit_method, r)
+            # np.save(os.path.join(simparams.data_dir, filename), pce_valid_y)
 
-                # pce_valid_y, pce_valid_score = pce_model.predict(valid_u, valid_y, \
-                        # metrics=metrics,prob=upper_tail_probs,moment=moment)
-                # filename = 'DoE_McsE4R{:d}_p{:d}_Opt{:s}{:d}_{:s}_{:s}_E4R{:d}_y.npy'.format(r, p, opt_cri, num_basis,metamodel_class, pce_fit_method, r)
-                # np.save(os.path.join(simparams.data_dir, filename), pce_valid_y)
+            # pce_valid_y_ecdf = uqhelpers.get_exceedance_data(pce_valid_y, 1e-5)
+            # filename = 'DoE_QuadHem{:d}_{:s}_{:s}_E6R{:d}_y_ecdf.npy'.format(iquad_orders, metamodel_class, pce_fit_method, r)
+            # np.save(os.path.join(simparams.data_dir, filename), pce_valid_y_ecdf)
 
-                # filename = 'DoE_McsE4R{:d}_p{:d}_Opt{:s}{:d}_{:s}_{:s}_E4R{:d}_score.npy'.format(r, p, opt_cri, num_basis,metamodel_class, pce_fit_method, r)
-                # np.save(os.path.join(simparams.data_dir, filename), pce_valid_score)
+            # filename = 'DoE_QuadHem{:d}_{:s}_{:s}_E6R{:d}_score.npy'.format(iquad_orders, metamodel_class, pce_fit_method, r)
+            # np.save(os.path.join(simparams.data_dir, filename), pce_valid_score)
 
-                # pce_valid_y_ecdf = uqhelpers.get_exceedance_data(pce_valid_y, 1e-5)
-                # filename = os.path.join(simparams.data_dir, doe.filename+'_{:s}_{:s}_valid_y_ecdf'.format(metamodel_class, pce_fit_method))
-                # np.save(filename, pce_valid_y_ecdf)
 
-                # pce_train_y, pce_train_score = pce_model.predict(train_u, train_y, metrics=metrics,prob=upper_tail_probs,moment=moment)
-                # np.save(os.path.join(simparams.data_dir, doe.filename+'_{:s}_{:s}_y'.format(metamodel_class, pce_fit_method)), pce_train_y)
-            # np.save(os.path.join(simparams.data_dir, doe.filename+'_{:s}_{:s}_score'.format(metamodel_class, pce_fit_method)), pce_train_score)
+
+    ### 1. PCE model based on quadrature design points, fitting with GLK and OLS
+
+    alpha           = [1.0, 1.1, 1.3, 1.5]
+    opt_cri         = 'D'
+    pce_fit_method  = 'OLS'
+    for iquad_orders in quad_orders:
+        poly_order = iquad_orders - 1
+        for r in range(10):
+            basis = cp.orth_ttr(poly_order,dist_zeta)
+            for ia in alpha:
+                ### ============ Get training points ============
+                num_basis= min(int(len(basis)*ia), 1000000)
+                filename = 'DoE_McsE6R{:d}_q{:d}_Opt{:s}{:d}.npy'.format(r, iquad_orders,opt_cri, num_basis)
+                data_set = np.load(os.path.join(simparams.data_dir,'DoE_McsE6_PCE_OLS_OPT', filename))
+                print('  > {:<10s}: {:s}'.format('filename', filename))
+                print('    {:<10s}: {}'.format('data shape', data_set.shape))
+                train_u  = data_set[1:3,:] 
+                train_x  = data_set[3:5,:] 
+                train_y  = data_set[5  ,:] 
+
+                ### ============ Get Surrogate Model for each QoI============
+                pce_model = museuq.PCE(poly_order, dist_zeta)
+                # print(len(pce_model.basis[0]))
+                # pce_model.fit(train_u, train_y, w=train_w, fit_method=pce_fit_method)
+                pce_model.fit(train_u, train_y, fit_method=pce_fit_method)
+                # print(pce_model.poly_coeffs)
+                # print(pce_model.basis_coeffs)
+
+                ### ============ Validating surrogate models at training points ============
+
+                filename = 'DoE_McsE6R{:d}.npy'.format(r)
+                data_set = np.load(os.path.join(simparams.data_dir, filename))
+                valid_u  = data_set[0:2,:]
+                valid_x  = data_set[2:4,:]
+                valid_y  = data_set[4  ,:]
+
+                pce_valid_y, pce_valid_score = pce_model.predict(valid_u, valid_y, metrics=metrics2cal,prob=upper_tail_probs,moment=moment2cal)
+                pce_valid_y_ecdf = uqhelpers.get_exceedance_data(pce_valid_y, 1e-5)
+
+                filename = 'DoE_McsE6{:d}_q{:d}_Opt{:s}{:d}_{:s}_{:s}_E6R{:d}_y.npy'.format(r, iquad_orders, opt_cri, num_basis,metamodel_class, pce_fit_method, r)
+                np.save(os.path.join(simparams.data_dir, filename), pce_valid_y)
+
+                filename = 'DoE_McsE6{:d}_q{:d}_Opt{:s}{:d}_{:s}_{:s}_E6R{:d}_y_ecdf.npy'.format(r, iquad_orders, opt_cri, num_basis,metamodel_class, pce_fit_method, r)
+                np.save(os.path.join(simparams.data_dir, filename), pce_valid_y_ecdf)
+
+                filename = 'DoE_McsE6{:d}_q{:d}_Opt{:s}{:d}_{:s}_{:s}_E6R{:d}_score.npy'.format(r, iquad_orders, opt_cri, num_basis,metamodel_class, pce_fit_method, r)
+                np.save(os.path.join(simparams.data_dir, filename), pce_valid_score)
 
 
 if __name__ == '__main__':
