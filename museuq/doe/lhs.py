@@ -40,6 +40,7 @@ class LatinHyperCube(ExperimentalDesign):
         super().__init__(*args, **kwargs)
         self.criterion = kwargs.get('criterion', 'maximin')
         self.iterations= kwargs.get('iterations', 5)
+        self.filename = '_'.join(['DoE', 'Lhs' + num2print(self.n_samples)])
 
     def __str__(self):
         return('Sampling method: {:<15s}, num. samples: {:ndim} '.format('LHS', self.n_samples))
@@ -51,6 +52,8 @@ class LatinHyperCube(ExperimentalDesign):
         self.u  = lhs_u
         lhs_x   = []
         for ilhd_u, idist_name, idist_theta in zip(lhs_u, self.dist_names, self.dist_theta):
+            idist_name = idist_name.lower()
+            idist_name = 'norm' if idist_name == 'normal' else idist_name
             idist = getattr(scipy.stats.distributions, idist_name)
             if idist_theta is None:
                 lhs_x.append(idist.ppf(ilhd_u))

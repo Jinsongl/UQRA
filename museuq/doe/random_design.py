@@ -51,14 +51,16 @@ class RandomDesign(ExperimentalDesign):
             Experiment samples of shape(ndim, n_samples)
         """
         if self.method.upper() in ['R', 'MC', 'MCS']:
-            x_samples = []
+            u_samples = []
             for idist_name, idist_theta in itertools.zip_longest(self.dist_names, self.dist_theta):
+                idist_name = idist_name.lower()
+                idist_name = 'norm' if idist_name == 'normal' else idist_name
                 idist = getattr(scipy.stats.distributions, idist_name)
                 if idist_theta is None:
-                    x_samples.append(idist.rvs(size=self.n_samples))
+                    u_samples.append(idist.rvs(size=self.n_samples))
                 else:
-                    x_samples.append(idist.rvs(*idist_theta, size=self.n_samples))
-            self.x = np.array(x_samples) 
+                    u_samples.append(idist.rvs(*idist_theta, size=self.n_samples))
+            self.u = np.array(u_samples) 
         elif self.method.upper() in ['HALTON', 'HAL', 'H']:
             raise NotImplementedError 
 
