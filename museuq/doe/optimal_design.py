@@ -219,7 +219,7 @@ class OptimalDesign(ExperimentalDesign):
         # for ipbar in pbar((i for i in range(m-m1))):
         # print(u'\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
 
-        pbar_x  = tqdm(range(m-1), ascii=True, desc="   - ")
+        pbar_x  = tqdm(range(m), ascii=True, desc="   - ")
         for _ in pbar_x:
         # while len(I) < m:
             i = self._greedy_find_next_point(I,Q)
