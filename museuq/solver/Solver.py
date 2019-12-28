@@ -303,6 +303,9 @@ class Solver(object):
         elif self.solver_name.upper() == 'POLYNOMIAL_SQUARE_ROOT_FUNCTION':
             y = solver(x, self.error, **kwargs)
 
+        elif self.solver_name.upper() == 'FOUR_BRANCH_SYSTEM':
+            y = solver(x, self.error, **kwargs)
+
         else:
             raise ValueError('Function {} not defined'.format(solver.__name__)) 
         

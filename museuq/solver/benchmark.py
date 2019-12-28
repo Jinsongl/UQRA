@@ -136,12 +136,13 @@ def four_branch_system(x, error):
     x1 = x[0,:]
     x2 = x[1,:]
 
-    y1 = 3 + 0.1(x1 - x2)**2 - (x1+x2)/np.sqrt(2)
-    y2 = 3 + 0.1(x1 - x2)**2 + (x1+x2)/np.sqrt(2)
-    y3 = (x1 - x2) + 7.0/sqrt(2) 
-    y4 = (x2 - x1) + 7.0/sqrt(2) 
+    y1 = 3 + 0.1*(x1 - x2)**2 - (x1+x2)/np.sqrt(2)
+    y2 = 3 + 0.1*(x1 - x2)**2 + (x1+x2)/np.sqrt(2)
+    y3 = (x1 - x2) + 7.0/np.sqrt(2) 
+    y4 = (x2 - x1) + 7.0/np.sqrt(2) 
 
-    y = 10 - min(y1, y2, y3, y4)
+    y = np.array([y1, y2, y3, y4]).min(axis=0)
+    y = 10 - y 
 
     e = error.samples()
     y = y + e
