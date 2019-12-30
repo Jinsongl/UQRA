@@ -90,7 +90,7 @@ def main():
 
 
 
-    ### 1. PCE model based on quadrature design points, fitting with GLK and OLS
+    ### 2. PCE model based on Optimal design points, fitting with OLS
 
     alpha           = [1.0, 1.1, 1.3, 1.5]
     opt_cri         = 'D'
