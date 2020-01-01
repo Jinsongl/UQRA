@@ -211,7 +211,7 @@ def get_weighted_exceedance(x, **kwargs):
     return res
 
 
-def get_stats(data, qoi2analysis='ALL', stats2cal=[1,1,1,1,1,1,0], axis=-1):
+def get_stats(data, qoi2analysis='ALL', stats2cal=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=-1):
     """
     Return column-wise statistic properties for given qoi2analysis and stats2cal
     Parameters:
@@ -253,7 +253,7 @@ def get_stats(data, qoi2analysis='ALL', stats2cal=[1,1,1,1,1,1,0], axis=-1):
     res = res if len(res) > 1 else res[0]
     return np.array(res)
 
-def _get_stats(data, stats=[1,1,1,1,1,1,0], axis=-1):
+def _get_stats(data, stats=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=-1):
     """ Calculate statistics of data along specified axis
         Parameters:
           - data: np.ndarray 
@@ -262,18 +262,35 @@ def _get_stats(data, stats=[1,1,1,1,1,1,0], axis=-1):
         Return: 
             ndarray (nstats, nsamples/nqois) 
     """
-    res = np.array([                               \
-            np.mean(data, axis=axis),              \
-            np.std(data, axis=axis),               \
-            scistats.skew(data, axis=axis),        \
-            scistats.kurtosis(data, axis=axis),    \
-            np.max(abs(data), axis=axis),          \
-            np.min(abs(data), axis=axis),          \
-            _up_crossing(data, axis=axis),         \
-            ])
-    idx = np.reshape(stats, res.shape[0])
-    res = res[idx==1,:]
-    return res
+    res = []
+
+    for istats in stats:
+        if istats.lower()  in ['mean', 'mu']:
+            res.append(np.mean(data, axis=axis))
+        elif istats.lower() in ['std', 'sigma']:
+            res.append(np.std(data, axis=axis))
+        elif istats.lower() in ['variance']:
+            res.append(np.std(data, axis=axis)**2)
+        elif istats.lower() in ['skewness', 'skew']:
+            res.append(scistats.skew(data, axis=axis))
+        elif istats.lower() in ['kurtosis', 'kurt']:
+            res.append(scistats.kurtosis(data, axis=axis))
+        elif istats.lower() in ['absmax']:
+            res.append(np.max(abs(data), axis=axis))
+        elif istats.lower() in ['max', 'maximum']:
+            res.append(np.max(data, axis=axis))
+        elif istats.lower() in ['absmin']:
+            res.append(np.min(abs(data), axis=axis))
+        elif istats.lower() in ['min', 'minimum']:
+            res.append(np.max(data, axis=axis))
+        elif istats.lower() in ['up_crossing_rate', 'up_crossing']:
+            res.append(_up_crossing(data, axis=axis))
+
+        else:
+            raise FileNotFoundError
+
+    
+    return np.array(res)
 
 def _get_exceedance1d(x,prob=1e-3, return_index=False, return_all=False ):
     """
