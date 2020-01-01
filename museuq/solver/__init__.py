@@ -9,7 +9,7 @@
 """
 
 """
-# from dynamic_models import lin_oscillator, duffing_oscillator
+from museuq.solver.dynamic import linear_oscillator
 # from static_models import ishigami, poly5
 
 # import sys

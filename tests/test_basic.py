@@ -427,15 +427,21 @@ class BasicTestSuite(unittest.TestCase):
             np.save(os.path.join(data_dir,'DoE_McRE6R{:d}_y_None.npy'.format(r)), y)
 
     def test_Solver(self):
-        ### General Solver run testing 
-        print('========================TESTING: Solver =======================')
 
-        x       = (Hs,Tp) = np.array((4, 12)).reshape(2,1)
-        model_name  = 'linear_oscillator'
-        kwargs  = {
-            'time_max'  : 100,
-            'dt'        : 0.2,
-                }
+        x      = (Hs,Tp) = np.array((4, 12)).reshape(2,1)
+        solver = museuq.linear_oscillator(stats2cal= ['absmax'])
+        print(solver)
+        solver.run(x)
+        print(solver.y.shape)
+        print(solver.y_stats.shape)
+        ### General Solver run testing 
+        # print('========================TESTING: Solver =======================')
+
+        # model_name  = 'linear_oscillator'
+        # kwargs  = {
+            # 'time_max'  : 100,
+            # 'dt'        : 0.2,
+                # }
         # tmax,dt = 1000, 0.1
         # t       = np.arange(0,tmax, dt)
 
@@ -445,8 +451,8 @@ class BasicTestSuite(unittest.TestCase):
         # k       = (omega_n/2/np.pi) **2 * m 
         # c       = zeta * 2 * np.sqrt(m * k)
         # mck     = (m,c,k)
-        solver  = museuq.Solver(model_name, x)
-        y       = solver.run(**kwargs) 
+        # solver  = museuq.Solver(model_name, x)
+        # y       = solver.run(**kwargs) 
 
         # data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
         # np.save(os.path.join(data_dir,'Kvitebjørn_EC_P{:d}_{:d}'.format(P, nsim)), EC_y)
