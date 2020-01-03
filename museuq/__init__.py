@@ -2,6 +2,7 @@
 Top-level package for Uncertainty Quantifican Toolbox 
 ===============================
 This module contains tools for performing uncertainty quantification 
+
 """
 
 # The values are copied by reference, 
@@ -18,12 +19,12 @@ from museuq.doe.random_design import RandomDesign
 from museuq.doe.lhs import LatinHyperCube as LHS
 from museuq.doe.optimal_design import OptimalDesign 
 
-from museuq.solver.Solver import Solver
+# from museuq.solver.Solver import Solver
 from museuq.solver.dynamic import linear_oscillator
 from museuq.solver.static import * 
 
 
-from museuq.surrogate_model.SurrogateModel import SurrogateModel
+# from museuq.surrogate_model.SurrogateModel import SurrogateModel
 from museuq.simParameters import simParameters
 from museuq.surrogate_model.polynomial_chaos_expansion import PolynomialChaosExpansion as PCE
 from museuq.utilities.ErrorClass import NullError, IidError, CovError
