@@ -54,16 +54,16 @@ class PolynomialChaosExpansion(SurrogateModel):
         print(r'>>> Initialize SurrogateModel Object...')
         print(r'------------------------------------------------------------')
         print(r' > Surrogate model properties')
-        print(r'   * {:<17s} : {:<20s}'.format('Model name', 'Polynomial Chaos Expansion'))
+        print(r'   * {:<25s} : {:<20s}'.format('Model name', 'Polynomial Chaos Expansion'))
         # Following parameters are required
         print(r'   * Requried parameters')
         # print(self.dist_zeta_J)
         # print(self.basis_orders)
         # print(len(self.basis[0]))
         try:
-            print(r'     - {:<20s} : {  }'.format('Zeta Joint dist'         , self.dist_zeta_J  ))
-            print(r'     - {:<20s} : {:d}'.format('Basis orders (p)'        , self.basis_orders ))
-            print(r'     - {:<20s} : {:d}'.format('Total order basis (P)'   , len(self.basis[0])))
+            print(r'     - {:<23s} : {}'.format('Zeta Joint dist'         , self.dist_zeta_J  ))
+            print(r'     - {:<23s} : {}'.format('Basis orders (p)'        , self.basis_orders ))
+            print(r'     - {:<23s} : {:d}'.format('Total order basis (P)'   , len(self.basis[0])))
         except KeyError:
             print(r'     Error: dist_zeta, basis_orders are required parameters for PCE model')
 
@@ -100,24 +100,15 @@ class PolynomialChaosExpansion(SurrogateModel):
         """
 
         print(r' > Fitting PCE surrogate models with {:s}'.format(fit_method))
-
-        # x_shape = x[0].shape if isinstance(x, list) else x.shape
-        # y_shape = y[0].shape if isinstance(y, list) else y.shape
-        # if w is not None:
-            # w_shape = w[0].shape if isinstance(w, list) else w.shape
-            # print(r'   * {:<17s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x_shape, y_shape, w_shape))
-        # else:
-            # print(r'   * {:<17s} : (X, Y) = {} x {} '.format('Train data shape', x_shape, y_shape))
-
-        print(r'   * {:<17s} : {}'.format('PCE model order', self.basis_orders))
+        print(r'   * {:<25s} : {}'.format('PCE model order', self.basis_orders))
         for iporder, iorthpoly_basis in zip(self.basis_orders, self.basis):
             if fit_method.upper() in ['GALERKIN', 'GLK']:
                 if w is None:
                     raise ValueError("Quadrature weights are needed for Galerkin method")
-                if iorthpoly_basis.dim != x.shape[0]:
+                if iorthpoly_basis.ndim != x.shape[0]:
                     raise ValueError("Polynomial base functions and variables must have same dimensions, but have Poly.ndim={} and x.ndim={}".format(iorthpoly_basis.dim, x.shape[0]))
                 w = np.squeeze(w)
-                print(r'   * {:<17s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
+                print(r'   * {:<25s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
                 # f_hat, orthpoly_coeffs = cp.fit_quadrature(iorthpoly_basis, x, w, y, norms=self.orthpoly_norms[i], retall=True)
                 f_hat, orthpoly_coeffs = cp.fit_quadrature(iorthpoly_basis, x, w, y, retall=True)
                 self.metamodels.append(f_hat)
@@ -125,14 +116,14 @@ class PolynomialChaosExpansion(SurrogateModel):
                 self.poly_coeffs.append(f_hat.coefficients)
 
             elif fit_method.upper() in ['OLS']:
-                print(r'   * {:<17s} : X = ({},{}), Y = {}'.format('Train data shape', x.shape[1], len(iorthpoly_basis), y.shape))
+                print(r'   * {:<25s} : X = ({},{}), Y = {}'.format('Train data shape', x.shape[1], len(iorthpoly_basis), y.shape))
                 f_hat, orthpoly_coeffs= cp.fit_regression(iorthpoly_basis, x, y, retall=True)
                 self.metamodels.append(f_hat)
                 self.basis_coeffs.append(orthpoly_coeffs)
                 self.poly_coeffs.append(f_hat.coefficients)
             elif fit_method.upper() in ['WLS']:
                 W = np.diag(np.squeeze(w))
-                print(r'   * {:<17s} : X = ({},{}), Y = {}, W={}'.format('Train data shape', x.shape[1], len(iorthpoly_basis), y.shape, W.shape ))
+                print(r'   * {:<25s} : X = ({},{}), Y = {}, W={}'.format('Train data shape', x.shape[1], len(iorthpoly_basis), y.shape, W.shape ))
                 f_hat, orthpoly_coeffs= cp.fit_regression(iorthpoly_basis, np.dot(W, x.T).T, np.dot(W, y), retall=True)
                 self.metamodels.append(f_hat)
                 self.basis_coeffs.append(orthpoly_coeffs)
@@ -155,21 +146,16 @@ class PolynomialChaosExpansion(SurrogateModel):
         """
         if not self.metamodels:
             raise ValueError('No surrogate models exist, need to fit first')
-        y_pred = []
 
+        self.y_pred = []
+        self.scores = []
         print(r' > Predicting with PCE surrogate models... ')
         ## See explainations about Poly above
-        for i, imetamodel in enumerate(self.metamodels):
-            iy_pred = imetamodel(*X)
-            print(r'   * {:<17s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model (PCE)', i, len(self.metamodels), iy_pred.shape))
-            y_pred.append(iy_pred)
 
-        if y_true is not None:
-            scores = self.score(y_pred, y_true, **kwargs)
-            if len(y_pred) == 1:
-                y_pred = y_pred[0]
-            return y_pred, scores
-        else:
-            if len(y_pred) == 1:
-                y_pred = y_pred[0]
-            return y_pred
+        for i, imetamodel in enumerate(self.metamodels):
+            iy_pred = imetamodel(*X).T
+            print(r'   * {:<25s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model (PCE)', i+1, len(self.metamodels), iy_pred.shape))
+            if y_true is not None:
+                self.scores.append(self.score(iy_pred, y_true, num_predictor=len(self.basis[i]), **kwargs))
+            self.y_pred.append(iy_pred)
+
