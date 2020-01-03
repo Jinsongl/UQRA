@@ -25,7 +25,7 @@ Return:
 
 
 
-class ishigami(Solver):
+class Ishigami(Solver):
     """
     The ishigami function of ishigami & Homma (1990) is used as an example for uncertainty and sensitivity analysis methods, because it exhibits strong nonlinearity and nonmonotonicity. It also has a peculiar dependence on x3, as described by Sobol' & Levitan (1999). 
 
@@ -58,7 +58,7 @@ class ishigami(Solver):
         self.x    = []
      
     def __str__(self):
-        return 'Ishigami function, x: [{:}]'.format(np.array(self.x).shape)
+        return 'Solver: Ishigami function (p={})'.format(self.p)
 
 
     def run(self, x):
@@ -66,9 +66,9 @@ class ishigami(Solver):
 
         assert x.shape[0] == int(3), 'Ishigami function expecting 3 random variables, {} given'.format(x.shape[0])
         if x.ndim == 1:
-            self.y = np.sin(x[0]) + p[0] * np.sin(x[1])**2 + p[1]*x[2]**4 * np.sin(x[0])
+            self.y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
         else:
-            self.y = np.sin(x[0,:]) + p[0] * np.sin(x[1,:])**2 + p[1]*x[2,:]**4 * np.sin(x[0,:])
+            self.y = np.sin(x[0,:]) + self.p[0] * np.sin(x[1,:])**2 + self.p[1]*x[2,:]**4 * np.sin(x[0,:])
 
 
 
@@ -83,7 +83,7 @@ class xsinx(Solver):
         # self.error= kwargs.get('error', 'None') 
 
     def __str__(self):
-        return 'xsinx function, x: [{:}]'.format(np.array(self.x).shape)
+        return 'Solver: x*sin(x)'
 
     def run(self, x):
         x = np.array(x)
@@ -91,7 +91,7 @@ class xsinx(Solver):
         self.y = x * np.sin(x)
         # y = y + e
 
-class polynomial(Solver):
+class poly4th(Solver):
     """
     y = 5 + -5*x + 2.5*x^2 -0.36*x^3 + 0.015*x^4
     """
@@ -102,15 +102,13 @@ class polynomial(Solver):
         self.x    = []
 
     def __str__(self):
-        return 'polynomial function, x: [{:}]'.format(np.array(self.x).shape)
+        return 'Solver: 4th-order polynomial function'
 
     def run(self, x):
         x = np.squeeze(np.array(x))
         self.y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
         # e = error.samples()
         # y = y + e
-
-
 
 class polynomial_square_root_function(Solver):
     """
@@ -123,11 +121,11 @@ class polynomial_square_root_function(Solver):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.name = 'polynomial_square_root_function'
+        self.name = 'polynomial square root function'
         self.x    = []
 
     def __str__(self):
-        return 'polynomial_square_root_function, x: [{:}]'.format(np.array(self.x).shape)
+        return 'Solver: Polynomial square root function'
 
     def run(self, x):
         x = np.squeeze(np.array(x))
@@ -153,11 +151,11 @@ class four_branch_system(Solver):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.name = 'four_branch_system'
+        self.name = 'four branch system'
         self.x    = []
 
     def __str__(self):
-        return 'four_branch_system, x: [{:}]'.format(np.array(self.x).shape)
+        return 'Solver: four branch system'
 
     def run(self, x):
 
@@ -196,11 +194,11 @@ class polynomial_product_function(Solver):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.name = 'polynomial_product_function'
+        self.name = 'Polynomial product function'
         self.x    = []
 
     def __str__(self):
-        return 'polynomial_product_function, x: [{:}]'.format(np.array(self.x).shape)
+        return 'Solver: polynomial product function'
 
     def run(self, x):
         x = np.array(x)
@@ -208,6 +206,94 @@ class polynomial_product_function(Solver):
         self.y = 0.5 * np.sum(y, axis=0)
         # e = error.samples()
         # self.y = self.y + e
+
+class papaioannou2016sequential(Solver):
+    """
+    examples tested in paper:
+        "Papaioannou, Iason, Costas Papadimitriou, and Daniel Straub. "Sequential importance sampling for structural reliability analysis." Structural safety 62 (2016): 66-75"
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.name = 'papaioannou2016sequential'
+        self.x    = []
+
+    def __str__(self):
+        return "Examples in [papaioannou2016sequential]" 
+
+    def g1(self, x):
+        """
+        Convex limit-state function
+        """
+        x0,x1 = np.array(x)
+        g = 0.1*(x0-x1) **2 - 1.0/np.sqrt(2)(x1+x0) + 2.5
+        return g
+
+
+    def g2(self,x, b=5, k=0.5, e=0.1):
+        """
+        parabolic/concave limit-state function
+
+        """
+        x0,x1 = np.array(x)
+        g = b-x1-k*(x0-e)**2
+        return g 
+        
+
+    def g3(self,x):
+        """
+        Series system reliability problem
+
+        """
+        x0,x1 = np.array(x)
+
+        g1 = 0.1 * (x0-x1)**2 - (x0+x1)/np.sqrt(2) + 3
+        g2 = 0.1 * (x0-x1)**2 + (x0+x1)/np.sqrt(2) + 3
+        g3 = x0-x1 + 7/np.sqrt(2)
+        g3 = x1-x0 + 7/np.sqrt(2)
+
+        g12 = np.minimum(g1, g2)
+        g34 = np.minimum(g3, g4)
+        g   = np.minimum(g12, g34)
+        return g
+
+    def g4(self,x):
+        """
+        Noisy limit-state function
+
+        """
+        x = np.array(x)
+        g = x[0] + 2*x[1] + 2 * x[2] + x[3] -5*x[4] -5*x[5] + 0.001*np.sum(np.sin(100*x),axis=0)
+        return g
+
+
+    def g5(self,x, beta=3.5):
+        """
+        Linear limit-state function in high dimensions
+        """
+        x = np.array(x)
+        n = x.shape[0]
+        g = -1/np.sqrt(n) * np.sum(x, axis=0) + beta
+        return g
+        
+
+##### fucntion g1-g5 are fom reference: "Papaioannou, Iason, Costas Papadimitriou, and Daniel Straub. "Sequential importance sampling for structural reliability analysis." Structural safety 62 (2016): 66-75"
+
+    def g6(self,x, a=3, mu=1,sigma=0.2):
+        x = np.array(x)
+        n = x.shape[0]
+        g = n + a * sigma * np.sqrt(n) - np.sum(x, axis=0)
+        return g
+
+
+    def g7(self, x, c):
+    """
+    Multiple design points
+    """
+    g1 = c -1 - x[1] + np.exp(-x[0]**2/10.0) + (x[0]/5.0)**4
+    g2 = c**2/2.0 - x[0] * x[1]
+    g  = np.minimum(g1,g2)
+    return g
+
 
 
 # def bench1(x, error_type):
