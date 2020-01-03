@@ -228,7 +228,6 @@ class papaioannou2016sequential(Solver):
         g = 0.1*(x0-x1) **2 - 1.0/np.sqrt(2)(x1+x0) + 2.5
         return g
 
-
     def g2(self,x, b=5, k=0.5, e=0.1):
         """
         parabolic/concave limit-state function
@@ -238,7 +237,6 @@ class papaioannou2016sequential(Solver):
         g = b-x1-k*(x0-e)**2
         return g 
         
-
     def g3(self,x):
         """
         Series system reliability problem
@@ -265,7 +263,6 @@ class papaioannou2016sequential(Solver):
         g = x[0] + 2*x[1] + 2 * x[2] + x[3] -5*x[4] -5*x[5] + 0.001*np.sum(np.sin(100*x),axis=0)
         return g
 
-
     def g5(self,x, beta=3.5):
         """
         Linear limit-state function in high dimensions
@@ -274,9 +271,6 @@ class papaioannou2016sequential(Solver):
         n = x.shape[0]
         g = -1/np.sqrt(n) * np.sum(x, axis=0) + beta
         return g
-        
-
-##### fucntion g1-g5 are fom reference: "Papaioannou, Iason, Costas Papadimitriou, and Daniel Straub. "Sequential importance sampling for structural reliability analysis." Structural safety 62 (2016): 66-75"
 
     def g6(self,x, a=3, mu=1,sigma=0.2):
         x = np.array(x)
@@ -284,15 +278,14 @@ class papaioannou2016sequential(Solver):
         g = n + a * sigma * np.sqrt(n) - np.sum(x, axis=0)
         return g
 
-
     def g7(self, x, c):
-    """
-    Multiple design points
-    """
-    g1 = c -1 - x[1] + np.exp(-x[0]**2/10.0) + (x[0]/5.0)**4
-    g2 = c**2/2.0 - x[0] * x[1]
-    g  = np.minimum(g1,g2)
-    return g
+        """
+        Multiple design points
+        """
+        g1 = c -1 - x[1] + np.exp(-x[0]**2/10.0) + (x[0]/5.0)**4
+        g2 = c**2/2.0 - x[0] * x[1]
+        g  = np.minimum(g1,g2)
+        return g
 
 
 
