@@ -428,12 +428,53 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_Solver(self):
 
-        x      = (Hs,Tp) = np.array((4, 12)).reshape(2,1)
-        solver = museuq.linear_oscillator(stats2cal= ['absmax'])
-        print(solver)
+        # x      = (Hs,Tp) = np.array((4, 12)).reshape(2,1)
+        # solver = museuq.linear_oscillator(stats2cal= ['absmax'])
+        # print(solver)
+        # solver.run(x)
+        # print(solver.y.shape)
+        # print(solver.y_stats.shape)
+
+
+        x = np.arange(30).reshape(3,10)
+        solver = museuq.Ishigami()
         solver.run(x)
+        print(solver)
         print(solver.y.shape)
-        print(solver.y_stats.shape)
+
+        x = np.arange(30)
+        solver = museuq.xsinx()
+        solver.run(x)
+        print(solver)
+        print(solver.y.shape)
+
+        x = np.arange(30)
+        solver = museuq.poly4th()
+        solver.run(x)
+        print(solver)
+        print(solver.y.shape)
+
+        x = np.arange(30).reshape(2,15)
+        solver = museuq.polynomial_square_root_function()
+        solver.run(x)
+        print(solver)
+        print(solver.y.shape)
+
+        x = np.arange(30).reshape(2,15)
+        solver = museuq.four_branch_system()
+        solver.run(x)
+        print(solver)
+        print(solver.y.shape)
+
+        x = np.arange(30).reshape(2,15)
+        solver = museuq.polynomial_product_function()
+        solver.run(x)
+        print(solver)
+        print(solver.y.shape)
+
+
+
+
         ### General Solver run testing 
         # print('========================TESTING: Solver =======================')
 

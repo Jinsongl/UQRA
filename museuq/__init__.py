@@ -20,6 +20,7 @@ from museuq.doe.optimal_design import OptimalDesign
 
 from museuq.solver.Solver import Solver
 from museuq.solver.dynamic import linear_oscillator
+from museuq.solver.static import * 
 
 
 from museuq.surrogate_model.SurrogateModel import SurrogateModel
