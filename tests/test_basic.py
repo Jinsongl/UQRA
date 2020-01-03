@@ -503,29 +503,40 @@ class BasicTestSuite(unittest.TestCase):
         solver4 = lambda x: cp.Gamma(1,1).inv(cp.Normal(0,1).cdf(x))
         solver5 = lambda x: cp.Gamma(1,1).inv(cp.Gamma(1,1).cdf(x))
 
-        metrics  = ['max_error', 'mean_absolute_error', 'mean_squared_error','moments', 'upper_tails']
+        upper_tail_probs= [0.999,0.9999,0.99999]
+        moment2cal      = [1,2,3,4]
+        metrics2cal     = [ 'explained_variance_score', 'mean_absolute_error', 'mean_squared_error',
+                    'median_absolute_error', 'r2_score', 'r2_score_adj', 'moment', 'mquantiles']
         
+        sample_weight = None
+        multioutput   = 'uniform_average'
+        # squared       = True
+
         solvers2test= [solver1,solver2,solver3, solver4, solver5]
         solver_strs = ['x', '1 + x**2', '3 + x + x**2 + x**3', 'Gamma(1,1), Hermite', 'Gamma(1,1), Optimal']
-        poly_orders = [1,2,3, range(2,5), range(2,5),]
+        poly_orders = range(2,5)
+        dist_zeta   = cp.Normal()
         dist_x      = cp.Normal()
 
-        for isolver , ipoly_order, isolver_str in zip(solvers2test, poly_orders, solver_strs):
-            metamodel_class, metamodel_basis_setting = 'PCE', ipoly_order 
-            metamodel_params= {'cal_coeffs': 'Galerkin', 'dist_zeta': dist_x}
-            uqhelpers.blockPrint()
-            quad_doe = museuq.DoE('QUAD', 'hem', 100, dist_x)
-            samples_x= quad_doe.get_samples()[0]
-
-            x_train, x_weight = samples_x[0,:].reshape(1,-1),samples_x[1,:]
-            y_train = np.squeeze(isolver(x_train))
-            pce_model  = museuq.SurrogateModel(metamodel_class, metamodel_basis_setting, **metamodel_params)
-            pce_model.fit(x_train, y_train, weight=x_weight)
-            uqhelpers.enablePrint()
-            pce_model_scores = pce_model.score(x_train, y_train, metrics=metrics, moment=np.arange(1,5))
-            print('Target: {}'.format(isolver_str))
-            for i, ipoly_coeffs in enumerate(pce_model.poly_coeffs):
-                print('{:<6s}: {}'.format('museuq'*(i==0), np.around(ipoly_coeffs,4)))
+        fit_method  = 'GLK'
+        for isolver , isolver_str in zip(solvers2test, solver_strs):
+            for ipoly_order in poly_orders:
+                # uqhelpers.blockPrint()
+                doe = museuq.QuadratureDesign(ipoly_order+1, ndim = 1, dist_names=['normal'])
+                doe.samples()
+                doe.x = doe.u
+                train_y = np.squeeze(isolver(doe.x))
+                train_y = np.array([train_y,train_y]).T
+                pce_model  = museuq.PCE(ipoly_order, dist_zeta)
+                print(len(pce_model.basis[0]))
+                pce_model.fit(doe.u, train_y, w=doe.w, fit_method=fit_method)
+                pce_model.predict(doe.u, train_y, metrics=metrics2cal, prob=upper_tail_probs, moment=moment2cal, sample_weight=sample_weight, multioutput=multioutput)
+                # pce_model.fit(x_train, y_train, weight=x_weight)
+                # uqhelpers.enablePrint()
+                # pce_model_scores = pce_model.score(x_train, y_train, metrics=metrics, moment=np.arange(1,5))
+                # print('Target: {}'.format(isolver_str))
+                # for i, ipoly_coeffs in enumerate(pce_model.poly_coeffs):
+                    # print('{:<6s}: {}'.format('museuq'*(i==0), np.around(ipoly_coeffs,4)))
 
     def test_Kvitebjorn(self):
         print('========================TESTING: Kvitebjorn =======================')
