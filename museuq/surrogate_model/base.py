@@ -54,7 +54,7 @@ class SurrogateModel(object):
         """
         raise NotImplementedError
 
-    def score(self,y_pred,y_true,**kwargs):
+    def cal_scores(self,y_pred,y_true,**kwargs):
         """
         Calculate error metrics_value used to evaluate the accuracy of the approximation
             Reference: "On the accuracy of the polynomial chaos approximation R.V. Field Jr., M. Grigoriu"
