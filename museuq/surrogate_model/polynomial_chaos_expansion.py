@@ -158,3 +158,4 @@ class PolynomialChaosExpansion(SurrogateModel):
                 self.scores.append(self.cal_scores(iy_pred, y_true, num_predictor=len(self.basis[i]), **kwargs))
             self.y_pred.append(iy_pred)
 
+
