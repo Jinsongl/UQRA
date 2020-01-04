@@ -33,6 +33,7 @@ class PolynomialChaosExpansion(SurrogateModel):
         self.orthpoly_norms = []
         for p in self.basis_orders:
             poly, norm = cp.orth_ttr(p, self.dist_zeta_J, retall=True)
+            print(poly)
             self.basis.append(poly)
             self.orthpoly_norms.append(norm)
 
@@ -62,8 +63,8 @@ class PolynomialChaosExpansion(SurrogateModel):
         # print(len(self.basis[0]))
         try:
             print(r'     - {:<23s} : {}'.format('Zeta Joint dist'         , self.dist_zeta_J  ))
-            print(r'     - {:<23s} : {}'.format('Basis orders (p)'        , self.basis_orders ))
-            print(r'     - {:<23s} : {:d}'.format('Total order basis (P)'   , len(self.basis[0])))
+            print(r'     - {:<23s} : {}'.format('Max basis orders (p)'        , self.basis_orders ))
+            print(r'     - {:<23s} : {:d}'.format('No. regressors (P)'   , len(self.basis[0])))
         except KeyError:
             print(r'     Error: dist_zeta, basis_orders are required parameters for PCE model')
 
@@ -105,8 +106,6 @@ class PolynomialChaosExpansion(SurrogateModel):
             if fit_method.upper() in ['GALERKIN', 'GLK']:
                 if w is None:
                     raise ValueError("Quadrature weights are needed for Galerkin method")
-                if iorthpoly_basis.ndim != x.shape[0]:
-                    raise ValueError("Polynomial base functions and variables must have same dimensions, but have Poly.ndim={} and x.ndim={}".format(iorthpoly_basis.dim, x.shape[0]))
                 w = np.squeeze(w)
                 print(r'   * {:<25s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
                 # f_hat, orthpoly_coeffs = cp.fit_quadrature(iorthpoly_basis, x, w, y, norms=self.orthpoly_norms[i], retall=True)
@@ -156,6 +155,6 @@ class PolynomialChaosExpansion(SurrogateModel):
             iy_pred = imetamodel(*X).T
             print(r'   * {:<25s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model (PCE)', i+1, len(self.metamodels), iy_pred.shape))
             if y_true is not None:
-                self.scores.append(self.score(iy_pred, y_true, num_predictor=len(self.basis[i]), **kwargs))
+                self.scores.append(self.cal_scores(iy_pred, y_true, num_predictor=len(self.basis[i]), **kwargs))
             self.y_pred.append(iy_pred)
 
