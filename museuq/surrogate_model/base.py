@@ -56,7 +56,7 @@ class SurrogateModel(object):
 
     def cal_scores(self,y_pred,y_true,**kwargs):
         """
-        Calculate error metrics_value used to evaluate the accuracy of the approximation
+        Calculate error scores used to evaluate the accuracy of the approximation
             Reference: "On the accuracy of the polynomial chaos approximation R.V. Field Jr., M. Grigoriu"
         Parameters:	
             y_pred: array-like data from suoorgate model of shape (nsamples, noutput)
@@ -99,7 +99,7 @@ class SurrogateModel(object):
         self.metrics            = kwargs.get('metrics'  , ['mean_squared_error'])
         self.mquantiles_probs   = kwargs.get('prob'     , [0.9,0.99,0.999]) 
         self.moments2cal        = kwargs.get('moment'   , 1)
-        self.metrics_value      = []
+        self.scores             = []
 
         ### default parameters for score functions
         sample_weight = kwargs.get('sample_weight'  , None)
@@ -108,7 +108,7 @@ class SurrogateModel(object):
         axis          = kwargs.get('axis'           , 0)
         num_predictor = kwargs.get('num_predictor'  , None)
 
-        print(r'   * Prediction scores ...')
+        print(r'   * Calculating prediction scores ...')
         #### calculate metrics from true value first
         metrics_value_true = []
         metrics_value_pred = []
@@ -123,7 +123,7 @@ class SurrogateModel(object):
                 ### output format (nprob, noutput)
                 imetrics_value_true = imetric2call(y_true, prob=self.mquantiles_probs, axis=axis, multioutput=multioutput)
                 imetrics_value_pred = imetric2call(y_pred, prob=self.mquantiles_probs, axis=axis, multioutput=multioutput)
-                self.metrics_value.append([imetrics_value_true,imetrics_value_pred])
+                self.scores.append([imetrics_value_true,imetrics_value_pred])
 
             elif imetrics.lower() == 'moment': 
                 ### output format (nmoment, noutput)
@@ -146,19 +146,19 @@ class SurrogateModel(object):
 
                 imetrics_value_true[mean_idx] = mean_true
                 imetrics_value_pred[mean_idx] = mean_pred
-                self.metrics_value.append([imetrics_value_true,imetrics_value_pred])
+                self.scores.append([imetrics_value_true,imetrics_value_pred])
 
             elif imetrics.lower() == 'r2_score_adj':
                 ### output format (1,) or (noutput,)
                 imetrics_value = imetric2call(y_true, y_pred,num_predictor=num_predictor, multioutput=multioutput)
-                self.metrics_value.append(imetrics_value)
+                self.scores.append(imetrics_value)
             else:
                 ### output format (1,) or (noutput,)
                 imetrics_value = imetric2call(y_true, y_pred, multioutput=multioutput)
-                self.metrics_value.append(imetrics_value)
+                self.scores.append(imetrics_value)
 
         ## print metric values 
-        for imetrics_name, imetrics_value in zip(self.metrics, self.metrics_value):
+        for imetrics_name, imetrics_value in zip(self.metrics, self.scores):
 
             if imetrics_name.lower() == 'mquantiles':
                 imetrics_value_true, imetrics_value_pred = imetrics_value
@@ -179,7 +179,7 @@ class SurrogateModel(object):
 
 
         # print(r'   * Prediction scores ...')
-        # self.metrics_value = []
+        # self.scores = []
         # #### calculate metrics from true value first
         # metrics_value_true = []
         # for imetrics in self.metrics:
@@ -201,7 +201,7 @@ class SurrogateModel(object):
             # else:
                 # imetrics_value = [0,]
             # metrics_value_true= metrics_value_true+ imetrics_value
-        # self.metrics_value.append(metrics_value_true)
+        # self.scores.append(metrics_value_true)
 
         # metrics_value_true_iter = iter(metrics_value_true)
         # y_pred = [y_pred, ] if isinstance(y_pred, (np.ndarray, np.generic)) else y_pred
@@ -241,8 +241,8 @@ class SurrogateModel(object):
                     # imetrics_value = [imetrics_value,]
 
                 # metrics_value_pred = metrics_value_pred+ imetrics_value
-            # self.metrics_value.append(metrics_value_pred)
-        # return self.metrics_value
+            # self.scores.append(metrics_value_pred)
+        # return self.scores
 
     
     def sample_y(self,X, nsamples=1, random_state=0):
