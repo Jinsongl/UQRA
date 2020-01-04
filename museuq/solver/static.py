@@ -128,8 +128,10 @@ class polynomial_square_root_function(Solver):
         return 'Solver: Polynomial square root function'
 
     def run(self, x):
-        x = np.squeeze(np.array(x))
-        self.y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
+        x = np.array(x)
+        x1 = x[0,:]
+        x2 = x[1,:]
+        self.y = ( (-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2 )**0.5 + 14 
         # e = error.samples()
         # y = y + e
 
