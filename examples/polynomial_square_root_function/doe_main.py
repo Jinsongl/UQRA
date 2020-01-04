@@ -71,7 +71,7 @@ def main():
     ### 4. Optimal Design
     # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
     # data_dir = 'E:\Run_MUSEUQ'
-    data_dir ='E:\polynomial_square_root\'
+    data_dir ='E:\polynomial_square_root'
     np.random.seed(100)
 
     quad_orders = range(1,10)
