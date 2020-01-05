@@ -155,7 +155,9 @@ class PolynomialChaosExpansion(SurrogateModel):
             iy_pred = imetamodel(*X).T
             print(r'   * {:<25s} : {:d}/{:d}    -> Output: {}'.format('Surrogate model (PCE)', i+1, len(self.metamodels), iy_pred.shape))
             if y_true is not None:
-                self.scores.append(self.cal_scores(iy_pred, y_true, num_predictor=len(self.basis[i]), **kwargs))
+                scores = self.cal_scores(iy_pred, y_true, num_predictor=len(self.basis[i]), **kwargs)
+
+                self.scores.append(scores)
             self.y_pred.append(iy_pred)
 
 

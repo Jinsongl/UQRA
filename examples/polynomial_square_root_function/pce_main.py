@@ -41,7 +41,7 @@ def main():
 
     # ### 1. PCE model based on quadrature design points, fitting with GLK and OLS
 
-    pce_fit_method  = 'OLS'
+    pce_fit_method  = 'GLK'
     for iquad_orders in quad_orders:
         poly_order = iquad_orders - 1
         ### ============ Get training points ============
