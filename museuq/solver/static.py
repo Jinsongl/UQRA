@@ -131,7 +131,7 @@ class polynomial_square_root_function(Solver):
         x = np.array(x)
         x1 = x[0,:]
         x2 = x[1,:]
-        self.y = ( (-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2 )**0.5 + 14 
+        self.y = -((-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2)**0.5 + 14 
         # e = error.samples()
         # y = y + e
 
