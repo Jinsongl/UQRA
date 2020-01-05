@@ -33,7 +33,6 @@ class PolynomialChaosExpansion(SurrogateModel):
         self.orthpoly_norms = []
         for p in self.basis_orders:
             poly, norm = cp.orth_ttr(p, self.dist_zeta_J, retall=True)
-            print(poly)
             self.basis.append(poly)
             self.orthpoly_norms.append(norm)
 

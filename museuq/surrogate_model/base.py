@@ -124,7 +124,6 @@ class SurrogateModel(object):
                 imetrics_value_true = imetric2call(y_true, prob=self.mquantiles_probs, axis=axis, multioutput=multioutput)
                 imetrics_value_pred = imetric2call(y_pred, prob=self.mquantiles_probs, axis=axis, multioutput=multioutput)
                 imetrics_value = np.vstack((imetrics_value_true,imetrics_value_pred))
-                print(imetrics_value.shape)
                 metrics_value.append(imetrics_value)
 
             elif imetrics.lower() == 'moment': 
@@ -149,7 +148,6 @@ class SurrogateModel(object):
                 imetrics_value_true[mean_idx] = mean_true
                 imetrics_value_pred[mean_idx] = mean_pred
                 imetrics_value = np.vstack((imetrics_value_true,imetrics_value_pred))
-                print(imetrics_value.shape)
                 metrics_value.append(imetrics_value)
 
             elif imetrics.lower() == 'r2_score_adj':
