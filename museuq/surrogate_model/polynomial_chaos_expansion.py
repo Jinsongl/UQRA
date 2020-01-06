@@ -127,6 +127,8 @@ class PolynomialChaosExpansion(SurrogateModel):
                 self.basis_coeffs.append(orthpoly_coeffs)
                 self.poly_coeffs.append(f_hat.coefficients)
 
+            elif fit_method.upper() in ['LAR', 'CS', 'COMPRESSIVE SENSING']:
+                raise ValueError('Method to calculate PCE coefficients {:s} is not defined'.format(fit_method))
             else:
                 raise ValueError('Method to calculate PCE coefficients {:s} is not defined'.format(fit_method))
 
