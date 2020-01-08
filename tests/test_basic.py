@@ -579,6 +579,33 @@ class BasicTestSuite(unittest.TestCase):
                 # for i, ipoly_coeffs in enumerate(pce_model.poly_coeffs):
                     # print('{:<6s}: {}'.format('museuq'*(i==0), np.around(ipoly_coeffs,4)))
 
+    def test_LassoLars(self):
+        from sklearn import linear_model
+        from sklearn.linear_model import LassoCV, LassoLarsCV, LassoLarsIC, LassoLars
+        from sklearn import datasets
+
+        solver3 = lambda x: x**4 + x**2 + 3 
+
+        np.random.seed(100)
+        dist_u = cp.Normal()
+        u_samples = dist_u.sample(1000)
+        y_samples = solver3(u_samples)
+        print('y mean: {}'.format(np.mean(y_samples)))
+
+        pce_model = museuq.PCE(6,dist_u)
+        pce_model.fit(u_samples, y_samples, method='LassoLars')
+        # print(pce_model.active_)
+        # print(pce_model.metamodels)
+        y_pred = pce_model.predict(u_samples.reshape(1,-1))
+        print(y_pred[:4])
+
+        pce_model.fit(u_samples, y_samples, method='OlsLars')
+        # print(pce_model.active_)
+        # print(pce_model.metamodels)
+        y_pred = pce_model.predict(u_samples.reshape(1,-1))
+        print(y_pred[:4])
+
+
     def test_Kvitebjorn(self):
         print('========================TESTING: Kvitebjorn =======================')
 
