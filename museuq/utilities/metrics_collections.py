@@ -118,6 +118,34 @@ def moment(a, moment=1, axis=0, nan_policy='propagate',multioutput='uniform_aver
         raise NotImplementedError
     return res
 
+def leave_one_out_error(X,y, is_adjusted=True):
+    """
+    Calculate leave one out error for linear regression
+
+    Derivation: 
+    https://stats.stackexchange.com/questions/164223/proof-of-loocv-formula
+
+    """
+    X = np.array(X)
+    y = np.array(y)
+    n,P = X.shape
+    assert len(y) == n
+
+    H1 = np.linalg.inv(np.dot(X.T, X))
+    H  = np.dot(X, np.dot(H1, X.T)) ## projection matrix
+    y_hat = np.dot(H, y)
+    h  = np.diagonal(H)
+    error_loo = np.mean(((y - y_hat) / (1-h))**2)
+
+    ## correcting factor derived in [49] for regression using a small experimental design 
+    ## [O. Chapelle, V. Vapnik, Y. Bengio, Model selection for small sample regression, Mach. Learn. 48 (1) (2002) 9–23.]
+
+    if is_adjusted:
+        C = np.dot(X.T, X)/n
+        correcting_factor =  n/(n-P) * (1+ np.trace(np.linalg.inv(C))/n)
+        error_loo =  error_loo * correcting_factor
+    return error_loo
+
 
 
 
