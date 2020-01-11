@@ -15,7 +15,7 @@ import numpy as np
 from datetime import datetime
 from .doe.doe_generator import samplegen
 from .utilities.classes import Logger
-from .utilities.helpers import num2print, make_output_dir, get_gdrive_folder_id 
+from .utilities.helpers import num2print
 from itertools import compress
 ## Define parameters class
 
@@ -91,7 +91,7 @@ class simParameters(object):
             data_dir: directory saving all data, self.data_dir
             figure_dir: directory saving all figures, self.figure_dir
         """
-        data_dir_id, data_dir, figure_dir =  make_output_dir(self.model_name)
+        data_dir_id, data_dir, figure_dir =  self._make_output_dir(self.model_name)
         self.pwd        = kwargs.get('pwd'          , os.getcwd()   )
         self.data_dir   = kwargs.get('data_dir'     , data_dir      )
         self.figure_dir = kwargs.get('figure_dir'   , figure_dir    )
@@ -159,4 +159,71 @@ class simParameters(object):
             stats_list = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
             print(r'     - {:<15s} : {} '.format('statistics'  , list(compress(stats_list, self.stats)) ))
     
+
+    def _make_output_dir(self, model_name):
+        """
+        WORKING_DIR/
+        +-- MODEL_DIR
+        |   +-- FIGURE_DIR
+
+        /directory saving data depends on OS/
+        +-- MODEL_DIR
+        |   +-- DATA_DIR
+
+        """
+        WORKING_DIR     = os.getcwd()
+        MODEL_DIR       = os.path.join(WORKING_DIR, model_name.capitalize())
+        FIGURE_DIR= os.path.join(MODEL_DIR,r'Figures')
+        # DATA_DIR  = os.path.join(MODEL_DIR,r'Data')
+        current_os  = sys.platform
+        if current_os.upper()[:3] == 'WIN':
+            DATA_DIR= os.path.join('G:','My Drive','MUSE_UQ_DATA')
+            MODEL_DIR_DATA_ID = self._get_gdrive_folder_id(model_name)
+        elif current_os.upper() == 'DARWIN':
+            DATA_DIR= '/Users/jinsongliu/External/MUSE_UQ_DATA'
+            MODEL_DIR_DATA_ID = self._get_gdrive_folder_id(model_name)
+        elif current_os.upper() == 'LINUX':
+            MODEL_DIR_DATA_ID = None 
+            DATA_DIR = WORKING_DIR
+            # DATA_DIR= '/home/jinsong/Box/MUSE_UQ_DATA'
+        else:
+            raise ValueError('Operating system {} not found'.format(current_os))    
+        
+        DATA_DIR  = os.path.join(DATA_DIR,model_name,r'Data')
+        # MODEL_DIR_DATA_ID = GDRIVE_DIR_ID[model_name.upper()] 
+
+        # Create directory for model  
+        try:
+            os.makedirs(MODEL_DIR)
+            os.makedirs(DATA_DIR)
+            os.makedirs(FIGURE_DIR)
+            # print(r'Data, Figure directories for model {} is created'.format(model_name))
+        except FileExistsError:
+            # one of the above directories already exists
+            # print(r'Data, Figure directories for model {} already exist'.format(model_name))
+            pass
+        return MODEL_DIR_DATA_ID, DATA_DIR, FIGURE_DIR
+
+
+    
+    def _get_gdrive_folder_id(self, folder_name):
+        """
+        Check if the given folder_name exists in Google Drive. 
+        If not, create one and return the google drive ID
+        Else: return folder ID directly
+        """
+        # GDRIVE_DIR_ID = {
+                # 'BENCH1': '1d1CRxZ00f4CiwHON5qT_0ijgSGkSbfqv',
+                # 'BENCH4': '15KqRCXBwTTdHppRtDjfFZtmZq1HNHAGY',
+                # 'BENCH3': '1TcVfZ6riXh9pLoJE9H8ZCxXiHLH_jigc',
+                # }
+        command = os.path.join('/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA', folder_name)
+        try:
+            os.makedirs(command)
+        except FileExistsError:
+            pass
+        command = 'gdrive list --order folder |grep ' +  folder_name
+        folder_id = os.popen(command).read()
+        return folder_id[:33]
+
 
