@@ -11,7 +11,6 @@
 """
 import numpy as np
 import scipy as sp
-from numpy.linalg import norm
 ## import regression metrics from scikit-learn
 from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, mean_squared_log_error, median_absolute_error, r2_score
 
@@ -124,18 +123,24 @@ def leave_one_out_error(X,y, is_adjusted=True):
 
     Derivation: 
     https://stats.stackexchange.com/questions/164223/proof-of-loocv-formula
+    https://robjhyndman.com/hyndsight/loocv-linear-models/
 
     """
-    X = np.array(X)
-    y = np.array(y)
+    X = np.array(X, dtype=np.float64)
+    y = np.array(y, dtype=np.float64)
     n,P = X.shape
-    assert len(y) == n
+    assert len(y) == n, 'Design matrix of shape {}, Observation vector y of shape: {}'.format(X.shape, y.shape)
 
-    H1 = np.linalg.inv(np.dot(X.T, X))
-    H  = np.dot(X, np.dot(H1, X.T)) ## projection matrix
+    # H1 = np.linalg.inv(np.dot(X.T, X))
+    # H  = np.dot(X, np.dot(H1, X.T)) ## projection matrix
+    # y_hat = np.dot(H, y)
+    # print(y_hat[:5])
+
+    Q, R = np.linalg.qr(X)
+    H = np.dot(Q, Q.T)
     y_hat = np.dot(H, y)
     h  = np.diagonal(H)
-    error_loo = np.mean(((y - y_hat) / (1-h))**2)
+    error_loo = np.mean(((y - y_hat) / (1-h))**2, dtype = np.float64)
 
     ## correcting factor derived in [49] for regression using a small experimental design 
     ## [O. Chapelle, V. Vapnik, Y. Bengio, Model selection for small sample regression, Mach. Learn. 48 (1) (2002) 9–23.]
