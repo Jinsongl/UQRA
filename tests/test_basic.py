@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 
-import context, museuq, unittest,warnings
-import numpy as np, chaospy as cp, os, sys
+import context, museuq, unittest,warnings,os, sys 
+import numpy as np, chaospy as cp, scipy as sp 
 import scipy.stats as stats
+import museuq.utilities.metrics_collections as uq_metrics
 from museuq.utilities import helpers as uqhelpers 
-from museuq.utilities import constants as const
 from museuq.utilities import dataIO as museuq_dataio
 from museuq.utilities.PowerSpectrum import PowerSpectrum
 from museuq.environment import Kvitebjorn as Kvitebjorn
+from sklearn import datasets
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import KFold
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
@@ -15,6 +18,64 @@ sys.stdout  = museuq.utilities.classes.Logger()
 data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
+
+    def test_loo(self):
+
+        # Loading some example data
+        X, y = datasets.load_boston(return_X_y=True)
+        # X = X[:100,:2]
+        # y = y[:100]
+
+        # X = np.array([[0, 0], [1, 1], [2, 2]])
+        # y = np.array([0, 1, 2])
+        # print(X.shape)
+        print(y[:5])
+
+        # Training classifiers
+        reg1 = LinearRegression()
+        reg1.fit(X,y)
+        y1 = reg1.predict(X)
+        # print(reg1.coef_)
+        print(y1[:5])
+
+        # b = np.linalg.lstsq(X,y)[0]
+        # # print(b)
+        # y2 = np.dot(X, np.array(b))
+        # print(y2[:5])
+
+        mse = []
+        kf  = KFold(n_splits=X.shape[0])
+        residual = []
+        for train_index, test_index in kf.split(X):
+            X_train, X_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+
+            # H1 = np.linalg.inv(np.dot(X_train.T, X_train))
+            # H2 = np.dot(H1, X_train.T)
+            # H3 = np.dot(H2, y_train)
+            # y_hat = np.dot(X_test, H3)
+            # residual.append(y_test[0]- y_hat[0])
+
+            reg1.fit(X_train, y_train)
+            y_pred = reg1.predict(X_test)
+            residual.append(y_test[0] - y_pred[0])
+            # mse.append(uq_metrics.mean_squared_error(y_test, y_pred))
+        Q, R = np.linalg.qr(X)
+        H = np.dot(Q, Q.T)
+        h = np.diagonal(H)
+        y_hat = np.dot(H, y)
+        e = (y-y_hat)/(1-h)
+        print(y_hat[:5])
+        print('e:')
+        print(np.mean(np.array(residual)**2))
+        print(np.mean(np.array(e)**2))
+ 
+        # print(uq_metrics.leave_one_out_error(X,y,is_adjusted=False))
+        # print(np.mean(mse))
+        
+
+            
+
 
     def test_QuadratureDesign(self):
         print('>>> 1D quadrature design:') 
@@ -592,7 +653,7 @@ class BasicTestSuite(unittest.TestCase):
         y_samples = solver3(u_samples)
         print('y mean: {}'.format(np.mean(y_samples)))
 
-        pce_model = museuq.PCE(6,dist_u)
+        pce_model = museuq.PCE(10,dist_u)
         pce_model.fit(u_samples, y_samples, method='LassoLars')
         # print(pce_model.active_)
         # print(pce_model.metamodels)
