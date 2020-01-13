@@ -41,7 +41,7 @@ class PolynomialChaosExpansion(SurrogateModel):
         # print(r'------------------------------------------------------------')
         # print(r'>>> Initialize SurrogateModel Object...')
         # print(r'------------------------------------------------------------')
-        print(r'>>> Building Surrogate Models')
+        print(r' > Building Surrogate Models')
         print(r'   * {:<25s} : {:<20s}'.format('Model name', 'Polynomial Chaos Expansion'))
         # Following parameters are required
         print(r'   * Requried parameters')
@@ -131,16 +131,18 @@ class PolynomialChaosExpansion(SurrogateModel):
 
         elif self.fit_method.upper() in ['LASSOLARS']:
             ## parameters for LassoLarsCV
-            max_iter= kwargs.get('max_iter', 500)
             X = self.basis_(*x).T
             y = np.squeeze(y)
+            n_splits= kwargs.get('n_splits', X.shape[0])
+            max_iter= kwargs.get('max_iter', 500)
+            kf      = KFold(n_splits=n_splits,shuffle=True)
             print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape',X.shape, y.shape))
-            model = linear_model.LassoLarsCV(max_iter=max_iter, cv=X.shape[1]).fit(X,y)
-            self.metamodels     = model 
-            self.coeffs_basis_  = model.coef_[np.nonzero(model.coef_)] 
-            self.active_        = [0,] + list(*np.nonzero(model.coef_))
-            print(r'   * {:<25s} : {}'.format('Active basis', self.active_))
-            # f_hat = cp.polynomial(self.basis_[np.nonzero(model.coef_)]*active_coefs).sum() + model.intercept_
+            lassolars = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count()).fit(X,y)
+            self.metamodels     = lassolars 
+            self.coeffs_basis_  = lassolars.coef_[np.nonzero(lassolars.coef_)] 
+            self.active_        = [0,] + list(*np.nonzero(lassolars.coef_))
+            self.cv_error       = np.min(np.mean(lassolars.mse_path_, axis=1))
+            print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
 
 
         elif self.fit_method.upper() in ['OLSLARS']:
