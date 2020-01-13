@@ -12,9 +12,8 @@
 from museuq.doe.base import ExperimentalDesign
 from museuq.utilities.decorators import random_state
 from museuq.utilities.helpers import num2print
-import numpy as np
+import numpy as np, scipy as sp
 import numpy.linalg as LA
-import scipy.linalg as scila
 import copy
 import itertools
 from tqdm import tqdm
@@ -77,7 +76,7 @@ class OptimalDesign(ExperimentalDesign):
             selected_indices   = self._get_quasi_optimal(self.n_samples, A, selected_indices, is_basis_orth)
         elif self.criteria.upper() == 'D':
             """ D optimality based on rank revealing QR factorization  """
-            Q, R, P = scila.qr(A.T, pivoting=True)
+            Q, R, P = sp.linalg.qr(A.T, pivoting=True)
             selected_indices = P[:self.n_samples]
         else:
             pass
