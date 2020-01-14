@@ -17,6 +17,7 @@ from tqdm import tqdm
 from museuq.utilities import helpers as uqhelpers
 from museuq.utilities import metrics_collections as uq_metrics
 from sklearn.model_selection import KFold
+import time
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
 
@@ -38,8 +39,8 @@ def main():
 
     ### ============ Stopping Criteria ============
     poly_orders     = np.arange(plim[0], plim[1])
-    fit_method      = 'OLSLARS'
-    poly_order      = plim[0]
+    fit_method      = 'LASSOLARS'
+    poly_order      = 9 #plim[1]
     error_loo       = []
     mquantiles      = []
     r2_score_adj    = []
@@ -56,7 +57,7 @@ def main():
 
 
     while simparams.is_adaptive_continue(n_eval, poly_order=poly_order,
-            r2_adj=r2_score_adj, mquantiles=mquantiles):
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=error_loo):
         print('==> Adaptive simulation continue...')
         ### ============ Build Surrogate Model ============
         quad_order  = poly_order + 1
@@ -68,8 +69,13 @@ def main():
         data_set = np.load(os.path.join(simparams.data_dir, filename))
         u_samples= data_set[0:ndim,:]
         x_samples= data_set[ndim: 2*ndim,:]
+        print(len(pce_model.active_))
+        print(np.around(pce_model.metamodels,4))
+        start = time.time()
         y_samples= pce_model.predict(u_samples)
+        done      = time.time()
 
+        print('   >> metamodels predictin elapsed: {}'.format(done - start))
         ### ============ updating parameters ============
         # error_mse.append(uq_metrics.mean_squared_error(y_valid, y_pred))
         error_loo.append(pce_model.cv_error)
