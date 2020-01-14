@@ -78,10 +78,14 @@ class ExperimentalDesign(object):
             np.ndarray
         """
         raise NotImplementedError
-
-    def save_data(self, data_dir):
+    def adaptive(self):
         """
-        save input variables to file
+        Adaptive DoE with new samples 
+
         """
         raise NotImplementedError
+
+
+
+
 
