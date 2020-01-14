@@ -31,79 +31,120 @@ class OptimalDesign(ExperimentalDesign):
         super().__init__(*args, **kwargs)
         self.criteria   = opt_criteria 
         self.filename   = '_'.join(['DoE', 'Opt'+self.criteria.capitalize() + num2print(self.n_samples)])
+        self.selected_row = None 
 
     def __str__(self):
         return('Optimal Criteria: {:<15s}, num. samples: {:d} '.format(self.criteria, self.n_samples))
 
-    def S(self,R,A):
+    def S(self,R,X):
         """
-        Calculate the S-values of new matrix [A;r.T], where r is each row of R
+        Calculate the S-values of new matrix [X;r.T], where r is each row of R
         
         Arguments:
-        R: Matrix where each row vector will be added to matrix A to calculate the its Svalue
-        A: Matrix composed of selected vectors from all candidates, (number of selected, number of polynomial functions)
+        R: Matrix where each row vector will be added to matrix X to calculate the its Svalue
+        X: Matrix composed of selected vectors from all candidates, (number of selected, number of polynomial functions)
 
         Return:
         ndarray (n,) containing s-values from each row of R
         
         """
-        k,p = A.shape
+        k,p = X.shape
 
         if k < p :
-            svalues = self._cal_logsvalue_under(R,A)
+            svalues = self._cal_logsvalue_under(R,X)
         else:
-            svalues = self._cal_logsvalue_over(R,A)
+            svalues = self._cal_logsvalue_over(R,X)
 
         return svalues
 
     @random_state
-    def samples(self, A, *args, **kwargs):
+    def samples(self, X, *args, **kwargs):
         """
-        Ax = Y
-        A: Design matrix A(u) of shape(num_samples, num_features)
+        Xb = Y
+        X: Design matrix X(u) of shape(num_samples, num_features)
 
         Return:
             Experiment samples of shape(ndim, n_samples)
         """
-        u    = kwargs.get('u', None) ## samples input of shape(ndim, num_samples)
-        m, p = A.shape
+        n_samples   = kwargs.get('n_samples', self.n_samples)
+        m, p        = X.shape
         assert m > p, 'Number of candidate samples are expected to be larger than number of features'
 
         if self.criteria.upper() == 'S':
-            """ Ax = Y """
-            selected_indices   = kwargs.get('I', None)
-            is_basis_orth      = kwargs.get('is_orth', False)
-            selected_indices   = self._get_quasi_optimal(self.n_samples, A, selected_indices, is_basis_orth)
+            """ Xb = Y """
+            selected_row   = kwargs.get('rows', None)
+            is_basis_orth  = kwargs.get('is_orth', False)
+            selected_row   = self._get_quasi_optimal(n_samples, X, selected_row, is_basis_orth)
         elif self.criteria.upper() == 'D':
             """ D optimality based on rank revealing QR factorization  """
-            Q, R, P = sp.linalg.qr(A.T, pivoting=True)
-            selected_indices = P[:self.n_samples]
+            Q, R, P = sp.linalg.qr(X.T, pivoting=True)
+            selected_row = P[:n_samples]
         else:
             pass
 
-        self.A = A[selected_indices,:]
-        if u is not None:
-            self.u = u[selected_indices] if u.ndim == 1 else u[:, selected_indices]
-        else:
-            pass
-        self.I = selected_indices
+        # self.X = X[selected_row,:]
+        # if u is not None:
+            # self.u = u[selected_row] if u.ndim == 1 else u[:, selected_row]
+        # else:
+            # pass
+        # self.rows = selected_row
+        return selected_row
 
-    def _cal_logsvalue_over(self, R, A):
+
+    def adaptive(self,X,n_samples, selected_col=[]):
+        """
+        Xb = Y
+        X: Design matrix X(u) of shape(num_samples, num_features)
+
+        S: selected columns
+        K: sparsity
+        Return:
+            Experiment samples of shape(ndim, n_samples)
+        """
+
+        selected_col = selected_col if selected_col else range(X.shape[1])
+        if self.selected_row is None:
+            X_selected = X[:,selected_col]
+            selected_row = self.samples(X_selected, n_samples=n_samples)
+            self.selected_row = selected_row
+            return selected_row 
+        else:
+            X_selected = X[self.selected_row,:][:,selected_col]
+            X_candidate= X[:, selected_col]
+            ### X_selected.T * B = X_candidate.T -> solve for B
+            X_curr_inv = np.dot(np.linalg.inv(np.dot(X_selected, X_selected.T)), X_selected)
+            B = np.dot(X_curr_inv, X_candidate.T)
+            X_residual = X_candidate.T - np.dot(X_selected.T, B)
+            Q, R, P = sp.linalg.qr(X_residual, pivoting=True)
+            selected_row = np.concatenate((self.selected_row, P))
+            _, i = np.unique(selected_row, return_index=True)
+            selected_row = selected_row[np.sort(i)]
+            selected_row = selected_row[:len(self.selected_row) + n_samples]
+            self.selected_row = selected_row
+            return selected_row[len(self.selected_row):]
+
+            
+
+
+
+
+
+    def _cal_logsvalue_over(self, R, X):
         """
         Calculate the S value (without determinant) of candidate vectors w.r.t selected subsets
-        when the current selection k >= p (eqn. 3.16) for each pair of (r, A)
+        when the current selection k >= p (eqn. 3.16) for each pair of (r, X)
 
 
         Arguments:
         R -- candidate matrix of shape (number of candidates, p), 
-        A -- selected subsets matrix of shape (k,p)
+        X -- selected subsets matrix of shape (k,p)
 
         Return:
         log S value without determinant (eqn. 3.16)
 
         """
-        AAinv   = LA.inv(np.dot(A.T,A))
-        A_l2    = LA.norm(A, axis=0).reshape(1,-1) ## row vector
+        AAinv   = LA.inv(np.dot(X.T,X))
+        A_l2    = LA.norm(X, axis=0).reshape(1,-1) ## row vector
         svalues_log = [] 
         for r in R:
             r = r.reshape(1,-1) ## row vector
@@ -113,26 +154,26 @@ class OptimalDesign(ExperimentalDesign):
             svalues_log.append(d1 - d2)
         return svalues_log
 
-    def _cal_logsvalue_under(self, R, A):
+    def _cal_logsvalue_under(self, R, X):
         """
         Calculate the log S-value (without determinant) of a candidate vector w.r.t selected subsets
         when the current selection k < p (eqn. 3.18)
 
         Arguments:
         R -- candidate matrix of shape (number of candidates, p), 
-        A -- selected subsets matrix of shape (k,p)
+        X -- selected subsets matrix of shape (k,p)
 
         Return:
         log S value without determinant (eqn. 3.18)
 
         """
-        k,p = A.shape
+        k,p = X.shape
         assert k < p
-        A = copy.copy(A[:,0:k])
+        X = copy.copy(X[:,0:k])
         R = copy.copy(R[:,0:k+1])
         svalues_log = [] 
-        AAinv = LA.inv(np.dot(A.T,A))
-        A_l2 = LA.norm(A, axis=0).reshape(1,-1)
+        AAinv = LA.inv(np.dot(X.T,X))
+        A_l2 = LA.norm(X, axis=0).reshape(1,-1)
 
 
         for r in R:
@@ -141,9 +182,9 @@ class OptimalDesign(ExperimentalDesign):
             r = copy.copy(c)
 
             b = np.dot(AAinv,r)
-            g = np.dot(AAinv,np.dot(A.T,c))
+            g = np.dot(AAinv,np.dot(X.T,c))
 
-            a1 = np.dot(c.T,A) + gamma * r.T
+            a1 = np.dot(c.T,X) + gamma * r.T
             a2 = np.identity(k) - np.dot(b,r.T)/(1 + np.dot(r.T,b))
             a3 = g + gamma *b
             a = np.squeeze(np.dot(a1,np.dot(a2,a3)))
@@ -161,8 +202,8 @@ class OptimalDesign(ExperimentalDesign):
         find the next quasi optimal sample
 
         Arguments:
-        I -- list containing selected row indices from candidate design matrix A
-        Q -- QR factorization of candidate design matrix A if basis is not orthogonal, otherwise is A
+        I -- list containing selected row indices from candidate design matrix X
+        Q -- QR factorization of candidate design matrix X if basis is not orthogonal, otherwise is X
 
         Return:
         i -- integer, index with maximum svalue
@@ -178,18 +219,18 @@ class OptimalDesign(ExperimentalDesign):
         i = I_left[np.argmax(svalues)]
         return i
 
-    def _get_quasi_optimal(self,m,A,I=None,is_orth=False):
+    def _get_quasi_optimal(self,m,X,I=None,is_orth=False):
         """
         return row selection matrix S containing indices for quasi optimal experimental design
         based on fast greedy algorithm 
 
         Arguments:
         m -- size of quasi optimal subset
-        A -- design matrix with candidates samples of shape (M,p)
+        X -- design matrix with candidates samples of shape (M,p)
              M: number of samples, p: number of features
         I -- indices, nt ndarray of shape (N,) corresponding row selection matrix of length m
             if I is None, an empty list will be created first and m items will be appended 
-            Otherwise, additional (m-m0) items (row index in design matrix A) will be appended 
+            Otherwise, additional (m-m0) items (row index in design matrix X) will be appended 
         is_orth -- Boolean indicating if the basis space is orthogonal
 
         Returns:
@@ -197,17 +238,17 @@ class OptimalDesign(ExperimentalDesign):
         """
         m = int(m)
         assert m > 0, "At least one sample in the designed experiemnts"
-        M,p = A.shape
+        M,p = X.shape
         assert M >= p, "quasi optimal sebset are design for overdetermined problem only"
         # assert m < 2*p, 'Quasi optimal are disigned to choose ~p design points, too many asking'
         # print(u'>>'*20)
         # print(u'\tQuasi-Optimal Experiment Design')
         # print(u'\t>>>','*'*40)
-        # print(u"\tNumber of design point:\t{:2d} \n\tNumber of samples:\t{:2d} \n\tNumber of features:\t{:2d}".format(m,A.shape[0],A.shape[1]))
+        # print(u"\tNumber of design point:\t{:2d} \n\tNumber of samples:\t{:2d} \n\tNumber of features:\t{:2d}".format(m,X.shape[0],X.shape[1]))
         # print(u'\t>>>','*'*40)
-        # (Q,R) = (A, _ )if is_orth else LA.qr(A, mode='complete')
-        (Q,R) = (A, None ) if is_orth else LA.qr(A)
-        # print(u'\tComplete QR factorization of Design matrix A. \n\t  Q.shape = {0}, R.shape={1}'.format(Q.shape, R.shape))
+        # (Q,R) = (X, _ )if is_orth else LA.qr(X, mode='complete')
+        (Q,R) = (X, None ) if is_orth else LA.qr(X)
+        # print(u'\tComplete QR factorization of Design matrix X. \n\t  Q.shape = {0}, R.shape={1}'.format(Q.shape, R.shape))
         # print(u'\t>>>','*'*40)
         # print(u'\tSearching for design points based on S-value')
 
