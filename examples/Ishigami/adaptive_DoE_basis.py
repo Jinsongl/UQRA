@@ -21,111 +21,101 @@ warnings.filterwarnings(action="ignore", module="scipy", message="^internal gels
 sys.stdout  = museuq.utilities.classes.Logger()
 
 
-def is_stopping_met(mse, mquantiles, poly_order, **kwargs):
-    """
-    mse: iterable type with size 2
-    mquantiles: iterable type with size 3
-
-    """
-    stopping_mse        = kwargs.get('stopping_mse', 1e-3)
-    stopping_mquantile  = kwargs.get('stopping_mquantile', 0.05)
-    poly_order_max      = kwargs.get('poly_order_max', 20)
-
-    is_poly_order_met= poly_order <= poly_order_max
-    if is_poly_order_met: 
-        ## keep running if not enought data as long as p < p_max
-        if len(mse) <= 2 or len(mquantiles) <= 3:
-            return False
-        is_mse_met       = all(imse < stopping_mse for imse in mse)
-        mquantiles_diff  = abs(mquantiles[1:] - mquantiles[:-1]) /  mquantiles[:-1]
-        is_mquantile_met = all(iquantile < stopping_mquantile for iquantile in mquantiles)
-        if is_mse_met and is_mquantile_met:
-            return True
-        else:
-            return False
-    else:
-        return True
-
-
-
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
     ndim        = 3
-    model_name  = 'Ishigami'
-    ## 1. Choose Wiener-Askey scheme random variable
     dist_x      = cp.Iid(cp.Uniform(-np.pi, np.pi),ndim) 
     dist_zeta   = cp.Iid(cp.Uniform(-1, 1),ndim) 
-    ## 2. If transformation needed, like Rosenblatt, need to be done here
-    ## Perform Rosenblatt etc
-    simparams = museuq.simParameters(model_name, dist_zeta)
+    simparams   = museuq.simParameters('Ishigami', dist_zeta)
+    solver      = museuq.Ishigami()
+    fit_method  = 'OLSLARS'
+
+    ### ============ Adaptive parameters ============
+    plim        = (2,15)
+    n_budget    = 1000
+    n_newsamples= 10
+    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.05)
     # simparams.set_error()  # no observation error for sdof
     simparams.info()
 
 
-    ### ============ Stopping Criteria ============
-    poly_order_max  = 9
-    quad_orders     = range(3,poly_order_max+1)
+    ### ============ Initialization  ============
+    # P0 = len(cp.orth_ttr(plim[0], dist_zeta))
+    # alpha = 0.8
+    # n_samples_done  = min(2*P0, alpha*n_budget)
+    # n_samples_done  = max(P0, n_samples_done)
+    n_eval          = 50
+    poly_order      = plim[1]
+    r2_score_adj    = []
+    cv_error        = []
+    mquantiles      = []
 
-    pce_fit_method  = 'OLS'
-    n_newsamples    = 10
-    metric_mse      = []
-    metric_r2_adj   = []
-    metric_mquantile= []
+    ### 1. Initial design with OPT-D
 
-    ### ============ Get training points ============
-    filename = 'DoE_LhsE3R0.npy'
-    data_set = np.load(os.path.join(simparams.data_dir, filename))
-    print('  > {:<10s}: {:s}'.format('filename', filename))
-    # u_data  = data_set[0:ndim,:].T
-    u_data  = data_set[ndim:2*ndim,:].T
-    w_data  = data_set[-2,:]
-    y_data  = data_set[-1,:]
-    kf = KFold(n_splits=5)
+    while simparams.is_adaptive_continue(n_eval, poly_order=poly_order,
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
+        print('==> Adaptive simulation continue...')
 
-    for train_index, test_index in kf.split(u_data):
-        u_train, u_test = u_data[train_index], u_data[test_index]
-        y_train, y_test = y_data[train_index], y_data[test_index]
+        data_dir= simparams.data_dir
+        filename= 'DoE_McsE6R0.npy'
+        data_set= np.load(os.path.join(data_dir, filename))
+        u_data  = data_set[0:ndim, :]
+        x_data  = data_set[ndim:2*ndim, :]
+        y_data  = data_set[-1, :].reshape(1,-1)
+        print('Candidate samples filename: {:s}'.format(filename))
+        print('   >> Candidate sample set shape: {}'.format(u_data.shape))
+        basis   = cp.orth_ttr(plim[1], dist_zeta)
+        design_matrix = basis(*u_data).T
+        print('   >> Candidate Design matrix shape: {}'.format(design_matrix.shape))
+        
+        doe = museuq.OptimalDesign('D', n_samples=n_eval)
+        doe_index = doe.adaptive(design_matrix, n_samples = n_eval, is_orth=True)
+        print(len(doe_index))
+        u_doe = u_data[:,doe_index]
+        x_doe = x_data[:,doe_index]
+        y_doe = solver.run(x_doe)
 
-        mse     = []
-        r2_adj  = []
-        ### ============ Get Surrogate Model for each QoI============
-        for iquad_orders in tqdm(quad_orders, ascii=True, desc="   - "):
-            uqhelpers.blockPrint()
-            poly_order = iquad_orders - 1
-            pce_model = museuq.PCE(poly_order, dist_zeta)
-            pce_model.fit(u_train.T, y_train, method=pce_fit_method)
-            y_pred  = pce_model.predict(u_test.T)
-            mse.append(uq_metrics.mean_squared_error(y_test, y_pred))
-            uqhelpers.enablePrint()
-        metric_mse.append(mse)
+        # data = np.concatenate((doe.I.reshape(1,-1),doe.u,doe.x, solver.y.reshape(1,-1)), axis=0)
+        # filename = os.path.join(data_dir, 'DoE_McsE6R{:d}_q{:d}_OptD{:d}'.format(r,plim[1], n_eval))
+        # np.save(filename, data)
 
-    filename = 'mse_cv_DoE_QuadLeg{:d}_PCE_{:s}.npy'.format(iquad_orders, pce_fit_method)
-    np.save(os.path.join(simparams.data_dir, filename), np.array(metric_mse))
+        ### ============ Build Surrogate Model ============
+        u_train   = np.concatenate((u_train, u_doe), axis=0)
+        y_train   = np.concatenate((y_train, y_doe), axis=0)
+        pce_model = museuq.PCE(plim[1], dist_zeta)
+        pce_model.fit(u_train, y_train, method=fit_method)
+        y_pred    = pce_model.predict(u_train)
 
-    ### ============ Get Surrogate Model for each QoI============
-    r2_adj     = []
-    mquantiles = []
-    for iquad_orders in quad_orders:
-        poly_order= iquad_orders - 1
-        pce_model = museuq.PCE(poly_order, dist_zeta)
-        pce_model.fit(u_data.T, y_data, method=pce_fit_method)
-        y_pred    = pce_model.predict(u_data.T)
-        r2_adj.append(uq_metrics.r2_score_adj(y_data, y_pred, len(pce_model.active_)))
-
-        # run MCS to get mquantile
         filename = 'DoE_McsE6R0.npy'
         data_set = np.load(os.path.join(simparams.data_dir, filename))
         u_samples= data_set[0:ndim,:]
         x_samples= data_set[ndim: 2*ndim,:]
         y_samples= pce_model.predict(u_samples)
+
+        ### ============ updating parameters ============
+        # error_mse.append(uq_metrics.mean_squared_error(y_valid, y_pred))
+        cv_error.append(pce_model.cv_error)
+        r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_pred, len(pce_model.active_)))
         mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
+        n_eval += u_doe.shape[1]
+        f_hat  = pce_model
 
 
-    filename = 'mquantile_DoE_QuadLeg{:d}_PCE_{:s}.npy'.format(iquad_orders, pce_fit_method)
-    np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
+    poly_order -= 1
+    print('------------------------------------------------------------')
+    print('>>> Adaptive simulation done:')
+    print('------------------------------------------------------------')
+    print(' - {:<25s} : {}'.format('Polynomial order (p)', poly_order))
+    print(' - {:<25s} : {}'.format('Active basis', f_hat.active_))
+    print(' - {:<25s} : {}'.format('# Evaluations ', n_eval))
+    print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(r2_score_adj, 2)))
+    print(' - {:<25s} : {}'.format('mquantiles', np.around(np.squeeze(np.array(mquantiles)), 2)))
 
-    filename = 'r2_DoE_QuadLeg{:d}_PCE_{:s}.npy'.format(iquad_orders, pce_fit_method)
-    np.save(os.path.join(simparams.data_dir, filename), np.array(r2_adj))
+    # filename = 'mquantile_DoE_QuadLeg{:d}_PCE_{:s}.npy'.format(iquad_orders, fit_method)
+    # np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
+
+    # filename = 'r2_DoE_QuadLeg{:d}_PCE_{:s}.npy'.format(iquad_orders, fit_method)
+    # np.save(os.path.join(simparams.data_dir, filename), np.array(r2_adj))
 
 
 
