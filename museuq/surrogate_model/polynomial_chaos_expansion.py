@@ -29,14 +29,14 @@ class PolynomialChaosExpansion(SurrogateModel):
         self.basis_norms_   = norm
         self.active_        = [] ## Indices of active variables (used for sparse model).
 
-        # __________________________________________________________________________________________________________________
+        # _________________________________________________________________________________________
         #           |                           Parameters
-        # metamodel |-------------------------------------------------------------------------------------------------------
+        # metamodel |------------------------------------------------------------------------------
         #           |           required            |            optional 
-        # ------------------------------------------------------------------------------------------------------------------
+        # -----------------------------------------------------------------------------------------
         # PCE       | dist_zeta, method         | dist_zeta_J, dist_x, dist_x_J, poly_order
-        # __________________________________________________________________________________________________________________
-        # __________________________________________________________________________________________________________________
+        # _________________________________________________________________________________________
+        # _________________________________________________________________________________________
         # For PCE model, following parameters are required:
         # print(r'------------------------------------------------------------')
         # print(r'>>> Initialize SurrogateModel Object...')
@@ -138,11 +138,11 @@ class PolynomialChaosExpansion(SurrogateModel):
             kf      = KFold(n_splits=n_splits,shuffle=True)
             print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape',X.shape, y.shape))
             lassolars = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count()).fit(X,y)
-            # self.metamodels     = lassolars 
+            self.lasso_lars     = lassolars
             self.active_        = np.unique([0,] + list(*np.nonzero(lassolars.coef_)))
             self.coeffs_basis_  = lassolars.coef_[self.active_] 
             self.active_basis_  = self.basis_[self.active_]
-            self.metamodels     = cp.poly.sum(cp.polynomial(self.coeffs_basis_ )* self.active_basis_)
+            self.metamodels     = cp.poly.sum(cp.polynomial(self.active_basis_)*self.coeffs_basis_ ) + lassolars.intercept_
             self.cv_error       = np.min(np.mean(lassolars.mse_path_, axis=1))
             print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
 
