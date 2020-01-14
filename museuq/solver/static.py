@@ -66,9 +66,10 @@ class Ishigami(Solver):
 
         assert x.shape[0] == int(3), 'Ishigami function expecting 3 random variables, {} given'.format(x.shape[0])
         if x.ndim == 1:
-            self.y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
+            y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
         else:
-            self.y = np.sin(x[0,:]) + self.p[0] * np.sin(x[1,:])**2 + self.p[1]*x[2,:]**4 * np.sin(x[0,:])
+            y = np.sin(x[0,:]) + self.p[0] * np.sin(x[1,:])**2 + self.p[1]*x[2,:]**4 * np.sin(x[0,:])
+        return y
 
 
 
@@ -88,7 +89,8 @@ class xsinx(Solver):
     def run(self, x):
         x = np.array(x)
         # e = self.error.samples()
-        self.y = x * np.sin(x)
+        y = x * np.sin(x)
+        return y
         # y = y + e
 
 class poly4th(Solver):
@@ -106,7 +108,8 @@ class poly4th(Solver):
 
     def run(self, x):
         x = np.squeeze(np.array(x))
-        self.y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
+        y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
+        return y
         # e = error.samples()
         # y = y + e
 
@@ -131,7 +134,8 @@ class polynomial_square_root_function(Solver):
         x = np.array(x)
         x1 = x[0,:]
         x2 = x[1,:]
-        self.y = -((-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2)**0.5 + 14 
+        y = -((-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2)**0.5 + 14 
+        return y
         # e = error.samples()
         # y = y + e
 
@@ -170,8 +174,9 @@ class four_branch_system(Solver):
         y3 = (x1 - x2) + 7.0/np.sqrt(2) 
         y4 = (x2 - x1) + 7.0/np.sqrt(2) 
 
-        self.y = np.array([y1, y2, y3, y4]).min(axis=0)
-        self.y = 10 - self.y 
+        y = np.array([y1, y2, y3, y4]).min(axis=0)
+        y = 10 - y 
+        return y
 
         # e = error.samples()
         # y = y + e
@@ -205,7 +210,8 @@ class polynomial_product_function(Solver):
     def run(self, x):
         x = np.array(x)
         y = np.array([ix**4 + ix**2 + 5*ix for ix in x])
-        self.y = 0.5 * np.sum(y, axis=0)
+        y = 0.5 * np.sum(y, axis=0)
+        return y
         # e = error.samples()
         # self.y = self.y + e
 
