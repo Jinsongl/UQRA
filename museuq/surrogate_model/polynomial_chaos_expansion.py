@@ -138,9 +138,11 @@ class PolynomialChaosExpansion(SurrogateModel):
             kf      = KFold(n_splits=n_splits,shuffle=True)
             print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape',X.shape, y.shape))
             lassolars = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count()).fit(X,y)
-            self.metamodels     = lassolars 
-            self.coeffs_basis_  = lassolars.coef_[np.nonzero(lassolars.coef_)] 
-            self.active_        = [0,] + list(*np.nonzero(lassolars.coef_))
+            # self.metamodels     = lassolars 
+            self.active_        = np.unique([0,] + list(*np.nonzero(lassolars.coef_)))
+            self.coeffs_basis_  = lassolars.coef_[self.active_] 
+            self.active_basis_  = self.basis_[self.active_]
+            self.metamodels     = cp.poly.sum(cp.polynomial(self.coeffs_basis_ )* self.active_basis_)
             self.cv_error       = np.min(np.mean(lassolars.mse_path_, axis=1))
             print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
 
@@ -193,12 +195,8 @@ class PolynomialChaosExpansion(SurrogateModel):
         y : list of array, array shape = (nsamples, )
             predicted value from surrogate models at query points
         """
-        if self.fit_method.upper() in ['GALERKIN', 'GLK','PROJECTION','OLS', 'WLS','OLSLARS' ]:
+        if self.fit_method.upper() in ['GALERKIN', 'GLK','PROJECTION','OLS', 'WLS','OLSLARS','LASSOLARS']:
             y_pred = self.metamodels(*x).T
-
-        elif self.fit_method.upper() in ['LASSOLARS']:
-            X = self.basis_(*x)
-            y_pred = self.metamodels.predict(X.T)
         else:
             raise NotImplementedError
 
