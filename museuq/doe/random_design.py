@@ -60,7 +60,7 @@ class RandomDesign(ExperimentalDesign):
                     u_samples.append(idist.rvs(size=self.n_samples))
                 else:
                     u_samples.append(idist.rvs(*idist_theta, size=self.n_samples))
-            self.u = np.array(u_samples) 
+            return  np.array(u_samples) 
         elif self.method.upper() in ['HALTON', 'HAL', 'H']:
             raise NotImplementedError 
 

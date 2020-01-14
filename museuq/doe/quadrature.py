@@ -60,19 +60,15 @@ class QuadratureDesign(ExperimentalDesign):
         """
         coords, weights = [], [] 
 
-        # if self.ndim == 1:
-            # u, w = self._gen_quad_1d(self.basis_names[0], self.p, self.dist_theta) 
-            # self.u = u.reshape(1, -1) 
-            # self.w = np.squeeze(w)
-        # else:
         for ibasis_names, idist_theta in zip(self.basis_names, self.dist_theta):
             iu, iw = self._gen_quad_1d(ibasis_names, self.p, idist_theta) 
             coords.append(iu)
             weights.append(iw)
-        self.u = np.array(list(itertools.product(*coords))).T
-        self.u = self.u.reshape(self.ndim, -1)
-        self.w = np.prod(np.array(list(itertools.product(*weights))).T, axis=0)
-        self.w = np.squeeze(self.w)
+        u = np.array(list(itertools.product(*coords))).T
+        u = u.reshape(self.ndim, -1)
+        w = np.prod(np.array(list(itertools.product(*weights))).T, axis=0)
+        w = np.squeeze(w)
+        return u, w
 
 
     def _gen_quad_1d(self, basis_name, p, dist_theta=None):

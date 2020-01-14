@@ -49,7 +49,6 @@ class LatinHyperCube(ExperimentalDesign):
     def samples(self):
         lhs_u   = pyDOE2.lhs(self.ndim, samples=self.n_samples, criterion=self.criterion, iterations=self.iterations)
         lhs_u   = lhs_u.reshape(self.ndim, self.n_samples)
-        self.u  = lhs_u
         lhs_x   = []
         for ilhd_u, idist_name, idist_theta in zip(lhs_u, self.dist_names, self.dist_theta):
             idist_name = idist_name.lower()
@@ -60,7 +59,9 @@ class LatinHyperCube(ExperimentalDesign):
             else:
                 # print(idist_theta)
                 lhs_x.append(idist.ppf(ilhd_u, *idist_theta))
-        self.x = np.array(lhs_x)
+        lhs_x = np.array(lhs_x)
+        return lhs_u, lhs_x
+
 
 
 
