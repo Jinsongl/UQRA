@@ -101,6 +101,30 @@ def mquantiles(a, prob=[0.25, 0.5, 0.75],axis=0,limit=(),multioutput='uniform_av
     return res
 
 def moment(a, moment=1, axis=0, nan_policy='propagate',multioutput='uniform_average'):
+    """
+    Parameters
+        aarray_like
+        Input array.
+
+        momentint or array_like of ints, optional
+        Order of central moment that is returned. Default is 1.
+
+        axisint or None, optional
+        Axis along which the central moment is computed. Default is 0. If None, compute over the whole array a.
+
+        nan_policy{‘propagate’, ‘raise’, ‘omit’}, optional
+        Defines how to handle when input contains nan. The following options are available (default is ‘propagate’):
+
+        ‘propagate’: returns nan
+
+        ‘raise’: throws an error
+
+        ‘omit’: performs the calculations ignoring nan values
+
+    Returns
+        n-th central momentndarray or float
+        The appropriate moment along the given axis or over all values if axis is None. The denominator for the moment calculation is the number of observations, no degrees of freedom correction is done.
+    """
     ### output format (nmoments, noutputs)
     res = sp.stats.moment(a, moment=moment, axis=axis, nan_policy=nan_policy)
     if multioutput.lower() == 'uniform_average':

@@ -11,6 +11,7 @@ from museuq.environment import Kvitebjorn as Kvitebjorn
 from sklearn import datasets
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
+from museuq.utilities import metrics_collections as uq_metrics
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
@@ -18,6 +19,60 @@ sys.stdout  = museuq.utilities.classes.Logger()
 data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
+
+    def test_moments(self):
+        # np.set_printoptions(precision=3)
+        data_dir = '/Volumes/External/MUSE_UQ_DATA/Ishigami/Data'
+        y = []
+        for r in range(10):
+            filename  = 'DoE_McsE6R{:d}.npy'.format(r)
+            data_set  = np.load(os.path.join(data_dir, filename))
+            y.append(data_set[-1,:])
+        moments  = uq_metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
+        print(np.mean(moments, axis=1))
+        print(np.std(moments, axis=1))
+
+        print('--> GLK')
+        y = []
+        for r in range(10):
+            filename  = 'DoE_McsE6R{:d}_PCE6_GLK.npy'.format(r)
+            data_set  = np.load(os.path.join(data_dir, filename))
+            y.append(data_set)
+        moments  = uq_metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
+        print(np.mean(moments, axis=1))
+        print(np.std(moments, axis=1))
+
+        print('--> OLS')
+        y = []
+        for r in range(10):
+            filename  = 'DoE_McsE6R{:d}_PCE9_OLS.npy'.format(r)
+            data_set  = np.load(os.path.join(data_dir, filename))
+            y.append(data_set)
+        moments  = uq_metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
+        print(np.mean(moments, axis=1))
+        print(np.std(moments, axis=1))
+
+        print('--> OLSLARS')
+        y = []
+        for r in range(10):
+            filename  = 'DoE_McsE6R{:d}_PCE9_OLSLARS.npy'.format(r)
+            data_set  = np.load(os.path.join(data_dir, filename))
+            y.append(data_set)
+        moments  = uq_metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
+        print(np.mean(moments, axis=1))
+        print(np.std(moments, axis=1))
+
+        print('--> LASSOLARS')
+        y = []
+        for r in range(10):
+            filename  = 'DoE_McsE6R{:d}_PCE9_LASSOLARS.npy'.format(r)
+            data_set  = np.load(os.path.join(data_dir, filename))
+            y.append(data_set)
+        moments  = uq_metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
+        print(np.mean(moments, axis=1))
+        print(np.std(moments, axis=1))
+
+
 
     def test_loo(self):
 
@@ -73,10 +128,6 @@ class BasicTestSuite(unittest.TestCase):
         # print(uq_metrics.leave_one_out_error(X,y,is_adjusted=False))
         # print(np.mean(mse))
         
-
-            
-
-
     def test_QuadratureDesign(self):
         print('>>> 1D quadrature design:') 
 
@@ -154,45 +205,56 @@ class BasicTestSuite(unittest.TestCase):
         # data_dir = 'E:\Run_MUSEUQ'
         np.random.seed(100)
         # dist_x = cp.Normal()
+        dist_u= cp.Iid(cp.Normal(),2)
+        u_samples = dist_u.sample(100)
+        basis = cp.orth_ttr(10,dist_u)
+        X = basis(*u_samples).T
+        doe = museuq.OptimalDesign('D', n_samples=10)
+        doe_index = doe.samples(X, is_orth=True)
+        doe_index = doe.adaptive(X, n_samples=10)
+        print(doe_index)
+        doe_index = doe.adaptive(X, n_samples=10)
+        print(doe_index)
+
 
         ### 2D
-        quad_orders = range(4,11)
-        alpha = [1.0, 1.1, 1.3, 1.5, 2.0,2.5, 3.0,3.5, 5]
-        dist_u= cp.Iid(cp.Normal(),2)
-        for iquad_orders in quad_orders:
-            basis = cp.orth_ttr(iquad_orders-1,dist_u)
-            for r in range(10):
-                filename  = 'DoE_McsE6R{:d}_stats.npy'.format(r)
-                data_set  = np.load(os.path.join(data_dir, filename))
-                samples_y = np.squeeze(data_set[:,4,:]).T
+        # quad_orders = range(4,11)
+        # alpha = [1.0, 1.1, 1.3, 1.5, 2.0,2.5, 3.0,3.5, 5]
+        # dist_u= cp.Iid(cp.Normal(),2)
+        # for iquad_orders in quad_orders:
+            # basis = cp.orth_ttr(iquad_orders-1,dist_u)
+            # for r in range(10):
+                # filename  = 'DoE_McsE6R{:d}_stats.npy'.format(r)
+                # data_set  = np.load(os.path.join(data_dir, filename))
+                # samples_y = np.squeeze(data_set[:,4,:]).T
                 
-                filename  = 'DoE_McsE6R{:d}.npy'.format(r)
-                data_set  = np.load(os.path.join(data_dir, filename))
-                samples_u = data_set[0:2, :]
-                samples_x = data_set[2:4, :]
-                # samples_y = data_set[6  , :].reshape(1,-1)
-                print('Quadrature Order: {:d}'.format(iquad_orders))
-                print('Candidate samples filename: {:s}'.format(filename))
-                print('   >> Candidate sample set shape: {}'.format(samples_u.shape))
-                design_matrix = basis(*samples_u).T
-                print('   >> Candidate Design matrix shape: {}'.format(design_matrix.shape))
-                for ia in alpha:
-                    print('   >> Oversampling rate : {:.2f}'.format(ia))
-                    doe_size = min(int(len(basis)*ia), 10000)
-                    doe = museuq.OptimalDesign('S', n_samples = doe_size )
-                    doe.samples(design_matrix, u=samples_u, is_orth=True)
-                    data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
-                    filename = os.path.join(data_dir, 'DoE_McsE6R{:d}_p{:d}_OptS{:d}'.format(r,iquad_orders,doe_size))
-                    np.save(filename, data)
+                # filename  = 'DoE_McsE6R{:d}.npy'.format(r)
+                # data_set  = np.load(os.path.join(data_dir, filename))
+                # samples_u = data_set[0:2, :]
+                # samples_x = data_set[2:4, :]
+                # # samples_y = data_set[6  , :].reshape(1,-1)
+                # print('Quadrature Order: {:d}'.format(iquad_orders))
+                # print('Candidate samples filename: {:s}'.format(filename))
+                # print('   >> Candidate sample set shape: {}'.format(samples_u.shape))
+                # design_matrix = basis(*samples_u).T
+                # print('   >> Candidate Design matrix shape: {}'.format(design_matrix.shape))
+                # for ia in alpha:
+                    # print('   >> Oversampling rate : {:.2f}'.format(ia))
+                    # doe_size = min(int(len(basis)*ia), 10000)
+                    # doe = museuq.OptimalDesign('S', n_samples = doe_size )
+                    # doe.samples(design_matrix, u=samples_u, is_orth=True)
+                    # data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
+                    # filename = os.path.join(data_dir, 'DoE_McsE6R{:d}_p{:d}_OptS{:d}'.format(r,iquad_orders,doe_size))
+                    # np.save(filename, data)
 
-                for ia in alpha:
-                    print('   >> Oversampling rate : {:.2f}'.format(ia))
-                    doe_size = min(int(len(basis)*ia), 10000)
-                    doe = museuq.OptimalDesign('D', n_samples = doe_size )
-                    doe.samples(design_matrix, u=samples_u, is_orth=True)
-                    data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
-                    filename = os.path.join(data_dir, 'DoE_McsE6R{:d}_p{:d}_OptD{:d}'.format(r,iquad_orders,doe_size))
-                    np.save(filename, data)
+                # for ia in alpha:
+                    # print('   >> Oversampling rate : {:.2f}'.format(ia))
+                    # doe_size = min(int(len(basis)*ia), 10000)
+                    # doe = museuq.OptimalDesign('D', n_samples = doe_size )
+                    # doe.samples(design_matrix, u=samples_u, is_orth=True)
+                    # data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
+                    # filename = os.path.join(data_dir, 'DoE_McsE6R{:d}_p{:d}_OptD{:d}'.format(r,iquad_orders,doe_size))
+                    # np.save(filename, data)
                     
                     
 
@@ -496,7 +558,6 @@ class BasicTestSuite(unittest.TestCase):
         # print(solver.y.shape)
         # print(solver.y_stats.shape)
 
-
         x = np.arange(30).reshape(3,10)
         solver = museuq.Ishigami()
         solver.run(x)
@@ -532,9 +593,6 @@ class BasicTestSuite(unittest.TestCase):
         solver.run(x)
         print(solver)
         print(solver.y.shape)
-
-
-
 
         ### General Solver run testing 
         # print('========================TESTING: Solver =======================')

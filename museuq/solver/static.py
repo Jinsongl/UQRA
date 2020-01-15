@@ -71,8 +71,6 @@ class Ishigami(Solver):
             y = np.sin(x[0,:]) + self.p[0] * np.sin(x[1,:])**2 + self.p[1]*x[2,:]**4 * np.sin(x[0,:])
         return y
 
-
-
 class xsinx(Solver):
     """
     y = x*sin(x) + e

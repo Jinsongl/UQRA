@@ -23,12 +23,11 @@ sys.stdout  = museuq.utilities.classes.Logger()
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
-    ndim        = 3
-    dist_x      = cp.Iid(cp.Uniform(-np.pi, np.pi),ndim) 
-    dist_zeta   = cp.Iid(cp.Uniform(-1, 1),ndim) 
-    simparams   = museuq.simParameters('Ishigami', dist_zeta)
+    ndim        = 2
+    dist_x      = cp.Iid(cp.Normal(),ndim) 
+    dist_zeta   = cp.Iid(cp.Normal(),ndim) 
+    simparams   = museuq.simParameters('four_branch_system', dist_zeta)
     solver      = museuq.Ishigami()
-    # fit_method  = 'OLS'
 
     ### ============ Adaptive parameters ============
     plim        = (2,15)
@@ -39,8 +38,8 @@ def main():
 
     ### ============ Stopping Criteria ============
     poly_orders     = np.arange(plim[0], plim[1])
-    fit_method      = 'LASSOLARS'
-    poly_order      = 5#plim[0]
+    fit_method      = 'OLSLARS'
+    poly_order      = plim[0]
     error_loo       = []
     mquantiles      = []
     r2_score_adj    = []
@@ -63,10 +62,6 @@ def main():
         pce_model   = museuq.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, method=fit_method)
         y_pred      = pce_model.predict(u_train)
-        y_pred2     = pce_model.lasso_lars.predict(pce_model.basis_(*u_train).T)
-        print('true : {}'.format(np.around(y_train[:4], 2)))
-        print('from cp.poly: {}'.format(np.around(y_pred[:4], 2)))
-        print('from lassolars: {}'.format(np.around(y_pred2[:4], 2)))
 
         filename = 'DoE_McsE6R0.npy'
         data_set = np.load(os.path.join(simparams.data_dir, filename))
