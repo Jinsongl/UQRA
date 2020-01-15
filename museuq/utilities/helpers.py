@@ -12,7 +12,7 @@
 
 import numpy as np, scipy as sp, scipy.stats as scistats
 import os, sys, warnings, collections, csv, itertools, math
-from statsmodels.distributions.empirical_distribution import ECDF
+from statsmodels.distributions.empirical_distribution import ECDF as mECDF
 
 Ecdf2plot = collections.namedtuple('Ecdf2plot', ['x','y'])
 
@@ -77,6 +77,90 @@ def upload2gdrive(filename, data, parent_id):
             print('   * {:<7s} : {:d}/ 5'.format('trial', n_times2upload),end="\r")
         n_times2upload +=1
 
+
+def ECDF(x,**kwargs):
+    """
+    Extend the functionality of statsmodels.distributions.empirical_distribution.ECDF
+    Parameters
+        x: array-like of shape(n_observations, n_features)
+        alpha: exceedance probability, optional
+        side{‘left’, ‘right’}, optional, Default is ‘right’. Defines the shape of the intervals constituting the steps. ‘right’ correspond to [a, b) intervals and ‘left’ to (a, b].
+        is_expand: boolean, default False. 
+            False: perform ECDF on ecah columns of x, (each feature)
+            True: only perform ECDF on the first column and the rest are sorted based on the sorted index of first column
+        return_all: boolean, defautl False
+            False: when number of samples is large and the purpose for applying ECDF is to get the exceedance plot, return ALL data samples will lead to large plot files. 
+
+    Returns
+        Empirical CDF as a step function.
+    """
+    x = np.array(x)
+    alpha       = kwargs.get('alpha', None)
+    side        = kwargs.get('side', 'right')
+    is_expand   = kwargs.get('is_expand' , False)
+    return_all  = kwargs.get('return_all', False) 
+
+    if return_all:
+        if x.ndim == 1:
+            return mECDF(x, side=side)
+        else:
+            if is_expand:
+                x_ecdf = mECDF(x[:,0], side=side)
+                sort_idx = np.argsort(x[:,0])
+                x_ecdf.x = x[sort_idx, :] 
+                return x_ecdf
+            else:
+                x_ecdf = mECDF([3, 3, 1, 4]) ## just initialize
+                x_ecdf.x = []
+                x_ecdf.y = []
+                x_ecdf.n = []
+                for ix in x.T:
+                    ix_ecdf = mECDF(ix, side=side)
+                    x_ecdf.x.append(ix_ecdf.x)
+                    x_ecdf.y.append(ix_ecdf.y)
+                    x_ecdf.n.append(ix_ecdf.n)
+                return x_ecdf
+
+    else:
+        assert alpha is not None
+        if x.ndim == 1:
+            x_ecdf = mECDF(x, side=side)
+            idx = (np.abs(x_ecdf.y - (1-alpha))).argmin()
+            _, compressed_idx = np.unique(np.round(x_ecdf.x[:idx], decimals=2), return_index=True)
+            x_ecdf.x = np.concatenate((x_ecdf.x[compressed_idx], x_ecdf.x[idx:]), axis=-1)
+            x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[idx:]), axis=-1)
+            x_ecdf.n = len(x_ecdf.x)
+            return x_ecdf
+
+        else:
+            if is_expand:
+                x_ecdf = mECDF(x[:,0], side=side)
+                sort_idx = np.argsort(x[:,0])
+                x = x[sort_idx,:]
+                idx = (np.abs(x_ecdf.y - (1-alpha))).argmin()
+                _, compressed_idx = np.unique(np.round(x_ecdf.x[:idx], decimals=2), return_index=True)
+                x_ecdf.x = np.concatenate((x[compressed_idx,:], x[idx:,:]), axis=-1)
+                x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[idx:]), axis=-1)
+                x_ecdf.n = len(x_ecdf.x)
+                return x_ecdf
+
+            else:
+                x_ecdf = mECDF([3, 3, 1, 4]) ## just initialize
+                x_ecdf.x = []
+                x_ecdf.y = []
+                x_ecdf.n = []
+                for ix in x.T:
+                    ix_ecdf = mECDF(ix, side=side)
+                    idx = (np.abs(ix_ecdf.y - (1-alpha))).argmin()
+                    _, compressed_idx = np.unique(np.round(ix_ecdf.x[:idx], decimals=2), return_index=True)
+                    x_ecdf.x.append(np.concatenate((ix_ecdf.x[compressed_idx], ix_ecdf.x[idx:]), axis=-1))
+                    x_ecdf.y.append(np.concatenate((ix_ecdf.y[compressed_idx], ix_ecdf.y[idx:]), axis=-1))
+                    x_ecdf.n.append(len(x_ecdf.x))
+                return x_ecdf
+
+
+
+
 def get_exceedance_data(x,prob=1e-3,**kwargs):
     """
     Retrieve the exceedance data for specified prob from data set x
@@ -84,51 +168,98 @@ def get_exceedance_data(x,prob=1e-3,**kwargs):
     Arguments:
         x: array-like data set of shape(m, n)
         prob: exceedance probability
-        isExpand: boolean type, default False
+        is_expand: boolean type, default False
           if True: retrieve exceedance data for 1st row, and sort the rest rows based on first row  
           if False: retrieve exceeance data for each row 
     Return:
         if x.ndim == 1, return [ecdf.x, ecdf.y [,ecdf_index]],
             np.ndarray of shape (2,k) or (3,k), k: number of exceedance samples to plot easily
         else
-            if isExpand:
+            if is_expand:
                 return (m, k)
             else:
                 return a list of (3,n) arrays
     """
     x = np.array(x)
-    isExpand    = kwargs.get('isExpand'     , False)
-    return_index= kwargs.get('return_index' , False)
+    is_expand    = kwargs.get('is_expand'     , False)
     return_all  = kwargs.get('return_all'   , False) 
 
-    if x.ndim == 1 or np.squeeze(x).ndim == 1:
-        result = _get_exceedance1d(np.squeeze(x), prob=prob, return_index=return_index, return_all=return_all)
+    if np.isscalar(prob):
+        ##   If only one prob number is given, same prob will be applied to all rows
+        prob = [prob,] * x.shape[0]
+    elif isinstance(prob, list) and len(prob) == 1:
+        prob = [prob[0],] * x.shape[0]
     else:
-        if isExpand:
+        ##   If a list of prob is given, each prob is applied to corresponding row
+        assert (len(prob) == x.shape[0]), "Length of target probability should either be 1 or equal to number of rows in x, but len(prob)={:d}, x.shape[0]={:d}".format(len(prob), x.shape[0])
+
+    if x.ndim == 1 or np.squeeze(x).ndim == 1:
+        x_ecdf = _get_exceedance1d(np.squeeze(x), prob=prob, return_all=return_all)
+        return x_ecdf
+    else:
+        if is_expand:
             ## get sorting index with the first row
-            res1row_x, res1row_y, res1row_idx = _get_exceedance1d(x[0,:], prob=prob, return_index=True, return_all=return_all)
-            res1row_idx = np.array(res1row_idx, dtype=np.int32)
-            result = [res1row_x,]
-            ## taking care of the rest rows
-            for irow in x[1:,:]:
-                irow_sorted = irow[res1row_idx[1:]] ## the first element is the total number of samples
-                irow_sorted = np.insert(irow_sorted, 0, irow_sorted.size)
-                result.append(irow_sorted) 
-            result.append(res1row_y)
-            result = np.vstack(result)
+            x_ecdf = _get_exceedance1d(x[0,:], prob=prob, return_all=return_all)
+            x_ecdf.x = x[:, x_ecdf.index]
+            return x_ecdf
         else:
             ## Geting exceedance for each row of x
-            ##   If only one prob number is given, same prob will be applied to all rows
-            ##   If a list of prob is given, each prob is applied to corresponding row
-            if np.isscalar(prob):
-                prob = [prob,] * x.shape[0]
-            elif len(prob) == 1:
-                prob = [prob[0],] * x.shape[0]
-            else:
-                assert (len(prob) == x.shape[0]), "Length of target probability should either be 1 or equal to number of rows in x, but len(prob)={:d}, x.shape[0]={:d}".format(len(prob), x.shape[0])
-            result = [_get_exceedance1d(irow, prob=iprob, return_index=return_index, return_all=return_all) for irow,iprob in zip(x, prob)]
-## each result element corresponds to one result for each row in x. Number of element in result could be different. Can only return list
-    return result
+            result = []
+            for iprob in prob:
+                result.append([_get_exceedance1d(irow, prob=iprob,return_all=return_all) for irow in x])
+            return result
+
+def _get_exceedance1d(x,prob=1e-3,  return_all=False ):
+    """
+    return emperical cdf from dataset x
+    Parameters:
+        x: 1d array of shape(n,)
+        prob: exceedance probability
+        return_all: boolean [default False], If true, return all ecdf.x ecdf.y, otherwise, compress dataset size and return
+
+    Return: statsmodels.distributions.empirical_distribution.ECDF object
+        ecdf.x, sorted values for x
+        ecdf.y, corresponding probability for each x
+        ecdf.index, index to sort x
+
+    """
+
+    assert np.array(x).ndim == 1
+    x_ecdf  = ECDF(x)
+    x_ecdf.index = np.argsort(x)
+
+    print(x_ecdf.n)
+    print(prob)
+    if x_ecdf.n <= 1.0/prob:
+        warnings.warn('\n Not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(x_ecdf.n, prob))
+    else:
+        if return_all:
+            return x_ecdf
+        else:
+
+            ### When there are a large number of points, exceedance plot with all data points will lead to large figures. 
+            ### Usually, it is not necessary to use all data points to have a decent exceedance plots since large portion 
+            ### of the data points will be located in the 'middle' region. Here we collapse data points to a reasonal number
+
+            prob_index = -int(prob * n)   # index of the result value at targeted exceedance prob
+            prob_value = x_ecdf.x[prob_index] # result x value
+            _, index2return = np.unique(np.round(x_ecdf.x[:prob_index], decimals=2), return_index=True)
+            # remove 'duplicate' values up to index prob_index, wish to have much smaller size of data when making plot
+            # append the rest to the array
+            x1 = x_ecdf.x[index2return]
+            y1 = x_ecdf.y[index2return]
+            sort_idx1 = x_ecdf.index[index2return]
+
+            x2 = x_ecdf.x[prob_index:]
+            y2 = x_ecdf.y[prob_index:]
+            sort_idx2 = x_ecdf.index[prob_index:]
+            x  = np.hstack((x1,x2))
+            y  = np.hstack((y1,y2))
+            v  = np.hstack((sort_idx1, sort_idx2), dtype=np.int32) 
+            x_ecdf.x = x
+            x_ecdf.y = y
+            x_ecdf.index = v
+            return x_ecdf
 
 def get_weighted_exceedance(x, **kwargs):
     """
@@ -228,70 +359,6 @@ def _get_stats(data, stats=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'ab
 
     return np.array(res)
 
-def _get_exceedance1d(x,prob=1e-3, return_index=False, return_all=False ):
-    """
-    return emperical cdf from dataset x
-    Parameters:
-        x: 1d array of shape(n,)
-        prob: exceedance probability
-        return_index: boolean [default False], If true, will return the indices of sorted data to get ecdf.x
-        return_all: boolean [default False], If true, return all ecdf.x ecdf.y, otherwise, compress dataset size and return
-
-    Return:
-        ndarray of shape (3,k)
-        (0,:): ecdf.x, sorted values for x
-        (1,:): ecdf.y, corresponding probability for each x
-        if return_index:
-        (2,:): indice based on ecdf.x
-
-    """
-
-    assert np.array(x).ndim == 1
-    x_ecdf  = ECDF(x)
-    n       = len(x_ecdf.x)
-    sort_idx= np.argsort(x)
-
-    if n <= 1.0/prob:
-        if return_index:
-            ## ECDF return size will always adding one point (ECDF=0 or ECDF=1). To make it possible to stack, inserting the total number of samples in index_
-            index_ = np.insert(sort_idx, 0, sort_idx.size)
-            result = np.vstack((x_ecdf.x, x_ecdf.y, index_ ))
-        else:
-            result = np.vstack((x_ecdf.x, x_ecdf.y))
-        warnings.warn('\n Not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(n, prob))
-    else:
-        if return_all:
-            if return_index:
-                index_ =np.insert(sort_idx, 0, sort_idx.size)
-                result = np.vstack((x_ecdf.x, x_ecdf.y, index_ ))
-            else:
-                result = np.vstack((x_ecdf.x, x_ecdf.y))
-        else:
-
-            ### When there are a large number of points, exceedance plot with all data points will lead to large figures. 
-            ### Usually, it is not necessary to use all data points to have a decent exceedance plots since large portion 
-            ### of the data points will be located in the 'middle' region. Here we collapse data points to a reasonal number
-
-            prob_index = -int(prob * n)   # index of the result value at targeted exceedance prob
-            prob_value = x_ecdf.x[prob_index] # result x value
-            _, index2return = np.unique(np.round(x_ecdf.x[:prob_index], decimals=2), return_index=True)
-            # remove 'duplicate' values up to index prob_index, wish to have much smaller size of data when making plot
-            # append the rest to the array
-            x1 = x_ecdf.x[index2return]
-            y1 = x_ecdf.y[index2return]
-            sort_idx1 = sort_idx[index2return]
-
-            x2 = x_ecdf.x[prob_index:]
-            y2 = x_ecdf.y[prob_index:]
-            sort_idx2 = sort_idx[prob_index:]
-            x  = np.hstack((x1,x2))
-            y  = np.hstack((y1,y2))
-            v  = np.hstack((sort_idx1, sort_idx2)) 
-            if return_index:
-                result = np.vstack((x,y,v))
-            else:
-                result = np.vstack((x,y))
-    return result
 
 def _get_weighted_exceedance1d(x,numbins=10, defaultreallimits=None, weights=None):
     """
