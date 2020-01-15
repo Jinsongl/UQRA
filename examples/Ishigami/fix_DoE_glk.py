@@ -24,40 +24,76 @@ from museuq.environment import Kvitebjorn
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
 
+
+def get_validation_data(quad_order, plim, n_lhs, ndim, data_dir=os.getcwd):
+    u = [] 
+    x = [] 
+    y = []
+    for ipoly_order in range(plim[0], plim[1]+1):
+        iquad_order = ipoly_order+1
+        if iquad_order == quad_order:
+            pass
+        else:
+            filename = 'DoE_QuadLeg{:d}.npy'.format(iquad_order)
+            data_set = np.load(os.path.join(data_dir, filename))
+            u.append(data_set[0:ndim,:] )
+            x.append(data_set[ndim:2*ndim,:])
+            y.append(data_set[-1,:])
+
+    filename = 'DoE_Lhs{:d}.npy'.format(n_lhs)
+    data_set = np.load(os.path.join(data_dir, filename))
+    u.append(data_set[0:ndim,:] )
+    x.append(data_set[ndim:2*ndim,:])
+    y.append(data_set[-1,:])
+
+    u = np.concatenate(u, axis=1)
+    x = np.concatenate(x, axis=1)
+    y = np.concatenate(y)
+    return u, x, y
+
 def main():
-    ## ------------------------ Parameters set-up ----------------------- ###
+    ### ------------------------ Parameters set-up ----------------------- ###
     ndim        = 3
     dist_x      = cp.Iid(cp.Uniform(-np.pi, np.pi),ndim) 
     dist_zeta   = cp.Iid(cp.Uniform(-1, 1),ndim) 
     simparams   = museuq.simParameters('Ishigami', dist_zeta)
     solver      = museuq.Ishigami()
-    # fit_method  = 'OLS'
 
-    ### ============ Adaptive parameters ============
-    plim        = (2,15)
+    ### ------------------------ Adaptive parameters ------------------------ 
+    plim        = [2,2]
     n_budget    = 1000
-    n_newsamples= 10
+    n_quad      = (plim[0]+1)**ndim 
+    n_lhs       = n_budget - n_quad
+    while (n_quad + (plim[1] +1+1)**ndim) < n_budget:
+        plim[1]+= 1
+        n_quad += (plim[1] + 1)**ndim
+        n_lhs   = n_budget - n_quad
+
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.05)
-    # simparams.set_error()  # no observation error for sdof
     simparams.info()
 
-    #### ----------------------- Build PCE Surrogate Model -------------------- ###
-    ### ============ Initialization  ============
+    ### ----------------------- Initialization  -------------------- 
     fit_method      = 'GLK'
     poly_order      = plim[0]
     n_eval_curr     = 0
     n_eval_next     = 0
     mquantiles      = []
     r2_score_adj    = []
+    cv_error        = []
     f_hat = None
 
-    # error_mse       = []
-    # u_valid = np.arange(3).reshape(3,1)
-    # y_valid = np.arange(1)
+    ### ----------------------- Get validation data for GLK-------------------- 
+    ### For GLK method, number of evaluations for one polynomial order p is predefined (p+1)**ndim
+    ### Thus, plim[1] is constrained by n_budget.
+    ### How to do cross validation in GLK? 
+    ### One can use all the data evaluated except the ones used to fit model 
+    ### Evaluated data set are chosen for poly_order in range plim. If there are left-over resource, those are sampled with LHS
+    
 
+    ### ----------------------- Adaptive step starts-------------------- 
     while simparams.is_adaptive_continue(n_eval_next, poly_order=poly_order,
-            r2_adj=r2_score_adj, mquantiles=mquantiles):
-        print('==> Adaptive simulation continue...')
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
+        print('   * Adaptive simulation continue...')
         ### ============ Get training points ============
         quad_order  = poly_order + 1
         filename    = 'DoE_QuadLeg{:d}.npy'.format(quad_order)
@@ -71,7 +107,10 @@ def main():
         ### ============ Build Surrogate Model ============
         pce_model   = museuq.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, w=w_train, method=fit_method)
-        y_pred      = pce_model.predict(u_train)
+        y_train_hat = pce_model.predict(u_train)
+
+        u_valid, x_valid, y_valid = get_validation_data(quad_order, plim, n_lhs, ndim, data_dir=simparams.data_dir)
+        y_valid_hat = pce_model.predict(u_valid)
 
         filename = 'DoE_McsE6R0.npy'
         data_set = np.load(os.path.join(simparams.data_dir, filename))
@@ -80,8 +119,8 @@ def main():
         y_samples= pce_model.predict(u_samples)
 
         ### ============ updating parameters ============
-        # error_mse.append(uq_metrics.mean_squared_error(y_valid, y_pred))
-        r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_pred, len(pce_model.active_)))
+        cv_error.append(uq_metrics.mean_squared_error(y_valid, y_valid_hat))
+        r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
         mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
         poly_order  += 1
         n_eval_curr += u_train.shape[1] 
@@ -96,7 +135,7 @@ def main():
 
     poly_order -= 1
     print('------------------------------------------------------------')
-    print('>>> Adaptive simulation done:')
+    print(' > Adaptive simulation done:')
     print('------------------------------------------------------------')
     print(' - {:<25s} : {}'.format('Polynomial order (p)', poly_order))
     print(' - {:<25s} : {}'.format('Active basis', f_hat.active_))
