@@ -26,6 +26,13 @@ sys.stdout  = museuq.utilities.classes.Logger()
 
 
 def get_validation_data(quad_order, plim, n_lhs, ndim, data_dir=os.getcwd):
+    """
+    For GLK method, number of evaluations for one polynomial order p is predefined (p+1)**ndim
+    Thus, plim[1] is constrained by n_budget.
+    How to do cross validation in GLK? 
+    One can use all the data evaluated except the ones used to fit model 
+    Evaluated data set are chosen for poly_order in range plim. If there are left-over resource, those are sampled with LHS
+    """
     u = [] 
     x = [] 
     y = []
@@ -83,11 +90,6 @@ def main():
     f_hat = None
 
     ### ----------------------- Get validation data for GLK-------------------- 
-    ### For GLK method, number of evaluations for one polynomial order p is predefined (p+1)**ndim
-    ### Thus, plim[1] is constrained by n_budget.
-    ### How to do cross validation in GLK? 
-    ### One can use all the data evaluated except the ones used to fit model 
-    ### Evaluated data set are chosen for poly_order in range plim. If there are left-over resource, those are sampled with LHS
     
 
     ### ----------------------- Adaptive step starts-------------------- 
@@ -127,12 +129,6 @@ def main():
         n_eval_next = n_eval_curr + (poly_order+1)**ndim
         f_hat = pce_model
 
-        # u_valid = np.hstack((u_valid, u_train))
-        # y_valid = np.hstack((y_valid, y_train))
-        # if ipoly_order == poly_orders[0]:
-            # u_valid = u_valid[:,1:]
-            # y_valid = y_valid[1:]
-
     poly_order -= 1
     print('------------------------------------------------------------')
     print(' > Adaptive simulation done:')
@@ -150,6 +146,9 @@ def main():
     filename = 'r2_DoE_QuadLeg_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(r2_score_adj))
 
+    filename = 'cv_error_DoE_LhsE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    np.save(os.path.join(simparams.data_dir, filename), np.array(cv_error))
+
     ## run MCS to get mquantile
     mquantiles = []
     for r in tqdm(range(10), ascii=True, desc="   - " ):
@@ -162,11 +161,9 @@ def main():
         filename = 'DoE_McsE6R{:d}_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
         np.save(os.path.join(simparams.data_dir, filename), y_samples)
 
-    filename = 'mquantile_DoE_McsE6_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
+    filename = 'mquantile_DoE_QuadLeg_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
-    # filename = 'mse_DoE_QuadLeg{:d}_PCE_{:s}.npy'.format(poly_order, fit_method)
-    # np.save(os.path.join(simparams.data_dir, filename), np.array(error_mse))
 
 
 if __name__ == '__main__':
