@@ -12,6 +12,7 @@ from sklearn import datasets
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
 from museuq.utilities import metrics_collections as uq_metrics
+import pickle
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
@@ -510,22 +511,51 @@ class BasicTestSuite(unittest.TestCase):
             # np.save(os.path.join(data_dir, filename[:-4]+'_ecdf_pf5.npy'), y_excd)
 
         data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/Ishigami/Data' 
-        pf = 1e-3
-        print('Target exceedance prob : {:.1e}'.format(pf))
-        # error_name = 'None'
-        # error_name = 'Normal'
-        # error_name = 'Gumbel'
-        for p in range(10):
-            # filename = 'DoE_McRE7R{:d}_y_{:s}.npy'.format(r, error_name.capitalize())
-            # filename = 'DoE_QuadHem5_PCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
-            # filename = 'DoE_QuadHem5R24_mPCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
-            # filename = 'DoE_Quad_Leg{:d}_PCE_GLK_valid_y.npy'.format(p)
-            filename = 'DoE_LHSE4R{:d}_y.npy'.format(p)
-            data_set = np.load(os.path.join(data_dir, filename))
-            y        = np.squeeze(data_set)
-            print(r'    - exceedance for y: {:s}'.format(filename))
-            y_excd   = uqhelpers.get_exceedance_data(y, prob=pf)
-            np.save(os.path.join(data_dir, filename[:-4]+'_ecdf.npy'), y_excd)
+        excd_prob= [1e-6]
+        print('Target exceedance prob : {}'.format(excd_prob))
+        y_excd = []
+        for iexcd_prob in excd_prob:
+            y = []
+            for r in range(10):
+                filename = 'DoE_McsE6R{:d}_PCE9_OLS.npy'.format(r)
+                print(r'    - exceedance for y: {:s}'.format(filename))
+                data_set = np.load(os.path.join(data_dir, filename))
+                y.append(data_set)
+            y_ecdf   = uqhelpers.ECDF(np.array(y).T, alpha=iexcd_prob, is_expand=False)
+            filename = os.path.join(data_dir,'DoE_McsE6_PCE9_OLS_pf6_ecdf.pickle')
+            with open(filename, 'wb') as handle:
+                pickle.dump(y_ecdf, handle)
+
+        y_excd = []
+        for iexcd_prob in excd_prob:
+            y = []
+            for r in range(10):
+                filename = 'DoE_McsE6R{:d}_PCE9_LASSOLARS.npy'.format(r)
+                print(r'    - exceedance for y: {:s}'.format(filename))
+                data_set = np.load(os.path.join(data_dir, filename))
+                y.append(data_set)
+            y_ecdf   = uqhelpers.ECDF(np.array(y).T, alpha=iexcd_prob, is_expand=False)
+            filename = os.path.join(data_dir,'DoE_McsE6_PCE9_LASSOLARS_pf6_ecdf.pickle')
+            with open(filename, 'wb') as handle:
+                pickle.dump(y_ecdf, handle)
+
+
+        y_excd = []
+        for iexcd_prob in excd_prob:
+            y = []
+            for r in range(10):
+                filename = 'DoE_McsE6R{:d}_PCE9_OLSLARS.npy'.format(r)
+                print(r'    - exceedance for y: {:s}'.format(filename))
+                data_set = np.load(os.path.join(data_dir, filename))
+                y.append(data_set)
+            y_ecdf   = uqhelpers.ECDF(np.array(y).T, alpha=iexcd_prob, is_expand=False)
+            filename = os.path.join(data_dir,'DoE_McsE6_PCE9_OLSLARS_pf6_ecdf.pickle')
+            with open(filename, 'wb') as handle:
+                pickle.dump(y_ecdf, handle)
+
+
+
+
 
     def test_bench4(self):
         print('========================TESTING: BENCH 4 =======================')
