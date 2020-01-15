@@ -103,6 +103,7 @@ class simParameters(object):
 
     def set_adaptive_parameters(self, **kwargs):
 
+        self.is_adaptive=True
         self.n_budget   = kwargs.get('n_budget' , np.inf)
         self.r2_bound   = kwargs.get('r2_bound' , 0.9   )
         self.mse_bound  = kwargs.get('mse_bound', None  )
@@ -168,9 +169,19 @@ class simParameters(object):
         if self.post_params:
             print(r'   * {:<15s} '.format('post analysis parameters'))
             qoi2analysis = self.qoi2analysis if self.qoi2analysis is not None else 'All'
-            print(r'     - {:<15s} : {} '.format('qoi2analysis', qoi2analysis))
+            print(r'     - {:<23s} : {} '.format('qoi2analysis', qoi2analysis))
             stats_list = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
-            print(r'     - {:<15s} : {} '.format('statistics'  , list(compress(stats_list, self.stats)) ))
+            print(r'     - {:<23s} : {} '.format('statistics'  , list(compress(stats_list, self.stats)) ))
+        if self.is_adaptive:
+            print(r'   * {:<15s} '.format('Adaptive parameters'))
+            print(r'     - {:<23s} : {} '.format('# Budget', self.n_budget))
+            print(r'     - {:<23s} : {} '.format('p-order', self.plim))
+            print(r'     - {:<23s} : {} '.format('r2 bound', self.r2_bound))
+            print(r'     - {:<23s} : {} '.format('mse bound', self.mse_bound))
+            print(r'     - {:<23s} : {} '.format('diff mse bound', self.mse_diff))
+            print(r'     - {:<23s} : {} '.format('diff quantile bound', self.qdiff_bound))
+
+
 
     def _make_output_dir(self, model_name):
         """
@@ -255,18 +266,18 @@ class simParameters(object):
                 2. at least one of the given metric criteria is NOT met
         """
 
-        print('==> Checking adaptive conditions...')
+        print(' > Checking adaptive conditions...')
         is_adaptive = []
         ## Algorithm stop when nsim >= n_budget 
         if nsim > self.n_budget:
-            print(' => Stopping... Reach simulation budget < {:d} >= {:d} >'.format(nsim, self.n_budget))
+            print(' >! Stopping... Reach simulation budget < {:d} >= {:d} >'.format(nsim, self.n_budget))
             return False
 
         ## Algorithm stop when poly_order > self.plim[-1]
         ## If poly_order is not given, this criteria should not affect the running of the algorithm. Return True
         poly_order = kwargs.pop('poly_order', -np.inf)
         if poly_order > self.plim[1]:
-            print(' => Stopping... Exceed max polynomial order p({:d}) > {:d}'.format(poly_order, self.plim[1]))
+            print(' >! Stopping... Exceed max polynomial order p({:d}) > {:d}'.format(poly_order, self.plim[1]))
             return False
 
         cv_error = kwargs.pop('cv_error', None)
@@ -275,7 +286,7 @@ class simParameters(object):
         else:
             cv_error = np.array(cv_error)
             if (cv_error[-3] < cv_error[-2]) and (cv_error[-2] < cv_error[-1]):
-                print(' => Stopping... Overfitting detected: {}'.format( np.around(cv_error, 4)))
+                print(' >! Stopping... Overfitting detected: {}'.format( np.around(cv_error, 4)))
                 return False
 
         ### For following metrics, algorithm stop (False) when all of these met.
@@ -295,7 +306,7 @@ class simParameters(object):
             is_r2 = is_r2[-2:]
             is_r2 = is_r2.any()
             if not is_r2:
-                print('  * Condition met: < {:<15s}: {} >'.format('R-squred', np.squeeze(r2[-2:])))
+                print('     - Condition met: < {:<15s}: {} >'.format('R-squred', np.squeeze(r2[-2:])))
         is_metrics.append(is_r2)
 
         ## Algorithm continue when r2_adj <= r2_bound (NOT met, return True)
@@ -310,7 +321,7 @@ class simParameters(object):
             is_r2_adj = is_r2_adj[-2:]
             is_r2_adj = is_r2_adj.any()
             if not is_r2_adj:
-                print('  * Condition met: < {:<15s}: {} >'.format('Adjusted R2', np.squeeze(r2_adj[-2:])))
+                print('     - Condition met: < {:<15s}: {} >'.format('Adjusted R2', np.squeeze(r2_adj[-2:])))
         is_metrics.append(is_r2_adj)
 
         ## Algorithm continue when mse continue when mse > mse_bound(NOT met, return True)
@@ -325,7 +336,7 @@ class simParameters(object):
             is_mse = is_mse[-2:]
             is_mse = is_mse.any()
             if not is_mse:
-                print('  * Condition met: < {:<15s}: {} >'.format('MSE ', np.squeeze(mse[-2:])))
+                print('     - Condition met: < {:<15s}: {} >'.format('MSE ', np.squeeze(mse[-2:])))
         is_metrics.append(is_mse)
 
         ## Algorithm continue when mse_diff continue when mse_diff > self.mse_diff(NOT met, return True)
@@ -340,7 +351,7 @@ class simParameters(object):
             is_mse_diff = is_mse_diff[-2:]
             is_mse_diff = is_mse_diff.any()
             if not is_mse_diff:
-                print('  * Condition met: < {:<15s}: {} >'.format('MSE diff', np.squeeze(mse_diff[-2:])))
+                print('     - Condition met: < {:<15s}: {} >'.format('MSE diff', np.squeeze(mse_diff[-2:])))
         is_metrics.append(is_mse_diff)
 
         ## Algorithm stop when mquantiles continue when qdiff > self.qdiff_bound
@@ -356,7 +367,7 @@ class simParameters(object):
             is_qdiff = is_qdiff[-2:]
             is_qdiff = is_qdiff.any()
             if not is_qdiff:
-                print('  * Condition met: < {:<15s}: {} >'.format('mquantiles diff', np.squeeze(qdiff[-2:])))
+                print('     - Condition met: < {:<15s}: {} >'.format('mquantiles diff', np.squeeze(qdiff[-2:])))
         is_metrics.append(is_qdiff)
         ### If any above metric is True ( NOT met), algorithm will continue (return True)
 
