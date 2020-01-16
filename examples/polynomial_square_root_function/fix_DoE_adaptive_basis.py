@@ -23,25 +23,23 @@ sys.stdout  = museuq.utilities.classes.Logger()
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
-    ndim        = 3
-    dist_x      = cp.Iid(cp.Uniform(-np.pi, np.pi),ndim) 
-    dist_zeta   = cp.Iid(cp.Uniform(-1, 1),ndim) 
-    simparams   = museuq.simParameters('Ishigami', dist_zeta)
-    solver      = museuq.Ishigami()
-    # fit_method  = 'OLS'
+    ndim        = 2
+    dist_x      = cp.Iid(cp.Normal(),ndim) 
+    dist_zeta   = cp.Iid(cp.Normal(),ndim) 
+    simparams   = museuq.simParameters('polynomial_square_root_function', dist_zeta)
+    solver      = museuq.polynomial_square_root_function()
 
     ### ============ Adaptive parameters ============
     plim        = (2,15)
     n_budget    = 1000
-    n_newsamples= 10
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.05)
     simparams.info()
 
     ### ============ Stopping Criteria ============
     poly_orders     = np.arange(plim[0], plim[1])
     fit_method      = 'LASSOLARS'
-    poly_order      = 5#plim[0]
-    error_loo       = []
+    poly_order      = plim[0]
+    cv_error        = []
     mquantiles      = []
     r2_score_adj    = []
     f_hat           = None
@@ -56,17 +54,13 @@ def main():
 
 
     while simparams.is_adaptive_continue(n_eval, poly_order=poly_order,
-            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=error_loo):
-        print('==> Adaptive simulation continue...')
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
+        print(' > Adaptive simulation continue...')
         ### ============ Build Surrogate Model ============
         quad_order  = poly_order + 1
         pce_model   = museuq.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, method=fit_method)
         y_pred      = pce_model.predict(u_train)
-        y_pred2     = pce_model.lasso_lars.predict(pce_model.basis_(*u_train).T)
-        print('true : {}'.format(np.around(y_train[:4], 2)))
-        print('from cp.poly: {}'.format(np.around(y_pred[:4], 2)))
-        print('from lassolars: {}'.format(np.around(y_pred2[:4], 2)))
 
         filename = 'DoE_McsE6R0.npy'
         data_set = np.load(os.path.join(simparams.data_dir, filename))
@@ -76,15 +70,12 @@ def main():
         y_samples= pce_model.predict(u_samples)
         done      = time.time()
 
-        print('   >> metamodels predictin elapsed: {}'.format(done - start))
+        # print('   >> metamodels predictin elapsed: {}'.format(done - start))
         ### ============ updating parameters ============
 
-        error_loo.append(pce_model.cv_error)
+        cv_error.append(pce_model.cv_error)
         r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_pred, len(pce_model.active_)))
         mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
-        print('cv_error: {}'.format(np.around(error_loo,2)))
-        print('r2_score_adj: {}'.format(np.around(r2_score_adj,2)))
-        print('mquantiles: {}'.format(np.around(mquantiles,2)))
         poly_order += 1
         f_hat       = pce_model
 
@@ -105,7 +96,7 @@ def main():
     np.save(os.path.join(simparams.data_dir, filename), np.array(r2_score_adj))
 
     filename = 'cv_error_DoE_DoE_LhsE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
-    np.save(os.path.join(simparams.data_dir, filename), np.array(error_loo))
+    np.save(os.path.join(simparams.data_dir, filename), np.array(cv_error))
 
 
     mquantiles = []
@@ -119,10 +110,8 @@ def main():
         filename = 'DoE_McsE6R{:d}_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
         np.save(os.path.join(simparams.data_dir, filename), y_samples)
 
-    filename = 'mquantile_DoE_McsE6_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
+    filename = 'mquantile_DoE_LhsE3_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
-
-    # filename = 'mse_DoE_QuadLeg{:d}_PCE_{:s}.npy'.format(poly_order, fit_method)
 
 
 if __name__ == '__main__':

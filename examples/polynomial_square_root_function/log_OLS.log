@@ -1,0 +1,86 @@
+>> SimParameter setting for model: polynomial_square_root_function
+------------------------------------------------------------
+ > Required parameters:
+   * Model Name:               : polynomial_square_root_function
+   * Joint zeta distribution   : Iid(Normal(mu=0, sigma=1), 2)
+ > Working directory:
+   WORKING_DIR: /Users/jinsongliu/BoxSync/MUSELab/museuq/examples/polynomial_square_root_function
+   +-- MODEL: /Users/jinsongliu/BoxSync/MUSELab/museuq/examples/polynomial_square_root_function/Polynomial_square_root_function/
+   |   +-- FIGURE: /Users/jinsongliu/BoxSync/MUSELab/museuq/examples/polynomial_square_root_function/Polynomial_square_root_function/Figures
+   |   +-- DATA  : /Users/jinsongliu/External/MUSE_UQ_DATA/polynomial_square_root_function/Data
+ > Optional parameters:
+   * post analysis parameters
+     - qoi2analysis            : All
+     - statistics              : ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
+   * Adaptive parameters
+     - # Budget                : 1000
+     - p-order                 : (2, 15)
+     - r2 bound                : 0.9
+     - mse bound               : None
+     - diff mse bound          : 0.05
+     - diff quantile bound     : 0.05
+ > Checking adaptive conditions...
+ > Adaptive simulation continue...
+ > Building Surrogate Models
+   * Model name                : Polynomial Chaos Expansion
+   * Requried parameters
+     - Zeta Joint dist         : Iid(Normal(mu=0, sigma=1), 2)
+     - Polynomial order (p)    : 2
+     - No. poly basis (P)      : 6
+   * Optional parameters:
+ > Fitting PCE surrogate models with OLS
+   * PCE polynomial order      : 2
+   * Train data shape          : X = (1000, 6), Y = (1000,)
+   * Prediction output         : (1000,)
+   * Prediction output         : (1000000,)
+ > Checking adaptive conditions...
+ > Adaptive simulation continue...
+ > Building Surrogate Models
+   * Model name                : Polynomial Chaos Expansion
+   * Requried parameters
+     - Zeta Joint dist         : Iid(Normal(mu=0, sigma=1), 2)
+     - Polynomial order (p)    : 3
+     - No. poly basis (P)      : 10
+   * Optional parameters:
+ > Fitting PCE surrogate models with OLS
+   * PCE polynomial order      : 3
+   * Train data shape          : X = (1000, 10), Y = (1000,)
+   * Prediction output         : (1000,)
+   * Prediction output         : (1000000,)
+ > Checking adaptive conditions...
+     - Condition met: < Adjusted R2    : [0.98845848 0.99402139] >
+ > Adaptive simulation continue...
+ > Building Surrogate Models
+   * Model name                : Polynomial Chaos Expansion
+   * Requried parameters
+     - Zeta Joint dist         : Iid(Normal(mu=0, sigma=1), 2)
+     - Polynomial order (p)    : 4
+     - No. poly basis (P)      : 15
+   * Optional parameters:
+ > Fitting PCE surrogate models with OLS
+   * PCE polynomial order      : 4
+   * Train data shape          : X = (1000, 15), Y = (1000,)
+   * Prediction output         : (1000,)
+   * Prediction output         : (1000000,)
+ > Checking adaptive conditions...
+     - Condition met: < Adjusted R2    : [0.99402139 0.99967121] >
+     - Condition met: < mquantiles diff: [0.04453549 0.0036784 ] >
+------------------------------------------------------------
+>>> Adaptive simulation done:
+------------------------------------------------------------
+ - Polynomial order (p)      : 4
+ - Active basis              : range(0, 15)
+ - # Evaluations             : 1000
+ - R2_adjusted               : [0.99 0.99 1.  ]
+ - mquantiles                : [4.87 5.08 5.06]
+   - :   0%|                                                                                   | 0/10 [00:00<?, ?it/s]   * Prediction output         : (1000000,)
+   - :  10%|#######5                                                                   | 1/10 [00:02<00:26,  2.94s/it]   * Prediction output         : (1000000,)
+   - :  20%|###############                                                            | 2/10 [00:06<00:24,  3.10s/it]   * Prediction output         : (1000000,)
+   - :  30%|######################5                                                    | 3/10 [00:09<00:22,  3.21s/it]   * Prediction output         : (1000000,)
+   - :  40%|##############################                                             | 4/10 [00:13<00:19,  3.29s/it]   * Prediction output         : (1000000,)
+   - :  50%|#####################################5                                     | 5/10 [00:16<00:16,  3.37s/it]   * Prediction output         : (1000000,)
+   - :  60%|#############################################                              | 6/10 [00:20<00:13,  3.44s/it]   * Prediction output         : (1000000,)
+   - :  70%|####################################################5                      | 7/10 [00:23<00:10,  3.44s/it]   * Prediction output         : (1000000,)
+   - :  80%|############################################################               | 8/10 [00:27<00:06,  3.47s/it]   * Prediction output         : (1000000,)
+   - :  90%|###################################################################5       | 9/10 [00:31<00:03,  3.58s/it]   * Prediction output         : (1000000,)
+   - : 100%|##########################################################################| 10/10 [00:35<00:00,  3.51s/

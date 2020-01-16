@@ -1,0 +1,89 @@
+------------------------------------------------------------
+>>> SimParameter setting for model: polynomial_square_root_function
+------------------------------------------------------------
+ > Required parameters:
+   * Model Name:               : polynomial_square_root_function
+   * Joint zeta distribution   : Iid(Normal(mu=0, sigma=1), 2) 
+ > Working directory:
+   WORKING_DIR: /Users/jinsongliu/BoxSync/MUSELab/museuq/examples/polynomial_square_root_function
+   +-- MODEL: /Users/jinsongliu/BoxSync/MUSELab/museuq/examples/polynomial_square_root_function/Polynomial_square_root_function/
+   |   +-- FIGURE: /Users/jinsongliu/BoxSync/MUSELab/museuq/examples/polynomial_square_root_function/Polynomial_square_root_function/Figures
+   |   +-- DATA  : /Users/jinsongliu/External/MUSE_UQ_DATA/polynomial_square_root_function/Data
+ > Optional parameters:
+   * post analysis parameters 
+     - qoi2analysis            : All 
+     - statistics              : ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin'] 
+   * Adaptive parameters 
+     - # Budget                : 1000 
+     - p-order                 : (2, 15) 
+     - r2 bound                : 0.9 
+     - mse bound               : None 
+     - diff mse bound          : 0.05 
+     - diff quantile bound     : 0.05 
+ > Checking adaptive conditions...
+ > Adaptive simulation continue...
+ > Building Surrogate Models
+   * Model name                : Polynomial Chaos Expansion
+   * Requried parameters
+     - Zeta Joint dist         : Iid(Normal(mu=0, sigma=1), 2)
+     - Polynomial order (p)    : 2
+     - No. poly basis (P)      : 6
+   * Optional parameters:
+ > Fitting PCE surrogate models with OLSLARS
+   * PCE polynomial order      : 2
+   * Train data shape          : X = (1000, 6), Y = (1000,)
+   * Active basis              : [0 2 4 1 3 5] ->#:6
+   * Prediction output         : (1000,)
+   * Prediction output         : (1000000,)
+ > Checking adaptive conditions...
+ > Adaptive simulation continue...
+ > Building Surrogate Models
+   * Model name                : Polynomial Chaos Expansion
+   * Requried parameters
+     - Zeta Joint dist         : Iid(Normal(mu=0, sigma=1), 2)
+     - Polynomial order (p)    : 3
+     - No. poly basis (P)      : 10
+   * Optional parameters:
+ > Fitting PCE surrogate models with OLSLARS
+   * PCE polynomial order      : 3
+   * Train data shape          : X = (1000, 10), Y = (1000,)
+   * Active basis              : [0 2 4 1 3 5 9 6 8] ->#:9
+   * Prediction output         : (1000,)
+   * Prediction output         : (1000000,)
+ > Checking adaptive conditions...
+     - Condition met: < Adjusted R2    : [0.98845848 0.99382771] >
+ > Adaptive simulation continue...
+ > Building Surrogate Models
+   * Model name                : Polynomial Chaos Expansion
+   * Requried parameters
+     - Zeta Joint dist         : Iid(Normal(mu=0, sigma=1), 2)
+     - Polynomial order (p)    : 4
+     - No. poly basis (P)      : 15
+   * Optional parameters:
+ > Fitting PCE surrogate models with OLSLARS
+   * PCE polynomial order      : 4
+   * Train data shape          : X = (1000, 15), Y = (1000,)
+   * Active basis              : [ 0  2  4  1  3  5 12 11 13  9  6  8 10 14  7] ->#:15
+   * Prediction output         : (1000,)
+   * Prediction output         : (1000000,)
+ > Checking adaptive conditions...
+     - Condition met: < Adjusted R2    : [0.99382771 0.99967121] >
+     - Condition met: < mquantiles diff: [0.00499969 0.03551601] >
+------------------------------------------------------------
+>>> Adaptive simulation done:
+------------------------------------------------------------
+ - Polynomial order (p)      : 4
+ - Active basis              : [ 0  2  4  1  3  5 12 11 13  9  6  8 10 14  7]
+ - # Evaluations             : 1000
+ - R2_adjusted               : [0.99 0.99 1.  ]
+ - mquantiles                : [4.87 4.89 5.06]
+   * Prediction output         : (1000000,)
+   * Prediction output         : (1000000,)
+   * Prediction output         : (1000000,)
+   * Prediction output         : (1000000,)
+   * Prediction output         : (1000000,)
+   * Prediction output         : (1000000,)
+   * Prediction output         : (1000000,)
+   * Prediction output         : (1000000,)
+   * Prediction output         : (1000000,)
+   * Prediction output         : (1000000,)

@@ -19,12 +19,10 @@ sys.stdout  = museuq.utilities.classes.Logger()
 
 import time
 import multiprocessing as mp
-def cal_design_matrix(basis, x):
-    return basis(*x)
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
-    ndim        = 2 
+    ndim        = 2
     dist_x      = cp.Iid(cp.Normal(),ndim) 
     dist_zeta   = cp.Iid(cp.Normal(),ndim) 
     simparams   = museuq.simParameters('four_branch_system', dist_zeta)
@@ -33,7 +31,6 @@ def main():
     n_eval      = 2
     plim        = (2,15)
     n_budget    = 1000
-    n_newsamples= 10
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.05)
     simparams.info()
 
@@ -49,9 +46,9 @@ def main():
 
     ### 2. Latin HyperCube Design
     for r in tqdm(range(1)):
-        doe = museuq.LHS(n_samples=1000,dist_names=['normal']*ndim,ndim=ndim,dist_theta=[(0,1)]*ndim)
+        doe = museuq.LHS(n_samples=186,dist_names=['normal']*ndim,ndim=ndim,dist_theta=[(0,1)]*ndim)
         u_doe, x_doe = doe.samples() ## u in [0,1], x in N(0,1)
-        u_doe = x_doe
+        u_doe = x_doe 
         y_doe = solver.run(x_doe)
         data = np.concatenate((u_doe, x_doe, y_doe.reshape(1,-1)), axis=0)
         filename = os.path.join(simparams.data_dir, doe.filename+'R{:d}'.format(r))
