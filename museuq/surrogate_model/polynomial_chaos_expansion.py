@@ -160,7 +160,8 @@ class PolynomialChaosExpansion(SurrogateModel):
             model_lars       = linear_model.Lars().fit(X,y)
             self.active_lars = model_lars.active_
             self.cv_error    = np.inf
-            for i in range(len(model_lars.active_)):
+            n_active_basis = min(len(model_lars.active_), X.shape[0])
+            for i in range(n_active_basis):
                 active_indices  = model_lars.active_[:i+1]
                 active_indices  = np.array([0, *active_indices])
                 active_basis    = cp.polynomial(self.basis_[active_indices])
