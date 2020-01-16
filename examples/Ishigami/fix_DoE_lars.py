@@ -23,11 +23,11 @@ sys.stdout  = museuq.utilities.classes.Logger()
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
-    ndim        = 2
-    dist_x      = cp.Iid(cp.Normal(),ndim) 
-    dist_zeta   = cp.Iid(cp.Normal(),ndim) 
-    simparams   = museuq.simParameters('four_branch_system', dist_zeta)
-    solver      = museuq.four_branch_system()
+    ndim        = 3
+    dist_x      = cp.Iid(cp.Uniform(-np.pi, np.pi),ndim) 
+    dist_zeta   = cp.Iid(cp.Uniform(-1, 1),ndim) 
+    simparams   = museuq.simParameters('Ishigami', dist_zeta)
+    solver      = museuq.Ishigami()
 
     ### ============ Adaptive parameters ============
     plim        = (2,15)
@@ -36,13 +36,12 @@ def main():
     simparams.info()
 
     ### ============ Stopping Criteria ============
-    poly_orders     = np.arange(plim[0], plim[1])
-    fit_method      = 'LASSOLARS'
-    poly_order      = plim[0]
-    cv_error        = []
-    mquantiles      = []
-    r2_score_adj    = []
-    f_hat           = None
+    fit_method  = 'LASSOLARS'
+    poly_order  = plim[0]
+    cv_error    = []
+    mquantiles  = []
+    r2_score_adj= []
+    f_hat       = None
 
     ### ============ Get training points ============
     filename= 'DoE_LhsE3R0.npy'
@@ -54,27 +53,22 @@ def main():
 
 
     while simparams.is_adaptive_continue(n_eval, poly_order=poly_order,
-            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=[]):
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
         print(' > Adaptive simulation continue...')
         ### ============ Build Surrogate Model ============
-        quad_order  = poly_order + 1
         pce_model   = museuq.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, method=fit_method)
-        y_pred      = pce_model.predict(u_train)
+        y_train_hat = pce_model.predict(u_train)
 
         filename = 'DoE_McsE6R0.npy'
         data_set = np.load(os.path.join(simparams.data_dir, filename))
         u_samples= data_set[0:ndim,:]
         x_samples= data_set[ndim: 2*ndim,:]
-        start = time.time()
         y_samples= pce_model.predict(u_samples)
-        done      = time.time()
-
-        # print('   >> metamodels predictin elapsed: {}'.format(done - start))
         ### ============ updating parameters ============
 
         cv_error.append(pce_model.cv_error)
-        r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_pred, len(pce_model.active_)))
+        r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
         mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
         poly_order += 1
         f_hat       = pce_model
@@ -84,7 +78,7 @@ def main():
     print('>>> Adaptive simulation done:')
     print('------------------------------------------------------------')
     print(' - {:<25s} : {}'.format('Polynomial order (p)', poly_order))
-    print(' - {:<25s} : {}'.format('Active basis', f_hat.active_))
+    print(' - {:<25s} : {} ->#{:d}'.format('Active basis', f_hat.active_, len(f_hat.active_)))
     print(' - {:<25s} : {}'.format('# Evaluations ', n_eval))
     print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(r2_score_adj, 2)))
     print(' - {:<25s} : {}'.format('mquantiles', np.around(np.squeeze(np.array(mquantiles)), 2)))
@@ -92,10 +86,10 @@ def main():
     filename = 'mquantile_DoE_LhsE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
-    filename = 'r2_DoE_DoE_LhsE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'r2_DoE_LhsE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(r2_score_adj))
 
-    filename = 'cv_error_DoE_DoE_LhsE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'cv_error_DoE_LhsE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(cv_error))
 
 
@@ -112,6 +106,8 @@ def main():
 
     filename = 'mquantile_DoE_LhsE3_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
+
+    # filename = 'mse_DoE_QuadLeg{:d}_PCE_{:s}.npy'.format(poly_order, fit_method)
 
 
 if __name__ == '__main__':

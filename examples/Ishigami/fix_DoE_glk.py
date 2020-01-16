@@ -89,8 +89,6 @@ def main():
     cv_error        = []
     f_hat = None
 
-    ### ----------------------- Get validation data for GLK-------------------- 
-    
 
     ### ----------------------- Adaptive step starts-------------------- 
     while simparams.is_adaptive_continue(n_eval_next, poly_order=poly_order,
