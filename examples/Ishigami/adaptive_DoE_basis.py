@@ -17,6 +17,7 @@ from tqdm import tqdm
 from museuq.utilities import helpers as uqhelpers
 from museuq.utilities import metrics_collections as uq_metrics
 from sklearn.model_selection import KFold
+import time
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
 
@@ -28,80 +29,60 @@ def main():
     dist_zeta   = cp.Iid(cp.Uniform(-1, 1),ndim) 
     simparams   = museuq.simParameters('Ishigami', dist_zeta)
     solver      = museuq.Ishigami()
-    fit_method  = 'OLSLARS'
 
     ### ============ Adaptive parameters ============
     plim        = (2,15)
-    n_budget    = 1000
-    n_newsamples= 10
-    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.05)
-    # simparams.set_error()  # no observation error for sdof
+    n_budget    = 2040 
+    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.01)
     simparams.info()
 
-
-    ### ============ Initialization  ============
-    # P0 = len(cp.orth_ttr(plim[0], dist_zeta))
-    # alpha = 0.8
-    # n_samples_done  = min(2*P0, alpha*n_budget)
-    # n_samples_done  = max(P0, n_samples_done)
-    n_eval          = 50
+    ### ============ Stopping Criteria ============
+    fit_method      = 'LASSOLARS'
     poly_order      = plim[1]
-    r2_score_adj    = []
     cv_error        = []
     mquantiles      = []
+    r2_score_adj    = []
+    f_hat           = None
 
+    ### ============ Get design points ============
+    filename= 'DoE_McsE6R0_q15_OptD2040.npy'
+    data_set= np.load(os.path.join(simparams.data_dir, filename))
+    u_data = data_set[:ndim,:]
+    x_data = data_set[ndim:2*ndim,:]
+    y_data = data_set[-1,:]
+    n_eval = 50
+    n_new  = 5
     ### 1. Initial design with OPT-D
 
     while simparams.is_adaptive_continue(n_eval, poly_order=poly_order,
-            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
-        print('==> Adaptive simulation continue...')
-
-        data_dir= simparams.data_dir
-        filename= 'DoE_McsE6R0.npy'
-        data_set= np.load(os.path.join(data_dir, filename))
-        u_data  = data_set[0:ndim, :]
-        x_data  = data_set[ndim:2*ndim, :]
-        y_data  = data_set[-1, :].reshape(1,-1)
-        print('Candidate samples filename: {:s}'.format(filename))
-        print('   >> Candidate sample set shape: {}'.format(u_data.shape))
-        basis   = cp.orth_ttr(plim[1], dist_zeta)
-        design_matrix = basis(*u_data).T
-        print('   >> Candidate Design matrix shape: {}'.format(design_matrix.shape))
-        
-        doe = museuq.OptimalDesign('D', n_samples=n_eval)
-        doe_index = doe.adaptive(design_matrix, n_samples = n_eval, is_orth=True)
-        print(len(doe_index))
-        u_doe = u_data[:,doe_index]
-        x_doe = x_data[:,doe_index]
-        y_doe = solver.run(x_doe)
-
-        # data = np.concatenate((doe.I.reshape(1,-1),doe.u,doe.x, solver.y.reshape(1,-1)), axis=0)
-        # filename = os.path.join(data_dir, 'DoE_McsE6R{:d}_q{:d}_OptD{:d}'.format(r,plim[1], n_eval))
-        # np.save(filename, data)
-
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=[]):
+        print(' > Adaptive simulation continue...')
+        ### ============ Get training points ============
+        u_train = u_data[:,:n_eval]
+        y_train = y_data[:n_eval]
         ### ============ Build Surrogate Model ============
-        u_train   = np.concatenate((u_train, u_doe), axis=0)
-        y_train   = np.concatenate((y_train, y_doe), axis=0)
-        pce_model = museuq.PCE(plim[1], dist_zeta)
+        quad_order  = poly_order + 1
+        pce_model   = museuq.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, method=fit_method)
-        y_pred    = pce_model.predict(u_train)
+        y_train_hat      = pce_model.predict(u_train)
 
         filename = 'DoE_McsE6R0.npy'
         data_set = np.load(os.path.join(simparams.data_dir, filename))
         u_samples= data_set[0:ndim,:]
         x_samples= data_set[ndim: 2*ndim,:]
+        start = time.time()
         y_samples= pce_model.predict(u_samples)
+        done      = time.time()
 
+        # print('   >> metamodels predictin elapsed: {}'.format(done - start))
         ### ============ updating parameters ============
-        # error_mse.append(uq_metrics.mean_squared_error(y_valid, y_pred))
+
         cv_error.append(pce_model.cv_error)
-        r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_pred, len(pce_model.active_)))
+        r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
         mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
-        n_eval += u_doe.shape[1]
-        f_hat  = pce_model
+        n_eval     += n_new
+        f_hat       = pce_model
 
-
-    poly_order -= 1
     print('------------------------------------------------------------')
     print('>>> Adaptive simulation done:')
     print('------------------------------------------------------------')
@@ -111,12 +92,29 @@ def main():
     print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(r2_score_adj, 2)))
     print(' - {:<25s} : {}'.format('mquantiles', np.around(np.squeeze(np.array(mquantiles)), 2)))
 
-    # filename = 'mquantile_DoE_QuadLeg{:d}_PCE_{:s}.npy'.format(iquad_orders, fit_method)
-    # np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
+    filename = 'mquantile_DoE_q15_OptD2040_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
-    # filename = 'r2_DoE_QuadLeg{:d}_PCE_{:s}.npy'.format(iquad_orders, fit_method)
-    # np.save(os.path.join(simparams.data_dir, filename), np.array(r2_adj))
+    filename = 'r2_DoE_q15_OptD2040_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    np.save(os.path.join(simparams.data_dir, filename), np.array(r2_score_adj))
 
+    filename = 'cv_error_DoE_q15_OptD2040_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    np.save(os.path.join(simparams.data_dir, filename), np.array(cv_error))
+
+
+    mquantiles = []
+    for r in tqdm(range(10), ascii=True, desc="   - " ):
+        filename = 'DoE_McsE6R{:d}.npy'.format(r)
+        data_set = np.load(os.path.join(simparams.data_dir, filename))
+        u_samples= data_set[0:ndim,:]
+        x_samples= data_set[ndim: 2*ndim,:]
+        y_samples= f_hat.predict(u_samples)
+        mquantiles.append(uq_metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
+        filename = 'DoE_McsE6R{:d}_q15_OptD2040_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
+        np.save(os.path.join(simparams.data_dir, filename), y_samples)
+
+    filename = 'mquantile_DoE_q15_OptD2040_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
+    np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
 
 if __name__ == '__main__':
