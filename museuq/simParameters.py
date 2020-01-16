@@ -53,6 +53,7 @@ class simParameters(object):
         self.mse_diff   = kwargs.get('mse_diff' , 0.05  ) 
         self.plim       = kwargs.get('plim'     , (0, 15))
         self.qdiff_bound= kwargs.get('mquantiles', 0.05  ) 
+        self.cv_bound   = kwargs.get('cv_bound' , 0.10  ) 
         
         ###-------------Directories setting -----------------------------
         self.pwd            = ''
@@ -286,7 +287,7 @@ class simParameters(object):
             pass
         else:
             cv_error = np.array(cv_error)
-            if (cv_error[-3] < cv_error[-2]) and (cv_error[-2] < cv_error[-1]):
+            if ((cv_error[-2]- cv_error[-3])/cv_error[-3] > self.cv_bound ) and (cv_error[-2] < cv_error[-1]):
                 print(' >! Stopping... Overfitting detected: {}'.format( np.around(cv_error, 4)))
                 return False
 
