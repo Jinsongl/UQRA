@@ -95,7 +95,7 @@ def main():
     ### ----------------------- Adaptive step starts-------------------- 
     while simparams.is_adaptive_continue(n_eval_next, poly_order=poly_order,
             r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
-        print('   * Adaptive simulation continue...')
+        print(' > Adaptive simulation continue...')
         ### ============ Get training points ============
         quad_order  = poly_order + 1
         filename    = 'DoE_QuadLeg{:d}.npy'.format(quad_order)
@@ -105,12 +105,10 @@ def main():
         w_train     = data_set[-2,:]
         y_train     = data_set[-1,:]
 
-        # print('  > {:<10s}: {:s}'.format('filename', filename))
         ### ============ Build Surrogate Model ============
         pce_model   = museuq.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, w=w_train, method=fit_method)
         y_train_hat = pce_model.predict(u_train)
-
         u_valid, x_valid, y_valid = get_validation_data(quad_order, plim, n_lhs, ndim, data_dir=simparams.data_dir)
         y_valid_hat = pce_model.predict(u_valid)
 

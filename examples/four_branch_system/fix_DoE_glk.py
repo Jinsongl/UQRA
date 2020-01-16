@@ -68,7 +68,6 @@ def main():
     ### ============ Adaptive parameters ============
     plim        = [2,2]
     n_budget    = 1000
-
     n_quad      = (plim[0]+1)**ndim 
     n_lhs       = n_budget - n_quad
     while (n_quad + (plim[1] +1+1)**ndim) < n_budget:
@@ -106,7 +105,6 @@ def main():
         w_train     = data_set[-2,:]
         y_train     = data_set[-1,:]
 
-        # print('  > {:<10s}: {:s}'.format('filename', filename))
         ### ============ Build Surrogate Model ============
         pce_model   = museuq.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, w=w_train, method=fit_method)

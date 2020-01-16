@@ -11,7 +11,7 @@
 """
 import context
 import museuq
-import numpy as np, chaospy as cp, os, sys, math
+import numpy as np, chaospy as cp, os, sys
 import warnings
 from tqdm import tqdm
 from museuq.utilities import helpers as uqhelpers
@@ -38,8 +38,8 @@ def main():
 
     ### ============ Stopping Criteria ============
     fit_method      = 'LASSOLARS'
-    poly_order      = plim[0]
-    k_sparsity      = len(cp.orth_ttr(poly_order, dist_zeta))
+    poly_order      = plim[1]
+    k_sparsity      = 75 # guess. K sparsity to meet RIP condition 
     cv_error        = []
     mquantiles      = []
     r2_score_adj    = []
@@ -62,7 +62,7 @@ def main():
         print(' > Adaptive simulation continue...')
         ### ============ Get training points ============
         u_train = u_data[:,:n_eval]
-        y_train = y_data[  :n_eval]
+        y_train = y_data[:n_eval]
         ### ============ Build Surrogate Model ============
         pce_model   = museuq.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, method=fit_method)
@@ -79,20 +79,15 @@ def main():
         r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
         mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
         n_eval_path.append(n_eval)
-
         ### ============ updating parameters ============
-        poly_order += 1
         n_eval     += n_new
-        k_sparsity  = len(cp.orth_ttr(poly_order, dist_zeta))
-        n_eval      = max(n_eval, 2 * k_sparsity) ## for ols, oversampling rate at least 2
         f_hat       = pce_model
 
-    poly_order -= 1
     print('------------------------------------------------------------')
     print('>>> Adaptive simulation done:')
     print('------------------------------------------------------------')
     print(' - {:<25s} : {}'.format('Polynomial order (p)', poly_order))
-    print(' - {:<25s} : {}'.format('Active basis', f_hat.active_))
+    print(' - {:<25s} : {} -> #{:d}'.format('Active basis', f_hat.active_, len(f_hat.active_)))
     print(' - {:<25s} : {}'.format('# Evaluations ', n_eval))
     print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(r2_score_adj, 2)))
     print(' - {:<25s} : {}'.format('mquantiles', np.around(np.squeeze(np.array(mquantiles)), 2)))

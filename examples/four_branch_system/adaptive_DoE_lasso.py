@@ -24,17 +24,18 @@ sys.stdout  = museuq.utilities.classes.Logger()
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
-    ndim        = 3
-    dist_x      = cp.Iid(cp.Uniform(-np.pi, np.pi),ndim) 
-    dist_zeta   = cp.Iid(cp.Uniform(-1, 1),ndim) 
-    simparams   = museuq.simParameters('Ishigami', dist_zeta)
-    solver      = museuq.Ishigami()
+    ndim        = 2
+    dist_x      = cp.Iid(cp.Normal(),ndim) 
+    dist_zeta   = cp.Iid(cp.Normal(),ndim) 
+    simparams   = museuq.simParameters('four_branch_system', dist_zeta)
+    solver      = museuq.four_branch_system()
 
     ### ============ Adaptive parameters ============
     plim        = (2,15)
-    n_budget    = 2040 
-    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.01)
+    n_budget    = 950 
+    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.05)
     simparams.info()
+
 
     ### ============ Stopping Criteria ============
     fit_method      = 'LASSOLARS'
@@ -46,7 +47,7 @@ def main():
     f_hat           = None
 
     ### ============ Get design points ============
-    filename= 'DoE_McsE6R0_q15_OptD2040.npy'
+    filename= 'DoE_McsE6R0_q19_OptD950.npy'
     data_set= np.load(os.path.join(simparams.data_dir, filename))
     u_data = data_set[:ndim,:]
     x_data = data_set[ndim:2*ndim,:]
@@ -64,9 +65,10 @@ def main():
         u_train = u_data[:,:n_eval]
         y_train = y_data[:n_eval]
         ### ============ Build Surrogate Model ============
+        quad_order  = poly_order + 1
         pce_model   = museuq.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, method=fit_method)
-        y_train_hat      = pce_model.predict(u_train)
+        y_train_hat = pce_model.predict(u_train)
 
         ### ============ calculating & updating metrics ============
         filename = 'DoE_McsE6R0.npy'
@@ -87,21 +89,21 @@ def main():
     print('>>> Adaptive simulation done:')
     print('------------------------------------------------------------')
     print(' - {:<25s} : {}'.format('Polynomial order (p)', poly_order))
-    print(' - {:<25s} : {}'.format('Active basis', f_hat.active_))
+    print(' - {:<25s} : {} -> #{:d}'.format('Active basis', f_hat.active_, len(f_hat.active_)))
     print(' - {:<25s} : {}'.format('# Evaluations ', n_eval))
     print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(r2_score_adj, 2)))
     print(' - {:<25s} : {}'.format('mquantiles', np.around(np.squeeze(np.array(mquantiles)), 2)))
 
-    filename = 'mquantile_DoE_q15_OptD2040_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'mquantile_DoE_q15_OptD950_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
-    filename = 'r2_DoE_q15_OptD2040_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'r2_DoE_q15_OptD950_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(r2_score_adj))
 
-    filename = 'cv_error_DoE_q15_OptD2040_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'cv_error_DoE_q15_OptD950_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(cv_error))
 
-    filename = 'n_eval_DoE_q15_OptD2040_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'n_eval_DoE_q15_OptD950{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(n_eval_path))
 
     mquantiles = []
@@ -112,10 +114,10 @@ def main():
         x_samples= data_set[ndim: 2*ndim,:]
         y_samples= f_hat.predict(u_samples)
         mquantiles.append(uq_metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
-        filename = 'DoE_McsE6R{:d}_q15_OptD2040_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
+        filename = 'DoE_McsE6R{:d}_q15_OptD950_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
         np.save(os.path.join(simparams.data_dir, filename), y_samples)
 
-    filename = 'mquantile_DoE_q15_OptD2040_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
+    filename = 'mquantile_DoE_q15_OptD950_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
 
