@@ -46,7 +46,7 @@ def main():
 
     ### 2. Latin HyperCube Design
     for r in tqdm(range(1)):
-        doe = museuq.LHS(n_samples=186,dist_names=['normal']*ndim,ndim=ndim,dist_theta=[(0,1)]*ndim)
+        doe = museuq.LHS(n_samples=2000,dist_names=['normal']*ndim,ndim=ndim,dist_theta=[(0,1)]*ndim)
         u_doe, x_doe = doe.samples() ## u in [0,1], x in N(0,1)
         u_doe = x_doe 
         y_doe = solver.run(x_doe)

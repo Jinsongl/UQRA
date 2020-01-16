@@ -37,7 +37,7 @@ def main():
 
     ### ============ Stopping Criteria ============
     poly_orders     = np.arange(plim[0], plim[1])
-    fit_method      = 'OLS'
+    fit_method      = 'LASSOLARS'
     poly_order      = plim[0]
     cv_error        = []
     mquantiles      = []
@@ -54,7 +54,7 @@ def main():
 
 
     while simparams.is_adaptive_continue(n_eval, poly_order=poly_order,
-            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=[]):
         print(' > Adaptive simulation continue...')
         ### ============ Build Surrogate Model ============
         quad_order  = poly_order + 1
