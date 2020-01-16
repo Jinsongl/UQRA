@@ -58,14 +58,13 @@ def main():
     ### 1. Initial design with OPT-D
 
     while simparams.is_adaptive_continue(n_eval, poly_order=poly_order,
-            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=[]):
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
         print(' > Adaptive simulation continue...')
         ### ============ Get training points ============
         u_train = u_data[:,:n_eval]
         y_train = y_data[  :n_eval]
         ### ============ Build Surrogate Model ============
         pce_model   = museuq.PCE(poly_order, dist_zeta)
-        # increase number of simulation when oversampling ratio is less than 2
         pce_model.fit(u_train, y_train, method=fit_method)
         y_train_hat = pce_model.predict(u_train)
 

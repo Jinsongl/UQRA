@@ -39,6 +39,7 @@ def main():
     ### ============ Stopping Criteria ============
     fit_method      = 'LASSOLARS'
     poly_order      = plim[1]
+    k_sparsity      = 75 # guess. K sparsity to meet RIP condition 
     cv_error        = []
     mquantiles      = []
     r2_score_adj    = []
@@ -51,35 +52,34 @@ def main():
     x_data = data_set[ndim:2*ndim,:]
     y_data = data_set[-1,:]
     n_eval = 50
+    n_eval = max(n_eval, 2 * k_sparsity) ## for ols, oversampling rate at least 2
+    n_eval_path = [n_eval,]
     n_new  = 5
     ### 1. Initial design with OPT-D
 
     while simparams.is_adaptive_continue(n_eval, poly_order=poly_order,
-            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=[]):
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
         print(' > Adaptive simulation continue...')
         ### ============ Get training points ============
         u_train = u_data[:,:n_eval]
         y_train = y_data[:n_eval]
         ### ============ Build Surrogate Model ============
-        quad_order  = poly_order + 1
         pce_model   = museuq.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, method=fit_method)
         y_train_hat      = pce_model.predict(u_train)
 
+        ### ============ calculating & updating metrics ============
         filename = 'DoE_McsE6R0.npy'
         data_set = np.load(os.path.join(simparams.data_dir, filename))
         u_samples= data_set[0:ndim,:]
         x_samples= data_set[ndim: 2*ndim,:]
-        start = time.time()
         y_samples= pce_model.predict(u_samples)
-        done      = time.time()
-
-        # print('   >> metamodels predictin elapsed: {}'.format(done - start))
-        ### ============ updating parameters ============
 
         cv_error.append(pce_model.cv_error)
         r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
         mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
+        n_eval_path.append(n_eval)
+        ### ============ updating parameters ============
         n_eval     += n_new
         f_hat       = pce_model
 
@@ -101,6 +101,8 @@ def main():
     filename = 'cv_error_DoE_q15_OptD2040_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(cv_error))
 
+    filename = 'n_eval_DoE_q15_OptD2040_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    np.save(os.path.join(simparams.data_dir, filename), np.array(n_eval_path))
 
     mquantiles = []
     for r in tqdm(range(10), ascii=True, desc="   - " ):
