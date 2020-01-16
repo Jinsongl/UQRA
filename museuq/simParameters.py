@@ -42,7 +42,7 @@ class simParameters(object):
         sys.stdout = Logger()
         ###---------- Random system properties ------------------------
         self.seed       = [0,100]
-        self.model_name = model_name
+        self.model_name = model_name.capitalize()
         self.dist_zeta_J= dist_zeta_J   ## Joint distribution
         self.dist_zeta_M= None          ## List of marginal distributions
 
@@ -194,8 +194,9 @@ class simParameters(object):
         |   +-- DATA_DIR
 
         """
+        model_name = model_name.capitalize()
         WORKING_DIR     = os.getcwd()
-        MODEL_DIR       = os.path.join(WORKING_DIR, model_name.capitalize())
+        MODEL_DIR       = os.path.join(WORKING_DIR, model_name)
         FIGURE_DIR= os.path.join(MODEL_DIR,r'Figures')
         # DATA_DIR  = os.path.join(MODEL_DIR,r'Data')
         current_os  = sys.platform
@@ -212,7 +213,7 @@ class simParameters(object):
         else:
             raise ValueError('Operating system {} not found'.format(current_os))    
         
-        DATA_DIR  = os.path.join(DATA_DIR,model_name,r'Data')
+        DATA_DIR  = os.path.join(DATA_DIR, model_name,r'Data')
         # MODEL_DIR_DATA_ID = GDRIVE_DIR_ID[model_name.upper()] 
 
         # Create directory for model  
