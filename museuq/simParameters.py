@@ -288,8 +288,7 @@ class simParameters(object):
         else:
             cv_error = np.array(cv_error)
             if ((cv_error[-2]- cv_error[-3])/cv_error[-3] > self.cv_bound ) and (cv_error[-2] < cv_error[-1]):
-                print(' >! Stopping... Overfitting detected: {}'.format( np.around(cv_error, 4)))
-                return False
+                print(' > Warning: Potential overfitting detected: {}'.format( np.around(cv_error, 4)))
 
         ### For following metrics, algorithm stop (False) when all of these met.
         ### i.e. Algorithm continue (True) when at least one of these metrics not met
