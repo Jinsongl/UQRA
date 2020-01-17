@@ -53,7 +53,7 @@ def main():
 
 
     while simparams.is_adaptive_continue(n_eval, poly_order=poly_order,
-            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=[]):
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
         print(' > Adaptive simulation continue...')
         ### ============ Build Surrogate Model ============
         pce_model   = museuq.PCE(poly_order, dist_zeta)
@@ -71,7 +71,12 @@ def main():
         r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
         mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
         poly_order += 1
-        f_hat       = pce_model
+        if f_hat is None:
+            f_hat  = pce_model
+        else:
+            if f_hat.cv_error > pce_model.cv_error:
+                f_hat = pce_model
+
 
     poly_order -= 1
     print('------------------------------------------------------------')
