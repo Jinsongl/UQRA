@@ -36,7 +36,7 @@ def main():
     simparams.info()
 
     ### ============ Stopping Criteria ============
-    fit_method      = 'LASSOLARS'
+    fit_method      = 'OLSLARS'
     poly_order      = plim[0]
     cv_error        = []
     mquantiles      = []

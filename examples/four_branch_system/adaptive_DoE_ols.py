@@ -32,21 +32,21 @@ def main():
 
     ### ============ Adaptive parameters ============
     plim        = (2,15)
-    n_budget    = 950 
+    n_budget    = 1000 
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.05)
     simparams.info()
 
     ### ============ Stopping Criteria ============
-    fit_method      = 'OLSLARS'
-    poly_order      = plim[0]
-    k_sparsity      = len(cp.orth_ttr(poly_order, dist_zeta))
-    cv_error        = []
-    mquantiles      = []
-    r2_score_adj    = []
-    f_hat           = None
+    fit_method  = 'OLS'
+    poly_order  = plim[0]
+    k_sparsity  = len(cp.orth_ttr(poly_order, dist_zeta))
+    cv_error    = []
+    mquantiles  = []
+    r2_score_adj= []
+    f_hat       = None
 
     ### ============ Get design points ============
-    filename= 'DoE_McsE6R0_q19_OptD950.npy'
+    filename= 'DoE_McsE6R0_q15_OptDE3.npy'
     data_set= np.load(os.path.join(simparams.data_dir, filename))
     u_data = data_set[:ndim,:]
     x_data = data_set[ndim:2*ndim,:]
@@ -96,16 +96,16 @@ def main():
     print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(r2_score_adj, 2)))
     print(' - {:<25s} : {}'.format('mquantiles', np.around(np.squeeze(np.array(mquantiles)), 2)))
 
-    filename = 'mquantile_DoE_q15_OptD950_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'mquantile_DoE_q15_OptDE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
-    filename = 'r2_DoE_q15_OptD950_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'r2_DoE_q15_OptDE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(r2_score_adj))
 
-    filename = 'cv_error_DoE_q15_OptD950_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'cv_error_DoE_q15_OptDE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(cv_error))
 
-    filename = 'n_eval_DoE_q15_OptD950_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'n_eval_DoE_q15_OptDE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(n_eval_path))
 
     mquantiles = []
@@ -116,10 +116,10 @@ def main():
         x_samples= data_set[ndim: 2*ndim,:]
         y_samples= f_hat.predict(u_samples)
         mquantiles.append(uq_metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
-        filename = 'DoE_McsE6R{:d}_q15_OptD950_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
+        filename = 'DoE_McsE6R{:d}_q15_OptDE3_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
         np.save(os.path.join(simparams.data_dir, filename), y_samples)
 
-    filename = 'mquantile_DoE_q15_OptD950_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
+    filename = 'mquantile_DoE_q15_OptDE3_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
 

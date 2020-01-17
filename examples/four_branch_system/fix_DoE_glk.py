@@ -94,7 +94,7 @@ def main():
     # y_valid = np.arange(1)
 
     while simparams.is_adaptive_continue(n_eval_next, poly_order=poly_order,
-            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=[]):
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
         print(' > Adaptive simulation continue...')
         ### ============ Get training points ============
         quad_order  = poly_order + 1
@@ -145,7 +145,7 @@ def main():
     filename = 'r2_DoE_QuadHem_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(r2_score_adj))
 
-    filename = 'cv_error_DoE_LhsE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'cv_error_DoE_QuadHem_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(cv_error))
 
     ## run MCS to get mquantile
