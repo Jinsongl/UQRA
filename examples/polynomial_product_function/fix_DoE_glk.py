@@ -40,13 +40,13 @@ def get_validation_data(quad_order, plim, n_lhs, ndim, data_dir=os.getcwd):
         if iquad_order == quad_order:
             pass
         else:
-            filename = 'DoE_QuadHem{:d}.npy'.format(iquad_order)
+            filename = 'DoE_QuadHem{:d}_ndim{:d}.npy'.format(iquad_order, ndim)
             data_set = np.load(os.path.join(data_dir, filename))
             u.append(data_set[0:ndim,:] )
             x.append(data_set[ndim:2*ndim,:])
             y.append(data_set[-1,:])
 
-    filename = 'DoE_Lhs{:d}.npy'.format(n_lhs)
+    filename = 'DoE_ndim{:d}_Lhs{:d}.npy'.format(ndim, n_lhs)
     data_set = np.load(os.path.join(data_dir, filename))
     u.append(data_set[0:ndim,:] )
     x.append(data_set[ndim:2*ndim,:])
@@ -59,22 +59,21 @@ def get_validation_data(quad_order, plim, n_lhs, ndim, data_dir=os.getcwd):
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
-    ndim        = 2
+    ndim        = 5
     dist_x      = cp.Iid(cp.Normal(),ndim) 
     dist_zeta   = cp.Iid(cp.Normal(),ndim) 
-    simparams   = museuq.simParameters('four_branch_system', dist_zeta)
-    solver      = museuq.four_branch_system()
+    simparams   = museuq.simParameters('polynomial_product_function', dist_zeta)
+    solver      = museuq.polynomial_product_function()
 
     ### ============ Adaptive parameters ============
     plim        = [2,2]
-    n_budget    = 1000
+    n_budget    = 100000
     n_quad      = (plim[0]+1)**ndim 
     n_lhs       = n_budget - n_quad
     while (n_quad + (plim[1] +1+1)**ndim) < n_budget:
         plim[1]+= 1
         n_quad += (plim[1] + 1)**ndim
         n_lhs   = n_budget - n_quad
-
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.05)
     simparams.info()
 
@@ -94,11 +93,11 @@ def main():
     # y_valid = np.arange(1)
 
     while simparams.is_adaptive_continue(n_eval_next, poly_order=poly_order,
-            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=[]):
+            r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
         print(' > Adaptive simulation continue...')
         ### ============ Get training points ============
         quad_order  = poly_order + 1
-        filename    = 'DoE_QuadHem{:d}.npy'.format(quad_order)
+        filename    = 'DoE_QuadHem{:d}_ndim{:d}.npy'.format(quad_order, ndim)
         data_set    = np.load(os.path.join(simparams.data_dir, filename))
         u_train     = data_set[0:ndim,:] 
         x_train     = data_set[ndim:2*ndim,:] 
@@ -112,7 +111,7 @@ def main():
         u_valid, x_valid, y_valid = get_validation_data(quad_order, plim, n_lhs, ndim, data_dir=simparams.data_dir)
         y_valid_hat = pce_model.predict(u_valid)
 
-        filename = 'DoE_McsE6R0.npy'
+        filename = 'DoE_McsE6R0_ndim{:d}.npy'.format(ndim)
         data_set = np.load(os.path.join(simparams.data_dir, filename))
         u_samples= data_set[0:ndim,:]
         x_samples= data_set[ndim: 2*ndim,:]
@@ -139,28 +138,28 @@ def main():
     print(' - {:<25s} : {}'.format('mquantiles', np.around(np.squeeze(np.array(mquantiles)), 2)))
 
 
-    filename = 'mquantile_DoE_QuadHem_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'mquantile_DoE_QuadHem_ndim{:d}_PCE{:d}_{:s}_path.npy'.format(ndim, poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
-    filename = 'r2_DoE_QuadHem_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'r2_DoE_QuadHem_ndim{:d}_PCE{:d}_{:s}_path.npy'.format(ndim, poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(r2_score_adj))
 
-    filename = 'cv_error_DoE_LhsE3_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'cv_error_DoE_LhsE3_ndim{:d}_PCE{:d}_{:s}_path.npy'.format(ndim, poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(cv_error))
 
     ## run MCS to get mquantile
     mquantiles = []
     for r in tqdm(range(10), ascii=True, desc="   - " ):
-        filename = 'DoE_McsE6R{:d}.npy'.format(r)
+        filename = 'DoE_McsE6R{:d}_ndim{:d}.npy'.format(r, ndim)
         data_set = np.load(os.path.join(simparams.data_dir, filename))
         u_samples= data_set[0:ndim,:]
         x_samples= data_set[ndim: 2*ndim,:]
         y_samples= f_hat.predict(u_samples)
         mquantiles.append(uq_metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
-        filename = 'DoE_McsE6R{:d}_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
+        filename = 'DoE_McsE6R{:d}_ndim{:d}_PCE{:d}_{:s}.npy'.format(r, ndim, poly_order, fit_method)
         np.save(os.path.join(simparams.data_dir, filename), y_samples)
 
-    filename = 'mquantile_DoE_QuadHem_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
+    filename = 'mquantile_DoE_QuadHem_ndim{:d}_PCE{:d}_{:s}.npy'.format(ndim, poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
 if __name__ == '__main__':

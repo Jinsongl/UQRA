@@ -24,7 +24,7 @@ def cal_design_matrix(basis, x):
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
-    ndim        = 7
+    ndim        = 5
     n_samples   = 1E6
     dist_x      = cp.Iid(cp.Normal(),ndim) 
     dist_zeta   = cp.Iid(cp.Normal(),ndim) 
@@ -34,23 +34,22 @@ def main():
     n_eval      = 2
     plim        = (2,15)
     n_budget    = 1000
-    n_newsamples= 10
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.05)
     simparams.info()
 
-    ### 1. Random Design
-    for r in tqdm(range(10)):
-        doe = museuq.RandomDesign('MCS', n_samples=n_samples, ndim=ndim, dist_names= ['normal',]*ndim, dist_theta=[(0,1),]*ndim)
-        u_doe = doe.samples()
-        x_doe = u_doe 
-        y_doe = solver.run(x_doe)
-        data = np.concatenate((u_doe, x_doe, y_doe.reshape(1,-1)), axis=0)
-        filename = os.path.join(simparams.data_dir, doe.filename+'R{:d}_ndim{:d}'.format(r, ndim))
-        np.save(filename, data)
+    # ### 1. Random Design
+    # for r in tqdm(range(10)):
+        # doe = museuq.RandomDesign('MCS', n_samples=n_samples, ndim=ndim, dist_names= ['normal',]*ndim, dist_theta=[(0,1),]*ndim)
+        # u_doe = doe.samples()
+        # x_doe = u_doe 
+        # y_doe = solver.run(x_doe)
+        # data = np.concatenate((u_doe, x_doe, y_doe.reshape(1,-1)), axis=0)
+        # filename = os.path.join(simparams.data_dir, doe.filename+'R{:d}_ndim{:d}'.format(r, ndim))
+        # np.save(filename, data)
 
     ### 2. Latin HyperCube Design
     for r in tqdm(range(1)):
-        doe = museuq.LHS(n_samples=n_budget,dist_names=['normal']*ndim,ndim=ndim,dist_theta=[(0,1)]*ndim)
+        doe = museuq.LHS(n_samples=38257,dist_names=['normal']*ndim,ndim=ndim,dist_theta=[(0,1)]*ndim)
         u_doe, x_doe = doe.samples() ## u in [0,1], x in N(0,1)
         u_doe = x_doe
         y_doe = solver.run(x_doe)
@@ -59,16 +58,16 @@ def main():
         np.save(filename, data)
 
 
-    ## 3. Quadrature Design
-    quad_orders = range(3,17)
-    for iquad_orders in tqdm(quad_orders):
-        doe = museuq.QuadratureDesign(iquad_orders, ndim = ndim, dist_names=['normal', ] *ndim)
-        u_doe, w_doe = doe.samples()
-        x_doe = u_doe 
-        y_doe = solver.run(x_doe)
-        data  = np.concatenate((u_doe, x_doe, w_doe.reshape(1,-1), y_doe.reshape(1,-1)), axis=0)
-        filename = os.path.join(simparams.data_dir, doe.filename+'_ndim{:d}'.format(ndim))
-        np.save(filename, data)
+    # ## 3. Quadrature Design
+    # quad_orders = range(3,17)
+    # for iquad_orders in tqdm(quad_orders):
+        # doe = museuq.QuadratureDesign(iquad_orders, ndim = ndim, dist_names=['normal', ] *ndim)
+        # u_doe, w_doe = doe.samples()
+        # x_doe = u_doe 
+        # y_doe = solver.run(x_doe)
+        # data  = np.concatenate((u_doe, x_doe, w_doe.reshape(1,-1), y_doe.reshape(1,-1)), axis=0)
+        # filename = os.path.join(simparams.data_dir, doe.filename+'_ndim{:d}'.format(ndim))
+        # np.save(filename, data)
 
 
     ### 4. Optimal Design
