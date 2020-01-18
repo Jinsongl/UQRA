@@ -288,7 +288,7 @@ class simParameters(object):
         else:
             cv_error = np.array(cv_error)
             if ((cv_error[-2]- cv_error[-3])/cv_error[-3] > self.cv_bound ) and (cv_error[-2] < cv_error[-1]):
-                print(' > Warning: Potential overfitting detected: {}'.format( np.around(cv_error, 4)))
+                print(' > Warning: Potential overfitting detected (CV error increasing) {}'.format( np.around(cv_error, 4)))
 
         ### For following metrics, algorithm stop (False) when all of these met.
         ### i.e. Algorithm continue (True) when at least one of these metrics not met
@@ -303,11 +303,14 @@ class simParameters(object):
             is_r2 = True
         else:
             r2    = np.array(r2)
-            is_r2 = r2 < self.r2_bound
-            is_r2 = is_r2[-2:]
-            is_r2 = is_r2.any()
-            if not is_r2:
-                print('     - Condition met: < {:<15s}: {} >'.format('R-squred', np.squeeze(r2[-2:])))
+            if (r2 > 1.0).any():
+                print(' > Warning: Potential overfitting detected (R-Squared > 1): {}'.format( np.around(cv_error, 4)))
+            else:
+                is_r2 = r2 < self.r2_bound
+                is_r2 = is_r2[-2:]
+                is_r2 = is_r2.any()
+                if not is_r2:
+                    print('     - Condition met: < {:<15s}: {} >'.format('R-squred', np.squeeze(r2[-2:])))
         is_metrics.append(is_r2)
 
         ## Algorithm continue when r2_adj <= r2_bound (NOT met, return True)
@@ -368,7 +371,7 @@ class simParameters(object):
             is_qdiff = is_qdiff[-2:]
             is_qdiff = is_qdiff.any()
             if not is_qdiff:
-                print('     - Condition met: < {:<15s}: {} >'.format('mquantiles diff', np.squeeze(qdiff[-2:])))
+                print('     - Condition met: < {:<15s}: {} >'.format('mquantiles', np.squeeze(mquantiles[-2:])))
         is_metrics.append(is_qdiff)
         ### If any above metric is True ( NOT met), algorithm will continue (return True)
 
