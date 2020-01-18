@@ -20,15 +20,23 @@ class PolynomialChaosExpansion(SurrogateModel):
     Class to build polynomial chaos expansion (PCE) model
     """
 
-    def __init__(self, poly_order, dist_zeta_J, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.dist_zeta_J    = dist_zeta_J
-        self.poly_order     = int(poly_order)#### basis_order is just one values (int) 
-        poly, norm          = cp.orth_ttr(self.poly_order, self.dist_zeta_J, retall=True)
-        self.basis_         = poly
-        self.basis_norms_   = norm
+    def __init__(self, p=None, dist=None, random_seed = None):
+        super().__init__(random_seed=random_seed)
+        self.dist_zeta_J    = dist 
+        self.poly_order     = p
+        if self.poly_order is not None:
+            poly, norm      = cp.orth_ttr(int(self.poly_order), self.dist_zeta_J, retall=True)
+            self.basis_     = poly
+            self.basis_norms= norm
+        else:
+            self.basis_     = None
+            self.basis_norms= None
         self.active_        = [] ## Indices of active variables (used for sparse model).
+        self.cv_error       = np.inf
+        self.name           = 'Polynomial Chaos Expansion'
 
+                
+    def info():
         # _________________________________________________________________________________________
         #           |                           Parameters
         # metamodel |------------------------------------------------------------------------------
@@ -42,7 +50,7 @@ class PolynomialChaosExpansion(SurrogateModel):
         # print(r'>>> Initialize SurrogateModel Object...')
         # print(r'------------------------------------------------------------')
         print(r' > Building Surrogate Models')
-        print(r'   * {:<25s} : {:<20s}'.format('Model name', 'Polynomial Chaos Expansion'))
+        print(r'   * {:<25s} : {:<20s}'.format('Model name', self.name))
         # Following parameters are required
         print(r'   * Requried parameters')
         try:
@@ -59,7 +67,7 @@ class PolynomialChaosExpansion(SurrogateModel):
                 pass
             else:
                 print(r'     - {:<20s} : {}'.format(key,value))
-                
+
     def fit(self,x,y,w=None, *args, **kwargs):
         """
         Fit PCE meta model with given observations (x,y,w)
