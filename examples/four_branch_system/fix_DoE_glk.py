@@ -75,8 +75,10 @@ def main():
         n_quad += (plim[1] + 1)**ndim
         n_lhs   = n_budget - n_quad
 
+    
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.05)
     simparams.info()
+    print('     - {:<23s}: {:d}'.format('LHS samples', n_lhs))
 
     #### ----------------------- Build PCE Surrogate Model -------------------- ###
     ### ============ Initialization  ============
@@ -109,7 +111,7 @@ def main():
         pce_model   = museuq.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, w=w_train, method=fit_method)
         y_train_hat = pce_model.predict(u_train)
-        u_valid, x_valid, y_valid = get_validation_data(quad_order, plim, n_lhs, ndim, data_dir=simparams.data_dir)
+        u_valid, x_valid, y_valid = get_validation_data(quad_order,plim, n_lhs, ndim, data_dir=simparams.data_dir)
         y_valid_hat = pce_model.predict(u_valid)
 
         filename = 'DoE_McsE6R0.npy'
@@ -119,33 +121,32 @@ def main():
         y_samples= pce_model.predict(u_samples)
 
         ### ============ updating parameters ============
-        cv_error.append(uq_metrics.mean_squared_error(y_valid, y_valid_hat))
+        pce_model.cv_error = uq_metrics.mean_squared_error(y_valid, y_valid_hat)
+        cv_error.append(pce_model.cv_error)
         r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
         mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
         poly_order  += 1
         n_eval_curr += u_train.shape[1] 
         n_eval_next = n_eval_curr + (poly_order+1)**ndim
-        f_hat = pce_model
+        f_hat = pce_model if f_hat.cv_error > pce_model.cv_error else f_hat
 
-
-    poly_order -= 1
     print('------------------------------------------------------------')
     print('>>> Adaptive simulation done:')
     print('------------------------------------------------------------')
-    print(' - {:<25s} : {}'.format('Polynomial order (p)', poly_order))
+    print(' - {:<25s} : {}'.format('Polynomial order (p)', f_hat.poly_order))
     print(' - {:<25s} : {}'.format('Active basis', f_hat.active_))
     print(' - {:<25s} : {}'.format('# Evaluations ', n_eval_curr))
     print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(r2_score_adj, 2)))
     print(' - {:<25s} : {}'.format('mquantiles', np.around(np.squeeze(np.array(mquantiles)), 2)))
 
 
-    filename = 'mquantile_DoE_QuadHem_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'mquantile_DoE_QuadHem_PCE{:d}_{:s}_path.npy'.format(f_hat.poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
-    filename = 'r2_DoE_QuadHem_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'r2_DoE_QuadHem_PCE{:d}_{:s}_path.npy'.format(f_hat.poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(r2_score_adj))
 
-    filename = 'cv_error_DoE_QuadHem_PCE{:d}_{:s}_path.npy'.format(poly_order, fit_method)
+    filename = 'cv_error_DoE_QuadHem_PCE{:d}_{:s}_path.npy'.format(f_hat.poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(cv_error))
 
     ## run MCS to get mquantile
@@ -157,10 +158,10 @@ def main():
         x_samples= data_set[ndim: 2*ndim,:]
         y_samples= f_hat.predict(u_samples)
         mquantiles.append(uq_metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
-        filename = 'DoE_McsE6R{:d}_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
+        filename = 'DoE_McsE6R{:d}_QuadHem_PCE{:d}_{:s}.npy'.format(r, f_hat.poly_order, fit_method)
         np.save(os.path.join(simparams.data_dir, filename), y_samples)
 
-    filename = 'mquantile_DoE_QuadHem_PCE{:d}_{:s}.npy'.format(poly_order, fit_method)
+    filename = 'mquantile_DoE_QuadHem_PCE{:d}_{:s}.npy'.format(f_hat.poly_order, fit_method)
     np.save(os.path.join(simparams.data_dir, filename), np.array(mquantiles))
 
 if __name__ == '__main__':

@@ -36,12 +36,12 @@ def main():
     simparams.info()
 
     ### ============ Stopping Criteria ============
-    fit_method      = 'OLSLARS'
-    poly_order      = plim[0]
-    cv_error        = []
-    mquantiles      = []
-    r2_score_adj    = []
-    f_hat           = None
+    fit_method  = 'OLSLARS'
+    poly_order  = plim[0]
+    cv_error    = []
+    mquantiles  = []
+    r2_score_adj= []
+    f_hat       = museuq.PCE()
 
     ### ============ Get training points ============
     filename= 'DoE_LhsE3R0.npy'
@@ -71,18 +71,14 @@ def main():
         r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
         mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
         poly_order += 1
-        if f_hat is None:
-            f_hat  = pce_model
-        else:
-            if f_hat.cv_error > pce_model.cv_error:
-                f_hat = pce_model
+        f_hat = pce_model if f_hat.cv_error > pce_model.cv_error else f_hat
 
 
     poly_order -= 1
     print('------------------------------------------------------------')
     print('>>> Adaptive simulation done:')
     print('------------------------------------------------------------')
-    print(' - {:<25s} : {}'.format('Polynomial order (p)', poly_order))
+    print(' - {:<25s} : {}'.format('Polynomial order (p)', f_hat.poly_order))
     print(' - {:<25s} : {} ->#{:d}'.format('Active basis', f_hat.active_, len(f_hat.active_)))
     print(' - {:<25s} : {}'.format('# Evaluations ', n_eval))
     print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(r2_score_adj, 2)))
