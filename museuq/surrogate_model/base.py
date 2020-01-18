@@ -21,7 +21,6 @@ class SurrogateModel(object):
     def __init__(self, random_seed = None):
         self.random_seed = random_seed
         self.name        = ''   # string, PCE, aPCE, GPR
-        self.setting     = []   # list, used to generate the setting functions for surrogate models
         self.basis       = []   # list of metamodel basis functions. For PCE, list of polynomials, for GPR, list of kernels
 
     def fit(self,x,y,w=None):
