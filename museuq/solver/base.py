@@ -10,24 +10,15 @@
 
 """
 import numpy as np
-from museuq.utilities.decorators import (NotFittedError, check_valid_values, missing_method_scipy_wrapper)
 
 class Solver(object):
     """
     Abstract class for solvers
     """
 
-    def __init__(self,*args, **kwargs):
-        """
-
-        """
-        self.name    = ''
-        self.theta_m = [] 
-        self.theta_s = [] 
-        self.y       = []
-        self.y_stats = []
-
-    def run(self, x, *args, **kwargs):
+    def __init__(self):
+        self.name = ''
+    def run(self, x):
         """
         run solver with input variables
         Parameters:
