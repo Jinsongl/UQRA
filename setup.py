@@ -12,16 +12,17 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'mypackage'
-DESCRIPTION = 'My short description for my project.'
+NAME = 'museuq'
+DESCRIPTION = 'Python package for Uncertainty Quantification'
 URL = 'https://github.com/me/myproject'
 EMAIL = 'me@example.com'
-AUTHOR = 'Awesome Soul'
+AUTHOR = 'Jinsong Liu'
 REQUIRES_PYTHON = '>=3.6.0'
 VERSION = '0.1.0'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
+        'chaospy', 'numpy', 'sklearn', 'scipy',
     # 'requests', 'maya', 'records',
 ]
 
