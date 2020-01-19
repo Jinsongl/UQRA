@@ -15,9 +15,7 @@ import os, numpy as np
 from scipy import interpolate
 from scipy.integrate import odeint, quad
 from scipy.optimize import brentq
-from ..utilities.PowerSpectrum import PowerSpectrum
-from ..utilities import power_spectrum as psd
-from ..utilities.psd2process import psd2process
+from .PowerSpectrum import PowerSpectrum
 from ..utilities import helpers
 
 
