@@ -278,7 +278,7 @@ def get_weighted_exceedance(x, **kwargs):
     return res
 
 
-def get_stats(data, qoi2analysis='ALL', stats2cal=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=-1):
+def get_stats(data, qoi2analysis='ALL', stats2cal=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=None):
     """
     Return column-wise statistic properties for given qoi2analysis and stats2cal
     Parameters:
@@ -295,32 +295,22 @@ def get_stats(data, qoi2analysis='ALL', stats2cal=['mean', 'std', 'skewness', 'k
     """
     print(r' > Calculating statistics...')
     print(r'   * {:<15s} '.format('post analysis parameters'))
-    qoi2analysis = qoi2analysis if qoi2analysis is not None else 'ALL'
     print(r'     - {:<15s} : {} '.format('qoi2analysis', qoi2analysis))
-    stats_list = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
-    print(r'     - {:<15s} : {} '.format('statistics'  , list(itertools.compress(stats_list, stats2cal)) ))
+    print(r'     - {:<15s} : {} '.format('statistics'  , stats2cal))
 
     if isinstance(data, (np.ndarray, np.generic)):
-        data_sets = [data,]
+        data = data.reshape(-1,1) if data.ndim == 1 else data
+        data = data if qoi2analysis == 'ALL' else np.squeeze(data[:, qoi2analysis])
     elif isinstance(data, str):
-        data_sets = [_load_data_from_file(data)]
-    elif isinstance(data, list) and isinstance(data[0], (np.ndarray, np.generic)):
-        data_sets = data
-    elif isinstance(data, list) and isinstance(data[0], str):
-        data_sets = [_load_data_from_file(iname) for iname in data]
+        data = _load_data_from_file(data)
+        data = data.reshape(-1,1) if data.ndim == 1 else data
+        data = data if qoi2analysis == 'ALL' else np.squeeze(data[:, qoi2analysis])
     else:
         raise ValueError('Input format for get_stats are not defined, {}'.format(type(data)))
-        
-    res = []
-    for i, idata_set  in enumerate(data_sets):
-        idata_set = idata_set if qoi2analysis == 'ALL' else idata_set[qoi2analysis]
-        stat = _get_stats(np.squeeze(idata_set), stats=stats2cal, axis=axis)
-        res.append(stat)
-        print(r'     - Data set : {:d} / {:d}    -> Statistics output : {}'.format(i, len(data_sets), stat.shape))
-    res = res if len(res) > 1 else res[0]
-    return np.array(res)
+    res = _get_stats(data, stats=stats2cal, axis=axis)
+    return res
 
-def _get_stats(data, stats=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=-1):
+def _get_stats(data, stats=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=None):
     """ Calculate statistics of data along specified axis
         Parameters:
           - data: np.ndarray 
@@ -354,10 +344,8 @@ def _get_stats(data, stats=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'ab
             res.append(_up_crossing(data, axis=axis))
 
         else:
-            raise FileNotFoundError
-
-
-    return np.array(res)
+            raise ValueError 
+    return np.squeeze(np.array(res))
 
 
 def _get_weighted_exceedance1d(x,numbins=10, defaultreallimits=None, weights=None):
