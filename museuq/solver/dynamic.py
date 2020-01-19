@@ -10,13 +10,14 @@
 Single degree of freedom with time series external loads
 """
 
+import museuq
 from museuq.solver.base import Solver
 import os, numpy as np
 from scipy import interpolate
 from scipy.integrate import odeint, quad
 from scipy.optimize import brentq
 from .PowerSpectrum import PowerSpectrum
-from ..utilities import helpers
+from tqdm import tqdm
 
 
 class linear_oscillator(Solver):
@@ -31,8 +32,8 @@ class linear_oscillator(Solver):
     args, tuple, oscillator arguments in order of (mass, damping, stiffness) 
     kwargs, dictionary, spectrum definitions for the input excitation functions
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__()
         self.name        = 'linaer oscillator'
         self.spec_name   = kwargs.get('spec_name', 'JONSWAP')
         self.qoi2analysis= kwargs.get('qoi2analysis', 'ALL')
@@ -40,7 +41,8 @@ class linear_oscillator(Solver):
         self.axis        = kwargs.get('axis', 0)
         self.tmax        = kwargs.get('time_max', 1000)
         self.dt          = kwargs.get('dt', 0.1)
-
+        # self.theta_m = [] 
+        # self.theta_s = [] 
         ### two ways defining mck
         if 'k' in kwargs.keys() and 'c' in kwargs.keys():
             self.m      = kwargs.get('m', 1)
@@ -69,15 +71,42 @@ class linear_oscillator(Solver):
         return message
 
     def run(self, x):
+        """
+        run linear_oscillator:
+        Arguments:
+            x, power spectrum parameters, ndarray of shape(ndim, nsamples)
+
+        """
         x = np.array(x)
+        x = x.reshape(-1,1) if x.ndim == 1 else x
         ## if x is just one set of input of shape (2, 1)
-        if x.size == 2 or x.shape[1] == 1:
-            self.y, self.y_stats = self._linear_oscillator(x)
-        else:
-            pbar_x  = tqdm(x.T, ascii=True, desc="   - ")
-            y, y_stats = zip(*[self._linear_oscillator(t,ix, **kwargs_default) for ix in pbar_x])
-            self.y = np.array(y)
-            self.y_stats = np.array(y_stats)
+        pbar_x  = tqdm(x.T, ascii=True, desc="   - ")
+        # Note that xlist and ylist will be tuples (since zip will be unpacked). If you want them to be lists, you can for instance use:
+        y_raw, y_QoI = map(list, zip(*[self._linear_oscillator(ix) for ix in pbar_x]))
+        print(np.array(y_raw).shape)
+        print(np.array(y_QoI).shape)
+        
+        return y_raw, y_QoI
+
+    def x_psd(self, f, x):
+        """
+        Return the psd estimator of input for the given PowerSpectrum(x)
+        """
+        psd_x = PowerSpectrum(self.spec_name, *x)
+        x_pxx = psd_x.get_pxx(f)
+        return psd_x
+
+    def psd(self,f,x):
+        """
+        Return the psd estimator of response for the given PowerSpectrum(x)
+        """
+        H_square = 1.0/np.sqrt( (self.k-self.m*f**2)**2 + (self.c*f)**2 )
+        psd_x = self.x_psd(f, x)
+        y_pxx = H_square * psd_x.pxx
+        psd_y = PowerSpectrum('SDOF')
+        psd_y.set_psd(psd_x.f, y_pxx)
+
+        return psd_x, psd_y 
 
     def _linear_oscillator(self, x):
         """
@@ -92,43 +121,21 @@ class linear_oscillator(Solver):
         kwargs, dictionary, spectrum definitions for the input excitation functions
         """
 
-        t           = np.arange(0,int(self.tmax/self.dt) +1) * self.dt
-        tmax, dt    = t[-1], t[1] - t[0]
-        df          = 0.5/tmax
-        f           = np.arange(len(t)+1) * df
+        t    = np.arange(0,int(self.tmax/self.dt) +1) * self.dt
+        tmax = t[-1]
+        df   = 0.5/tmax
+        f    = np.arange(len(t)+1) * df
         ##--------- oscillator properties -----------
-        H_square    = 1.0/np.sqrt( (self.k-self.m*f**2)**2 + (self.c*f)**2 )
+        psd_x, psd_y = self.psd(f, x)
+        t0, x_t = psd_x.gen_process()
+        t1, y_t = psd_y.gen_process()
+        assert (t0==t1).all()
 
-        input_psd   = PowerSpectrum(self.spec_name, *x)
-        x_pxx       = input_psd.get_pxx(f)
-        t, x_t      = input_psd.gen_process()
-        output_psd  = PowerSpectrum('SDOF_out')
-        y_pxx       = H_square * x_pxx
-        output_psd.set_psd(f, y_pxx)
-        t, y_t      = output_psd.gen_process()
-
-        ##---- Reshape-----
-        t           = np.array(t).reshape((-1,1))
-        x_t         = np.array(x_t).reshape((-1,1))
-        y_t         = np.array(y_t).reshape((-1,1))
-        y1          = np.concatenate((t,x_t,y_t), axis=1)
-        # np.save(os.path.join(data_dir, 'sdof_time'), y1)
-        f           = np.array(f).reshape((-1,1))
-        x_pxx       = np.array(x_pxx).reshape((-1,1))
-        y_pxx       = np.array(y_pxx).reshape((-1,1))
-        y2          = np.concatenate((f,x_pxx,y_pxx), axis=1)
-        # np.save(os.path.join(data_dir, 'sdof_frequency'), y2)
-
-        try:
-            y  = np.concatenate((t,x_t,y_t, f,x_pxx,y_pxx), axis=1)
-        except:
-            print('{:<15s} : {} '.format('t', t.shape))
-            print('{:<15s} : {} '.format('f', f.shape))
-        data = np.concatenate((x_t, y_t), axis=1)
-        helpers.blockPrint()
-        y_stats = helpers.get_stats(data, qoi2analysis =self.qoi2analysis, stats2cal = self.stats2cal, axis=self.axis) 
-        helpers.enablePrint()
-        return y, y_stats
+        y_raw = np.vstack((t0, x_t, y_t)).T
+        museuq.blockPrint()
+        y_QoI = museuq.get_stats(y_raw, qoi2analysis =self.qoi2analysis, stats2cal = self.stats2cal, axis=0) 
+        museuq.enablePrint()
+        return y_raw, y_QoI
             
 
 # def _cal_normalize_values(zeta,omega0,source_kwargs, *source_args):
@@ -230,10 +237,10 @@ class linear_oscillator(Solver):
         # stats2cal   = kwargs.get('stats2cal', [1,1,1,1,1,1,0])
         # axis        = kwargs.get('axis', 0)
         # data        = np.concatenate((x_t, y_t), axis=1)
-        # helpers.blockPrint()
-        # y_stats = helpers.get_stats(data, qoi2analysis =qoi2analysis, stats2cal = stats2cal, axis=axis) 
-        # helpers.enablePrint()
-        # return y_stats
+        # museuq.blockPrint()
+        # y_QoI = museuq.get_stats(data, qoi2analysis =qoi2analysis, stats2cal = stats2cal, axis=axis) 
+        # museuq.enablePrint()
+        # return y_QoI
         
 # def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,\
         # *source_args, source_func=None, source_kwargs=None,t_trans=0, normalize=False):
