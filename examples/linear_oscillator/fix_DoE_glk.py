@@ -64,6 +64,7 @@ def main():
     dist_zeta   = cp.Iid(cp.Normal(),ndim) 
     simparams   = museuq.simParameters('linear_oscillator', dist_zeta)
     solver      = museuq.linear_oscillator()
+    n_sim_short = 10 ## number of short-term simulations
 
     ### ============ Adaptive parameters ============
     plim        = [2,2]
@@ -82,18 +83,14 @@ def main():
 
     #### ----------------------- Build PCE Surrogate Model -------------------- ###
     ### ============ Initialization  ============
-    fit_method      = 'GLK'
-    poly_order      = plim[0]
-    n_eval_curr     = 0
-    n_eval_next     = 0
-    mquantiles      = []
-    r2_score_adj    = []
-    cv_error        = []
-    f_hat = None
-
-    # error_mse       = []
-    # u_valid = np.arange(3).reshape(3,1)
-    # y_valid = np.arange(1)
+    fit_method  = 'GLK'
+    poly_order  = plim[0]
+    n_eval_curr = 0
+    n_eval_next = 0
+    mquantiles  = []
+    r2_score_adj= []
+    cv_error    = []
+    f_hat       = museuq.mPCE() 
 
     while simparams.is_adaptive_continue(n_eval_next, poly_order=poly_order,
             r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
