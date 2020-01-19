@@ -23,4 +23,7 @@ from museuq.surrogates.polynomial_chaos_expansion import PolynomialChaosExpansio
 from museuq.surrogates.multiple_polynomial_chaos_expansion import mPCE 
 
 from museuq.utilities import metrics as metrics
+from museuq.utilities.helpers import get_stats
+from museuq.utilities.helpers import blockPrint
+from museuq.utilities.helpers import enablePrint
 
