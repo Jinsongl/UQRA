@@ -12,3 +12,4 @@
 
 from museuq.surrogate_model.base import SurrogateModel
 from museuq.surrogate_model.polynomial_chaos_expansion import PolynomialChaosExpansion
+from museuq.surrogate_model.multiple_polynomial_chaos_expansion import mPCE

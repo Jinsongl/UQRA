@@ -21,6 +21,27 @@ data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
+    def test_mPCE(self):
+        foo = lambda x: x**3 + 0.5*x + np.random.randn(*x.shape)
+        dist = cp.Normal()
+        x = dist.sample(1000).reshape(1,-1)
+        print(x.shape)
+        y =  np.squeeze(np.array([foo(x), foo(x)]).T)
+        print(y.shape)
+        # basis = cp.orth_ttr(5, dist)
+        foo_hat = museuq.PCE(5, dist) 
+        foo_hat.fit(x, y, method='OLS')
+        y_pred = foo_hat.predict(x)
+        print(y_pred.shape)
+        foo_hat = museuq.mPCE(5, dist)
+        foo_hat.fit(x, y, method='OLS')
+        y_pred = foo_hat.predict(x)
+        print(y_pred.shape)
+
+
+
+
+
     def test_moments(self):
         # np.set_printoptions(precision=3)
         data_dir = '/Volumes/External/MUSE_UQ_DATA/Ishigami/Data'

@@ -22,51 +22,30 @@ class PolynomialChaosExpansion(SurrogateModel):
 
     def __init__(self, p=None, dist=None, random_seed = None):
         super().__init__(random_seed=random_seed)
+        self.name           = 'Polynomial Chaos Expansion'
         self.dist_zeta_J    = dist 
         self.poly_order     = p
         if self.poly_order is not None:
             poly, norm      = cp.orth_ttr(int(self.poly_order), self.dist_zeta_J, retall=True)
             self.basis_     = poly
             self.basis_norms= norm
+            self.active_    = range(len(self.basis_)) 
+            self.cv_error   = np.inf
         else:
             self.basis_     = None
             self.basis_norms= None
-        self.active_        = [] ## Indices of active variables (used for sparse model).
-        self.cv_error       = np.inf
-        self.name           = 'Polynomial Chaos Expansion'
-
+            self.active_    = None
+            self.cv_error   = np.inf
                 
     def info():
-        # _________________________________________________________________________________________
-        #           |                           Parameters
-        # metamodel |------------------------------------------------------------------------------
-        #           |           required            |            optional 
-        # -----------------------------------------------------------------------------------------
-        # PCE       | dist_zeta, method         | dist_zeta_J, dist_x, dist_x_J, poly_order
-        # _________________________________________________________________________________________
-        # _________________________________________________________________________________________
-        # For PCE model, following parameters are required:
-        # print(r'------------------------------------------------------------')
-        # print(r'>>> Initialize SurrogateModel Object...')
-        # print(r'------------------------------------------------------------')
-        print(r' > Building Surrogate Models')
-        print(r'   * {:<25s} : {:<20s}'.format('Model name', self.name))
-        # Following parameters are required
-        print(r'   * Requried parameters')
-        try:
-            print(r'     - {:<23s} : {}'.format('Zeta Joint dist'       , self.dist_zeta_J))
-            print(r'     - {:<23s} : {}'.format('Polynomial order (p)'  , self.poly_order ))
-            print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)'  , len(self.basis_)))
-        except KeyError:
-            print(r'     Error: dist_zeta, poly_order are required parameters for PCE model')
-
-        # Following parameters are optional
-        print(r'   * Optional parameters:')
-        for key, value in kwargs.items():
-            if key in ['dist_zeta_J','poly_order']:
-                pass
-            else:
-                print(r'     - {:<20s} : {}'.format(key,value))
+        if self.poly_order is not None:
+            print(r'   * {:<25s} : {:<20s}'.format('Model name', self.name))
+            print(r'     - {:<23s} : {}'.format('Askey-Wiener dist'   , self.dist_zeta_J))
+            print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.poly_order ))
+            print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)', len(self.basis_)))
+            print(r'     - {:<23s} : {:d}'.format('No. active basis (P)', len(self.active_)))
+        else:
+            print(r'   * {:<25s} '.format('MUSEUQ.PCE()'))
 
     def fit(self,x,y,w=None, *args, **kwargs):
         """
@@ -75,7 +54,7 @@ class PolynomialChaosExpansion(SurrogateModel):
         Arguments:
             x: array-like of shape (ndim, nsamples) 
                 sample input values in zeta (selected Wiener-Askey distribution) space
-            y: array-like of shape (nsamples,[n_output_dims])
+            y: array-like of shape (nsamples [,n_output_dims/nQoI])
                 QoI observations
 
             optional arguments:
@@ -99,10 +78,9 @@ class PolynomialChaosExpansion(SurrogateModel):
         y = np.array(y)
         y = y.reshape(-1,1) if y.ndim == 1 else y
 
-
         self.fit_method = kwargs.get('method', 'GLK')
-        print(r' > Fitting PCE surrogate models with {:s}'.format(self.fit_method))
-        print(r'   * {:<25s} : {}'.format('PCE polynomial order', self.poly_order))
+        print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
+        print(r'   * {:<25s} : {}'.format('Polynomial order (p)', self.poly_order))
 
         if self.fit_method.upper() in ['GALERKIN', 'GLK','PROJECTION']:
             if w is None:
@@ -187,8 +165,6 @@ class PolynomialChaosExpansion(SurrogateModel):
 
             print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
 
-        elif self.fit_method.upper() in ['LARS']:
-            raise ValueError('Method to calculate PCE coefficients {:s} is not defined'.format(method))
         else:
             raise ValueError('Method to calculate PCE coefficients {:s} is not defined'.format(method))
 

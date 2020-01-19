@@ -19,5 +19,6 @@ from museuq.solver.static import *
 
 from museuq.simParameters import simParameters
 from museuq.surrogate_model.polynomial_chaos_expansion import PolynomialChaosExpansion as PCE
+from museuq.surrogate_model.multiple_polynomial_chaos_expansion import mPCE 
 from museuq.utilities.ErrorClass import NullError, IidError, CovError
 
