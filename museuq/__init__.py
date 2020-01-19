@@ -8,6 +8,8 @@ import importlib
 import numpy as np
 import pandas as pd
 
+from museuq.simParameters import simParameters
+
 from museuq.doe.quadrature import QuadratureDesign
 from museuq.doe.random_design import RandomDesign
 from museuq.doe.lhs import LatinHyperCube as LHS
@@ -15,10 +17,10 @@ from museuq.doe.optimal_design import OptimalDesign
 
 from museuq.solver.dynamic import linear_oscillator
 from museuq.solver.static import * 
+from museuq.solver.ErrorClass import NullError, IidError, CovError
 
+from museuq.surrogates.polynomial_chaos_expansion import PolynomialChaosExpansion as PCE
+from museuq.surrogates.multiple_polynomial_chaos_expansion import mPCE 
 
-from museuq.simParameters import simParameters
-from museuq.surrogate_model.polynomial_chaos_expansion import PolynomialChaosExpansion as PCE
-from museuq.surrogate_model.multiple_polynomial_chaos_expansion import mPCE 
-from museuq.utilities.ErrorClass import NullError, IidError, CovError
+from museuq.utilities import metrics as metrics
 

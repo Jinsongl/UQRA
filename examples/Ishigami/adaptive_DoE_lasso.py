@@ -9,15 +9,9 @@
 """
 
 """
-import context
-import museuq
+import context, museuq, warnings
 import numpy as np, chaospy as cp, os, sys
-import warnings
 from tqdm import tqdm
-from museuq.utilities import helpers as uqhelpers
-from museuq.utilities import metrics_collections as uq_metrics
-from sklearn.model_selection import KFold
-import time
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
 
@@ -76,8 +70,8 @@ def main():
         y_samples= pce_model.predict(u_samples)
 
         cv_error.append(pce_model.cv_error)
-        r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
-        mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
+        r2_score_adj.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
+        mquantiles.append(museuq.metrics.mquantiles(y_samples, 1-1e-4))
         n_eval_path.append(n_eval)
         ### ============ updating parameters ============
         n_eval     += n_new
@@ -111,7 +105,7 @@ def main():
         u_samples= data_set[0:ndim,:]
         x_samples= data_set[ndim: 2*ndim,:]
         y_samples= f_hat.predict(u_samples)
-        mquantiles.append(uq_metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
+        mquantiles.append(museuq.metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
         filename = 'DoE_McsE6R{:d}_q15_OptD2040_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
         np.save(os.path.join(simparams.data_dir, filename), y_samples)
 

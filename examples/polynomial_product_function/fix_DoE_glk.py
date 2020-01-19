@@ -13,13 +13,7 @@ import context
 import museuq
 import numpy as np, chaospy as cp, os, sys
 import warnings
-from sklearn.gaussian_process.kernels import (RBF, Matern, RationalQuadratic,
-                                              ExpSineSquared, DotProduct,
-                                              ConstantKernel,WhiteKernel)
 from tqdm import tqdm
-from museuq.utilities import helpers as uqhelpers
-from museuq.utilities import metrics_collections as uq_metrics
-from museuq.utilities import dataIO 
 from museuq.environment import Kvitebjorn
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
@@ -118,9 +112,9 @@ def main():
         y_samples= pce_model.predict(u_samples)
 
         ### ============ updating parameters ============
-        cv_error.append(uq_metrics.mean_squared_error(y_valid, y_valid_hat))
-        r2_score_adj.append(uq_metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
-        mquantiles.append(uq_metrics.mquantiles(y_samples, 1-1e-4))
+        cv_error.append(museuq.metrics.mean_squared_error(y_valid, y_valid_hat))
+        r2_score_adj.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
+        mquantiles.append(museuq.metrics.mquantiles(y_samples, 1-1e-4))
         poly_order  += 1
         n_eval_curr += u_train.shape[1] 
         n_eval_next = n_eval_curr + (poly_order+1)**ndim
@@ -155,7 +149,7 @@ def main():
         u_samples= data_set[0:ndim,:]
         x_samples= data_set[ndim: 2*ndim,:]
         y_samples= f_hat.predict(u_samples)
-        mquantiles.append(uq_metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
+        mquantiles.append(museuq.metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
         filename = 'DoE_McsE6R{:d}_ndim{:d}_PCE{:d}_{:s}.npy'.format(r, ndim, poly_order, fit_method)
         np.save(os.path.join(simparams.data_dir, filename), y_samples)
 

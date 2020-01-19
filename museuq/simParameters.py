@@ -13,9 +13,7 @@ import os, sys
 import chaospy as cp
 import numpy as np
 from datetime import datetime
-from .doe.doe_generator import samplegen
 from .utilities.classes import Logger
-from .utilities.helpers import num2print
 from itertools import compress
 ## Define parameters class
 
