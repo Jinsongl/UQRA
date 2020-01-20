@@ -15,7 +15,6 @@ import numpy as np
 from datetime import datetime
 from .utilities.classes import Logger
 from itertools import compress
-## Define parameters class
 
 class simParameters(object):
     """

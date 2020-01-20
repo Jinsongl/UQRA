@@ -83,10 +83,8 @@ class linear_oscillator(Solver):
         pbar_x  = tqdm(x.T, ascii=True, desc="   - ")
         # Note that xlist and ylist will be tuples (since zip will be unpacked). If you want them to be lists, you can for instance use:
         y_raw, y_QoI = map(list, zip(*[self._linear_oscillator(ix) for ix in pbar_x]))
-        print(np.array(y_raw).shape)
-        print(np.array(y_QoI).shape)
         
-        return y_raw, y_QoI
+        return np.array(y_raw), np.array(y_QoI)
 
     def x_psd(self, f, x):
         """

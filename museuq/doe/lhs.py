@@ -12,7 +12,6 @@
 import numpy as np
 import scipy
 import pyDOE2
-import itertools
 from museuq.utilities.decorators import random_state
 from museuq.doe.base import ExperimentalDesign
 from museuq.utilities.helpers import num2print
