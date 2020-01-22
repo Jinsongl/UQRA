@@ -9,7 +9,7 @@
 """
 
 """
-import context, museuq, warnings
+import museuq, warnings
 import numpy as np, chaospy as cp, os, sys, math
 from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")

@@ -9,7 +9,6 @@
 """
 
 """
-import context
 import museuq
 import numpy as np, chaospy as cp, os, sys
 import warnings
@@ -72,16 +71,17 @@ def main():
 
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, r2_bound=0.9, q_bound=0.05)
     simparams.info()
+    print('     - {:<23s}: {:d}'.format('LHS samples', n_lhs))
 
     ### ----------------------- Initialization  -------------------- 
-    fit_method      = 'GLK'
-    poly_order      = plim[0]
-    n_eval_curr     = 0
-    n_eval_next     = 0
-    mquantiles      = []
-    r2_score_adj    = []
-    cv_error        = []
-    f_hat = None
+    fit_method  = 'GLK'
+    poly_order  = plim[0]
+    n_eval_curr = 0
+    n_eval_next = 0
+    mquantiles  = []
+    r2_score_adj= []
+    cv_error    = []
+    f_hat       = museuq.PCE() 
 
 
     ### ----------------------- Adaptive step starts-------------------- 
