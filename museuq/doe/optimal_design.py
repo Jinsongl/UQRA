@@ -21,16 +21,16 @@ from tqdm import tqdm
 class OptimalDesign(ExperimentalDesign):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
 
-    def __init__(self, opt_criteria,*args, **kwargs):
+    def __init__(self, opt_criteria, random_seed=None):
         """
         Optimal/Quasi Optimal Experimental design:
         Arguments:
         n: int, number of samples 
         opt_criteria: optimal design criteria
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(random_seed=random_seed)
         self.criteria   = opt_criteria 
-        self.filename   = '_'.join(['DoE', 'Opt'+self.criteria.capitalize() + num2print(self.n_samples)])
+        self.filename   = '_'.join(['DoE', 'Opt'+self.criteria.capitalize()])
         self.selected_row = None 
 
     def __str__(self):
@@ -58,7 +58,7 @@ class OptimalDesign(ExperimentalDesign):
         return svalues
 
     @random_state
-    def samples(self, X, *args, **kwargs):
+    def samples(self,X,n_samples, *args, **kwargs):
         """
         Xb = Y
         X: Design matrix X(u) of shape(num_samples, num_features)
@@ -66,7 +66,7 @@ class OptimalDesign(ExperimentalDesign):
         Return:
             Experiment samples of shape(ndim, n_samples)
         """
-        n_samples   = kwargs.get('n_samples', self.n_samples)
+        self.filename= self.filename+num2print(n_samples)
         m, p        = X.shape
         assert m > p, 'Number of candidate samples are expected to be larger than number of features'
 
@@ -122,12 +122,6 @@ class OptimalDesign(ExperimentalDesign):
             selected_row = selected_row[:len(self.selected_row) + n_samples]
             self.selected_row = selected_row
             return selected_row[len(self.selected_row):]
-
-            
-
-
-
-
 
     def _cal_logsvalue_over(self, R, X):
         """
