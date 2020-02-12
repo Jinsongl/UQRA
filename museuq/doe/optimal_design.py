@@ -77,7 +77,7 @@ class OptimalDesign(ExperimentalDesign):
             selected_row   = self._get_quasi_optimal(n_samples, X, selected_row, is_basis_orth)
         elif self.criteria.upper() == 'D':
             """ D optimality based on rank revealing QR factorization  """
-            Q, R, P = sp.linalg.qr(X.T, pivoting=True)
+            _, _, P = sp.linalg.qr(X.T, pivoting=True)
             selected_row = P[:n_samples]
         else:
             pass
