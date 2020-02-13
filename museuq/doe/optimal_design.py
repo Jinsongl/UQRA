@@ -17,6 +17,7 @@ import numpy.linalg as LA
 import copy
 import itertools
 from tqdm import tqdm
+import time
 
 class OptimalDesign(ExperimentalDesign):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
@@ -36,7 +37,7 @@ class OptimalDesign(ExperimentalDesign):
     def __str__(self):
         return('Optimal Criteria: {:<15s}, num. samples: {:d} '.format(self.criteria, self.n_samples))
 
-    def S(self,R,X):
+    def cal_svalue(self,R,X):
         """
         Calculate the S-values of new matrix [X;r.T], where r is each row of R
         
@@ -51,9 +52,9 @@ class OptimalDesign(ExperimentalDesign):
         k,p = X.shape
 
         if k < p :
-            svalues = self._cal_logsvalue_under(R,X)
+            svalues = self._cal_svalue_under(R,X)
         else:
-            svalues = self._cal_logsvalue_over(R,X)
+            svalues = self._cal_svalue_over(R,X)
 
         return svalues
 
@@ -123,73 +124,129 @@ class OptimalDesign(ExperimentalDesign):
             self.selected_row = selected_row
             return selected_row[len(self.selected_row):]
 
-    def _cal_logsvalue_over(self, R, X):
+    def _cal_svalue_over(self, X0, X1):
         """
         Calculate the S value (without determinant) of candidate vectors w.r.t selected subsets
-        when the current selection k >= p (eqn. 3.16) for each pair of (r, X)
+        when the current selection k >= p (eqn. 3.16) for each pair of (X[i,:], X1)
 
 
         Arguments:
-        R -- candidate matrix of shape (number of candidates, p), 
-        X -- selected subsets matrix of shape (k,p)
+        X0 -- candidate matrix of shape (number of candidates, p), 
+        X1 -- selected subsets matrix of shape (k,p)
 
         Return:
-        log S value without determinant (eqn. 3.16)
+        S value without determinant (eqn. 3.16)
 
         """
-        AAinv   = LA.inv(np.dot(X.T,X))
-        A_l2    = LA.norm(X, axis=0).reshape(1,-1) ## row vector
-        svalues_log = [] 
-        for r in R:
-            r = r.reshape(1,-1) ## row vector
-            with np.errstate(invalid='ignore'):
-                d1 = np.log(1 + np.dot(r, np.dot(AAinv, r.T)))
-                d2 = np.log(np.prod(A_l2**2 + r**2))
-            svalues_log.append(d1 - d2)
-        return svalues_log
+        AAinv   = LA.inv(np.dot(X1.T,X1))
+        # start   = time.time()
+        # A_l2    = LA.norm(X1, axis=0).reshape(1,-1) ## l2 norm for each column in X1, row vector
+        # svalues = [] 
+        # for r in X0:
+            # r = r.reshape(1,-1) ## row vector
+            # with np.errstate(invalid='ignore'):
+                # d1 = 1.0 + np.asscalar(np.dot(r, np.dot(AAinv, r.T)))
+                # d2 = np.prod(A_l2**2 + r**2)
+            # svalues.append(d1/d2)
+        # end = time.time()
+        # print('for loop time elapse  : {}'.format(end-start))
+        # print(np.around(svalues, 2))
+        # start = time.time()
+        X1_norms = LA.norm(X1, axis=0)
+        # d1 = 1.0 + np.diagonal(X0.dot(AAinv).dot(X0.T))
+        d1 = 1.0 + (X0.dot(AAinv) * X0).sum(-1)
+        d2 = np.prod(X1_norms**2 + X0**2, axis=1) 
+        svalues = d1/d2
+        # end = time.time()
+        # print(np.around(delta, 2))
+        # print(max(abs(delta - svalues)))
+        # print('matrix time elapse : {}'.format(end-start))
 
-    def _cal_logsvalue_under(self, R, X):
+        return svalues
+
+    def _cal_svalue_under(self, X0, X1):
         """
-        Calculate the log S-value (without determinant) of a candidate vector w.r.t selected subsets
+        Calculate the S-value (without determinant) of a candidate vector w.r.t selected subsets
         when the current selection k < p (eqn. 3.18)
 
         Arguments:
-        R -- candidate matrix of shape (number of candidates, p), 
-        X -- selected subsets matrix of shape (k,p)
+        X0 -- candidate matrix of shape (number of candidates, p), 
+        X1 -- selected subsets matrix of shape (k,p)
 
         Return:
-        log S value without determinant (eqn. 3.18)
+        S value without determinant (eqn. 3.18)
 
         """
-        k,p = X.shape
-        assert k < p
-        X = copy.copy(X[:,0:k])
-        R = copy.copy(R[:,0:k+1])
-        svalues_log = [] 
-        AAinv = LA.inv(np.dot(X.T,X))
-        A_l2 = LA.norm(X, axis=0).reshape(1,-1)
+        k,p = X1.shape
+        # print('X0 shape{}'.format(X0.shape))
+        # print('X1 shape{}'.format(X1.shape))
+
+        # start = time.time()
+        # A  = copy.copy(X1[:,0:k])
+        # X0 = copy.copy(X0[:,0:k+1])
+        # svalues = [] 
+        # AAinv = LA.inv(np.dot(A.T,A))
+        # A_l2 = LA.norm(A, axis=0).reshape(1,-1)
 
 
-        for r in R:
-            c = r[0:k].reshape((k,1)) ## column vector
-            gamma = r[k]
-            r = copy.copy(c)
+        # # print(A.shape)
+        # for r in X0:
+            # c = X1[0:k, k].reshape(k,1) ## column vector
+            # gamma = r[k]
+            # r = r[:k].reshape(k,1) 
 
-            b = np.dot(AAinv,r)
-            g = np.dot(AAinv,np.dot(X.T,c))
+            # b = np.dot(AAinv,r)
+            # g = np.dot(AAinv,np.dot(A.T,c))
 
-            a1 = np.dot(c.T,X) + gamma * r.T
-            a2 = np.identity(k) - np.dot(b,r.T)/(1 + np.dot(r.T,b))
-            a3 = g + gamma *b
-            a = np.squeeze(np.dot(a1,np.dot(a2,a3)))
+            # a1 = np.dot(c.T,A) + gamma * r.T
+            # a2 = np.identity(k) - np.dot(b,r.T)/(1 + np.dot(r.T,b))
+            # a3 = g + gamma *b
+            # a = np.squeeze(np.dot(a1,np.dot(a2,a3)))
 
-            with np.errstate(invalid='ignore'):
-                d1 = np.log(np.squeeze(1 + np.dot(r.T, b)))
-                d2 = np.sum(np.log(A_l2**2 + r.T**2))
-                d3 = np.log(np.squeeze(np.dot(c.T,c) + gamma**2 - a))
-                d4 = np.log(np.squeeze(np.dot(c.T,c) + gamma**2))
-            svalues_log.append(d1 + d3 - d2 - d4)
-        return svalues_log
+            # with np.errstate(invalid='ignore'):
+                # d1 = np.squeeze(1.0 + np.dot(r.T, b))
+                # d2 = np.prod(A_l2**2 + r.T**2)
+                # d3 = np.squeeze(np.dot(c.T,c) + gamma**2 - a)
+                # d4 = np.squeeze(np.dot(c.T,c) + gamma**2)
+            # svalues.append(d1*d3/d2/d4)
+        # end   = time.time()
+        # print('for loop time elaspe: {}'.format(end - start))
+
+        # start = time.time()
+        A = copy.copy(X1[0:k, 0:k]) ## shape (k, k)
+        AAinv = LA.inv(A.T.dot(A))  ## shape (k, k)
+        R = copy.copy(X0[:, 0:k])  ## shape (n-k, k)
+        B = AAinv.dot(R.T)          ## shape (k, n-k)
+        c = copy.copy(X1[0:k, k]).reshape((k,1))  ## shape(k, 1)  column vector
+        g = AAinv.dot(A.T).dot(c)   ## shape (k, 1)
+        gamma = X0[:,k]            ## shape (n-k,) 
+        Alpha1= R.T * gamma         ## R[:,i] * gamma[i] , shape (k, n-k)
+        Alpha1= c.T.dot(A) + Alpha1.T  ## shape (n-k, k), add c.T.dot(A) to each row of Alpha1.T
+        Alpha3= g + B * gamma  ## shape (k, n-k)
+        Alpha = []
+        for ia, r, b, ic in zip(Alpha1, R, B.T, Alpha3.T):
+            ia = ia.reshape(k,1) ## (1, k)
+            r  =  r.reshape(k,1)  ## ()
+            b  =  b.reshape(k,1)
+            ic = ic.reshape(k,1)
+            ib = np.identity(k) - b.dot(r.T)/(1.0 + r.T.dot(b))
+            alpha2 = np.asscalar(ia.T.dot(ib).dot(ic))
+            Alpha.append(alpha2)
+
+
+        d1 = 1.0 + (R * B.T).sum(-1)  ## shape (n-k, )
+        A_norms = LA.norm(A, axis=0)
+        d2 = np.prod(A_norms**2 + R**2, axis=1) ## shape (n-k, )
+        d4 = np.squeeze(c.T.dot(c) + gamma**2)  ## shape(n-k, )
+        d3 =  d4 - Alpha 
+        delta = d1 * d3 / d2 / d4
+        # end   = time.time()
+
+        # print('matrix loop time elaspe: {}'.format(end - start))
+        # print(np.around(svalues, 4))
+        # print(np.around(delta, 4))
+        # print(max(abs(delta - svalues)))
+        return svalues
 
     def _greedy_find_next_point(self, I, Q):
         """
@@ -206,11 +263,9 @@ class OptimalDesign(ExperimentalDesign):
         I_left   = list(set(range(Q.shape[0])).difference(set(I)))
         Q_left   = Q[np.array(I_left, dtype=np.int32),:]
         Q_select = Q[np.array(I,      dtype=np.int32),:]
-        svalues  = self.S(Q_left,Q_select)
+        svalues  = self.cal_svalue(Q_left,Q_select)
         assert(len(svalues) == len(I_left))
-        # I_candi_sorted = list(map(lambda i: I_left[i], np.argsort(svalues)))
-        # print(u'\tSorted S-value indices (increasing)', I_candi_sorted)
-        i = I_left[np.argmax(svalues)]
+        i = I_left[np.argmax(svalues)] ## return the index with largest s-value
         return i
 
     def _get_quasi_optimal(self,m,X,I=None,is_orth=False):
@@ -234,32 +289,13 @@ class OptimalDesign(ExperimentalDesign):
         assert m > 0, "At least one sample in the designed experiemnts"
         M,p = X.shape
         assert M >= p, "quasi optimal sebset are design for overdetermined problem only"
-        # assert m < 2*p, 'Quasi optimal are disigned to choose ~p design points, too many asking'
-        # print(u'>>'*20)
-        # print(u'\tQuasi-Optimal Experiment Design')
-        # print(u'\t>>>','*'*40)
-        # print(u"\tNumber of design point:\t{:2d} \n\tNumber of samples:\t{:2d} \n\tNumber of features:\t{:2d}".format(m,X.shape[0],X.shape[1]))
-        # print(u'\t>>>','*'*40)
-        # (Q,R) = (X, _ )if is_orth else LA.qr(X, mode='complete')
         (Q,R) = (X, None ) if is_orth else LA.qr(X)
-        # print(u'\tComplete QR factorization of Design matrix X. \n\t  Q.shape = {0}, R.shape={1}'.format(Q.shape, R.shape))
-        # print(u'\t>>>','*'*40)
-        # print(u'\tSearching for design points based on S-value')
-
         I = [np.random.randint(0,M)] if I is None else I ## random initialize for the first point
         m1 = len(I) 
-        # print(u'\tRandom Initialize...')
-
-        # for ipbar in pbar((i for i in range(m-m1))):
-        # print(u'\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
 
         pbar_x  = tqdm(range(m), ascii=True, desc="   - ")
         for _ in pbar_x:
-        # while len(I) < m:
             i = self._greedy_find_next_point(I,Q)
             I.append(i)
-            # print(u'\tProcessed #:{:3d} out of {:3d}'.format(len(I), m), ';\tSelected: {:8d}'.format(I[-1]))
         I = sorted(I)
-        # print(u'\tQuasi-Optimal Experiment design done!')
-        # print(u'\tSelected subset indice (first 10): ', I[:10] if len(I) > 10 else I)
         return np.array(I) 
