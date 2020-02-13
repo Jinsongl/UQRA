@@ -178,40 +178,6 @@ class OptimalDesign(ExperimentalDesign):
 
         """
         k,p = X1.shape
-        # print('X0 shape{}'.format(X0.shape))
-        # print('X1 shape{}'.format(X1.shape))
-
-        # start = time.time()
-        # A  = copy.copy(X1[:,0:k])
-        # X0 = copy.copy(X0[:,0:k+1])
-        # svalues = [] 
-        # AAinv = LA.inv(np.dot(A.T,A))
-        # A_l2 = LA.norm(A, axis=0).reshape(1,-1)
-
-
-        # # print(A.shape)
-        # for r in X0:
-            # c = X1[0:k, k].reshape(k,1) ## column vector
-            # gamma = r[k]
-            # r = r[:k].reshape(k,1) 
-
-            # b = np.dot(AAinv,r)
-            # g = np.dot(AAinv,np.dot(A.T,c))
-
-            # a1 = np.dot(c.T,A) + gamma * r.T
-            # a2 = np.identity(k) - np.dot(b,r.T)/(1 + np.dot(r.T,b))
-            # a3 = g + gamma *b
-            # a = np.squeeze(np.dot(a1,np.dot(a2,a3)))
-
-            # with np.errstate(invalid='ignore'):
-                # d1 = np.squeeze(1.0 + np.dot(r.T, b))
-                # d2 = np.prod(A_l2**2 + r.T**2)
-                # d3 = np.squeeze(np.dot(c.T,c) + gamma**2 - a)
-                # d4 = np.squeeze(np.dot(c.T,c) + gamma**2)
-            # svalues.append(d1*d3/d2/d4)
-        # end   = time.time()
-        # print('for loop time elaspe: {}'.format(end - start))
-
         # start = time.time()
         A = copy.copy(X1[0:k, 0:k]) ## shape (k, k)
         AAinv = LA.inv(A.T.dot(A))  ## shape (k, k)
@@ -233,7 +199,6 @@ class OptimalDesign(ExperimentalDesign):
             alpha2 = np.asscalar(ia.T.dot(ib).dot(ic))
             Alpha.append(alpha2)
 
-
         d1 = 1.0 + (R * B.T).sum(-1)  ## shape (n-k, )
         A_norms = LA.norm(A, axis=0)
         d2 = np.prod(A_norms**2 + R**2, axis=1) ## shape (n-k, )
@@ -241,8 +206,41 @@ class OptimalDesign(ExperimentalDesign):
         d3 =  d4 - Alpha 
         delta = d1 * d3 / d2 / d4
         # end   = time.time()
-
         # print('matrix loop time elaspe: {}'.format(end - start))
+
+        # start = time.time()
+        # A = X1[0:k, 0:k] ## shape (k, k)
+        # AAinv = LA.inv(A.T.dot(A))  ## shape (k, k)
+        # R = X0[:, 0:k]  ## shape (n-k, k)
+        # B = AAinv.dot(R.T)          ## shape (k, n-k)
+        # c = X1[0:k, k].reshape((k,1))  ## shape(k, 1)  column vector
+        # g = AAinv.dot(A.T).dot(c)   ## shape (k, 1)
+        # gamma = X0[:,k]            ## shape (n-k,) 
+        # Alpha1= R.T * gamma         ## R[:,i] * gamma[i] , shape (k, n-k)
+        # Alpha1= c.T.dot(A) + Alpha1.T  ## shape (n-k, k), add c.T.dot(A) to each row of Alpha1.T
+        # Alpha3= g + B * gamma  ## shape (k, n-k)
+        # Alpha = []
+        # # Alpha2= [ np.identity(k) - np.tensordot(b, r, axes=0)/(1.0 + r.dot(b)) for r, b in zip (R, B.T)]
+        # # Alpha = [ np.asscalar(ia.reshape(k,1).T.dot(ib).dot(ic.reshape(k,1))) for ia, ib, ic in zip(Alpha1, Alpha2, Alpha3.T)]
+        # for ia, r, b, ic in zip(Alpha1, R, B.T, Alpha3.T):
+            # ia = ia.reshape(k,1) ## (1, k)
+            # r  =  r.reshape(k,1)  ## ()
+            # b  =  b.reshape(k,1)
+            # ic = ic.reshape(k,1)
+            # ib = np.identity(k) - b.dot(r.T)/(1.0 + r.T.dot(b))
+            # alpha2 = np.asscalar(ia.T.dot(ib).dot(ic))
+            # Alpha.append(alpha2)
+
+
+        # d1 = 1.0 + (R * B.T).sum(-1)  ## shape (n-k, )
+        # A_norms = LA.norm(A, axis=0)
+        # d2 = np.prod(A_norms**2 + R**2, axis=1) ## shape (n-k, )
+        # d4 = np.squeeze(c.T.dot(c) + gamma**2)  ## shape(n-k, )
+        # d3 =  d4 - Alpha 
+        # delta = d1 * d3 / d2 / d4
+        # end   = time.time()
+        # print('list comprehension time elaspe: {}'.format(end - start))
+
         # print(np.around(svalues, 4))
         # print(np.around(delta, 4))
         # print(max(abs(delta - svalues)))
