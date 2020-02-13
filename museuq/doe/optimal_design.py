@@ -246,7 +246,7 @@ class OptimalDesign(ExperimentalDesign):
         # print(np.around(svalues, 4))
         # print(np.around(delta, 4))
         # print(max(abs(delta - svalues)))
-        return svalues
+        return delta
 
     def _greedy_find_next_point(self, I, Q):
         """
