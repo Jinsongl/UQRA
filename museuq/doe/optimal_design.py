@@ -285,12 +285,16 @@ class OptimalDesign(ExperimentalDesign):
         i -- integer, index with maximum svalue
         """
         ##  Find the index candidate set to chose from (remove those in I from all (0-M))
-        I_left   = list(set(range(Q.shape[0])).difference(set(I)))
-        Q_left   = Q[np.array(I_left, dtype=np.int32),:]
-        Q_select = Q[np.array(I,      dtype=np.int32),:]
-        svalues  = self.cal_svalue(Q_left,Q_select)
-        assert(len(svalues) == len(I_left))
-        i = I_left[np.argmax(svalues)] ## return the index with largest s-value
+        
+        if I is None:
+            i = np.random.randint(0,Q.shape[0])
+        else:
+            I_left   = list(set(range(Q.shape[0])).difference(set(I)))
+            Q_left   = Q[np.array(I_left, dtype=np.int32),:]
+            Q_select = Q[np.array(I,      dtype=np.int32),:]
+            svalues  = self.cal_svalue(Q_left,Q_select)
+            assert(len(svalues) == len(I_left))
+            i = I_left[np.argmax(svalues)] ## return the index with largest s-value
         return i
 
     def _get_quasi_optimal(self,m,X,I=None,is_orth=False):
@@ -315,9 +319,7 @@ class OptimalDesign(ExperimentalDesign):
         M,p = X.shape
         assert M >= p, "quasi optimal sebset are design for overdetermined problem only"
         (Q,R) = (X, None ) if is_orth else LA.qr(X)
-        I = [np.random.randint(0,M)] if I is None else I ## random initialize for the first point
-        m1 = len(I) 
-
+        I = []
         pbar_x  = tqdm(range(m), ascii=True, desc="   - ")
         for _ in pbar_x:
             i = self._greedy_find_next_point(I,Q)
