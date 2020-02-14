@@ -18,6 +18,7 @@ import copy
 import itertools
 from tqdm import tqdm
 import time
+import math
 
 class OptimalDesign(ExperimentalDesign):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
@@ -55,7 +56,7 @@ class OptimalDesign(ExperimentalDesign):
             svalues = self._cal_svalue_under(R,X)
         else:
             svalues = self._cal_svalue_over(R,X)
-
+        print(svalues[:3])
         return svalues
 
     @random_state
@@ -154,9 +155,9 @@ class OptimalDesign(ExperimentalDesign):
         # start = time.time()
         X1_norms = LA.norm(X1, axis=0)
         # d1 = 1.0 + np.diagonal(X0.dot(AAinv).dot(X0.T))
-        d1 = 1.0 + (X0.dot(AAinv) * X0).sum(-1)
-        d2 = np.prod(X1_norms**2 + X0**2, axis=1) 
-        svalues = d1/d2
+        d1 = np.log(1.0 + (X0.dot(AAinv) * X0).sum(-1))
+        d2 = np.sum(np.log(X1_norms**2 + X0**2), axis=1) 
+        svalues = d1 - d2
         # end = time.time()
         # print(np.around(delta, 2))
         # print(max(abs(delta - svalues)))
@@ -197,14 +198,47 @@ class OptimalDesign(ExperimentalDesign):
             ic = ic.reshape(k,1)
             ib = np.identity(k) - b.dot(r.T)/(1.0 + r.T.dot(b))
             alpha2 = np.asscalar(ia.T.dot(ib).dot(ic))
+            # if math.isnan(alpha2):
+                # print(b.dot(r.T))
+                # print(r.T.dot(b))
+                # print(ia)
+                # print(ib)
+                # print(ic)
             Alpha.append(alpha2)
 
-        d1 = 1.0 + (R * B.T).sum(-1)  ## shape (n-k, )
+        # d1 = 1.0 + (R * B.T).sum(-1)  ## shape (n-k, )
+        # A_norms = LA.norm(A, axis=0)
+        # d2 = np.prod(A_norms**2 + R**2, axis=1) ## shape (n-k, )
+        # d4 = np.squeeze(c.T.dot(c) + gamma**2)  ## shape(n-k, )
+        # d3 =  d4 - Alpha 
+        # print('d1: {}'.format(d1))
+        # print('d2: {}'.format(d2))
+        # print('d3: {}'.format(d3))
+        # print('d4: {}'.format(d4))
+        # delta = d1 * d3 / d2 / d4
+
+
+        d1 = np.log(1.0 + (R * B.T).sum(-1))  ## shape (n-k, )
         A_norms = LA.norm(A, axis=0)
-        d2 = np.prod(A_norms**2 + R**2, axis=1) ## shape (n-k, )
+        d2 = np.sum(np.log(A_norms**2 + R**2), axis=1) ## shape (n-k, )
         d4 = np.squeeze(c.T.dot(c) + gamma**2)  ## shape(n-k, )
         d3 =  d4 - Alpha 
-        delta = d1 * d3 / d2 / d4
+        d4 = np.log(d4)
+        if np.any(d3 > 0):
+            ## d1, d2, d4 > 0. If there exist at least one d3 > 0, set negative d3 to -inf
+            d3 = np.log(d3)
+            d3 = np.nan_to_num(d3, nan=-np.inf)
+            delta = d1 + d3 - d2 - d4
+        else:
+            ## all d3 < 0. then take the negative of all d3 and return the smallest s value
+            d3 = np.log(abs(d3))
+            delta = -(d1 + d3 - d2 - d4)
+
+        # print('d1: {}'.format(d1))
+        # print('d2: {}'.format(d2))
+        # print('d3: {}'.format(d3))
+        # print('d4: {}'.format(d4))
+
         # end   = time.time()
         # print('matrix loop time elaspe: {}'.format(end - start))
 
@@ -294,6 +328,7 @@ class OptimalDesign(ExperimentalDesign):
         pbar_x  = tqdm(range(m), ascii=True, desc="   - ")
         for _ in pbar_x:
             i = self._greedy_find_next_point(I,Q)
+            print(i)
             I.append(i)
         I = sorted(I)
         return np.array(I) 
