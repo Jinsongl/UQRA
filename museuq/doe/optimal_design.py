@@ -322,5 +322,5 @@ class OptimalDesign(ExperimentalDesign):
         for _ in pbar_x:
             i = self._greedy_find_next_point(I,Q)
             I.append(i)
-        I = sorted(I)
+        # I = sorted(I)
         return np.array(I) 
