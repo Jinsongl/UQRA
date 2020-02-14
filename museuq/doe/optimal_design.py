@@ -56,7 +56,6 @@ class OptimalDesign(ExperimentalDesign):
             svalues = self._cal_svalue_under(R,X)
         else:
             svalues = self._cal_svalue_over(R,X)
-        print(svalues[:3])
         return svalues
 
     @random_state
@@ -198,12 +197,6 @@ class OptimalDesign(ExperimentalDesign):
             ic = ic.reshape(k,1)
             ib = np.identity(k) - b.dot(r.T)/(1.0 + r.T.dot(b))
             alpha2 = np.asscalar(ia.T.dot(ib).dot(ic))
-            # if math.isnan(alpha2):
-                # print(b.dot(r.T))
-                # print(r.T.dot(b))
-                # print(ia)
-                # print(ib)
-                # print(ic)
             Alpha.append(alpha2)
 
         # d1 = 1.0 + (R * B.T).sum(-1)  ## shape (n-k, )
@@ -328,7 +321,6 @@ class OptimalDesign(ExperimentalDesign):
         pbar_x  = tqdm(range(m), ascii=True, desc="   - ")
         for _ in pbar_x:
             i = self._greedy_find_next_point(I,Q)
-            print(i)
             I.append(i)
         I = sorted(I)
         return np.array(I) 
