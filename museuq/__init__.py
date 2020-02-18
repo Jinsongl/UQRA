@@ -9,11 +9,13 @@ import numpy as np
 import pandas as pd
 
 from museuq.simParameters import simParameters
+from museuq.polynomial._polybase import PolyBase
+from museuq.polynomial.hermite import Hermite
 
-from museuq.doe.quadrature import QuadratureDesign
-from museuq.doe.random_design import RandomDesign
-from museuq.doe.lhs import LatinHyperCube as LHS
-from museuq.doe.optimal_design import OptimalDesign 
+from museuq.experiment.quadrature import QuadratureDesign
+from museuq.experiment.random_design import RandomDesign
+from museuq.experiment.lhs import LatinHyperCube as LHS
+from museuq.experiment.optimal_design import OptimalDesign 
 
 from museuq.solver.dynamic import linear_oscillator
 from museuq.solver.static import * 

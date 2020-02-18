@@ -9,7 +9,7 @@
 """
 
 """
-from museuq.doe.base import ExperimentalDesign
+from museuq.experiment._experimentbase import ExperimentBase
 from museuq.utilities.decorators import random_state
 from museuq.utilities.helpers import num2print
 import numpy as np, scipy as sp
@@ -20,25 +20,113 @@ from tqdm import tqdm
 import time
 import math
 
-class OptimalDesign(ExperimentalDesign):
+class OptimalDesign(ExperimentBase):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
 
-    def __init__(self, opt_criteria, random_seed=None):
+    def __init__(self, optimality, random_seed=None):
         """
         Optimal/Quasi Optimal Experimental design:
         Arguments:
         n: int, number of samples 
-        opt_criteria: optimal design criteria
+        optimality: optimal design optimality
         """
         super().__init__(random_seed=random_seed)
-        self.criteria   = opt_criteria 
-        self.filename   = '_'.join(['DoE', 'Opt'+self.criteria.capitalize()])
+        self.optimality = optimality 
+        self.filename   = '_'.join(['DoE', self.optimality.capitalize()])
         self.selected_row = None 
 
     def __str__(self):
-        return('Optimal Criteria: {:<15s}, num. samples: {:d} '.format(self.criteria, self.n_samples))
+        return('Optimal Criteria: {:<15s}, num. samples: {:d} '.format(self.optimality, self.n_samples))
 
-    def cal_svalue(self,R,X):
+
+    @random_state
+    def samples(self,X,n_samples, *args, **kwargs):
+        """
+        Xb = Y
+        X: Design matrix X(u) of shape(num_samples, num_features)
+        Arguments:
+            X: design matrix to sample from. (feature to be added: distributions + n_candidates)
+
+        Optional: 
+            rows: (for S optimality) list of selected row indices
+            is_orth: boolean, if columns of design matrix is orthogonal to each other asymptotically
+        Return:
+            Experiment samples of shape(ndim, n_samples)
+        """
+        self.filename= self.filename + num2print(n_samples)
+        m, p        = X.shape
+        assert m > p, 'Number of candidate samples are expected to be larger than number of features'
+
+        if self.optimality.upper() == 'S':
+            """ Xb = Y """
+            selected_row   = kwargs.get('rows', None)
+            is_basis_orth  = kwargs.get('is_orth', False)
+            selected_row   = self._get_quasi_optimal(n_samples, X, selected_row, is_basis_orth)
+        elif self.optimality.upper() == 'D':
+            """ D optimality based on rank revealing QR factorization  """
+            _, _, P = sp.linalg.qr(X.T, pivoting=True)
+            selected_row = P[:n_samples]
+        else:
+            raise NotImplementedError
+
+        return selected_row
+
+    def _get_quasi_optimal(self,m,X,I=None,is_orth=False):
+        """
+        return row selection matrix S containing indices for quasi optimal experimental design
+        based on fast greedy algorithm 
+
+        Arguments:
+        m -- size of quasi optimal subset
+        X -- design matrix with candidates samples of shape (M,p)
+             M: number of samples, p: number of features
+        I -- indices, nt ndarray of shape (N,) corresponding row selection matrix of length m
+            if I is None, an empty list will be created first and m items will be appended 
+            Otherwise, additional (m-m0) items (row index in design matrix X) will be appended 
+        is_orth -- Boolean indicating if the basis space is orthogonal
+
+        Returns:
+        row selection matrix I of shape (m, M)
+        """
+        m = int(m)
+        assert m > 0, "At least one sample in the designed experiemnts"
+        M,p = X.shape
+        assert M >= p, "quasi optimal sebset are design for overdetermined problem only"
+        (Q,R) = (X, None ) if is_orth else LA.qr(X)
+        I = [] if I is None else I
+        m = m - len(I)
+        pbar_x  = tqdm(range(m), ascii=True, desc="   - ")
+        for _ in pbar_x:
+            i = self._greedy_find_next_point(I,Q)
+            I.append(i)
+        # I = sorted(I)
+        return np.array(I) 
+
+    def _greedy_find_next_point(self, I, Q):
+        """
+        find the next quasi optimal sample
+
+        Arguments:
+        I -- list containing selected row indices from candidate design matrix X
+        Q -- QR factorization of candidate design matrix X if basis is not orthogonal, otherwise is X
+
+        Return:
+        i -- integer, index with maximum svalue
+        """
+        ##  Find the index candidate set to chose from (remove those in I from all (0-M))
+        
+        if I is None:
+            i = np.random.randint(0,Q.shape[0])
+        else:
+            I_left   = list(set(range(Q.shape[0])).difference(set(I)))
+            Q_left   = Q[np.array(I_left, dtype=np.int32),:]
+            Q_select = Q[np.array(I,      dtype=np.int32),:]
+            svalues  = self._cal_svalue(Q_left,Q_select)
+            assert(len(svalues) == len(I_left))
+            i = I_left[np.argmax(svalues)] ## return the index with largest s-value
+        return i
+
+    def _cal_svalue(self,R,X):
         """
         Calculate the S-values of new matrix [X;r.T], where r is each row of R
         
@@ -57,40 +145,6 @@ class OptimalDesign(ExperimentalDesign):
         else:
             svalues = self._cal_svalue_over(R,X)
         return svalues
-
-    @random_state
-    def samples(self,X,n_samples, *args, **kwargs):
-        """
-        Xb = Y
-        X: Design matrix X(u) of shape(num_samples, num_features)
-
-        Return:
-            Experiment samples of shape(ndim, n_samples)
-        """
-        self.filename= self.filename+num2print(n_samples)
-        m, p        = X.shape
-        assert m > p, 'Number of candidate samples are expected to be larger than number of features'
-
-        if self.criteria.upper() == 'S':
-            """ Xb = Y """
-            selected_row   = kwargs.get('rows', None)
-            is_basis_orth  = kwargs.get('is_orth', False)
-            selected_row   = self._get_quasi_optimal(n_samples, X, selected_row, is_basis_orth)
-        elif self.criteria.upper() == 'D':
-            """ D optimality based on rank revealing QR factorization  """
-            _, _, P = sp.linalg.qr(X.T, pivoting=True)
-            selected_row = P[:n_samples]
-        else:
-            pass
-
-        # self.X = X[selected_row,:]
-        # if u is not None:
-            # self.u = u[selected_row] if u.ndim == 1 else u[:, selected_row]
-        # else:
-            # pass
-        # self.rows = selected_row
-        return selected_row
-
 
     def adaptive(self,X,n_samples, selected_col=[]):
         """
@@ -273,56 +327,4 @@ class OptimalDesign(ExperimentalDesign):
         # print(max(abs(delta - svalues)))
         return delta
 
-    def _greedy_find_next_point(self, I, Q):
-        """
-        find the next quasi optimal sample
 
-        Arguments:
-        I -- list containing selected row indices from candidate design matrix X
-        Q -- QR factorization of candidate design matrix X if basis is not orthogonal, otherwise is X
-
-        Return:
-        i -- integer, index with maximum svalue
-        """
-        ##  Find the index candidate set to chose from (remove those in I from all (0-M))
-        
-        if I is None:
-            i = np.random.randint(0,Q.shape[0])
-        else:
-            I_left   = list(set(range(Q.shape[0])).difference(set(I)))
-            Q_left   = Q[np.array(I_left, dtype=np.int32),:]
-            Q_select = Q[np.array(I,      dtype=np.int32),:]
-            svalues  = self.cal_svalue(Q_left,Q_select)
-            assert(len(svalues) == len(I_left))
-            i = I_left[np.argmax(svalues)] ## return the index with largest s-value
-        return i
-
-    def _get_quasi_optimal(self,m,X,I=None,is_orth=False):
-        """
-        return row selection matrix S containing indices for quasi optimal experimental design
-        based on fast greedy algorithm 
-
-        Arguments:
-        m -- size of quasi optimal subset
-        X -- design matrix with candidates samples of shape (M,p)
-             M: number of samples, p: number of features
-        I -- indices, nt ndarray of shape (N,) corresponding row selection matrix of length m
-            if I is None, an empty list will be created first and m items will be appended 
-            Otherwise, additional (m-m0) items (row index in design matrix X) will be appended 
-        is_orth -- Boolean indicating if the basis space is orthogonal
-
-        Returns:
-        row selection matrix I of shape (m, M)
-        """
-        m = int(m)
-        assert m > 0, "At least one sample in the designed experiemnts"
-        M,p = X.shape
-        assert M >= p, "quasi optimal sebset are design for overdetermined problem only"
-        (Q,R) = (X, None ) if is_orth else LA.qr(X)
-        I = []
-        pbar_x  = tqdm(range(m), ascii=True, desc="   - ")
-        for _ in pbar_x:
-            i = self._greedy_find_next_point(I,Q)
-            I.append(i)
-        # I = sorted(I)
-        return np.array(I) 

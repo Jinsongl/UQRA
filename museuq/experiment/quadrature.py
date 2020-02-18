@@ -10,7 +10,7 @@
 
 """
 import numpy as np
-from museuq.doe.base import ExperimentalDesign
+from museuq.experiment._experimentbase import ExperimentBase
 from museuq.utilities.helpers import num2print
 import itertools
 import collections
@@ -23,7 +23,7 @@ ASKEY_WIENER = {
         'uniform':'Lag',
         }
 
-class QuadratureDesign(ExperimentalDesign):
+class QuadratureDesign(ExperimentBase):
     """ Experimental Design with Quadrature basis_names """
 
     def __init__(self, distributions):

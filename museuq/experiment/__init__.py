@@ -16,10 +16,9 @@ Reference:
     SIAM Journal on Scientific Computing 38.1 (2016): A385-A411.
 ===============================
 """
-from museuq.doe.base import ExperimentalDesign
-from museuq.doe.quadrature import QuadratureDesign
-from museuq.doe.random_design import RandomDesign
-from museuq.doe.optimal_design import OptimalDesign
+from museuq.experiment._experimentbase import ExperimentBase
+from museuq.experiment.random_design import RandomDesign
+from museuq.experiment.optimal_design import OptimalDesign
 
 __all__= (
         'ExperimentalDesign', 
