@@ -25,6 +25,7 @@ class Error(object):
         """
         raise NotImplementedError
 
+
     def __str__(self):
         raise NotImplementedError
 
@@ -35,8 +36,8 @@ class NullError(Error):
     """
     return 0 error
     """
-    def __init__(self, random_seed=None):
-        super().__init__(random_seed=random_seed)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.name = 'Null'
     def samples(self):
         return 0
@@ -52,8 +53,8 @@ class IidError(Error):
     Generate IID error samples from specified distribution
     """
 
-    def __init__(self, name, size=None, theta=None, random_seed=None):
-        super().__init__(random_seed=random_seed)
+    def __init__(self, name, size=None, theta=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.name  = name 
         self.theta = theta
         self.size  = size
