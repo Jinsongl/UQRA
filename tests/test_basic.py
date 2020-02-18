@@ -201,16 +201,18 @@ class BasicTestSuite(unittest.TestCase):
         doe.samples()
 
     def test_LatinHyperCube(self):
-        doe = museuq.LHS(n_samples=1e3,dist_names=['uniform']*3,ndim=3,dist_theta=[(-1, 2*2)]*3)
-        doe.samples()
-        print(np.mean(doe.x))
-        print(np.std(doe.x))
+        doe = museuq.LHS(distributions=[sp.stats.norm,]*2)
+        doe_u, doe_x = doe.samples(2000)
+        print(doe_x.shape)
+        print(np.mean(doe_x, axis=1))
+        print(np.std(doe_x, axis=1))
+        np.save('/Users/jinsongliu/BoxSync/PhD_UT/Working_Papers/AdaptiveSparsePCE_OED/Data/LHS_Normal_2000', doe_x)
 
 
-        doe = museuq.LHS(n_samples=1e3,dist_names=['uniform', 'norm'],ndim=2,dist_theta=[(-1, 2*2), (2,1)])
-        doe.samples()
-        print(np.mean(doe.x, axis=1))
-        print(np.std(doe.x, axis=1))
+        # doe = museuq.LHS(n_samples=1e3,dist_names=['uniform', 'norm'],ndim=2,dist_theta=[(-1, 2*2), (2,1)])
+        # doe.samples()
+        # print(np.mean(doe.x, axis=1))
+        # print(np.std(doe.x, axis=1))
 
     def test_OptimalDesign(self):
         """
