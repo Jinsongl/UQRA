@@ -29,6 +29,7 @@ class PolyBase(object):
         self.coef = coef
         self.multi_index = multi_index
         self.basis_degree= None
+        self.nickname = ''
         if multi_index.lower() == 'total':
             self.num_basis = round(math.factorial(self.ndim + self.deg)/math.factorial(self.ndim)/math.factorial(self.deg))
         elif multi_index.lower() == 'tensor':
