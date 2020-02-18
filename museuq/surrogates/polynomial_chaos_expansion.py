@@ -13,8 +13,8 @@ import numpy as np, chaospy as cp
 import multiprocessing as mp
 from sklearn import linear_model
 from sklearn import model_selection
-from .base import SurrogateModel
-class PolynomialChaosExpansion(SurrogateModel):
+from ._surrogatebase import SurrogateBase
+class PolynomialChaosExpansion(SurrogateBase):
     """
     Class to build polynomial chaos expansion (PCE) model
     """
