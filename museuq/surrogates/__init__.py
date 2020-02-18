@@ -10,6 +10,6 @@
 
 """
 
-from museuq.surrogates.base import SurrogateModel
+from museuq.surrogates._surrogatebase import SurrogateBase
 from museuq.surrogates.polynomial_chaos_expansion import PolynomialChaosExpansion
 from museuq.surrogates.multiple_polynomial_chaos_expansion import mPCE

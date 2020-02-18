@@ -14,7 +14,7 @@ from museuq.utilities.helpers import ordinal
 warnings.filterwarnings(action="ignore",  message="^internal gelsd")
 
 
-class SurrogateModel(object):
+class SurrogateBase(object):
     """
     Abstract class for Surrogate model 
     """
