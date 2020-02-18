@@ -22,6 +22,14 @@ class BasicTestSuite(unittest.TestCase):
         print(np.diag(X.T.dot(X)/1000000))
 
 
+    def test_Legendre(self):
+        x, w = museuq.Legendre(2,4).gauss_quadrature(5)
+        print(x.shape)
+        print(w.shape)
+        x = sp.random.uniform(-1,1,size=(2,int(1e6)))
+        X = museuq.Legendre(2,4).vandermonde(x)
+        print(np.diag(X.T.dot(X)/1000000))
+
 
 
 

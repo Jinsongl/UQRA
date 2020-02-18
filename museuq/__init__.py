@@ -11,6 +11,7 @@ import pandas as pd
 from museuq.simParameters import simParameters
 from museuq.polynomial._polybase import PolyBase
 from museuq.polynomial.hermite import Hermite
+from museuq.polynomial.legendre import Legendre
 
 from museuq.experiment.quadrature import QuadratureDesign
 from museuq.experiment.random_design import RandomDesign
