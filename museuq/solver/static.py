@@ -54,6 +54,7 @@ class Ishigami(SolverBase):
     def __init__(self, p=[7,0.1]):
         super().__init__()
         self.name = 'Ishigami'
+        self.nickname = 'Ishigami'
         self.ndim = int(3)
         self.p    = p
      
@@ -80,6 +81,7 @@ class xsinx(SolverBase):
     def __init__(self):
         super().__init__()
         self.name = 'xsinx'
+        self.nickname = 'xsinx'
         self.ndim = int(1)
 
     def __str__(self):
@@ -98,6 +100,7 @@ class poly4th(SolverBase):
     def __init__(self):
         super().__init__()
         self.name = 'polynomial'
+        self.nickname = 'Poly4'
         self.ndim = int(1)
 
     def __str__(self):
@@ -120,6 +123,7 @@ class polynomial_square_root_function(SolverBase):
     def __init__(self):
         super().__init__()
         self.name = 'polynomial square root function'
+        self.nickname = 'PolySqrt'
         self.ndim = int(2)
 
     def __str__(self):
@@ -151,6 +155,7 @@ class four_branch_system(SolverBase):
     def __init__(self):
         super().__init__()
         self.name = 'four branch system'
+        self.nickname = 'Branches'
         self.ndim = int(2)
 
     def __str__(self):
@@ -192,6 +197,7 @@ class polynomial_product_function(SolverBase):
     def __init__(self, d):
         super().__init__()
         self.name = 'Polynomial product function'
+        self.nickname = 'PolyProd'
         self.ndim = int(d)
 
     def __str__(self):
@@ -285,10 +291,14 @@ class papaioannou2016sequential(SolverBase):
 
 
 class franke(SolverBase):
+    """
+    Franke Function
 
-    def __int__(self):
-        super().__init__()
-        self.name = 'franke'
+    """
+    def __init__(self):
+        super(franke, self).__init__()
+        self.name = 'Franke'
+        self.nickname = 'Franke'
         self.ndim = int(2)
 
     def __str__(self):
