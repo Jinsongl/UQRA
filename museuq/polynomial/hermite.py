@@ -20,7 +20,8 @@ class Hermite(PolyBase):
 
     def __init__(self, d, deg, coef=None, domain=None, window=None, multi_index='total'):
         super().__init__(d, deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
-        self.nickname = 'hem'
+        self.name = 'Hermite'
+        self.nickname = 'Hem'
 
 
     def get_basis(self):
@@ -55,7 +56,7 @@ class Hermite(PolyBase):
         1-D ndarray containing the weights.
 
         """
-        super().gauss_quadrature(n)
+        super().gauss_quadrature(n) ## check n and assign self.n_gauss
 
         ## for unspecified distribution parameters, default (loc, scale) = (0,1)
         for _ in range(len(loc), self.ndim):
@@ -64,7 +65,6 @@ class Hermite(PolyBase):
 
         coords = []
         weight = []
-        print(loc, scale)
         for iloc, iscale in zip(loc, scale):
             x, w = np.polynomial.hermite_e.hermegauss(self.n_gauss) 
             x = iloc + iscale* x

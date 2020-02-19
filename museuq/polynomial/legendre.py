@@ -24,7 +24,8 @@ class Legendre(PolyBase):
 
     def __init__(self, d, deg, coef=None, domain=None, window=None, multi_index='total'):
         super().__init__(d, deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
-        self.nickname = 'leg'
+        self.name = 'Legendre'
+        self.nickname = 'Leg'
 
 
     def get_basis(self):
