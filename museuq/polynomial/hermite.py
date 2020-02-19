@@ -18,8 +18,8 @@ class Hermite(PolyBase):
     Hermite polynomial
     """
 
-    def __init__(self, d, deg, coef=None, domain=None, window=None, multi_index='total'):
-        super().__init__(d, deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
+    def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total'):
+        super().__init__(d=d, deg=deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
         self.name = 'Hermite'
         self.nickname = 'Hem'
 
@@ -96,3 +96,13 @@ class Hermite(PolyBase):
                 vander[:,i] = vander[:,i] * vander_ind[idim,:,ibasis]
         return vander
 
+    def set_ndim(self, ndim):
+        """
+        set the dimension of polynomial
+        """
+        self.ndim = super().check_int(ndim)
+        super()._update_num_basis()
+
+    def set_degree(self, deg):
+        self.deg = super().check_int(deg)
+        super()._update_num_basis()

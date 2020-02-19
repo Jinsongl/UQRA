@@ -22,8 +22,8 @@ class Legendre(PolyBase):
     \int Pm(x) Pn(x) dx = 1/(2n+1) 1{mn} 
     """
 
-    def __init__(self, d, deg, coef=None, domain=None, window=None, multi_index='total'):
-        super().__init__(d, deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
+    def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total'):
+        super().__init__(d=d, deg=deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
         self.name = 'Legendre'
         self.nickname = 'Leg'
 
@@ -94,10 +94,24 @@ class Legendre(PolyBase):
         vander = np.ones((n, self.num_basis), x.dtype)
         self.basis_norms = np.array([math.sqrt(1/(2*i+1)) for i in range(self.deg+1)])
         vander_ind = np.array([np.polynomial.legendre.legvander(ix, self.deg)/self.basis_norms for ix in x])
+
         if self.basis_degree is None:
             super().get_basis()
         for i, ibasis_degree in enumerate(self.basis_degree):
             for idim, ibasis in enumerate(ibasis_degree):
                 vander[:,i] = vander[:,i] * vander_ind[idim,:,ibasis]
         return vander
+
+    def set_ndim(self, ndim):
+        """
+        set the dimension of polynomial
+        """
+        self.ndim = super().check_int(ndim)
+        super()._update_num_basis()
+
+    def set_degree(self, deg):
+        self.deg = super().check_int(deg)
+        super()._update_num_basis()
+
+
 
