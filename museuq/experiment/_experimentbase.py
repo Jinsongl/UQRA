@@ -12,35 +12,44 @@
 import numpy as np
 import scipy as sp
 from museuq.utilities.helpers import num2print
+from museuq.polynomial._polybase import PolyBase
 
 class ExperimentBase(object):
     """
     Abstract class for experimental design
     """
 
-    def __init__(self, distributions=None, random_seed=None):
+    def __init__(self, samplingfrom=None, random_seed=None):
         """
         Initialization of ExperimentBase:
         Arguments:
-            distributions: None or distribution object from scipy.stats or list of scipy.stats objects
+            samplingfrom: 
+                distributions to generate random samples
+                or polynomial to generate quadrature samples 
             random_seed: 
         """
         self.random_seed = random_seed
-        if distributions is None:
-            self.distributions = distributions
+        if samplingfrom is None:
             self.ndim = None
-        elif isinstance(distributions, (list, tuple)):
+        ### sampling from distributions froms scipy.stats 
+        #> 1. samplingfrom are list or tuple
+        elif isinstance(samplingfrom, (list, tuple)):
             self.distributions = []
-            for idist in distributions:
+            for idist in samplingfrom:
                 assert hasattr(sp.stats, idist.name)
                 self.distributions.append(idist)
-            self.ndim = len(self.distributions)
-
-        elif hasattr(sp.stats, distributions.name):
-            self.distributions = [distributions,]
+            self.ndim = len(self.samplingfrom)
+        #> 2. Just one distribution is given 
+        elif hasattr(sp.stats, samplingfrom.name):
+            self.distributions = [samplingfrom,]
             self.ndim = int(1)
+            
+        ### sampling are based on gauss quadrature
+        elif isinstance(samplingfrom, PolyBase):
+            self.polynomial = samplingfrom
+            self.ndim = samplingfrom.ndim
         else:
-            raise ValueError('distributions should from scipy.stats or None for empty instance')
+            raise ValueError('Sampling from type {} are not defined'.format(type(samplingfrom)))
 
         self.x          = []  # DoE values in physical space 
         self.u          = []  # DoE values in u-space (Askey)
@@ -56,9 +65,9 @@ class ExperimentBase(object):
             np.ndarray
         """
 
-        if self.distributions is None:
+        if self.samplingfrom is None:
             pass 
-            ### Optimal design doesn't have to specify distributions, use generated candidates
+            ### Optimal design doesn't have to specify samplingfrom, use generated candidates
 
         else:
             self.loc   = [0,] * self.ndim

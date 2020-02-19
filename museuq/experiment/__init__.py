@@ -19,6 +19,7 @@ Reference:
 from museuq.experiment._experimentbase import ExperimentBase
 from museuq.experiment.random_design import RandomDesign
 from museuq.experiment.optimal_design import OptimalDesign
+from museuq.experiment.quadrature import QuadratureDesign
 
 __all__= (
         'ExperimentalDesign', 

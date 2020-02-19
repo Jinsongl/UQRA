@@ -18,7 +18,6 @@ import copy
 import itertools
 from tqdm import tqdm
 import time
-import math
 
 class OptimalDesign(ExperimentBase):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
