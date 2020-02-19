@@ -11,7 +11,7 @@ Single degree of freedom with time series external loads
 """
 
 import museuq
-from museuq.solver.base import Solver
+from museuq.solver._solverbase import SolverBase
 import os, numpy as np
 from scipy import interpolate
 from scipy.integrate import odeint, quad
@@ -20,7 +20,7 @@ from .PowerSpectrum import PowerSpectrum
 from tqdm import tqdm
 
 
-class linear_oscillator(Solver):
+class linear_oscillator(SolverBase):
     """
     Solving linear oscillator in frequency domain
     m x'' + c x' + k x = f => 

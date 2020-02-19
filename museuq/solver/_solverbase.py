@@ -11,13 +11,14 @@
 """
 import numpy as np
 
-class Solver(object):
+class SolverBase(object):
     """
     Abstract class for solvers
     """
 
     def __init__(self):
         self.name = ''
+        self.ndim = None
     def run(self, x):
         """
         run solver with input variables

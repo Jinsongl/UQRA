@@ -10,7 +10,7 @@
 
 """
 import numpy as np
-from museuq.solver.base import Solver
+from museuq.solver._solverbase import SolverBase
 
 """
 Benchmark problems:
@@ -25,7 +25,7 @@ Return:
 
 
 
-class Ishigami(Solver):
+class Ishigami(SolverBase):
     """
     The ishigami function of ishigami & Homma (1990) is used as an example for uncertainty and sensitivity analysis methods, because it exhibits strong nonlinearity and nonmonotonicity. It also has a peculiar dependence on x3, as described by Sobol' & Levitan (1999). 
 
@@ -51,67 +51,64 @@ class Ishigami(Solver):
     Return:
         y: array-like (nsamples,)
     """
-    def __init__(self, p=[7,0.1], *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, p=[7,0.1]):
+        super().__init__()
         self.name = 'Ishigami'
+        self.ndim = int(3)
         self.p    = p
-        self.x    = []
      
     def __str__(self):
-        return 'Solver: Ishigami function (p={})'.format(self.p)
+        return 'solver: Ishigami function (p={})'.format(self.p)
 
 
     def run(self, x):
-        x = np.array(x)
+        x = np.array(x, copy=False, ndmin=2)
 
         assert x.shape[0] == int(3), 'Ishigami function expecting 3 random variables, {} given'.format(x.shape[0])
-        if x.ndim == 1:
-            y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
-        else:
-            y = np.sin(x[0,:]) + self.p[0] * np.sin(x[1,:])**2 + self.p[1]*x[2,:]**4 * np.sin(x[0,:])
+        y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
+
+        # if x.ndim == 1:
+            # y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
+        # else:
+            # y = np.sin(x[0,:]) + self.p[0] * np.sin(x[1,:])**2 + self.p[1]*x[2,:]**4 * np.sin(x[0,:])
         return y
 
-class xsinx(Solver):
+class xsinx(SolverBase):
     """
     y = x*sin(x) + e
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         self.name = 'xsinx'
-        self.x    = []
-        # self.error= kwargs.get('error', 'None') 
+        self.ndim = int(1)
 
     def __str__(self):
-        return 'Solver: x*sin(x)'
+        return 'solver: x*sin(x)'
 
     def run(self, x):
-        x = np.array(x)
-        # e = self.error.samples()
+        x = np.array(x,copy=False, ndmin=1)
         y = x * np.sin(x)
         return y
-        # y = y + e
 
-class poly4th(Solver):
+class poly4th(SolverBase):
     """
     y = 5 + -5*x + 2.5*x^2 -0.36*x^3 + 0.015*x^4
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         self.name = 'polynomial'
-        self.x    = []
+        self.ndim = int(1)
 
     def __str__(self):
-        return 'Solver: 4th-order polynomial function'
+        return 'solver: 4th-order polynomial function'
 
     def run(self, x):
-        x = np.squeeze(np.array(x))
+        x = np.array(x, copy=False, ndmin=1)
         y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
         return y
-        # e = error.samples()
-        # y = y + e
 
-class polynomial_square_root_function(Solver):
+class polynomial_square_root_function(SolverBase):
     """
     y = - [ (-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2 ]**0.5 + 14 
     x1,x2 ~ N(0,1)
@@ -120,24 +117,22 @@ class polynomial_square_root_function(Solver):
     prob(y>6) = 2.35E-6
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         self.name = 'polynomial square root function'
-        self.x    = []
+        self.ndim = int(2)
 
     def __str__(self):
-        return 'Solver: Polynomial square root function'
+        return 'solver: Polynomial square root function'
 
     def run(self, x):
-        x = np.array(x)
+        x = np.array(x, copy=False)
         x1 = x[0,:]
         x2 = x[1,:]
         y = -((-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2)**0.5 + 14 
         return y
-        # e = error.samples()
-        # y = y + e
 
-class four_branch_system(Solver):
+class four_branch_system(SolverBase):
     """
     y = 10 - min{ 3 + 0.1(x1 - x2)**2 - (x1+x2)/sqrt(2)
                   3 + 0.1(x1 - x2)**2 + (x1+x2)/sqrt(2)
@@ -153,17 +148,17 @@ class four_branch_system(Solver):
 
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         self.name = 'four branch system'
-        self.x    = []
+        self.ndim = int(2)
 
     def __str__(self):
         return 'Solver: four branch system'
 
     def run(self, x):
 
-        x = np.array(x).reshape(2,-1)
+        x = np.array(x, ndim=2, copy=False).reshape(2,-1)
         x1 = x[0,:]
         x2 = x[1,:]
 
@@ -176,11 +171,8 @@ class four_branch_system(Solver):
         y = 10 - y 
         return y
 
-        # e = error.samples()
-        # y = y + e
-
     
-class polynomial_product_function(Solver):
+class polynomial_product_function(SolverBase):
     """
     y = 1/2 * sum( xi**4 + xi**2 + 5xi), i = 1, ..., d
 
@@ -197,31 +189,29 @@ class polynomial_product_function(Solver):
 
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, d):
+        super().__init__()
         self.name = 'Polynomial product function'
-        self.x    = []
+        self.ndim = int(d)
 
     def __str__(self):
         return 'Solver: polynomial product function'
 
     def run(self, x):
-        x = np.array(x)
+        x = np.array(x, copy=False)
+        assert x.shape[0] == self.ndim
         y = np.array([ix**4 + ix**2 + 5*ix for ix in x])
         y = 0.5 * np.sum(y, axis=0)
         return y
-        # e = error.samples()
-        # self.y = self.y + e
 
-class papaioannou2016sequential(Solver):
+class papaioannou2016sequential(SolverBase):
     """
     examples tested in paper:
         "Papaioannou, Iason, Costas Papadimitriou, and Daniel Straub. "Sequential importance sampling for structural reliability analysis." Structural safety 62 (2016): 66-75"
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         self.name = 'papaioannou2016sequential'
-        self.x    = []
 
     def __str__(self):
         return "Examples in [papaioannou2016sequential]" 
@@ -294,146 +284,28 @@ class papaioannou2016sequential(Solver):
         return g
 
 
+class franke(SolverBase):
 
-# def bench1(x, error_type):
-    # """
-    # y = x*sin(x) + e
-    # """
-    # x = np.array(x)
-    # e = gen_error(error_type)
-    # y = x * np.sin(x)
-    # y = y + e
-    # y = y.reshape(x.shape[1],-1)
-    # return np.squeeze(y)
+    def __int__(self):
+        super().__init__()
+        self.name = 'franke'
+        self.ndim = int(2)
 
-# def bench2(x, error_type):
-    # """
-    # y = x^2 * sin(x) + e
-    # """
-    # x = np.array(x)
-    # e = gen_error(error_type)
-    # y = x**2*np.sin(5*x)
-    # y = y + e
-    # return y
+    def __str__(self):
+        return 'solver: franke function'
 
-# def bench3(x, error_type):
-    # """
-    # y = sin(pi/5 * x) + 0.2 * cos(0.8 * pi * x)
-    # """
-    # x = np.array(x)
-    # e = gen_error(error_type)
-    # y = np.sin(np.pi/5.0 * x) + 1/5.0 * np.cos(4*np.pi*x/5.0) 
-    # y = y + e
-    # return y
+    def run(self, x):
 
-# def bench4(x, error):
-    # """
-    # y = 5 + -5*x + 2.5*x^2 -0.36*x^3 + 0.015*x^4
-    # """
-    # x = np.squeeze(np.array(x))
-    # y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
-    # e = error.samples()
-    # y = y + e
-    # return y
-
-# def polynomial_square_root_function(x, error):
-    # """
-    # y = - [ (-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2 ]**0.5 + 14 
-    # x1,x2 ~ N(0,1)
-    
-    # Benchmarks:
-    # prob(y>6) = 2.35E-6
-    # """
-    # x = np.array(x).reshape(2, -1)
-    # x1 = x[0,:]
-    # x2 = x[1,:]
-
-    # y = -np.sqrt( (-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)) + 14
-    # e = error.samples()
-    # y = y + e
-    # return y
-
-# def four_branch_system(x, error):
-    # """
-    # y = 10 - min{ 3 + 0.1(x1 - x2)**2 - (x1+x2)/sqrt(2)
-                  # 3 + 0.1(x1 - x2)**2 + (x1+x2)/sqrt(2)
-                  # (x1 - x2) + 7/sqrt(2) 
-                  # (x2 - x1) + 7/sqrt(2) 
-                  # }
-
-    # This toy case allows us to test the ability of the rare event estimation methods to accurately estimate the probability in the case of disconnected failure region 􏱎f .
-
-    # Benchmarks:
-    # prob(y > 10) = 2.22E-3
-    # prob(y > 12) = 1.18E-6
-
-    # """
-    # x = np.array(x).reshape(2,-1)
-    # x1 = x[0,:]
-    # x2 = x[1,:]
-
-    # y1 = 3 + 0.1*(x1 - x2)**2 - (x1+x2)/np.sqrt(2)
-    # y2 = 3 + 0.1*(x1 - x2)**2 + (x1+x2)/np.sqrt(2)
-    # y3 = (x1 - x2) + 7.0/np.sqrt(2) 
-    # y4 = (x2 - x1) + 7.0/np.sqrt(2) 
-
-    # y = np.array([y1, y2, y3, y4]).min(axis=0)
-    # y = 10 - y 
-
-    # e = error.samples()
-    # y = y + e
-    # return y
-
-
-# def polynomial_product_function(x, error):
-    # """
-    # y = 1/2 * sum( xi**4 + xi**2 + 5xi), i = 1, ..., d
-
-    # This toy case is useful to evaluate the ability of the methods to cope with high dimensional problems. 
-    # x: ndarray of shape(ndim, n_samples)
-
-    # Benchmarks:
-    # d        T        prob(y > T)
-    # ____________________________
-    # 5       400         8.44E-7
-    # 20      500         1.09E-6
-    # 50      700         3.56E-7
-    # 200     1000        4.85E-6
-
-    # """
-    # x = np.array(x)
-    # y = np.array([ix**4 + ix**2 + 5*ix for ix in x])
-    # y = 0.5 * np.sum(y, axis=0)
-    # e = error.samples()
-    # y = y + e
-
-    # return y
+        x = np.array(x, copy=0, ndmin=2)
+        x1,x2 = x
+        f1 = 0.75 * np.exp(-(9.0*x1 -2.0)**2/ 4.0 - (9.0*x2 -2)**2/4.0)
+        f2 = 0.75 * np.exp(-(9.0*x1 +1.0)**2/49.0 - (9.0*x2 +1.0)/10.0)
+        f3 = 0.50 * np.exp(-(9.0*x1 -7.0)**2/ 4.0 - (9.0*x2 -3.0)**2 /4.0)
+        f4 = 0.20 * np.exp(-(9.0*x1 -4.0)**2 - (9.0*x2 -7.0)**2)
+        f  =  f1 + f2 + f3 - f4
+        return f
 
 
 
 
 
-
-# def benchmark1_normal(x,mu=0,sigma=0.5):
-    # """
-    # Benchmar problem #1 with normal error
-    # Arguments:
-        # x: ndarray of shape(ndim, nsamples)
-        # optional:
-        # (mu, sigma): parameters defining normal error
-    # Return:
-        # ndarray of shape(nsamples,)
-    # """
-    # x = np.array(x)
-    # sigmas = sigma_x(x,sigma=sigma)
-    # y0 = benchmark1_func(x)
-    # e = np.array([np.random.normal(mu, sigma, 1) for sigma in sigmas.T]).T
-    # y = y0 + e
-    # return y
-
-# def benchmark1_gumbel(x,mu=0,beta=0.5):
-    # x = np.array(x)
-    # x0 = x**2*np.sin(5*x)
-    # e = np.array([np.random.gumbel(mu, beta*abs(s),1) for s in x]).reshape((len(x),))
-    # mu, std
-    # return x0+ e
