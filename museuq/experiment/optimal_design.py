@@ -98,7 +98,6 @@ class OptimalDesign(ExperimentBase):
         for _ in pbar_x:
             i = self._greedy_find_next_point(I,Q)
             I.append(i)
-        # I = sorted(I)
         return np.array(I) 
 
     def _greedy_find_next_point(self, I, Q):
@@ -120,6 +119,7 @@ class OptimalDesign(ExperimentBase):
             I_left   = list(set(range(Q.shape[0])).difference(set(I)))
             Q_left   = Q[np.array(I_left, dtype=np.int32),:]
             Q_select = Q[np.array(I,      dtype=np.int32),:]
+            # print(np.around(Q_select,2))
             svalues  = self._cal_svalue(Q_left,Q_select)
             assert(len(svalues) == len(I_left))
             i = I_left[np.argmax(svalues)] ## return the index with largest s-value
@@ -233,7 +233,12 @@ class OptimalDesign(ExperimentBase):
         k,p = X1.shape
         # start = time.time()
         A = copy.copy(X1[0:k, 0:k]) ## shape (k, k)
-        AAinv = LA.inv(A.T.dot(A))  ## shape (k, k)
+        try:
+            AAinv = LA.inv(A.T.dot(A))  ## shape (k, k)
+        except np.linalg.LinAlgError:
+            u,s,v = np.linalg.svd(A.T.dot(A))
+            print('singular value of A.T *A: {}'.format(s))
+
         R = copy.copy(X0[:, 0:k])  ## shape (n-k, k)
         B = AAinv.dot(R.T)          ## shape (k, n-k)
         c = copy.copy(X1[0:k, k]).reshape((k,1))  ## shape(k, 1)  column vector
