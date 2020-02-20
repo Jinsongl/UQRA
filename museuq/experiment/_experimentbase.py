@@ -36,7 +36,7 @@ class ExperimentBase(object):
         elif isinstance(samplingfrom, (list, tuple)):
             self.distributions = []
             for idist in samplingfrom:
-                assert hasattr(sp.stats, idist.name)
+                assert hasattr(sp.stats, idist.dist.name)
                 self.distributions.append(idist)
             self.ndim = len(self.samplingfrom)
         #> 2. Just one distribution is given 

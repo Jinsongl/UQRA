@@ -42,7 +42,7 @@ class LatinHyperCube(ExperimentBase):
         self.filename = '_'.join(['DoE', 'Lhs'])
 
     def __str__(self):
-        dist_names = [idist.name for idist in self.distributions]
+        dist_names = [idist.dist.name for idist in self.distributions]
         message = 'LHS Design with criterion: {:s}, distributions: {}'.format(self.criterion, dist_names)
         return message
 
