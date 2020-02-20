@@ -64,16 +64,8 @@ class Ishigami(SolverBase):
     def __str__(self):
         return 'solver: Ishigami function (p={})'.format(self.p)
 
-    def run(self, x):
-        x = np.array(x, copy=False, ndmin=2)
-
-        assert x.shape[0] == int(3), 'Ishigami function expecting 3 random variables, {:d} given'.format(x.shape[0])
-        y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
-
-        # if x.ndim == 1:
-            # y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
-        # else:
-            # y = np.sin(x[0,:]) + self.p[0] * np.sin(x[1,:])**2 + self.p[1]*x[2,:]**4 * np.sin(x[0,:])
+    def run(self, x1, x2, x3):
+        y = np.sin(x1) + self.p[0] * np.sin(x2)**2 + self.p[1]*x3**4 * np.sin(x1)
         return y
 
     def map_domain(self, u_cdf=None, u=None, dist_u=None):
@@ -101,7 +93,6 @@ class Ishigami(SolverBase):
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
-
 
 class xsinx(SolverBase):
     """
