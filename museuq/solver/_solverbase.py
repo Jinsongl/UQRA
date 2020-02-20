@@ -10,6 +10,7 @@
 
 """
 import numpy as np
+import scipy.stats as stats
 
 class SolverBase(object):
     """
@@ -28,5 +29,19 @@ class SolverBase(object):
         Returns:
             No returns
         """
-        raise NotImplementedError()
+        raise NotImplementedError
+
+
+    def map_domain(self, u, dist_u):
+        """
+        mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        Argument:
+            two options:
+            1. cdf(u)
+            2. u and dist_u
+        """
+
+        raise NotImplementedError
+
+
 
