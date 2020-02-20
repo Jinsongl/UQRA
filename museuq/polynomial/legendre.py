@@ -28,15 +28,14 @@ class Legendre(PolyBase):
         self.nickname = 'Leg'
 
 
-    def get_basis(self):
+    def update_basis(self):
         """
         Return a list of polynomial basis function with specified degree and multi_index rule
         """
-        super().get_basis()
+        super().update_basis()
         self.basis = []
         for ibasis_degree in self.basis_degree:
             ibasis = 1
-            print(ibasis_degree)
             for p in ibasis_degree:
                 ibasis = ibasis * np.polynomial.legendre.Legendre.basis(p) 
             self.basis.append(ibasis)
@@ -87,6 +86,8 @@ class Legendre(PolyBase):
     def vandermonde(self, x, normed=True):
         """
             Pseudo-Vandermonde matrix of given degree.
+        Arguments:
+            x, ndarray of shape(ndim, nsamples)
         """
         x    = np.array(x, copy=0, ndmin=2) + 0.0
         d, n = x.shape
@@ -98,6 +99,7 @@ class Legendre(PolyBase):
         if self.basis_degree is None:
             super().get_basis()
         for i, ibasis_degree in enumerate(self.basis_degree):
+            ### ith polynomial, it is composed of ibasis_degree = (l,m,n)
             for idim, ibasis in enumerate(ibasis_degree):
                 vander[:,i] = vander[:,i] * vander_ind[idim,:,ibasis]
         return vander
@@ -106,12 +108,15 @@ class Legendre(PolyBase):
         """
         set the dimension of polynomial
         """
-        self.ndim = super().check_int(ndim)
-        super()._update_num_basis()
+        self.ndim = super()._check_int(ndim)
+        self.update_basis()
 
     def set_degree(self, deg):
-        self.deg = super().check_int(deg)
-        super()._update_num_basis()
+        """
+        set polynomial degree order
+        """
+        self.deg = super()._check_int(deg)
+        self.update_basis()
 
 
 

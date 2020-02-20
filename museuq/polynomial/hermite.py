@@ -24,15 +24,14 @@ class Hermite(PolyBase):
         self.nickname = 'Hem'
 
 
-    def get_basis(self):
+    def update_basis(self):
         """
         Return a list of polynomial basis function with specified degree and multi_index rule
         """
-        super().get_basis()
+        super().update_basis()
         self.basis = []
         for ibasis_degree in self.basis_degree:
             ibasis = 1
-            print(ibasis_degree)
             for p in ibasis_degree:
                 ibasis = ibasis * np.polynomial.hermite_e.HermiteE.basis(p) 
             self.basis.append(ibasis)
@@ -100,9 +99,9 @@ class Hermite(PolyBase):
         """
         set the dimension of polynomial
         """
-        self.ndim = super().check_int(ndim)
-        super()._update_num_basis()
+        self.ndim = super()._check_int(ndim)
+        self.update_basis()
 
     def set_degree(self, deg):
-        self.deg = super().check_int(deg)
-        super()._update_num_basis()
+        self.deg = super()._check_int(deg)
+        self.update_basis()

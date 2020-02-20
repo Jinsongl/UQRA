@@ -23,8 +23,8 @@ class PolyBase(object):
     An abstract base class for series classes.
     """
     def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total'):
-        self.ndim = self.check_int(d)
-        self.deg  = self.check_int(deg)
+        self.ndim = self._check_int(d)
+        self.deg  = self._check_int(deg)
         self.coef = coef
         self.multi_index = multi_index
         self.basis_degree= None
@@ -33,20 +33,18 @@ class PolyBase(object):
         self.num_basis = 0
 
 
-    def get_basis(self):
+    def update_basis(self):
         """
-        Series basis polynomials of total degree p
+        Series basis polynomials of degree self.deg
+
+        Three terms related to basis:
+        1. self.basis = [], a list of basis functions
+        2. self.num_basis, int: number of basis functions, i.e. len(self.basis)
+        3. self.basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
 
         """
-        self.basis_degree = []
-        if self.multi_index.lower() == 'total':
-            for icombination in itertools.product(range(self.deg + 1), repeat=self.ndim):
-                if sum(icombination) <= self.deg:
-                    self.basis_degree.append(icombination)
-            self.num_basis = len(self.basis_degree)
-        else:
-            raise NotImplementedError
-
+        self.basis_degree = self.__get_basis_degree()
+        self.num_basis = len(self.basis_degree)
 
     def set_ndim(self, ndim):
         """
@@ -65,7 +63,7 @@ class PolyBase(object):
         raise NotImplementedError
 
     def gauss_quadrature(self, n):
-        self.n_gauss = self.check_int(n)
+        self.n_gauss = self._check_int(n)
         if self.n_gauss < self.deg +1:
             warnings.warn('n < p + 1')
 
@@ -75,7 +73,7 @@ class PolyBase(object):
     def fit_regression(self):
         raise NotImplementedError
 
-    def check_int(self, x):
+    def _check_int(self, x):
         if x is None:
             return int(0)
         else:
@@ -86,12 +84,20 @@ class PolyBase(object):
                 raise ValueError("deg must be non-negative")
             return int_x
 
+    def __get_basis_degree(self):
+        """
+        self.basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
+        """
 
-    def _update_num_basis(self):
-
+        basis_degree = []
         if self.multi_index.lower() == 'total':
-            self.num_basis = round(math.factorial(self.ndim + self.deg)/math.factorial(self.ndim)/math.factorial(self.deg))
+            for icombination in itertools.product(range(self.deg + 1), repeat=self.ndim):
+                if sum(icombination) <= self.deg:
+                    basis_degree.append(icombination)
+        else:
+            raise NotImplementedError
 
-        elif multi_index.lower() == 'tensor':
-            self.num_basis = self.ndim ** self.deg
+        return basis_degree
+
+
 
