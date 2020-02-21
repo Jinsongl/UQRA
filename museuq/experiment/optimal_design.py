@@ -114,7 +114,7 @@ class OptimalDesign(ExperimentBase):
         ##  Find the index candidate set to chose from (remove those in I from all (0-M))
         
         if I is None:
-            i = np.random.randint(0,Q.shape[0])
+            i = np.random.randint(0,Q.shape[0], size=1)
         else:
             I_left   = list(set(range(Q.shape[0])).difference(set(I)))
             Q_left   = Q[np.array(I_left, dtype=np.int32),:]
