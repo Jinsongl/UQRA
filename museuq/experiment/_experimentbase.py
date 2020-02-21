@@ -28,26 +28,27 @@ class ExperimentBase(object):
                 or polynomial to generate quadrature samples 
             random_seed: 
         """
+        self.samplingfrom= samplingfrom
         self.random_seed = random_seed
-        if samplingfrom is None:
+        if self.samplingfrom is None:
             self.ndim = None
         ### sampling from distributions froms scipy.stats 
         #> 1. samplingfrom are list or tuple
-        elif isinstance(samplingfrom, (list, tuple)):
+        elif isinstance(self.samplingfrom, (list, tuple)):
             self.distributions = []
-            for idist in samplingfrom:
-                assert hasattr(sp.stats, idist.dist.name)
+            for idist in self.samplingfrom:
+                assert hasattr(sp.stats, idist.name)
                 self.distributions.append(idist)
-            self.ndim = len(self.samplingfrom)
+            self.ndim = len(self.distributions)
         #> 2. Just one distribution is given 
-        elif hasattr(sp.stats, samplingfrom.name):
-            self.distributions = [samplingfrom,]
+        elif hasattr(sp.stats, self.samplingfrom.name):
+            self.distributions = [self.samplingfrom,]
             self.ndim = int(1)
             
         ### sampling are based on gauss quadrature
-        elif isinstance(samplingfrom, PolyBase):
-            self.polynomial = samplingfrom
-            self.ndim = samplingfrom.ndim
+        elif isinstance(self.samplingfrom, PolyBase):
+            self.polynomial = self.samplingfrom
+            self.ndim = self.samplingfrom.ndim
         else:
             raise ValueError('Sampling from type {} are not defined'.format(type(samplingfrom)))
 

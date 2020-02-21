@@ -36,7 +36,7 @@ class LatinHyperCube(ExperimentBase):
                - “centermaximin” or “cm”: same as “maximin”, but centered within the intervals
                - “correlation” or “corr”: minimize the maximum correlation coefficient
         """
-        super().__init__(distributions=distributions, random_seed=random_seed)
+        super().__init__(samplingfrom=distributions, random_seed=random_seed)
         self.criterion = kwargs.get('criterion', 'maximin')
         self.iterations= kwargs.get('iterations', 5)
         self.filename = '_'.join(['DoE', 'Lhs'])

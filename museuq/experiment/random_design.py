@@ -31,7 +31,7 @@ class RandomDesign(ExperimentBase):
         dist_names: str or list of str
         params: list of params set for each distributions, set is given in tuple
         """
-        super().__init__(distributions=distributions, random_seed=random_seed)
+        super().__init__(samplingfrom=distributions, random_seed=random_seed)
         self.method   = method 
         self.filename = '_'.join(['DoE', self.method.capitalize() ])
 
