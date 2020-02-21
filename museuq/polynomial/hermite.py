@@ -22,7 +22,7 @@ class Hermite(PolyBase):
         super().__init__(d=d, deg=deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
         self.name = 'Hermite'
         self.nickname = 'Hem'
-
+        self.update_basis()
 
     def update_basis(self):
         """
