@@ -19,7 +19,7 @@ from itertools import compress
 class simParameters(object):
     """
     Define general parameter settings for simulation running and post data analysis. 
-    System parameters will be different between solver and solver
+    System parameters will be different depending on solver 
 
     Arguments:
         dist_zeta: list of selected marginal distributions from Wiener-Askey scheme
@@ -45,10 +45,10 @@ class simParameters(object):
 
         ###------------- Adaptive setting -----------------------------
         self.n_budget   = kwargs.get('n_budget' , None  )
-        self.r2_bound   = kwargs.get('r2_bound' , 0.9   )
+        self.r2_bound   = kwargs.get('r2_bound' , 0.9   ) ## R-squared
         self.mse_bound  = kwargs.get('mse_bound', None  )
         self.mse_diff   = kwargs.get('mse_diff' , 0.05  ) 
-        self.plim       = kwargs.get('plim'     , (0, 15))
+        self.plim       = kwargs.get('plim'     , (0, 15)) ## polynomial order limit
         self.qdiff_bound= kwargs.get('mquantiles', 0.05  ) 
         self.cv_bound   = kwargs.get('cv_bound' , 0.10  ) 
         
@@ -148,7 +148,8 @@ class simParameters(object):
         print(r'------------------------------------------------------------')
         print(r' > Required parameters:')
         print(r'   * {:<25s} : {}'.format('Model Name:', self.model_name))
-        print(r'   * {:<25s} : {} '.format('Joint zeta distribution', self.dist_zeta_J))
+        dist_zeta_J_names = [idist.name for idist in self.dist_zeta_J]
+        print(r'   * {:<25s} : {} '.format('Joint zeta distribution', dist_zeta_J_names))
         # print(r'   * {:<25s} : {} '.format('Joint x distribution', self.dist_x_J))
 
         print(r' > Working directory:')

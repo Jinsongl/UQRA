@@ -77,7 +77,6 @@ class Hermite(PolyBase):
         w = np.squeeze(w)
         return x, w
 
-
     def vandermonde(self, x, normed=True):
         """
             Pseudo-Vandermonde matrix of given degree.

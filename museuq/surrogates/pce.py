@@ -21,7 +21,7 @@ class PolynomialChaosExpansion(SurrogateBase):
     """
 
     def __init__(self, p=None, dist=None, random_seed = None):
-        super().__init__(random_seed=random_seed)
+r       super().__init__(random_seed=random_seed)
         self.name           = 'Polynomial Chaos Expansion'
         self.nickname       = 'PCE'
         self.dist_zeta_J    = dist 
