@@ -97,7 +97,7 @@ class Legendre(PolyBase):
         vander_ind = np.array([np.polynomial.legendre.legvander(ix, self.deg)/self.basis_norms for ix in x])
 
         if self.basis_degree is None:
-            super().get_basis()
+            self.update_basis()
         for i, ibasis_degree in enumerate(self.basis_degree):
             ### ith polynomial, it is composed of ibasis_degree = (l,m,n)
             for idim, ibasis in enumerate(ibasis_degree):

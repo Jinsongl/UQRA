@@ -89,7 +89,7 @@ class Hermite(PolyBase):
         self.basis_norms = np.array([math.sqrt(math.factorial(i)) for i in range(self.deg+1)])
         vander_ind = np.array([np.polynomial.hermite_e.hermevander(ix, self.deg)/self.basis_norms for ix in x])
         if self.basis_degree is None:
-            super().get_basis()
+            self.update_basis()
         for i, ibasis_degree in enumerate(self.basis_degree):
             for idim, ibasis in enumerate(ibasis_degree):
                 vander[:,i] = vander[:,i] * vander_ind[idim,:,ibasis]
