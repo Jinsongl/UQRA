@@ -18,6 +18,11 @@ import copy
 import itertools
 from tqdm import tqdm
 import time
+import multiprocessing as mp
+
+def cal_alpha2(x):
+    return x[0].dot(x[1]).dot(x[2]).item()
+
 
 class OptimalDesign(ExperimentBase):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
@@ -119,9 +124,9 @@ class OptimalDesign(ExperimentBase):
             I_left   = list(set(range(Q.shape[0])).difference(set(I)))
             Q_left   = Q[np.array(I_left, dtype=np.int32),:]
             Q_select = Q[np.array(I,      dtype=np.int32),:]
-            # print(np.around(Q_select,2))
             svalues  = self._cal_svalue(Q_left,Q_select)
-            assert(len(svalues) == len(I_left))
+            if len(svalues) != len(I_left):
+                raise ValueError('len(I_left) = {}, however len(svalues) = {}'.format(len(I_left), len(svalues)))
             i = I_left[np.argmax(svalues)] ## return the index with largest s-value
         return i
 
@@ -192,30 +197,11 @@ class OptimalDesign(ExperimentBase):
 
         """
         AAinv   = LA.inv(np.dot(X1.T,X1))
-        # start   = time.time()
-        # A_l2    = LA.norm(X1, axis=0).reshape(1,-1) ## l2 norm for each column in X1, row vector
-        # svalues = [] 
-        # for r in X0:
-            # r = r.reshape(1,-1) ## row vector
-            # with np.errstate(invalid='ignore'):
-                # d1 = 1.0 + np.asscalar(np.dot(r, np.dot(AAinv, r.T)))
-                # d2 = np.prod(A_l2**2 + r**2)
-            # svalues.append(d1/d2)
-        # end = time.time()
-        # print('for loop time elapse  : {}'.format(end-start))
-        # print(np.around(svalues, 2))
-        # start = time.time()
         X1_norms = LA.norm(X1, axis=0)
-        # d1 = 1.0 + np.diagonal(X0.dot(AAinv).dot(X0.T))
         d1 = np.log(1.0 + (X0.dot(AAinv) * X0).sum(-1))
         d2 = np.sum(np.log(X1_norms**2 + X0**2), axis=1) 
         svalues = d1 - d2
-        # end = time.time()
-        # print(np.around(delta, 2))
-        # print(max(abs(delta - svalues)))
-        # print('matrix time elapse : {}'.format(end-start))
-
-        return svalues
+        return np.squeeze(svalues)
 
     def _cal_svalue_under(self, X0, X1):
         """
@@ -253,19 +239,6 @@ class OptimalDesign(ExperimentBase):
         Alpha1= c.T.dot(A) + Alpha1.T  ## shape (n-k, k), add c.T.dot(A) to each row of Alpha1.T
         Alpha3= g + B * gamma  ## shape (k, n-k)
 
-        # time0 = time.time()
-        # Alpha = []
-        # for ia, r, b, ic in zip(Alpha1, R, B.T, Alpha3.T):
-            # ia = ia.reshape(k,1) ## (1, k)
-            # r  =  r.reshape(k,1)  ## ()
-            # b  =  b.reshape(k,1)
-            # ic = ic.reshape(k,1)
-            # ib = np.identity(k) - b.dot(r.T)/(1.0 + r.T.dot(b))
-            # alpha2 = ia.T.dot(ib).dot(ic).item()
-            # Alpha.append(alpha2)
-
-        # time1 = time.time()
-        # print('current: {}'.format(time1 - time0))
 
 
         # time0 = time.time()
@@ -276,28 +249,13 @@ class OptimalDesign(ExperimentBase):
         Alpha2 = np.moveaxis(Alpha2,-1, 0)   ## shape(n-k, k ,k)
         I = np.identity(Alpha2.shape[-1])
         Alpha2 = I - Alpha2   ## shape(n-k, k, k)
-        Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis]) ]
-        # time1 = time.time()
-        # print('improved: {}'.format(time1 - time0))
-        # if not np.array_equal(Alpha, Alpha_):
-            # print(np.max(abs(np.array(Alpha) - np.array(Alpha_))))
-
-
-
-        
-
-
-        # d1 = 1.0 + (R * B.T).sum(-1)  ## shape (n-k, )
-        # A_norms = LA.norm(A, axis=0)
-        # d2 = np.prod(A_norms**2 + R**2, axis=1) ## shape (n-k, )
-        # d4 = np.squeeze(c.T.dot(c) + gamma**2)  ## shape(n-k, )
-        # d3 =  d4 - Alpha 
-        # print('d1: {}'.format(d1))
-        # print('d2: {}'.format(d2))
-        # print('d3: {}'.format(d3))
-        # print('d4: {}'.format(d4))
-        # delta = d1 * d3 / d2 / d4
-
+        if k <= 40:
+            Alpha  = np.array([ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])])
+        else:
+            pool = mp.Pool(processes=mp.cpu_count())
+            results = [pool.map_async(cal_alpha2, zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis]))]
+            Alpha = np.squeeze([p.get() for p in results])
+            pool.close()
 
         d1 = np.log(d1)  ## shape (n-k, )
         A_norms = LA.norm(A, axis=0)
@@ -314,51 +272,6 @@ class OptimalDesign(ExperimentBase):
             ## all d3 < 0. then take the negative of all d3 and return the smallest s value
             d3 = np.log(abs(d3))
             delta = -(d1 + d3 - d2 - d4)
-
-        # print('d1: {}'.format(d1))
-        # print('d2: {}'.format(d2))
-        # print('d3: {}'.format(d3))
-        # print('d4: {}'.format(d4))
-
-        # end   = time.time()
-        # print('matrix loop time elaspe: {}'.format(end - start))
-
-        # start = time.time()
-        # A = X1[0:k, 0:k] ## shape (k, k)
-        # AAinv = LA.inv(A.T.dot(A))  ## shape (k, k)
-        # R = X0[:, 0:k]  ## shape (n-k, k)
-        # B = AAinv.dot(R.T)          ## shape (k, n-k)
-        # c = X1[0:k, k].reshape((k,1))  ## shape(k, 1)  column vector
-        # g = AAinv.dot(A.T).dot(c)   ## shape (k, 1)
-        # gamma = X0[:,k]            ## shape (n-k,) 
-        # Alpha1= R.T * gamma         ## R[:,i] * gamma[i] , shape (k, n-k)
-        # Alpha1= c.T.dot(A) + Alpha1.T  ## shape (n-k, k), add c.T.dot(A) to each row of Alpha1.T
-        # Alpha3= g + B * gamma  ## shape (k, n-k)
-        # Alpha = []
-        # # Alpha2= [ np.identity(k) - np.tensordot(b, r, axes=0)/(1.0 + r.dot(b)) for r, b in zip (R, B.T)]
-        # # Alpha = [ np.asscalar(ia.reshape(k,1).T.dot(ib).dot(ic.reshape(k,1))) for ia, ib, ic in zip(Alpha1, Alpha2, Alpha3.T)]
-        # for ia, r, b, ic in zip(Alpha1, R, B.T, Alpha3.T):
-            # ia = ia.reshape(k,1) ## (1, k)
-            # r  =  r.reshape(k,1)  ## ()
-            # b  =  b.reshape(k,1)
-            # ic = ic.reshape(k,1)
-            # ib = np.identity(k) - b.dot(r.T)/(1.0 + r.T.dot(b))
-            # alpha2 = np.asscalar(ia.T.dot(ib).dot(ic))
-            # Alpha.append(alpha2)
-
-
-        # d1 = 1.0 + (R * B.T).sum(-1)  ## shape (n-k, )
-        # A_norms = LA.norm(A, axis=0)
-        # d2 = np.prod(A_norms**2 + R**2, axis=1) ## shape (n-k, )
-        # d4 = np.squeeze(c.T.dot(c) + gamma**2)  ## shape(n-k, )
-        # d3 =  d4 - Alpha 
-        # delta = d1 * d3 / d2 / d4
-        # end   = time.time()
-        # print('list comprehension time elaspe: {}'.format(end - start))
-
-        # print(np.around(svalues, 4))
-        # print(np.around(delta, 4))
-        # print(max(abs(delta - svalues)))
         return delta
 
 
