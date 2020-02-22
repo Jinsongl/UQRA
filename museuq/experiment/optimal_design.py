@@ -249,7 +249,7 @@ class OptimalDesign(ExperimentBase):
         Alpha2 = np.moveaxis(Alpha2,-1, 0)   ## shape(n-k, k ,k)
         I = np.identity(Alpha2.shape[-1])
         Alpha2 = I - Alpha2   ## shape(n-k, k, k)
-        if k <= 40:
+        if k <= 80:
             Alpha  = np.array([ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])])
         else:
             pool = mp.Pool(processes=mp.cpu_count())
