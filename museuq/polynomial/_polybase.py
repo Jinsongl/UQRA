@@ -32,20 +32,6 @@ class PolyBase(object):
         self.nickname = ''
         self.num_basis = 0
 
-
-    def update_basis(self):
-        """
-        Series basis polynomials of degree self.deg
-
-        Three terms related to basis:
-        1. self.basis = [], a list of basis functions
-        2. self.num_basis, int: number of basis functions, i.e. len(self.basis)
-        3. self.basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
-
-        """
-        self.basis_degree = self.__get_basis_degree()
-        self.num_basis = len(self.basis_degree)
-
     def set_ndim(self, ndim):
         """
         set the dimension of polynomial
@@ -57,15 +43,14 @@ class PolyBase(object):
         set the degree of polynomial
         """
         raise NotImplementedError
-
     
     def Vandermonde(self, x, normed=True):
         raise NotImplementedError
 
     def gauss_quadrature(self, n):
         self.n_gauss = self._check_int(n)
-        if self.n_gauss < self.deg +1:
-            warnings.warn('n < p + 1')
+        # if self.n_gauss < self.deg +1:
+            # warnings.warn('n < p + 1')
 
     def fit_quadrature(self):
         raise NotImplementedError
@@ -75,7 +60,7 @@ class PolyBase(object):
 
     def _check_int(self, x):
         if x is None:
-            return int(0)
+            return None
         else:
             int_x = int(x)
             if int_x != x:
@@ -84,6 +69,11 @@ class PolyBase(object):
                 raise ValueError("deg must be non-negative")
             return int_x
 
+    def __call__(self, x):
+        """
+        Evaluate polynomials at given values x
+        """
+        raise NotImplementedError
     def __get_basis_degree(self):
         """
         self.basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
@@ -99,5 +89,22 @@ class PolyBase(object):
 
         return basis_degree
 
+    def _update_basis(self):
+        """
+        Series basis polynomials of degree self.deg
 
+        Three terms related to basis:
+        1. self.basis = [], a list of basis functions
+        2. self.num_basis, int: number of basis functions, i.e. len(self.basis)
+        3. self.basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
 
+        """
+        if self.deg is None or self.ndim is None:
+            self.basis_degree = None
+            self.num_basis = None
+        else:
+            self.basis_degree = self.__get_basis_degree()
+            self.num_basis = len(self.basis_degree)
+
+    def set_coef(self, coef):
+        raise NotImplementedError
