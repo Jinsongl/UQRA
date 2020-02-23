@@ -50,7 +50,7 @@ class QuadratureDesign(ExperimentBase):
             Experiment samples in space (samples for each orders)
         """
         super().samples(n, theta=theta)
-        x, w = poly.gauss_quadrature(self.n_samples, loc=self.loc, scale=self.scale)
+        x, w = self.polynomial.gauss_quadrature(self.n_samples, loc=self.loc, scale=self.scale)
         self.x = x
         self.w = w
         return x, w
