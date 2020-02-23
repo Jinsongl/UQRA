@@ -47,8 +47,8 @@ class BasicTestSuite(unittest.TestCase):
         for i in range(poly.num_basis):
             coef = np.zeros((poly.num_basis,))
             coef[i] = 1 
-            print('     - coefficients: {}'.format(np.around(coef, 2)))
-            print(poly.basis_degree[i])
+            print('     > coefficients: {}'.format(np.around(coef, 2)))
+            print('     - basis_degree: {}'.format(poly.basis_degree[i]))
             y0 = 1
             for i, ideg in enumerate(poly.basis_degree[i]):
                 coef1 = np.zeros((p+1,))
@@ -84,16 +84,65 @@ class BasicTestSuite(unittest.TestCase):
 
 
     def test_Legendre(self):
-        x, w = museuq.Legendre(2,4).gauss_quadrature(5)
-        print(x.shape)
-        print(w.shape)
+
+
+        print('--------------------Testing empty instance--------------------')
+        poly = museuq.Legendre()
+        print(poly.basis)
+        print(poly.basis_degree)
+        print(poly.num_basis)
+
+        print('--------------------Testing Gauss-Quadrature: Legendre(d=1), n=5--------------------')
+        x, w = museuq.Legendre(d=1).gauss_quadrature(5)
+        print('Physicist Legendre: ')
+        print(x)
+        print(w)
+
+        print('--------------------Testing Legendre.call(): Legendre(d=1, p=4)--------------------')
+        d, p = 1, 4
+        poly = museuq.Legendre(d,p)
+        print(poly)
+        x = np.arange(-4,4,0.5)
+        for _ in range(5):
+            coef = np.random.normal(size=poly.num_basis)
+            print('     - coefficients: {}'.format(np.around(coef, 2)))
+            y0=np.polynomial.legendre.legval(x,coef)
+            poly.set_coef(coef)
+            y1=poly(x)
+            # y0=np.polynomial.legendre.legval(x,coef)
+            # poly.set_coef(coef)
+            # y1=poly(x)
+            print('     - max abs error: {}'.format(np.around(max(abs(y0-y1)), 2)))
+
+        
+        print('--------------------Testing Legendre.call(): Legendre(d=2, p=4)--------------------')
+        d, p = 2, 4
+        poly = museuq.Legendre(d,p)
+        print(poly)
+        x = np.random.normal(size=(2,1000))
+        for i in range(poly.num_basis):
+            coef = np.zeros((poly.num_basis,))
+            coef[i] = 1 
+            print('     > coefficients: {}'.format(np.around(coef, 2)))
+            print('     - basis_degree: {}'.format(poly.basis_degree[i]))
+            y0 = 1
+            for i, ideg in enumerate(poly.basis_degree[i]):
+                coef1 = np.zeros((p+1,))
+                coef1[ideg] = 1 ##np.random.uniform(1)
+                y0= y0 * np.polynomial.legendre.legval(x[i],coef1)
+            poly.set_coef(coef)
+            y1=poly(x)
+            # print(y0)
+            # print(y1)
+            print('     - max abs error: {}'.format(max(abs(y0-y1))))
+
+
+
+        print('--------------------Testing Orthogonality --------------------')
+
         x = sp.random.uniform(-1,1,size=(2,int(1e6)))
         X = museuq.Legendre(2,4).vandermonde(x)
         print(np.diag(X.T.dot(X)/1000000))
-
-
-
-
 
 if __name__ == '__main__':
     unittest.main()
