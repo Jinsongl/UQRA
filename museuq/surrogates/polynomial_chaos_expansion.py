@@ -9,7 +9,8 @@
 """
 
 """
-import numpy as np, chaospy as cp
+import numpy as np
+import scipy.stats as stats
 import multiprocessing as mp
 from sklearn import linear_model
 from sklearn import model_selection
@@ -20,37 +21,70 @@ class PolynomialChaosExpansion(SurrogateBase):
     Class to build polynomial chaos expansion (PCE) model
     """
 
-    def __init__(self, p=None, dist=None, random_seed = None):
+    def __init__(self, distributions=None, p=None, random_seed = None):
         super().__init__(random_seed=random_seed)
         self.name           = 'Polynomial Chaos Expansion'
         self.nickname       = 'PCE'
-        self.dist_zeta_J    = dist 
+        self.distributions  = distributions  ### a list of marginal distributions
         self.poly_order     = p
-        if self.poly_order is not None:
-            poly, norm      = cp.orth_ttr(int(self.poly_order), self.dist_zeta_J, retall=True)
-            self.basis_     = poly
-            self.basis_norms= norm
-            self.active_    = range(len(self.basis_)) 
-            self.cv_error   = np.inf
-        else:
-            self.basis_     = None
-            self.basis_norms= None
+
+        if distributions is None:
+            self.ndim       = None 
+            self.orth_poly  = None
             self.active_    = None
             self.cv_error   = np.inf
-                
-    def info():
-        if self.poly_order is not None:
-            print(r'   * {:<25s} : {:<20s}'.format('Model name', self.name))
-            print(r'     - {:<23s} : {}'.format('Askey-Wiener dist'   , self.dist_zeta_J))
-            print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.poly_order ))
-            print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)', len(self.basis_)))
-            print(r'     - {:<23s} : {:d}'.format('No. active basis (P)', len(self.active_)))
         else:
-            print(r'   * {:<25s} '.format('MUSEUQ.PCE()'))
+            if hasattr(stats, self.distributions.name):
+                self.distributions = [self.distributions,]
+            self.ndim = len(self.distributions)
+            ### Now assuming same marginal distributions
+            if self.distributions[0].name == 'norm' or self.distributions[0].name == 'normal':
+                self.orth_poly = museuq.Hermite(self.ndim, self.poly_order)
+            elif self.distributions[0].name == 'uniform':
+                self.orth_poly = museuq.Legendre(self.ndim, self.poly_order)
+            else:
+                raise ValueError('Polynomial for {} has not been defined yet'.format(distributions[0].name))
+            self.active_    = range(self.orth_poly.num_basis) 
+            self.cv_error   = np.inf
 
-    def fit(self,x,y,w=None, *args, **kwargs):
+    def info():
+        print(r'   * {:<25s} : {:<20s}'.format('Surrogate Model Name', self.name))
+        if self.poly_order is not None:
+            print(r'     - {:<23s} : {}'.format('Askey-Wiener distributions'   , [idist.name for idist in self.distributions]))
+            print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.poly_order ))
+            print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)', self.orth_poly.num_basis))
+            print(r'     - {:<23s} : {:d}'.format('No. active basis (P)', len(self.active_)))
+
+
+    def fit_quadrature(self, x, w, y):
         """
-        Fit PCE meta model with given observations (x,y,w)
+        fit with quadrature points
+        """
+        self.fit_method = 'GLK' 
+        x = np.array(x, copy=False, ndmin=2)
+        y = np.array(y, copy=False, ndmin=2)
+        X = self.orth_poly.vandermonde(x, normed=False)
+        y = np.squeeze(y) + 0.0
+        w = np.asarray(w) + 0.0
+        if w.ndim != 1:
+            raise TypeError("expected 1D vector for w")
+        if len(x.T) != len(w):
+            raise TypeError("expected x and w to have same length")
+
+        print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
+        print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        print(r'   * {:<25s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
+
+        # norms = np.sum(X.T**2 * w, -1)
+        norms = self.orth_poly.basis_norms * np.sqrt(2*np.pi)
+        coef = np.sum(X.T * y * w, -1) / norms 
+        self.model  = self.orth_poly.set_coef(coef) 
+        self.active_= range(self.orth_poly.num_basis)
+        self.coef   = coef
+
+    def fit_ols(self,x,y,w=None, *args, **kwargs):
+        """
+        Fit PCE meta model with (weighted) Ordinary Least Error  
 
         Arguments:
             x: array-like of shape (ndim, nsamples) 
@@ -58,116 +92,119 @@ class PolynomialChaosExpansion(SurrogateBase):
             y: array-like of shape (nsamples [,n_output_dims/nQoI])
                 QoI observations
 
-            optional arguments:
-            methods: str
-                OLS: ordinary least square
-                WLS: weighted least square
-                GLK: Galerkin projection
-            w: array-like weights
-                OLS: None
-                WLS: weight matrix of shape (nsamples, )
-                GLK: quadrature points weights of shape (nsamples, )
-
+            w: array-like weights, optional
+            n_splits: number of folders used in cross validation, default nsamples, i.e.: leave one out 
         Returns:
 
-            self.metamodels   : chaospy.Poly 
-            self.coeffs_basis_: coefficients in terms of each orthogonal polynomial basis, Phi1, Phi2, ...
-            self.poly_coeffs  : coefficients in terms of polynomial functions. x, x^2, x^3...
         """
-        x = np.array(x)
-        x = x.reshape(1,-1) if x.ndim == 1 else x
-        y = np.array(y)
-        y = y.reshape(-1,1) if y.ndim == 1 else y
 
-        self.fit_method = kwargs.get('method', 'GLK')
+
+        self.fit_method = 'OLS' 
+        x = np.array(x, copy=False, ndmin=2)
+        y = np.array(y, copy=False, ndmin=2)
+        X = self.orth_poly.vandermonde(x)
+        y = np.squeeze(y)
+
+        n_splits= kwargs.get('n_splits', X.shape[0])
+        kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
+
         print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        print(r'   * {:<25s} : {}'.format('Polynomial order (p)', self.poly_order))
-
-        if self.fit_method.upper() in ['GALERKIN', 'GLK','PROJECTION']:
-            if w is None:
-                raise ValueError("Quadrature weights are needed for Galerkin method")
-            w = np.squeeze(w)
-            y = np.squeeze(y)
-            print(r'   * {:<25s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
-            f_hat, orthpoly_coeffs = cp.fit_quadrature(self.basis_, x, w, y, retall=True)
-            self.metamodels   = f_hat
-            self.coeffs_basis_= orthpoly_coeffs
-            self.active_      = range(len(self.basis_))
-
-        elif self.fit_method.upper() in ['OLS']:
-            X       = self.basis_(*x).T
-            y       = np.squeeze(y)
-            n_splits= kwargs.get('n_splits', X.shape[0])
-            kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
-            print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
-            model   = linear_model.LinearRegression()
-            neg_mse = model_selection.cross_val_score(model, X, y, scoring = 'neg_mean_squared_error', cv=kf, n_jobs=mp.cpu_count())
-            f_hat, orthpoly_coeffs = cp.fit_regression(self.basis_, x, y, retall=True)
-            self.cv_error     = -np.mean(neg_mse)
-            self.metamodels   = f_hat
-            self.coeffs_basis_= orthpoly_coeffs
-            self.active_      = range(len(self.basis_))
-
-        elif self.fit_method.upper() in ['WLS']:
-            W = np.diag(np.squeeze(w))
-            print(r'   * {:<25s} : X = ({},{}), Y = {}, W={}'.format('Train data shape', x.shape[1], len(self.basis_), y.shape, W.shape ))
-            f_hat, orthpoly_coeffs= cp.fit_regression(self.basis_, np.dot(W, x.T).T, np.dot(W, y), retall=True)
-            self.metamodels   = f_hat
-            self.coeffs_basis_= orthpoly_coeffs
-            self.active_      = range(len(self.basis_))
-
-        elif self.fit_method.upper() in ['LASSOLARS']:
-            ## parameters for LassoLarsCV
-            X = self.basis_(*x).T
-            y = np.squeeze(y)
-            n_splits= kwargs.get('n_splits', X.shape[0])
-            max_iter= kwargs.get('max_iter', 500)
-            kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
-            print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape',X.shape, y.shape))
-            lassolars = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count()).fit(X,y)
-            self.lasso_lars     = lassolars
-            self.active_        = np.unique([0,] + list(*np.nonzero(lassolars.coef_)))
-            self.coeffs_basis_  = lassolars.coef_[self.active_] 
-            self.active_basis_  = self.basis_[self.active_]
-            self.metamodels     = cp.poly.sum(cp.polynomial(self.active_basis_)*self.coeffs_basis_ ) + lassolars.intercept_
-            self.cv_error       = np.min(np.mean(lassolars.mse_path_, axis=1))
-            print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
+        print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
+        
+        ## calculate k-folder cross-validation error
+        model   = linear_model.LinearRegression()
+        neg_mse = model_selection.cross_val_score(model, X, y, scoring = 'neg_mean_squared_error', cv=kf, n_jobs=mp.cpu_count())
+        ## fit the model with all data 
+        ## X has a column with ones, and want return coefficients to incldue that column
+        model.fit(X, y, sample_weight=w, fit_intercept=False)
+        self.cv_error= -np.mean(neg_mse)
+        self.model   = model 
+        self.active_ = range(self.orth_poly.num_basis)
 
 
-        elif self.fit_method.upper() in ['OLSLARS']:
-            """
-            Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
-            """
-            ## parameters for LassoLars 
-            X       = self.basis_(*x).T
-            y       = np.squeeze(y)
-            n_splits= kwargs.get('n_splits', X.shape[0])
-            kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
-            print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
-            model_lars       = linear_model.Lars().fit(X,y)
-            self.active_lars = model_lars.active_
-            self.cv_error    = np.inf
-            n_active_basis = min(len(model_lars.active_), X.shape[0])
-            for i in range(n_active_basis):
-                active_indices  = model_lars.active_[:i+1]
-                active_indices  = np.array([0, *active_indices])
-                active_basis    = cp.polynomial(self.basis_[active_indices])
-                X               = active_basis(*x).T
-                model_ols       = linear_model.LinearRegression()
-                neg_mse         = model_selection.cross_val_score(model_ols, X, y, scoring = 'neg_mean_squared_error', cv=kf, n_jobs=mp.cpu_count())
-                error_loo       = -np.mean(neg_mse)
-                f_hat, coeffs   = cp.fit_regression(active_basis, x, y, retall=True)
+    def fit_olslars(self,x,y,w=None, *args, **kwargs):
+        """
+        (weighted) Ordinary Least Error on selected variables (LARs)
+        Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
+        Arguments:
+            x: array-like of shape (ndim, nsamples) 
+                sample input values in zeta (selected Wiener-Askey distribution) space
+            y: array-like of shape (nsamples [,n_output_dims/nQoI])
+                QoI observations
 
-                if error_loo < self.cv_error:
-                    self.metamodels     = f_hat
-                    self.coeffs_basis_  = coeffs
-                    self.active_        = active_indices
-                    self.cv_error       = error_loo
+            w: array-like weights, optional
+            n_splits: number of folders used in cross validation, default nsamples, i.e.: leave one out 
+        Returns:
 
-            print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
+        """
+        self.fit_method = 'OLSLARS' 
+        x = np.array(x, copy=False, ndmin=2)
+        y = np.array(y, copy=False, ndmin=2)
+        X = self.orth_poly.vandermonde(x)
+        y = np.squeeze(y)
+        ## parameters for LassoLars 
+        n_splits= kwargs.get('n_splits', X.shape[0])
+        kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-        else:
-            raise ValueError('Method to calculate PCE coefficients {:s} is not defined'.format(method))
+        print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
+        print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
+        ### 1. Perform variable selection first
+        model_lars       = linear_model.Lars().fit(X,y)
+        self.active_lars = model_lars.active_ ## Indices of active variables at the end of the path.
+        ### 2. Perform linear regression on every set of first i variables 
+        n_active_basis = min(len(model_lars.active_), X.shape[0])
+        for i in range(n_active_basis):
+            active_indices  = model_lars.active_[:i+1]
+            active_indices  = np.unique(np.array([0, *active_indices])) ## always has column of ones
+            X_              = X[:, active_indices]
+            model           = linear_model.LinearRegression()
+            neg_mse         = model_selection.cross_val_score(model, X_,y,scoring = 'neg_mean_squared_error', cv=kf, n_jobs=mp.cpu_count())
+            error_loo       = -np.mean(neg_mse)
+            model.fit(X_,y, sample_weight=w, fit_intercept=False)
+
+            if error_loo < self.cv_error:
+                self.model     = model 
+                self.active_        = active_indices
+                self.cv_error       = error_loo
+        print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
+
+    def fit_lassolars(self,x,y, *args, **kwargs):
+        """
+        (weighted) Ordinary Least Error on selected variables (LARs)
+        Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
+        Arguments:
+            x: array-like of shape (ndim, nsamples) 
+                sample input values in zeta (selected Wiener-Askey distribution) space
+            y: array-like of shape (nsamples [,n_output_dims/nQoI])
+                QoI observations
+
+            w: array-like weights, optional
+            n_splits: number of folders used in cross validation, default nsamples, i.e.: leave one out 
+        Returns:
+
+        """
+        self.fit_method = 'LASSOLARS' 
+        x = np.array(x, copy=False, ndmin=2)
+        y = np.array(y, copy=False, ndmin=2)
+        X = self.orth_poly.vandermonde(x)
+        y = np.squeeze(y)
+        ## parameters for LassoLars 
+        n_splits= kwargs.get('n_splits', X.shape[0])
+        max_iter= kwargs.get('max_iter', 500)
+        kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
+
+        print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
+        print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
+
+        model               = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count()).fit(X,y,fit_intercept=False)
+        self.active_        = list(*np.nonzero(model.coef_))
+        self.model     = model 
+        self.cv_error       = np.min(np.mean(model.mse_path_, axis=1))
+        print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
+
 
     def predict(self,x, **kwargs):
         """
@@ -181,13 +218,15 @@ class PolynomialChaosExpansion(SurrogateBase):
         y : list of array, array shape = (nsamples, )
             predicted value from surrogate models at query points
         """
-        if self.fit_method.upper() in ['GALERKIN', 'GLK','PROJECTION','OLS', 'WLS','OLSLARS','LASSOLARS']:
-            y_pred = self.metamodels(*x).T
+        if x.shape[0] != self.ndim:
+            raise ValueError('Expecting {:d}-D sampels, but {:d} given'.format(self.ndim, x.shape[0]))
+        if self.fit_method == 'GLK':
+            y = self.orth_poly(x)
         else:
-            raise NotImplementedError
-
-        print(r'   * {:<25s} : {}'.format('Prediction output', y_pred.shape))
-        return y_pred
+            X = self.orth_poly.vandermonde(x)
+            y = self.model.predict(X)
+        print(r'   * {:<25s} : {}'.format('Prediction output', y.shape))
+        return y
 
     def sample_y(self,X, nsamples=1, random_state=0):
         """
