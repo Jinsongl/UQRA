@@ -30,7 +30,7 @@ class BasicTestSuite(unittest.TestCase):
             solver1.set_coef(coef)
             y = solver1(doe_x)
             # print(y)
-            pce_model  = museuq.PCE(stats.norm, p)
+            pce_model  = museuq.PCE([stats.norm,]*d, p)
             pce_model.fit_quadrature(doe_x, doe_w, y)
             # print('>> Coefficients: ')
             # print('     True model: {}'.format(solver1))
@@ -43,6 +43,104 @@ class BasicTestSuite(unittest.TestCase):
             y1=pce_model.predict(x)
             print('     Max abs error: {}'.format(max(abs(y0-y1))))
 
+        print('========================TESTING: PCE.fit_quadrature(), ~Normal d=2=======================')
+        d, p = 2, 5
+        solver1 = museuq.Hermite(d,p) 
+        doe_x, doe_w = museuq.QuadratureDesign(solver1).samples(6)
+        # x = np.linspace(-3,3,100)
+        for i in range(solver1.num_basis):
+            coef = np.zeros((solver1.num_basis,)) 
+            coef[i] = 1
+            # coef = np.random.normal(size=(solver1.num_basis))
+            solver1.set_coef(coef)
+            y = solver1(doe_x)
+            # print(y)
+            pce_model  = museuq.PCE([stats.norm,]*d, p)
+            pce_model.fit_quadrature(doe_x, doe_w, y)
+            # print('>> Coefficients: ')
+            # print('     True model: {}'.format(solver1))
+            # print('     Surrogate: {}'.format(np.around(pce_model.coef,6)))
+            # print('     max abs error: {}'.format(max(abs(coef - pce_model.coef ))))
+
+            print('>> Prediction: ')
+            x = np.random.normal(size=(d,1000))
+            y0=solver1(x)
+            y1=pce_model.predict(x)
+            print('     Max abs error: {}'.format(max(abs(y0-y1))))
+
+        print('===================TESTING: PCE.fit_quadrature(), ~Normal d=2, random coef==================')
+        d, p = 2, 5
+        solver1 = museuq.Hermite(d,p) 
+        doe_x, doe_w = museuq.QuadratureDesign(solver1).samples(6)
+        # x = np.linspace(-3,3,100)
+        for i in range(solver1.num_basis):
+            coef = np.random.normal(size=(solver1.num_basis,)) 
+            # coef = np.random.normal(size=(solver1.num_basis))
+            solver1.set_coef(coef)
+            y = solver1(doe_x)
+            # print(y)
+            pce_model  = museuq.PCE([stats.norm,]*d, p)
+            pce_model.fit_quadrature(doe_x, doe_w, y)
+            print('>> Coefficients: ')
+            print('     True model: {}'.format(solver1))
+            print('     Surrogate: {}'.format(np.around(pce_model.coef,6)))
+            print('     max abs error: {}'.format(max(abs(coef - pce_model.coef ))))
+
+            print('>> Prediction: ')
+            x = np.random.normal(size=(d,1000))
+            y0=solver1(x)
+            y1=pce_model.predict(x)
+            print('     Max abs error: {}'.format(max(abs(y0-y1))))
+
+        print('========================TESTING: PCE.fit_quadrature(), ~Uniform(-1,1) d=1=======================')
+        d, p = 1, 10
+        solver1 = museuq.Legendre(d,p) 
+        doe_x, doe_w = museuq.QuadratureDesign(solver1).samples(11)
+        # x = np.linspace(-3,3,100)
+        for i in range(solver1.num_basis):
+            coef = np.zeros((solver1.num_basis,)) 
+            coef[i] = 1
+            # coef = np.random.normal(size=(solver1.num_basis))
+            solver1.set_coef(coef)
+            y = solver1(doe_x)
+            # print(y)
+            pce_model  = museuq.PCE([stats.uniform(-1,1),]*d, p)
+            pce_model.fit_quadrature(doe_x, doe_w, y)
+            print('>> Coefficients: ')
+            print('     True model: {}'.format(solver1))
+            print('     Surrogate: {}'.format(np.around(pce_model.coef,6)))
+            print('     max abs error: {}'.format(max(abs(coef - pce_model.coef ))))
+
+            print('>> Prediction: ')
+            x = np.random.normal(size=(d,1000))
+            y0=solver1(x)
+            y1=pce_model.predict(x)
+            print('     Max abs error: {}'.format(max(abs(y0-y1))))
+
+        print('========================TESTING: PCE.fit_quadrature(), ~Uniform(-1,1) d=2=======================')
+        d, p = 2, 5
+        solver1 = museuq.Legendre(d,p) 
+        doe_x, doe_w = museuq.QuadratureDesign(solver1).samples(6)
+        # x = np.linspace(-3,3,100)
+        for i in range(solver1.num_basis):
+            coef = np.zeros((solver1.num_basis,)) 
+            coef[i] = 1
+            # coef = np.random.normal(size=(solver1.num_basis))
+            solver1.set_coef(coef)
+            y = solver1(doe_x)
+            # print(y)
+            pce_model  = museuq.PCE([stats.uniform(-1,2),]*d, p)
+            pce_model.fit_quadrature(doe_x, doe_w, y)
+            print('>> Coefficients: ')
+            print('     True model: {}'.format(solver1))
+            print('     Surrogate: {}'.format(np.around(pce_model.coef,6)))
+            print('     max abs error: {}'.format(max(abs(coef - pce_model.coef ))))
+
+            print('>> Prediction: ')
+            x = np.random.normal(size=(d,1000))
+            y0=solver1(x)
+            y1=pce_model.predict(x)
+            print('     Max abs error: {}'.format(max(abs(y0-y1))))
     def test_mPCE(self):
         foo = lambda x: x**3 + 0.5*x + np.random.randn(*x.shape)
         dist = cp.Normal()

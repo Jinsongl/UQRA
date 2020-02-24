@@ -134,6 +134,7 @@ class Legendre(PolyBase):
                 basis_norms.append(inorms)
             self.basis = basis
             self.basis_norms = np.array(basis_norms)
+            self.basis_norms_const = 2.0 
 
         return self.basis, self.basis_norms
 

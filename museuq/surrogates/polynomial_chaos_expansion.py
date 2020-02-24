@@ -34,13 +34,19 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.active_    = None
             self.cv_error   = np.inf
         else:
-            if hasattr(stats, self.distributions.name):
-                self.distributions = [self.distributions,]
+            # if isinstance(self.distributions, (list, tuple))
+            # if hasattr(stats, self.distributions.name):
+                # self.distributions = [self.distributions,]
             self.ndim = len(self.distributions)
             ### Now assuming same marginal distributions
-            if self.distributions[0].name == 'norm' or self.distributions[0].name == 'normal':
+            try:
+                dist_name = self.distributions[0].name 
+            except AttributeError:
+                dist_name = self.distributions[0].dist.name 
+
+            if dist_name == 'norm':
                 self.orth_poly = museuq.Hermite(self.ndim, self.poly_order)
-            elif self.distributions[0].name == 'uniform':
+            elif dist_name == 'uniform':
                 self.orth_poly = museuq.Legendre(self.ndim, self.poly_order)
             else:
                 raise ValueError('Polynomial for {} has not been defined yet'.format(distributions[0].name))
@@ -76,7 +82,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         print(r'   * {:<25s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
 
         # norms = np.sum(X.T**2 * w, -1)
-        norms = self.orth_poly.basis_norms * np.sqrt(2*np.pi)
+        norms = self.orth_poly.basis_norms *self.orth_poly.basis_norms_const**self.orth_poly.ndim
         coef = np.sum(X.T * y * w, -1) / norms 
         self.model  = self.orth_poly.set_coef(coef) 
         self.active_= range(self.orth_poly.num_basis)
