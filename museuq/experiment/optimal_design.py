@@ -91,13 +91,15 @@ class OptimalDesign(ExperimentBase):
         while len(new_set) < m:
             ## remove selected rows first
             idx = list(set(range(X.shape[0])).difference(set(curr_set)).difference(set(new_set)))
+            print(len(idx))
             if not idx:
                 break
             else:
                 X_      = X[idx,:]
                 n, p    = X_.shape
-                _,_,P   = sp.linalg.qr(X.T, pivoting=True)
-                new_set+= list(P[:min(m,n,p)])
+                _,_,P   = sp.linalg.qr(X_.T, pivoting=True)
+                new_set = new_set + list(P[:min(m,n,p)])
+                print(new_set)
         new_set = new_set[:m] if len(new_set) > m else new_set ## break case
         curr_set += new_set
         return curr_set
