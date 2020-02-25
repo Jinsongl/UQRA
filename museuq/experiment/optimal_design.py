@@ -17,7 +17,7 @@ import numpy.linalg as LA
 import copy
 import itertools
 from tqdm import tqdm
-import time
+import time, math
 import multiprocessing as mp
 
 def cal_alpha2(x):
@@ -87,11 +87,10 @@ class OptimalDesign(ExperimentBase):
         X = np.array(X, copy=False, ndmin=2)
         n_begin = len(curr_set)
         new_set = []
-
-        while len(new_set) < m:
-            ## remove selected rows first
+        idx = list(set(range(X.shape[0])).difference(set(curr_set)))
+        X_ = X[idx, :]
+        for _ in tqdm(range(math.ceil(m/min(X_.shape))), ascii=True, desc='    -'):
             idx = list(set(range(X.shape[0])).difference(set(curr_set)).difference(set(new_set)))
-            print(len(idx))
             if not idx:
                 break
             else:
@@ -99,7 +98,18 @@ class OptimalDesign(ExperimentBase):
                 n, p    = X_.shape
                 _,_,P   = sp.linalg.qr(X_.T, pivoting=True)
                 new_set = new_set + list(P[:min(m,n,p)])
-                print(new_set)
+
+
+        # while len(new_set) < m:
+            # ## remove selected rows first
+            # idx = list(set(range(X.shape[0])).difference(set(curr_set)).difference(set(new_set)))
+            # if not idx:
+                # break
+            # else:
+                # X_      = X[idx,:]
+                # n, p    = X_.shape
+                # _,_,P   = sp.linalg.qr(X_.T, pivoting=True)
+                # new_set = new_set + list(P[:min(m,n,p)])
         new_set = new_set[:m] if len(new_set) > m else new_set ## break case
         curr_set += new_set
         return curr_set
