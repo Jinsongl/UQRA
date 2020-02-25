@@ -15,7 +15,6 @@ class BasicTestSuite(unittest.TestCase):
         print(doe.ndim)
         print(doe.samplingfrom)
 
-
     def test_RandomDesign(self):
         print('Testing: Random Monte Carlo...')
         print('testing: d=1, theta: default')
@@ -69,13 +68,13 @@ class BasicTestSuite(unittest.TestCase):
         """
         Optimal Design
         """
-        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Uniform'
+        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform'
         filename = 'DoE_McsE6R0.npy'
         data_set = np.load(os.path.join(data_dir, filename))
 
         np.random.seed(100)
-        ndim= 2
-        p   = np.array([20])
+        ndim= 1
+        p   = np.array([5])
         orth_poly = museuq.Legendre(d=ndim,deg=p)
 
 
@@ -85,10 +84,11 @@ class BasicTestSuite(unittest.TestCase):
         n_budget = 10 * design_matrix.shape[1]
 
         start    = time.time()
-        doe      = museuq.OptimalDesign('S')
-        doe_index= doe.samples(design_matrix, n_samples=n_budget, is_orth=True)
+        doe      = museuq.OptimalDesign('D')
+        doe_index= doe.samples(design_matrix, n_samples=n_budget, orth_basis=True)
         done     = time.time()
         print('   >> OED-{:s} (n={:d}) time elapsed: {}'.format('S', n_cand, done - start))
+        print(doe_index)
 
 
     # def test_gauss_quadrature(self):

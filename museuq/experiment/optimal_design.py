@@ -23,11 +23,18 @@ import multiprocessing as mp
 def cal_alpha2(x):
     return x[0].dot(x[1]).dot(x[2]).item()
 
+def append_list(list1, list2, n):
+    len1 = len(list1)
+    for i in list2:
+        if i not in list1:
+            list1.append(i)
+        if len(list1) == len1 + n:
+            return list1
 
 class OptimalDesign(ExperimentBase):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
 
-    def __init__(self, optimality, random_seed=None):
+    def __init__(self, optimality, curr_set=[], random_seed=None):
         """
         Optimal/Quasi Optimal Experimental design:
         Arguments:
@@ -37,7 +44,7 @@ class OptimalDesign(ExperimentBase):
         super().__init__(random_seed=random_seed)
         self.optimality = optimality 
         self.filename   = '_'.join(['DoE', self.optimality.capitalize()])
-        self.selected_row = None 
+        self.curr_set   = curr_set
 
     def __str__(self):
         return('Optimal Criteria: {:<15s}, num. samples: {:d} '.format(self.optimality, self.n_samples))
@@ -52,30 +59,50 @@ class OptimalDesign(ExperimentBase):
             X: design matrix to sample from. (feature to be added: distributions + n_candidates)
 
         Optional: 
-            rows: (for S optimality) list of selected row indices
-            is_orth: boolean, if columns of design matrix is orthogonal to each other asymptotically
+            curr_set: list of selected row indices currently
+            orth_basis: boolean, True if columns of design matrix is orthogonal to each other asymptotically
         Return:
-            Experiment samples of shape(ndim, n_samples)
+            list of row indices selected 
         """
-        self.filename= self.filename + num2print(n_samples)
-        m, p        = X.shape
-        assert m > p, 'Number of candidate samples are expected to be larger than number of features'
+        # self.filename= self.filename + num2print(n_samples)
 
         if self.optimality.upper() == 'S':
             """ Xb = Y """
-            selected_row   = kwargs.get('rows', None)
-            is_basis_orth  = kwargs.get('is_orth', False)
-            selected_row   = self._get_quasi_optimal(n_samples, X, selected_row, is_basis_orth)
+            orth_basis = kwargs.get('orth_basis', True)
+            curr_set   = kwargs.get('curr_set', self.curr_set)
+            curr_set   = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
         elif self.optimality.upper() == 'D':
             """ D optimality based on rank revealing QR factorization  """
-            _, _, P = sp.linalg.qr(X.T, pivoting=True)
-            selected_row = P[:n_samples]
+            curr_set   = kwargs.get('curr_set', self.curr_set)
+            curr_set   = self._get_rrqr_optimal(n_samples, X, curr_set)
         else:
             raise NotImplementedError
+        self.curr_set = curr_set
+        return curr_set 
 
-        return selected_row
+    def _get_rrqr_optimal(self, m, X, curr_set):
+        """
+        Return indices of m D-optimal samples based on RRQR 
+        """
+        X = np.array(X, copy=False, ndmin=2)
+        n_begin = len(curr_set)
+        new_set = []
 
-    def _get_quasi_optimal(self,m,X,I=None,is_orth=False):
+        while len(new_set) < m:
+            ## remove selected rows first
+            idx = list(set(range(X.shape[0])).difference(set(curr_set)).difference(set(new_set)))
+            if not idx:
+                break
+            else:
+                X_      = X[idx,:]
+                n, p    = X_.shape
+                _,_,P   = sp.linalg.qr(X.T, pivoting=True)
+                new_set+= list(P[:min(m,n,p)])
+        new_set = new_set[:m] if len(new_set) > m else new_set ## break case
+        curr_set += new_set
+        return curr_set
+        
+    def _get_quasi_optimal(self,m,X,I=None,orth_basis=False):
         """
         return row selection matrix S containing indices for quasi optimal experimental design
         based on fast greedy algorithm 
@@ -87,7 +114,7 @@ class OptimalDesign(ExperimentBase):
         I -- indices, nt ndarray of shape (N,) corresponding row selection matrix of length m
             if I is None, an empty list will be created first and m items will be appended 
             Otherwise, additional (m-m0) items (row index in design matrix X) will be appended 
-        is_orth -- Boolean indicating if the basis space is orthogonal
+        orth_basis -- Boolean indicating if the basis space is orthogonal
 
         Returns:
         row selection matrix I of shape (m, M)
@@ -96,14 +123,13 @@ class OptimalDesign(ExperimentBase):
         assert m > 0, "At least one sample in the designed experiemnts"
         M,p = X.shape
         assert M >= p, "quasi optimal sebset are design for overdetermined problem only"
-        (Q,R) = (X, None ) if is_orth else LA.qr(X)
+        (Q,R) = (X, None ) if orth_basis else LA.qr(X)
         I = [] if I is None else I
-        m = m - len(I)
         pbar_x  = tqdm(range(m), ascii=True, desc="   - ")
         for _ in pbar_x:
             i = self._greedy_find_next_point(I,Q)
             I.append(i)
-        return np.array(I) 
+        return I
 
     def _greedy_find_next_point(self, I, Q):
         """
@@ -152,6 +178,7 @@ class OptimalDesign(ExperimentBase):
 
     def adaptive(self,X,n_samples, selected_col=[]):
         """
+        Coherence Compressinve D optimality
         Xb = Y
         X: Design matrix X(u) of shape(num_samples, num_features)
 
@@ -162,25 +189,25 @@ class OptimalDesign(ExperimentBase):
         """
 
         selected_col = selected_col if selected_col else range(X.shape[1])
-        if self.selected_row is None:
+        if self.selected_rows is None:
             X_selected = X[:,selected_col]
-            selected_row = self.samples(X_selected, n_samples=n_samples)
-            self.selected_row = selected_row
-            return selected_row 
+            selected_rows = self.samples(X_selected, n_samples=n_samples)
+            self.selected_rows = selected_rows
+            return selected_rows 
         else:
-            X_selected = X[self.selected_row,:][:,selected_col]
+            X_selected = X[self.selected_rows,:][:,selected_col]
             X_candidate= X[:, selected_col]
             ### X_selected.T * B = X_candidate.T -> solve for B
             X_curr_inv = np.dot(np.linalg.inv(np.dot(X_selected, X_selected.T)), X_selected)
             B = np.dot(X_curr_inv, X_candidate.T)
             X_residual = X_candidate.T - np.dot(X_selected.T, B)
             Q, R, P = sp.linalg.qr(X_residual, pivoting=True)
-            selected_row = np.concatenate((self.selected_row, P))
-            _, i = np.unique(selected_row, return_index=True)
-            selected_row = selected_row[np.sort(i)]
-            selected_row = selected_row[:len(self.selected_row) + n_samples]
-            self.selected_row = selected_row
-            return selected_row[len(self.selected_row):]
+            selected_rows = np.concatenate((self.selected_rows, P))
+            _, i = np.unique(selected_rows, return_index=True)
+            selected_rows = selected_rows[np.sort(i)]
+            selected_rows = selected_rows[:len(self.selected_rows) + n_samples]
+            self.selected_rows = selected_rows
+            return selected_rows[len(self.selected_rows):]
 
     def _cal_svalue_over(self, X0, X1):
         """
