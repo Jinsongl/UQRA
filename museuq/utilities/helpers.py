@@ -10,7 +10,7 @@
 
 """
 
-import numpy as np, scipy as sp, scipy.stats as scistats
+import numpy as np, scipy as sp, scipy.stats as stats
 import os, sys, warnings, collections, csv, itertools, math
 from statsmodels.distributions.empirical_distribution import ECDF as mECDF
 
@@ -159,6 +159,17 @@ def ECDF(x,**kwargs):
                 return x_ecdf
 
 
+def isfromstats(a):
+    try:
+        res = hasattr(stats, a.name)
+    except AttributeError:
+        try: 
+            res = hasattr(stats, a.dist.name)
+        except:
+            res =False
+    except:
+        res = False
+    return res
 
 
 def get_exceedance_data(x,prob=1e-3,**kwargs):
@@ -329,9 +340,9 @@ def _get_stats(data, stats=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'ab
         elif istats.lower() in ['variance']:
             res.append(np.std(data, axis=axis)**2)
         elif istats.lower() in ['skewness', 'skew']:
-            res.append(scistats.skew(data, axis=axis))
+            res.append(stats.skew(data, axis=axis))
         elif istats.lower() in ['kurtosis', 'kurt']:
-            res.append(scistats.kurtosis(data, axis=axis))
+            res.append(stats.kurtosis(data, axis=axis))
         elif istats.lower() in ['absmax']:
             res.append(np.max(abs(data), axis=axis))
         elif istats.lower() in ['max', 'maximum']:
@@ -365,7 +376,7 @@ def _get_weighted_exceedance1d(x,numbins=10, defaultreallimits=None, weights=Non
         (2,:): indice based on ecdf.x
 
     """
-    res = scistats.cumfreq(x,numbins=numbins, defaultreallimits=defaultreallimits, weights=weights)
+    res = stats.cumfreq(x,numbins=numbins, defaultreallimits=defaultreallimits, weights=weights)
     cdf_x = res.lowerlimit + np.linspace(0, res.binsize*res.cumcount.size, res.cumcount.size)
     cdf_y = res.cumcount/x.size
     ecdf_y = 1- cdf_y
