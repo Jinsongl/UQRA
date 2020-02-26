@@ -12,6 +12,8 @@
 import numpy as np
 import scipy.stats as stats
 from museuq.solver._solverbase import SolverBase
+from museuq.utilities.helpers import isfromstats
+import random
 
 """
 Benchmark problems:
@@ -23,8 +25,6 @@ Benchmark problems:
 Return:
     y: array-like (nsamples,) or (nsamples, nQoI)
 """
-
-
 
 class Ishigami(SolverBase):
     """
@@ -68,7 +68,7 @@ class Ishigami(SolverBase):
         y = np.sin(x1) + self.p[0] * np.sin(x2)**2 + self.p[1]*x3**4 * np.sin(x1)
         return y
 
-    def map_domain(self, u_cdf=None, u=None, dist_u=None):
+    def map_domain(self, u, dist_u):
         """
         mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
         Argument:
@@ -76,20 +76,17 @@ class Ishigami(SolverBase):
             1. cdf(u)
             2. u and dist_u
         """
-
-        u_cdf = []
         u = np.array(u, copy=False, ndmin=2)
         if isinstance(dist_u, (list, tuple)):
+            ## if a list is given but not enough distributions, appending with Uniform(0,1)
+            for idist in dist_u:
+                assert isfromstats(idist)
             for _ in range(len(dist_u), self.ndim):
                 dist_u.append(stats.uniform(0,1))
         else:
-            assert hasattr(stats, dist_u.dist.name)
+            assert isfromstats(dist_u)
             dist_u = [dist_u,] * self.ndim
-
-        for iu, idist in zip(u, dist_u):
-            assert hasattr(stats, idist.dist.name)
-            u_cdf.append(idist.cdf(iu))
-        u_cdf = np.array(u_cdf)
+        u_cdf = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -138,6 +135,42 @@ class xsinx(SolverBase):
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
+
+class sparse_poly(SolverBase):
+    """
+    Sparse Polynomial
+    """
+    def __init__(self, poly, coef= stats.norm, sparsity='full'):
+        self.name = 'sparse polynomial'
+        self.nickname = 'sparse_poly'
+        self.poly = poly
+        self.ndim = poly.ndim
+        self.deg  = poly.deg
+        self.num_basis = poly.num_basis
+
+        if isfromstats(coef):
+            k = self.num_basis if sparsity == 'full' else sparsity
+            coef = self._random_coef(k)
+            self.poly.set_coef(coef)
+        else:
+            self.poly.set_coef(coef)
+
+    def __str__(self):
+        return 'solver: sparse polynomial function'
+
+    def run(self, x):
+        y = self.poly(x)
+        return y
+
+    def _random_coef(self, k, dist=stats.norm, seed=None, theta=(0,1)):
+        """
+        p: total order    
+        s: sparsity
+        """
+        np.random.seed(seed)
+        coef = dist.rvs(loc=theta[0], scale=theta[1], size=self.num_basis)
+        coef[random.sample(range(0, self.num_basis), self.num_basis - k)] = 0.0
+        return coef
 
 class poly4th(SolverBase):
     """
