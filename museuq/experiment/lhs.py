@@ -9,6 +9,7 @@
 """
 
 """
+import inspect
 import numpy as np
 import scipy
 import pyDOE2
@@ -42,7 +43,13 @@ class LatinHyperCube(ExperimentBase):
         self.filename = '_'.join(['DoE', 'Lhs'])
 
     def __str__(self):
-        dist_names = [idist.dist.name for idist in self.distributions]
+        dist_names = []
+        for idist in self.distributions:
+            try:
+                dist_name = idist.name
+            except AttributeError:
+                dist_name = idist.dist.name
+            dist_names.append(dist_name)
         message = 'LHS Design with criterion: {:s}, distributions: {}'.format(self.criterion, dist_names)
         return message
 
@@ -61,8 +68,7 @@ class LatinHyperCube(ExperimentBase):
         super().samples(n_samples, theta)
         lhs_u   = pyDOE2.lhs(self.ndim, samples=self.n_samples, criterion=self.criterion, iterations=self.iterations)
         lhs_u   = lhs_u.reshape(self.ndim, n_samples)
-        lhs_x   = np.array([idist.ppf(ilhs_u, loc=iloc, scale=iscale) for idist, ilhs_u, iloc, iscale in zip(self.distributions, lhs_u, self.loc, self.scale)])
-
+        lhs_x   = np.array([idist.ppf(ilhs_u) for idist, ilhs_u in zip(self.distributions, lhs_u)])
         return lhs_u, lhs_x
 
 
