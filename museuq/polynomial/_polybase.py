@@ -87,6 +87,7 @@ class PolyBase(object):
         else:
             raise NotImplementedError
 
+        basis_degree.sort(key=sum)
         return basis_degree
 
     def _update_basis(self):

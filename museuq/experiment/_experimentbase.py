@@ -13,6 +13,7 @@ import numpy as np
 import scipy as sp
 from museuq.utilities.helpers import num2print
 from museuq.polynomial._polybase import PolyBase
+from museuq.utilities.helpers import isfromstats
 
 class ExperimentBase(object):
     """
@@ -37,11 +38,11 @@ class ExperimentBase(object):
         elif isinstance(self.samplingfrom, (list, tuple)):
             self.distributions = []
             for idist in self.samplingfrom:
-                assert hasattr(sp.stats, idist.name)
+                assert isfromstats(idist)
                 self.distributions.append(idist)
             self.ndim = len(self.distributions)
         #> 2. Just one distribution is given 
-        elif hasattr(sp.stats, self.samplingfrom.name):
+        elif isfromstats(self.samplingfrom):
             self.distributions = [self.samplingfrom,]
             self.ndim = int(1)
             
