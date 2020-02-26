@@ -32,7 +32,7 @@ class Legendre(PolyBase):
         """
         Gauss-Legendre quadrature.
         Computes the sample points and weights for Gauss-HermiteE quadrature. 
-        These sample points and weights will correctly integrate polynomials of degree 2*deg - 1 or less over the interval [-\inf, \inf] with the weight function f(x) = \exp(-x^2/2).
+        These sample points and weights will correctly integrate polynomials of degree 2*deg - 1 or less over the interval [-1, 1] with the weight function f(x) = 1 
 
         Parameters:	
         deg : int
@@ -55,7 +55,6 @@ class Legendre(PolyBase):
 
         coords = []
         weight = []
-        print(loc, scale)
         for iloc, iscale in zip(loc, scale):
             x, w = np.polynomial.legendre.leggauss(self.n_gauss) 
             x = iloc + iscale* x
@@ -78,16 +77,16 @@ class Legendre(PolyBase):
         x    = np.array(x, copy=0, ndmin=2) + 0.0
         d, n = x.shape
         assert (d == self.ndim), 'Input dimension is {:d}, given {:d}'.format(self.ndim, d)
-        vander = np.ones((n, self.num_basis), x.dtype)
-        vander_ind = np.array([np.polynomial.legendre.legvander(ix, self.deg) for ix in x])
+        vander      = np.ones((n, self.num_basis), x.dtype)
+        vander_ind  = np.array([np.polynomial.legendre.legvander(ix, self.deg) for ix in x])
 
         ### basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
         if self.basis_degree is None:
             self._update_basis()
         for i, ibasis_degree in enumerate(self.basis_degree):
             ### ith polynomial, it is composed of ibasis_degree = (l,m,n)
-            for idim, ibasis in enumerate(ibasis_degree):
-                vander[:,i] = vander[:,i] * vander_ind[idim,:,ibasis]
+            for idim, ideg in enumerate(ibasis_degree):
+                vander[:,i] = vander[:,i] * vander_ind[idim,:,ideg]
         if normed:
             vander = vander / np.sqrt(self.basis_norms)
         return vander
@@ -121,8 +120,8 @@ class Legendre(PolyBase):
             self.basis = None
             self.basis_norms = None
         else:
-            norms_1d   = np.array([1/(2*i + 1) for i in range(self.deg+1)])
-            basis = []
+            norms_1d    = np.array([1/(2*i + 1) for i in range(self.deg+1)])
+            basis       = []
             basis_norms = [] 
             for ibasis_degree in self.basis_degree:
                 ibasis = 1.0
@@ -146,7 +145,7 @@ class Legendre(PolyBase):
         """
         self._update_basis()
         x = np.array(x, copy=False, ndmin=2)
-        vander = self.vandermonde(x, normed=False)
+        vander = self.vandermonde(x)
         d, n = x.shape ## (ndim, samples)
         if d != self.ndim:
             raise TypeError('Expected x has dimension {}, but {} is given'.format(self.ndim, d))

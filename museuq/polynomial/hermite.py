@@ -15,7 +15,11 @@ from ._polybase import PolyBase
 
 class Hermite(PolyBase):
     """
-    Hermite polynomial
+    Probabilists Hermite polynomial
+
+    Orthoganality:
+    \int Hm(x) Hn(x) exp(-x^2/2) dx = sqrt(2pi) n! 1{mn}
+
     """
 
     def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total'):
@@ -84,6 +88,7 @@ class Hermite(PolyBase):
         if self.basis_degree is None:
             self._update_basis()
         for i, ibasis_degree in enumerate(self.basis_degree):
+            ### ith polynomial, it is composed of ibasis_degree = (l,m,n)
             for idim, ideg in enumerate(ibasis_degree):
                 vander[:,i] = vander[:,i] * vander_ind[idim,:,ideg]
         if normed:
@@ -98,6 +103,9 @@ class Hermite(PolyBase):
         self._update_basis()
 
     def set_degree(self, deg):
+        """
+        set polynomial degree order
+        """
         self.deg = super()._check_int(deg)
         self._update_basis()
 
@@ -117,8 +125,8 @@ class Hermite(PolyBase):
             self.basis = None
             self.basis_norms = None
         else:
-            norms_1d   = np.array([math.factorial(i) for i in range(self.deg+1)])
-            basis = []
+            norms_1d    = np.array([math.factorial(i) for i in range(self.deg+1)])
+            basis       = []
             basis_norms = [] 
             for ibasis_degree in self.basis_degree:
                 ibasis = 1.0
@@ -141,7 +149,7 @@ class Hermite(PolyBase):
         """
         self._update_basis()
         x = np.array(x, copy=False, ndmin=2)
-        vander = self.vandermonde(x, normed=False)
+        vander = self.vandermonde(x)
         d, n = x.shape ## (ndim, samples)
         if d != self.ndim:
             raise TypeError('Expected x has dimension {}, but {} is given'.format(self.ndim, d))
