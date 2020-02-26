@@ -45,9 +45,9 @@ class PolynomialChaosExpansion(SurrogateBase):
                 dist_name = self.distributions[0].dist.name 
 
             if dist_name == 'norm':
-                self.orth_poly = museuq.Hermite(self.ndim, self.poly_order)
+                self.orth_poly = museuq.Hermite(d=self.ndim, deg=self.poly_order)
             elif dist_name == 'uniform':
-                self.orth_poly = museuq.Legendre(self.ndim, self.poly_order)
+                self.orth_poly = museuq.Legendre(d=self.ndim, deg=self.poly_order)
             else:
                 raise ValueError('Polynomial for {} has not been defined yet'.format(distributions[0].name))
             self.active_    = range(self.orth_poly.num_basis) 
@@ -60,7 +60,6 @@ class PolynomialChaosExpansion(SurrogateBase):
             print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.poly_order ))
             print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)', self.orth_poly.num_basis))
             print(r'     - {:<23s} : {:d}'.format('No. active basis (P)', len(self.active_)))
-
 
     def fit_quadrature(self, x, w, y):
         """

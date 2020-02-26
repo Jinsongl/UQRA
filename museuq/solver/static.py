@@ -147,6 +147,12 @@ class sparse_poly(SolverBase):
         self.ndim = poly.ndim
         self.deg  = poly.deg
         self.num_basis = poly.num_basis
+        if self.poly.name == 'Legendre':
+            self.distributions = [stats.uniform(-1,1),] * self.ndim
+        elif self.poly.name == 'Hermite':
+            self.distributions = [stats.norm(), ] * self.ndim
+        else:
+            raise NotImplementedError
 
         if isfromstats(coef):
             k = self.num_basis if sparsity == 'full' else sparsity
@@ -171,6 +177,29 @@ class sparse_poly(SolverBase):
         coef = dist.rvs(loc=theta[0], scale=theta[1], size=self.num_basis)
         coef[random.sample(range(0, self.num_basis), self.num_basis - k)] = 0.0
         return coef
+
+    def map_domain(self, u, dist_u):
+        """
+        mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        Argument:
+            two options:
+            1. cdf(u)
+            2. u and dist_u
+        """
+        u = np.array(u, copy=False, ndmin=2)
+        if isinstance(dist_u, (list, tuple)):
+            ## if a list is given but not enough distributions, appending with Uniform(0,1)
+            for idist in dist_u:
+                assert isfromstats(idist)
+            for _ in range(len(dist_u), self.ndim):
+                dist_u.append(stats.uniform(0,1))
+        else:
+            assert isfromstats(dist_u)
+            dist_u = [dist_u,] * self.ndim
+        u_cdf = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
+        x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        return x
 
 class poly4th(SolverBase):
     """
