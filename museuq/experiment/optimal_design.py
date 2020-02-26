@@ -49,7 +49,6 @@ class OptimalDesign(ExperimentBase):
     def __str__(self):
         return('Optimal Criteria: {:<15s}, num. samples: {:d} '.format(self.optimality, self.n_samples))
 
-
     @random_state
     def samples(self,X,n_samples, *args, **kwargs):
         """
@@ -69,16 +68,16 @@ class OptimalDesign(ExperimentBase):
         if self.optimality.upper() == 'S':
             """ Xb = Y """
             orth_basis = kwargs.get('orth_basis', True)
-            curr_set   = kwargs.get('curr_set', self.curr_set)
-            curr_set   = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
+            curr_set = kwargs.get('curr_set', self.curr_set)
+            new_set = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
         elif self.optimality.upper() == 'D':
             """ D optimality based on rank revealing QR factorization  """
-            curr_set   = kwargs.get('curr_set', self.curr_set)
-            curr_set   = self._get_rrqr_optimal(n_samples, X, curr_set)
+            curr_set = kwargs.get('curr_set', self.curr_set)
+            new_set  = self._get_rrqr_optimal(n_samples, X, curr_set)
         else:
             raise NotImplementedError
-        self.curr_set = curr_set
-        return curr_set 
+        self.curr_set = curr_set + new_set
+        return new_set 
 
     def _get_rrqr_optimal(self, m, X, curr_set):
         """
@@ -111,8 +110,7 @@ class OptimalDesign(ExperimentBase):
                 # _,_,P   = sp.linalg.qr(X_.T, pivoting=True)
                 # new_set = new_set + list(P[:min(m,n,p)])
         new_set = new_set[:m] if len(new_set) > m else new_set ## break case
-        curr_set += new_set
-        return curr_set
+        return new_set 
         
     def _get_quasi_optimal(self,m,X,I=None,orth_basis=False):
         """
