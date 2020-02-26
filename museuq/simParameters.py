@@ -148,7 +148,13 @@ class simParameters(object):
         print(r'------------------------------------------------------------')
         print(r' > Required parameters:')
         print(r'   * {:<25s} : {}'.format('Model Name:', self.model_name))
-        dist_zeta_J_names = [idist.name for idist in self.dist_zeta_J]
+        dist_zeta_J_names = []
+        for idist in self.dist_zeta_J:
+            try:
+                dist_name = idist.name
+            except AttributeError:
+                dist_name = idist.dist.name
+            dist_zeta_J_names.append(dist_name)
         print(r'   * {:<25s} : {} '.format('Joint zeta distribution', dist_zeta_J_names))
         # print(r'   * {:<25s} : {} '.format('Joint x distribution', self.dist_x_J))
 
