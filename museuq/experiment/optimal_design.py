@@ -74,6 +74,11 @@ class OptimalDesign(ExperimentBase):
             """ D optimality based on rank revealing QR factorization  """
             curr_set = kwargs.get('curr_set', self.curr_set)
             new_set  = self._get_rrqr_optimal(n_samples, X, curr_set)
+            if len(np.unique(new_set)) != n_samples:
+                print('len(curr_set) = {}'.format(len(curr_set)))
+                print('len(new_set) = {}'.format(len(new_set)))
+                print('len(np.unique(new_set)) = {}'.format(len(np.unique(new_set))))
+            print(set(new_set) & set(curr_set))
         else:
             raise NotImplementedError
         self.curr_set = curr_set + new_set
@@ -83,32 +88,22 @@ class OptimalDesign(ExperimentBase):
         """
         Return indices of m D-optimal samples based on RRQR 
         """
-        X = np.array(X, copy=False, ndmin=2)
-        n_begin = len(curr_set)
+        X       = np.array(X, copy=False, ndmin=2)
         new_set = []
-        idx = list(set(range(X.shape[0])).difference(set(curr_set)))
-        X_ = X[idx, :]
+        idx_cand= list(set(np.arange(X.shape[0], dtype=np.int32)).difference(set(curr_set)))
+        X_      = X[idx_cand, :]
         for _ in tqdm(range(math.ceil(m/min(X_.shape))), ascii=True, desc='    -'):
-            idx = list(set(range(X.shape[0])).difference(set(curr_set)).difference(set(new_set)))
-            if not idx:
+            idx_cand = list(set(idx_cand).difference(set(new_set)))
+            if not idx_cand:
                 break
             else:
-                X_      = X[idx,:]
+                X_      = X[idx_cand,:]
                 n, p    = X_.shape
                 _,_,P   = sp.linalg.qr(X_.T, pivoting=True)
-                new_set = new_set + list(P[:min(m,n,p)])
-
-
-        # while len(new_set) < m:
-            # ## remove selected rows first
-            # idx = list(set(range(X.shape[0])).difference(set(curr_set)).difference(set(new_set)))
-            # if not idx:
-                # break
-            # else:
-                # X_      = X[idx,:]
-                # n, p    = X_.shape
-                # _,_,P   = sp.linalg.qr(X_.T, pivoting=True)
-                # new_set = new_set + list(P[:min(m,n,p)])
+                new_set_= [idx_cand[i] for i in P[:min(m,n,p)]]
+                if set(new_set) & set(new_set_):
+                    raise ValueError
+                new_set = new_set + new_set_ 
         new_set = new_set[:m] if len(new_set) > m else new_set ## break case
         return new_set 
         
