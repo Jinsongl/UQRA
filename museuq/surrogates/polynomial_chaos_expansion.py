@@ -103,8 +103,6 @@ class PolynomialChaosExpansion(SurrogateBase):
         Returns:
 
         """
-
-
         self.fit_method = 'OLS' 
         x = np.array(x, copy=False, ndmin=2)
         y = np.array(y, copy=False, ndmin=2)
@@ -128,10 +126,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.model   = model 
         self.active_ = range(self.orth_poly.num_basis)
 
-
     def fit_olslars(self,x,y,w=None, *args, **kwargs):
         """
-        (weighted) Ordinary Least Error on selected variables (LARs)
+        (weighted) Ordinary Least Error on selected basis (LARs)
         Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
         Arguments:
             x: array-like of shape (ndim, nsamples) 
@@ -157,28 +154,30 @@ class PolynomialChaosExpansion(SurrogateBase):
         print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
         print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
         ### 1. Perform variable selection first
-        model_lars       = linear_model.Lars().fit(X,y)
-        self.active_lars = model_lars.active_ ## Indices of active variables at the end of the path.
-        ### 2. Perform linear regression on every set of first i variables 
-        n_active_basis = min(len(model_lars.active_), X.shape[0])
+        model_lars       = linear_model.Lars(fit_intercept=False).fit(X,y)
+        self.active_lars = model_lars.active_ ## Indices of active basis at the end of the path.
+        ### 2. Perform linear regression on every set of first i basis 
+        n_active_basis = min(len(model_lars.active_), X.shape[0]-1)
         for i in range(n_active_basis):
-            active_indices  = model_lars.active_[:i+1]
-            active_indices  = np.unique(np.array([0, *active_indices])) ## always has column of ones
-            X_              = X[:, active_indices]
-            model           = linear_model.LinearRegression()
-            neg_mse         = model_selection.cross_val_score(model, X_,y,scoring = 'neg_mean_squared_error', cv=kf, n_jobs=mp.cpu_count())
-            error_loo       = -np.mean(neg_mse)
-            model.fit(X_,y, sample_weight=w, fit_intercept=False)
+            active_indices = model_lars.active_[:i+1]
+            # active_indices = np.unique(np.array([0, *active_indices])) ## always has column of ones
+            X_             = X[:, active_indices]
+            ### Calculate loo error for each basis set
+            model          = linear_model.LinearRegression(fit_intercept=False)
+            neg_mse        = model_selection.cross_val_score(model, X_,y,scoring = 'neg_mean_squared_error', cv=kf, n_jobs=mp.cpu_count())
+            error_loo      = -np.mean(neg_mse)
+            ### Fitting with all samples
+            model.fit(X_,y, sample_weight=w)
 
             if error_loo < self.cv_error:
-                self.model     = model 
-                self.active_        = active_indices
-                self.cv_error       = error_loo
+                self.model    = model 
+                self.active_  = active_indices
+                self.cv_error = error_loo
         print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
 
     def fit_lassolars(self,x,y, *args, **kwargs):
         """
-        (weighted) Ordinary Least Error on selected variables (LARs)
+        (weighted) Ordinary Least Error on selected basis (LARs)
         Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
         Arguments:
             x: array-like of shape (ndim, nsamples) 
@@ -205,7 +204,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
         print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
 
-        model               = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count()).fit(X,y,fit_intercept=False)
+        model               = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count(),fit_intercept=False).fit(X,y)
         self.active_        = list(*np.nonzero(model.coef_))
         self.model     = model 
         self.cv_error       = np.min(np.mean(model.mse_path_, axis=1))
@@ -230,6 +229,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             y = self.orth_poly(x)
         else:
             X = self.orth_poly.vandermonde(x)
+            X = X[:, self.active_]
             y = self.model.predict(X)
         print(r'   * {:<25s} : {}'.format('Prediction output', y.shape))
         return y
