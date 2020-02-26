@@ -73,8 +73,8 @@ class BasicTestSuite(unittest.TestCase):
         data_set = np.load(os.path.join(data_dir, filename))
 
         np.random.seed(100)
-        ndim= 1
-        p   = np.array([5])
+        ndim= 2
+        p   = np.array([10])
         orth_poly = museuq.Legendre(d=ndim,deg=p)
 
 
@@ -86,9 +86,10 @@ class BasicTestSuite(unittest.TestCase):
         start    = time.time()
         doe      = museuq.OptimalDesign('D')
         doe_index= doe.samples(design_matrix, n_samples=n_budget, orth_basis=True)
+        print(doe_index)
         done     = time.time()
         print('   >> OED-{:s} (n={:d}) time elapsed: {}'.format('S', n_cand, done - start))
-        print(doe_index)
+        np.save('text.npy', doe_index)
 
 
     # def test_gauss_quadrature(self):
