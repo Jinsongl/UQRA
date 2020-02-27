@@ -50,7 +50,8 @@ class PolynomialChaosExpansion(SurrogateBase):
                 self.orth_poly = museuq.Legendre(d=self.ndim, deg=self.poly_order)
             else:
                 raise ValueError('Polynomial for {} has not been defined yet'.format(distributions[0].name))
-            self.active_    = range(self.orth_poly.num_basis) 
+            self.num_basis  = self.orth_poly.num_basis
+            self.active_    = range(self.num_basis) 
             self.cv_error   = np.inf
 
     def info():
@@ -84,7 +85,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         norms = self.orth_poly.basis_norms *self.orth_poly.basis_norms_const**self.orth_poly.ndim
         coef = np.sum(X.T * y * w, -1) / norms 
         self.model  = self.orth_poly.set_coef(coef) 
-        self.active_= range(self.orth_poly.num_basis)
+        self.active_= range(self.num_basis)
         self.coef   = coef
 
     def fit_ols(self,x,y,w=None, *args, **kwargs):
@@ -123,7 +124,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         model.fit(X, y, sample_weight=w)
         self.cv_error= -np.mean(neg_mse)
         self.model   = model 
-        self.active_ = range(self.orth_poly.num_basis)
+        self.active_ = range(self.num_basis)
         self.coef    = model.coef_
 
     def fit_olslars(self,x,y,w=None, *args, **kwargs):
