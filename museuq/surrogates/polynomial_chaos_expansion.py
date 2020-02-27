@@ -21,7 +21,7 @@ class PolynomialChaosExpansion(SurrogateBase):
     Class to build polynomial chaos expansion (PCE) model
     """
 
-    def __init__(self, distributions=None, p=None, random_seed = None):
+    def __init__(self, distributions=None, p=None, random_seed=None):
         super().__init__(random_seed=random_seed)
         self.name           = 'Polynomial Chaos Expansion'
         self.nickname       = 'PCE'
