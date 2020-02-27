@@ -140,7 +140,7 @@ class sparse_poly(SolverBase):
     """
     Sparse Polynomial
     """
-    def __init__(self, poly, coef= stats.norm, sparsity='full'):
+    def __init__(self, poly, coef= stats.norm, sparsity='full', seed=None):
         self.name = 'sparse polynomial'
         self.nickname = 'sparse_poly'
         self.poly = poly
@@ -156,10 +156,11 @@ class sparse_poly(SolverBase):
 
         if isfromstats(coef):
             k = self.num_basis if sparsity == 'full' else sparsity
-            coef = self._random_coef(k)
+            coef = self._random_coef(k, seed=seed)
             self.poly.set_coef(coef)
         else:
             self.poly.set_coef(coef)
+        self.coef = self.poly.coef
 
     def __str__(self):
         return 'solver: sparse polynomial function'

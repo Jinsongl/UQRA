@@ -116,14 +116,15 @@ class PolynomialChaosExpansion(SurrogateBase):
         print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
         
         ## calculate k-folder cross-validation error
-        model   = linear_model.LinearRegression()
+        model   = linear_model.LinearRegression(fit_intercept=False)
         neg_mse = model_selection.cross_val_score(model, X, y, scoring = 'neg_mean_squared_error', cv=kf, n_jobs=mp.cpu_count())
         ## fit the model with all data 
         ## X has a column with ones, and want return coefficients to incldue that column
-        model.fit(X, y, sample_weight=w, fit_intercept=False)
+        model.fit(X, y, sample_weight=w)
         self.cv_error= -np.mean(neg_mse)
         self.model   = model 
         self.active_ = range(self.orth_poly.num_basis)
+        self.coef    = model.coef_
 
     def fit_olslars(self,x,y,w=None, *args, **kwargs):
         """
@@ -172,6 +173,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                 self.model    = model 
                 self.active_  = active_indices
                 self.cv_error = error_loo
+                self.coef     = model.coef_
         print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
 
     def fit_lassolars(self,x,y, *args, **kwargs):
@@ -203,10 +205,11 @@ class PolynomialChaosExpansion(SurrogateBase):
         print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
         print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
 
-        model               = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count(),fit_intercept=False).fit(X,y)
-        self.active_        = list(*np.nonzero(model.coef_))
-        self.model     = model 
-        self.cv_error       = np.min(np.mean(model.mse_path_, axis=1))
+        model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count(),fit_intercept=False).fit(X,y)
+        self.active_  = list(*np.nonzero(model.coef_))
+        self.model    = model 
+        self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
+        self.coef     = model.coef_
         print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
 
 
