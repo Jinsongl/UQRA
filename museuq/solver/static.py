@@ -58,7 +58,7 @@ class Ishigami(SolverBase):
         self.nickname = 'Ishigami'
         self.ndim = int(3)
         self.p    = p
-        self.distributions = [stats.uniform(-np.pi, np.pi),] * self.ndim
+        self.distributions = [stats.uniform(-np.pi, 2*np.pi),] * self.ndim
 
      
     def __str__(self):
@@ -155,7 +155,7 @@ class sparse_poly(SolverBase):
         self.deg  = poly.deg
         self.num_basis = poly.num_basis
         if self.poly.name == 'Legendre':
-            self.distributions = [stats.uniform(-1,1),] * self.ndim
+            self.distributions = [stats.uniform(-1,2),] * self.ndim
         elif self.poly.name == 'Hermite':
             self.distributions = [stats.norm(), ] * self.ndim
         else:
