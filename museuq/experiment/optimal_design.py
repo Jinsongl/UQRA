@@ -170,6 +170,7 @@ class OptimalDesign(ExperimentBase):
             Q_sltd   = Q[np.array(curr_set, dtype=np.int32),:]
             svalues  = self._cal_svalue(Q_cand,Q_sltd)
             if len(svalues) != len(cand_set):
+                print(curr_set)
                 raise ValueError('len(cand_set) = {}, however len(svalues) = {}'.format(len(cand_set), len(svalues)))
             i = cand_set[np.argmax(svalues)] ## return the index with largest s-value
         return i
@@ -294,7 +295,7 @@ class OptimalDesign(ExperimentBase):
             Alpha2 = np.moveaxis(Alpha2,-1, 0)   ## shape(n-k, k ,k)
             I = np.identity(Alpha2.shape[-1])
             Alpha2 = I - Alpha2   ## shape(n-k, k, k)
-            if k <= 80:
+            if k <= 2:
                 Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])]
             else:
                 pool = mp.Pool(processes=mp.cpu_count())
@@ -327,7 +328,9 @@ class OptimalDesign(ExperimentBase):
                     pool.close()
                 Alpha += Alpha_
 
-        Alpha = np.array(Alpha)
+        Alpha = np.squeeze(Alpha)
+        if Alpha.shape != (n_k,):
+            raise ValueError('Expecting Alpha shape to be ({},), but {} given'.format(n_k, Alpha.shape))
         d1 = np.log(1.0 + (R * B.T).sum(-1))  ## shape (n-k, )
         A_norms = LA.norm(A, axis=0)
         d2 = np.sum(np.log(A_norms**2 + R**2), axis=1) ## shape (n-k, )
