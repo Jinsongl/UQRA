@@ -285,32 +285,47 @@ class OptimalDesign(ExperimentBase):
         Alpha1= c.T.dot(A) + Alpha1.T  ## shape (n-k, k), add c.T.dot(A) to each row of Alpha1.T
         Alpha3= g + B * gamma  ## shape (k, n-k)
 
-
-
-        batch_size = math.floor(8.0*1024*1024*1024/k/k)  ## large memory is allocated as 8 GB
-
-        for i in range(math.ceil(n_k/batch_size)):
-            idx_start = i*batch_size
-            idx_end   = min((i+1) * batch_size, n_k)
-            R_ = R[idx_start:idx_end, :]
-            B_ = B[:, idx_start:idx_end]
-
-            # time0 = time.time()
-            d1 = 1.0 + (R_ * B_.T).sum(-1)                    ### shape (n-k, )
-            Alpha2 = B_.T[:,:,np.newaxis] * R_[:,np.newaxis] ### shape (n-k, k ,k)
+        ## size of largest array is of shape (n-k, k, k)
+        if n_k * k * k < 1e9:
+            d1 = 1.0 + (R * B.T).sum(-1)                    ### shape (n-k, )
+            Alpha2 = B.T[:,:,np.newaxis] * R[:,np.newaxis] ### shape (n-k, k ,k)
             Alpha2 = np.moveaxis(Alpha2,0,-1)   ## shape(k, k, n-k)
             Alpha2 = Alpha2/d1
             Alpha2 = np.moveaxis(Alpha2,-1, 0)   ## shape(n-k, k ,k)
             I = np.identity(Alpha2.shape[-1])
             Alpha2 = I - Alpha2   ## shape(n-k, k, k)
             if k <= 80:
-                Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis])]
+                Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])]
             else:
                 pool = mp.Pool(processes=mp.cpu_count())
-                results = [pool.map_async(cal_alpha2, zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis]))]
+                results = [pool.map_async(cal_alpha2, zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis]))]
                 Alpha = [p.get() for p in results]
                 pool.close()
-            Alpha += Alpha
+        else:
+            batch_size = math.floor(1e9/k/k)  ## large memory is allocated as 8 GB
+            Alpha = []
+            for i in range(math.ceil(n_k/batch_size)):
+                idx_start = i*batch_size
+                idx_end   = min((i+1) * batch_size, n_k)
+                R_ = R[idx_start:idx_end, :]
+                B_ = B[:, idx_start:idx_end]
+
+                # time0 = time.time()
+                d1 = 1.0 + (R_ * B_.T).sum(-1)                  ### shape (n-k, )
+                Alpha2 = B_.T[:,:,np.newaxis] * R_[:,np.newaxis]### shape (n-k, k ,k)
+                Alpha2 = np.moveaxis(Alpha2,0,-1)               ### shape (k, k, n-k)
+                Alpha2 = Alpha2/d1
+                Alpha2 = np.moveaxis(Alpha2,-1, 0)              ### shape (n-k, k ,k)
+                I = np.identity(Alpha2.shape[-1])
+                Alpha2 = I - Alpha2                             ### shape (n-k, k, k)
+                if k <= 80:
+                    Alpha_ =[ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis])]
+                else:
+                    pool = mp.Pool(processes=mp.cpu_count())
+                    results = [pool.map_async(cal_alpha2, zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis]))]
+                    Alpha_ = [p.get() for p in results]
+                    pool.close()
+                Alpha += Alpha_
 
         Alpha = np.array(Alpha)
         d1 = np.log(1.0 + (R * B.T).sum(-1))  ## shape (n-k, )
