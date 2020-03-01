@@ -287,7 +287,7 @@ class OptimalDesign(ExperimentBase):
 
 
 
-        batch_size = math.floon(8.0*1024*1024*1024/k/k)  ## large memory is allocated as 8 GB
+        batch_size = math.floor(8.0*1024*1024*1024/k/k)  ## large memory is allocated as 8 GB
 
         for i in range(math.ceil(n_k/batch_size)):
             idx_start = i*batch_size
