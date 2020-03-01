@@ -69,7 +69,11 @@ class OptimalDesign(ExperimentBase):
             """ Xb = Y """
             orth_basis  = kwargs.get('orth_basis', True)
             curr_set    = kwargs.get('curr_set', self.curr_set)
-            new_set     = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
+            try:
+                new_set     = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
+            except:
+                print(curr_set)
+                raise ValueError
             if len(np.unique(new_set)) != n_samples:
                 print('Duplicate samples detected:')
                 print('len(curr_set) = {}'.format(len(curr_set)))
@@ -170,7 +174,6 @@ class OptimalDesign(ExperimentBase):
             Q_sltd   = Q[np.array(curr_set, dtype=np.int32),:]
             svalues  = self._cal_svalue(Q_cand,Q_sltd)
             if len(svalues) != len(cand_set):
-                print(curr_set)
                 raise ValueError('len(cand_set) = {}, however len(svalues) = {}'.format(len(cand_set), len(svalues)))
             i = cand_set[np.argmax(svalues)] ## return the index with largest s-value
         return i
@@ -286,8 +289,10 @@ class OptimalDesign(ExperimentBase):
         Alpha1= c.T.dot(A) + Alpha1.T  ## shape (n-k, k), add c.T.dot(A) to each row of Alpha1.T
         Alpha3= g + B * gamma  ## shape (k, n-k)
 
+        size_of_array_8gb = 1e8
+        multiprocessing_threshold= 100
         ## size of largest array is of shape (n-k, k, k)
-        if n_k * k * k < 1e9:
+        if n_k * k * k < size_of_array_8gb:
             d1 = 1.0 + (R * B.T).sum(-1)                    ### shape (n-k, )
             Alpha2 = B.T[:,:,np.newaxis] * R[:,np.newaxis] ### shape (n-k, k ,k)
             Alpha2 = np.moveaxis(Alpha2,0,-1)   ## shape(k, k, n-k)
@@ -295,7 +300,7 @@ class OptimalDesign(ExperimentBase):
             Alpha2 = np.moveaxis(Alpha2,-1, 0)   ## shape(n-k, k ,k)
             I = np.identity(Alpha2.shape[-1])
             Alpha2 = I - Alpha2   ## shape(n-k, k, k)
-            if k <= 100:
+            if k <= multiprocessing_threshold:
                 Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])]
             else:
                 pool = mp.Pool(processes=mp.cpu_count())
@@ -303,9 +308,9 @@ class OptimalDesign(ExperimentBase):
                 Alpha = [p.get() for p in results]
                 pool.close()
         else:
-            batch_size = math.floor(1e9/k/k)  ## large memory is allocated as 8 GB
+            batch_size = math.floor(size_of_array_8gb/k/k)  ## large memory is allocated as 8 GB
             Alpha = []
-            for i in range(math.ceil(n_k/batch_size)):
+            for i in tqdm(range(math.ceil(n_k/batch_size)), ascii=True, desc='      Batches: -'):
                 idx_start = i*batch_size
                 idx_end   = min((i+1) * batch_size, n_k)
                 R_ = R[idx_start:idx_end, :]
@@ -319,7 +324,7 @@ class OptimalDesign(ExperimentBase):
                 Alpha2 = np.moveaxis(Alpha2,-1, 0)              ### shape (n-k, k ,k)
                 I = np.identity(Alpha2.shape[-1])
                 Alpha2 = I - Alpha2                             ### shape (n-k, k, k)
-                if k <= 80:
+                if k <= multiprocessing_threshold:
                     Alpha_ =[ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis])]
                 else:
                     pool = mp.Pool(processes=mp.cpu_count())
@@ -330,6 +335,7 @@ class OptimalDesign(ExperimentBase):
 
         Alpha = np.squeeze(Alpha)
         if Alpha.shape != (n_k,):
+            print(Alpha)
             raise ValueError('Expecting Alpha shape to be ({},), but {} given'.format(n_k, Alpha.shape))
         d1 = np.log(1.0 + (R * B.T).sum(-1))  ## shape (n-k, )
         A_norms = LA.norm(A, axis=0)
