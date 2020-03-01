@@ -300,13 +300,14 @@ class OptimalDesign(ExperimentBase):
             Alpha2 = np.moveaxis(Alpha2,-1, 0)   ## shape(n-k, k ,k)
             I = np.identity(Alpha2.shape[-1])
             Alpha2 = I - Alpha2   ## shape(n-k, k, k)
-            if k <= multiprocessing_threshold:
-                Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])]
-            else:
-                pool = mp.Pool(processes=mp.cpu_count())
-                results = [pool.map_async(cal_alpha2, zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis]))]
-                Alpha = [p.get() for p in results]
-                pool.close()
+            Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])]
+            # if k <= multiprocessing_threshold:
+                # Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])]
+            # else:
+                # pool = mp.Pool(processes=mp.cpu_count())
+                # results = [pool.map_async(cal_alpha2, zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis]))]
+                # Alpha = [p.get() for p in results]
+                # pool.close()
         else:
             batch_size = math.floor(size_of_array_8gb/k/k)  ## large memory is allocated as 8 GB
             Alpha = []
@@ -324,16 +325,18 @@ class OptimalDesign(ExperimentBase):
                 Alpha2 = np.moveaxis(Alpha2,-1, 0)              ### shape (n-k, k ,k)
                 I = np.identity(Alpha2.shape[-1])
                 Alpha2 = I - Alpha2                             ### shape (n-k, k, k)
-                if k <= multiprocessing_threshold:
-                    Alpha_ =[ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis])]
-                else:
-                    pool = mp.Pool(processes=mp.cpu_count())
-                    results = [pool.map_async(cal_alpha2, zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis]))]
-                    Alpha_ = [p.get() for p in results]
-                    pool.close()
-                Alpha += Alpha_
+                Alpha_ =[ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis])]
 
-        Alpha = np.squeeze(Alpha)
+                # if k <= multiprocessing_threshold:
+                    # Alpha_ =[ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis])]
+                # else:
+                    # pool = mp.Pool(processes=mp.cpu_count())
+                    # results = [pool.map_async(cal_alpha2, zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis]))]
+                    # Alpha_ = [p.get() for p in results]
+                    # pool.close()
+                Alpha.extend(Alpha_)
+
+        Alpha = np.array(Alpha)
         if Alpha.shape != (n_k,):
             print(Alpha)
             raise ValueError('Expecting Alpha shape to be ({},), but {} given'.format(n_k, Alpha.shape))
