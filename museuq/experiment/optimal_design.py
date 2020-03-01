@@ -67,30 +67,37 @@ class OptimalDesign(ExperimentBase):
 
         if self.optimality.upper() == 'S':
             """ Xb = Y """
-            orth_basis = kwargs.get('orth_basis', True)
-            curr_set = kwargs.get('curr_set', self.curr_set)
-            new_set = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
+            orth_basis  = kwargs.get('orth_basis', True)
+            curr_set    = kwargs.get('curr_set', self.curr_set)
+            new_set     = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
+            if len(np.unique(new_set)) != n_samples:
+                print('Duplicate samples detected:')
+                print('len(curr_set) = {}'.format(len(curr_set)))
+                print('len(new_set) = {}'.format(len(new_set)))
+                print('len(np.unique(new_set)) = {}'.format(len(np.unique(new_set))))
         elif self.optimality.upper() == 'D':
             """ D optimality based on rank revealing QR factorization  """
             curr_set = kwargs.get('curr_set', self.curr_set)
             new_set  = self._get_rrqr_optimal(n_samples, X, curr_set)
             if len(np.unique(new_set)) != n_samples:
+                print('Duplicate samples detected:')
                 print('len(curr_set) = {}'.format(len(curr_set)))
                 print('len(new_set) = {}'.format(len(new_set)))
                 print('len(np.unique(new_set)) = {}'.format(len(np.unique(new_set))))
-            print(set(new_set) & set(curr_set))
         else:
             raise NotImplementedError
+
+        print(set(new_set) & set(curr_set))
         self.curr_set = curr_set + new_set
         return new_set 
 
-    def _get_rrqr_optimal(self, m, X, curr_set):
+    def _get_rrqr_optimal(self, m, X, curr_set=[]):
         """
         Return indices of m D-optimal samples based on RRQR 
         """
         X       = np.array(X, copy=False, ndmin=2)
         new_set = []
-        idx_cand= list(set(np.arange(X.shape[0], dtype=np.int32)).difference(set(curr_set)))
+        idx_cand= list(set(np.arange(X.shape[0])).difference(set(curr_set)))
         X_      = X[idx_cand, :]
         for _ in tqdm(range(math.ceil(m/min(X_.shape))), ascii=True, desc='    -'):
             idx_cand = list(set(idx_cand).difference(set(new_set)))
@@ -107,7 +114,7 @@ class OptimalDesign(ExperimentBase):
         new_set = new_set[:m] if len(new_set) > m else new_set ## break case
         return new_set 
         
-    def _get_quasi_optimal(self,m,X,I=None,orth_basis=False):
+    def _get_quasi_optimal(self,m,X,curr_set=[],orth_basis=False):
         """
         return row selection matrix S containing indices for quasi optimal experimental design
         based on fast greedy algorithm 
@@ -116,49 +123,55 @@ class OptimalDesign(ExperimentBase):
         m -- size of quasi optimal subset
         X -- design matrix with candidates samples of shape (M,p)
              M: number of samples, p: number of features
-        I -- indices, nt ndarray of shape (N,) corresponding row selection matrix of length m
-            if I is None, an empty list will be created first and m items will be appended 
+        curr_set -- indices, nt ndarray of shape (N,) corresponding row selection matrix of length m
+            if curr_set is None, an empty list will be created first and m items will be appended 
             Otherwise, additional (m-m0) items (row index in design matrix X) will be appended 
         orth_basis -- Boolean indicating if the basis space is orthogonal
 
         Returns:
-        row selection matrix I of shape (m, M)
+        row selection matrix curr_set of shape (m, M)
         """
-        m = int(m)
-        assert m > 0, "At least one sample in the designed experiemnts"
-        M,p = X.shape
+        int_m = int(m)
+        if int_m != m:
+            raise ValueError("deg must be integer")
+        if int_m < 0:
+            raise ValueError("deg must be non-negative")
+        (Q,R)   = (X, None ) if orth_basis else LA.qr(X)
+        X       = np.array(X, copy=False, ndmin=2)
+        M,p     = X.shape
+        new_set = []
+        idx_cand= list(set(np.arange(X.shape[0], dtype=np.int32)).difference(set(curr_set)))
         assert M >= p, "quasi optimal sebset are design for overdetermined problem only"
-        (Q,R) = (X, None ) if orth_basis else LA.qr(X)
-        I = [] if I is None else I
-        pbar_x  = tqdm(range(m), ascii=True, desc="   - ")
-        for _ in pbar_x:
-            i = self._greedy_find_next_point(I,Q)
-            I.append(i)
-        return I
 
-    def _greedy_find_next_point(self, I, Q):
+        pbar_x  = tqdm(range(int_m), ascii=True, desc="   - ")
+        for _ in pbar_x:
+            i = self._greedy_find_next_point(curr_set,Q)
+            curr_set.append(i)
+        return curr_set
+
+    def _greedy_find_next_point(self, curr_set, Q):
         """
         find the next quasi optimal sample
 
         Arguments:
-        I -- list containing selected row indices from candidate design matrix X
+        curr_set -- list containing selected row indices from candidate design matrix X
         Q -- QR factorization of candidate design matrix X if basis is not orthogonal, otherwise is X
 
         Return:
         i -- integer, index with maximum svalue
         """
-        ##  Find the index candidate set to chose from (remove those in I from all (0-M))
+        ##  Find the index candidate set to chose from (remove those in curr_set from all (0-M))
         
-        if not I:
+        if not curr_set:
             i = np.random.randint(0,Q.shape[0], size=1).item()
         else:
-            I_left   = list(set(range(Q.shape[0])).difference(set(I)))
-            Q_left   = Q[np.array(I_left, dtype=np.int32),:]
-            Q_select = Q[np.array(I,      dtype=np.int32),:]
-            svalues  = self._cal_svalue(Q_left,Q_select)
-            if len(svalues) != len(I_left):
-                raise ValueError('len(I_left) = {}, however len(svalues) = {}'.format(len(I_left), len(svalues)))
-            i = I_left[np.argmax(svalues)] ## return the index with largest s-value
+            cand_set = list(set(range(Q.shape[0])).difference(set(curr_set)))
+            Q_cand   = Q[np.array(cand_set, dtype=np.int32),:]
+            Q_sltd   = Q[np.array(curr_set, dtype=np.int32),:]
+            svalues  = self._cal_svalue(Q_cand,Q_sltd)
+            if len(svalues) != len(cand_set):
+                raise ValueError('len(cand_set) = {}, however len(svalues) = {}'.format(len(cand_set), len(svalues)))
+            i = cand_set[np.argmax(svalues)] ## return the index with largest s-value
         return i
 
     def _cal_svalue(self,R,X):
@@ -248,7 +261,8 @@ class OptimalDesign(ExperimentBase):
         S value without determinant (eqn. 3.18)
 
         """
-        k,p = X1.shape
+        n_k, p  = X0.shape
+        k,p     = X1.shape
         # start = time.time()
         A = copy.copy(X1[0:k, 0:k]) ## shape (k, k)
         try:
@@ -258,9 +272,9 @@ class OptimalDesign(ExperimentBase):
             print('singular value of A.T *A: {}'.format(s))
 
         R = copy.copy(X0[:, 0:k])  ## shape (n-k, k)
-        B = AAinv.dot(R.T)          ## shape (k, n-k)
+        B = AAinv.dot(R.T)         ## shape (k, n-k)
         c = copy.copy(X1[0:k, k]).reshape((k,1))  ## shape(k, 1)  column vector
-        g = AAinv.dot(A.T).dot(c)   ## shape (k, 1)
+        g = AAinv.dot(A.T).dot(c)  ## shape (k, 1)
         gamma = X0[:,k]            ## shape (n-k,) 
         ### calculating alpha with broadcasting
         ### eqn: 3.14-> alpha = Alpha1 * Alpha2 * Alph3
@@ -273,28 +287,39 @@ class OptimalDesign(ExperimentBase):
 
 
 
-        # time0 = time.time()
-        d1 = 1.0 + (R * B.T).sum(-1)                    ### shape (n-k, )
-        Alpha2 = B.T[:,:,np.newaxis] * R[:,np.newaxis] ### shape (n-k, k ,k)
-        Alpha2 = np.moveaxis(Alpha2,0,-1)   ## shape(k, k, n-k)
-        Alpha2 = Alpha2/d1
-        Alpha2 = np.moveaxis(Alpha2,-1, 0)   ## shape(n-k, k ,k)
-        I = np.identity(Alpha2.shape[-1])
-        Alpha2 = I - Alpha2   ## shape(n-k, k, k)
-        if k <= 80:
-            Alpha  = np.array([ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])])
-        else:
-            pool = mp.Pool(processes=mp.cpu_count())
-            results = [pool.map_async(cal_alpha2, zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis]))]
-            Alpha = np.squeeze([p.get() for p in results])
-            pool.close()
+        batch_size = math.floon(8.0*1024*1024*1024/k/k)  ## large memory is allocated as 8 GB
 
-        d1 = np.log(d1)  ## shape (n-k, )
+        for i in range(math.ceil(n_k/batch_size)):
+            idx_start = i*batch_size
+            idx_end   = min((i+1) * batch_size, n_k)
+            R_ = R[idx_start:idx_end, :]
+            B_ = B[:, idx_start:idx_end]
+
+            # time0 = time.time()
+            d1 = 1.0 + (R_ * B_.T).sum(-1)                    ### shape (n-k, )
+            Alpha2 = B_.T[:,:,np.newaxis] * R_[:,np.newaxis] ### shape (n-k, k ,k)
+            Alpha2 = np.moveaxis(Alpha2,0,-1)   ## shape(k, k, n-k)
+            Alpha2 = Alpha2/d1
+            Alpha2 = np.moveaxis(Alpha2,-1, 0)   ## shape(n-k, k ,k)
+            I = np.identity(Alpha2.shape[-1])
+            Alpha2 = I - Alpha2   ## shape(n-k, k, k)
+            if k <= 80:
+                Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis])]
+            else:
+                pool = mp.Pool(processes=mp.cpu_count())
+                results = [pool.map_async(cal_alpha2, zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis]))]
+                Alpha = [p.get() for p in results]
+                pool.close()
+            Alpha += Alpha
+
+        Alpha = np.array(Alpha)
+        d1 = np.log(1.0 + (R * B.T).sum(-1))  ## shape (n-k, )
         A_norms = LA.norm(A, axis=0)
         d2 = np.sum(np.log(A_norms**2 + R**2), axis=1) ## shape (n-k, )
         d4 = np.squeeze(c.T.dot(c) + gamma**2)  ## shape(n-k, )
         d3 =  d4 - Alpha 
         d4 = np.log(d4)
+
         if np.any(d3 > 0):
             ## d1, d2, d4 > 0. If there exist at least one d3 > 0, set negative d3 to -inf
             d3 = np.log(d3)
@@ -305,5 +330,8 @@ class OptimalDesign(ExperimentBase):
             d3 = np.log(abs(d3))
             delta = -(d1 + d3 - d2 - d4)
         return delta
+
+    def _cal_alpha(self,):
+
 
 
