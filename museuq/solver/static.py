@@ -83,17 +83,8 @@ class Ishigami(SolverBase):
             1. cdf(u)
             2. u and dist_u
         """
-        u = np.array(u, copy=False, ndmin=2)
-        if isinstance(dist_u, (list, tuple)):
-            ## if a list is given but not enough distributions, appending with Uniform(0,1)
-            for idist in dist_u:
-                assert isfromstats(idist)
-            for _ in range(len(dist_u), self.ndim):
-                dist_u.append(stats.uniform(0,1))
-        else:
-            assert isfromstats(dist_u)
-            dist_u = [dist_u,] * self.ndim
-        u_cdf = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        u, dist_u = super().map_domain(u, dist_u)
+        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -125,20 +116,8 @@ class xsinx(SolverBase):
             1. cdf(u)
             2. u and dist_u
         """
-
-        u_cdf = []
-        u = np.array(u, copy=False, ndmin=2)
-        if isinstance(dist_u, (list, tuple)):
-            for _ in range(len(dist_u), self.ndim):
-                dist_u.append(stats.uniform(0,1))
-        else:
-            assert hasattr(stats, dist_u.dist.name)
-            dist_u = [dist_u,] * self.ndim
-
-        for iu, idist in zip(u, dist_u):
-            assert hasattr(stats, idist.dist.name)
-            u_cdf.append(idist.cdf(iu))
-        u_cdf = np.array(u_cdf)
+        u, dist_u = super().map_domain(u, dist_u)
+        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -190,21 +169,11 @@ class sparse_poly(SolverBase):
         """
         mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
         Argument:
-            two options:
-            1. cdf(u)
-            2. u and dist_u
+            u: ndarray of shape(ndim, nsamples)
+            dist_u: list of distributions from scipy.stats
         """
-        u = np.array(u, copy=False, ndmin=2)
-        if isinstance(dist_u, (list, tuple)):
-            ## if a list is given but not enough distributions, appending with Uniform(0,1)
-            for idist in dist_u:
-                assert isfromstats(idist)
-            for _ in range(len(dist_u), self.ndim):
-                dist_u.append(stats.uniform(0,1))
-        else:
-            assert isfromstats(dist_u)
-            dist_u = [dist_u,] * self.ndim
-        u_cdf = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        u, dist_u = super().map_domain(u, dist_u)
+        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -255,7 +224,6 @@ class poly4th(SolverBase):
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
 
-
 class polynomial_square_root_function(SolverBase):
     """
     y = - [ (-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2 ]**0.5 + 14 
@@ -292,19 +260,8 @@ class polynomial_square_root_function(SolverBase):
             2. u and dist_u
         """
 
-        u_cdf = []
-        u = np.array(u, copy=False, ndmin=2)
-        if isinstance(dist_u, (list, tuple)):
-            for _ in range(len(dist_u), self.ndim):
-                dist_u.append(stats.uniform(0,1))
-        else:
-            assert hasattr(stats, dist_u.dist.name)
-            dist_u = [dist_u,] * self.ndim
-
-        for iu, idist in zip(u, dist_u):
-            assert hasattr(stats, idist.dist.name)
-            u_cdf.append(idist.cdf(iu))
-        u_cdf = np.array(u_cdf)
+        u, dist_u = super().map_domain(u, dist_u)
+        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -327,16 +284,15 @@ class four_branch_system(SolverBase):
 
     def __init__(self):
         super().__init__()
-        self.name = 'four branch system'
-        self.nickname = 'Branches'
-        self.ndim = int(2)
+        self.name       = 'four branch system'
+        self.nickname   = 'Branches'
+        self.ndim       = int(2)
         self.distributions = [stats.norm(),] * self.ndim
 
     def __str__(self):
         return 'Solver: four branch system'
 
     def run(self, x):
-
         x = np.array(x, ndim=2, copy=False).reshape(2,-1)
         x1 = x[0,:]
         x2 = x[1,:]
@@ -350,32 +306,17 @@ class four_branch_system(SolverBase):
         y = 10 - y 
         return y
 
-    def map_domain(self, u_cdf=None, u=None, dist_u=None):
+    def map_domain(self, u, dist_u):
         """
         mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
         Argument:
-            two options:
-            1. cdf(u)
-            2. u and dist_u
+            u and dist_u
         """
-
-        u_cdf = []
-        u = np.array(u, copy=False, ndmin=2)
-        if isinstance(dist_u, (list, tuple)):
-            for _ in range(len(dist_u), self.ndim):
-                dist_u.append(stats.uniform(0,1))
-        else:
-            assert hasattr(stats, dist_u.dist.name)
-            dist_u = [dist_u,] * self.ndim
-
-        for iu, idist in zip(u, dist_u):
-            assert hasattr(stats, idist.dist.name)
-            u_cdf.append(idist.cdf(iu))
-        u_cdf = np.array(u_cdf)
+        u, dist_u = super().map_domain(u, dist_u)
+        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
-
     
 class polynomial_product_function(SolverBase):
     """
@@ -419,20 +360,8 @@ class polynomial_product_function(SolverBase):
             1. cdf(u)
             2. u and dist_u
         """
-        u_cdf = []
-        u = np.array(u, copy=False, ndmin=2)
-        if isinstance(dist_u, (list, tuple)):
-            for _ in range(len(dist_u), self.ndim):
-                dist_u.append(stats.uniform(0,1))
-        else:
-            assert hasattr(stats, dist_u.dist.name)
-            dist_u = [dist_u,] * self.ndim
-
-        for iu, idist in zip(u, dist_u):
-            assert hasattr(stats, idist.dist.name)
-            u_cdf.append(idist.cdf(iu))
-        u_cdf = np.array(u_cdf)
-
+        u, dist_u = super().map_domain(u, dist_u)
+        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -516,7 +445,6 @@ class papaioannou2016sequential(SolverBase):
         g  = np.minimum(g1,g2)
         return g
 
-
 class franke(SolverBase):
     """
     Franke Function
@@ -524,16 +452,15 @@ class franke(SolverBase):
     """
     def __init__(self):
         super(franke, self).__init__()
-        self.name = 'Franke'
-        self.nickname = 'Franke'
-        self.ndim = int(2)
+        self.name       = 'Franke'
+        self.nickname   = 'Franke'
+        self.ndim       = int(2)
         self.distributions = [stats.uniform(-1,2),] * self.ndim
 
     def __str__(self):
         return 'solver: franke function'
 
     def run(self, x):
-
         x = np.array(x, copy=0, ndmin=2)
         x1,x2 = x
         f1 = 0.75 * np.exp(-(9.0*x1 -2.0)**2/ 4.0 - (9.0*x2 -2)**2/4.0)
@@ -543,29 +470,14 @@ class franke(SolverBase):
         f  =  f1 + f2 + f3 - f4
         return f
 
-
     def map_domain(self, u, dist_u):
         """
         mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
         Argument:
-            two options:
-            1. cdf(u)
-            2. u and dist_u
+            u and dist_u
         """
-
-        u_cdf = []
-        u = np.array(u, copy=False, ndmin=2)
-        if isinstance(dist_u, (list, tuple)):
-            for _ in range(len(dist_u), self.ndim):
-                dist_u.append(stats.uniform(0,1))
-        else:
-            assert hasattr(stats, dist_u.dist.name)
-            dist_u = [dist_u,] * self.ndim
-
-        for iu, idist in zip(u, dist_u):
-            assert hasattr(stats, idist.dist.name)
-            u_cdf.append(idist.cdf(iu))
-        u_cdf = np.array(u_cdf)
+        u, dist_u = super().map_domain(u, dist_u)
+        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
