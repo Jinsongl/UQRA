@@ -70,29 +70,32 @@ class OptimalDesign(ExperimentBase):
             orth_basis  = kwargs.get('orth_basis', True)
             curr_set    = kwargs.get('curr_set', self.curr_set)
             try:
-                new_set     = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
+                new_set = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
+                self.curr_set = curr_set
             except:
                 print(curr_set)
                 raise ValueError
             if len(np.unique(new_set)) != n_samples:
                 print('Duplicate samples detected:')
-                print('len(curr_set) = {}'.format(len(curr_set)))
-                print('len(new_set) = {}'.format(len(new_set)))
-                print('len(np.unique(new_set)) = {}'.format(len(np.unique(new_set))))
+                print(' -> len(curr_set) = {}'.format(len(curr_set)))
+                print(' -> len(new_set) = {}'.format(len(new_set)))
+                print(' -> len(np.unique(new_set)) = {}'.format(len(np.unique(new_set))))
         elif self.optimality.upper() == 'D':
             """ D optimality based on rank revealing QR factorization  """
             curr_set = kwargs.get('curr_set', self.curr_set)
             new_set  = self._get_rrqr_optimal(n_samples, X, curr_set)
+            self.curr_set = curr_set + new_set
             if len(np.unique(new_set)) != n_samples:
                 print('Duplicate samples detected:')
-                print('len(curr_set) = {}'.format(len(curr_set)))
-                print('len(new_set) = {}'.format(len(new_set)))
-                print('len(np.unique(new_set)) = {}'.format(len(np.unique(new_set))))
+                print(' -> len(curr_set) = {}'.format(len(curr_set)))
+                print(' -> len(new_set) = {}'.format(len(new_set)))
+                print(' -> len(np.unique(new_set)) = {}'.format(len(np.unique(new_set))))
         else:
             raise NotImplementedError
 
-        print(set(new_set) & set(curr_set))
-        self.curr_set = curr_set + new_set
+        # print('current set: \n{}'.format(curr_set))
+        # print('new set: \n{}'.format(new_set))
+        # print('intersection: \n{}'.format(set(new_set) & set(curr_set)))
         return new_set 
 
     def _get_rrqr_optimal(self, m, X, curr_set=[]):
@@ -144,14 +147,17 @@ class OptimalDesign(ExperimentBase):
         X       = np.array(X, copy=False, ndmin=2)
         M,p     = X.shape
         new_set = []
-        idx_cand= list(set(np.arange(X.shape[0], dtype=np.int32)).difference(set(curr_set)))
         assert M >= p, "quasi optimal sebset are design for overdetermined problem only"
 
         pbar_x  = tqdm(range(int_m), ascii=True, desc="   - ")
         for _ in pbar_x:
             i = self._greedy_find_next_point(curr_set,Q)
+            if i in curr_set:
+                print(curr_set)
+                raise ValueError('Duplicate sample {:d} already exists'.format(i))
             curr_set.append(i)
-        return curr_set
+            new_set.append(i)
+        return new_set 
 
     def _greedy_find_next_point(self, curr_set, Q):
         """
@@ -311,7 +317,7 @@ class OptimalDesign(ExperimentBase):
         else:
             batch_size = math.floor(size_of_array_8gb/k/k)  ## large memory is allocated as 8 GB
             Alpha = []
-            for i in tqdm(range(math.ceil(n_k/batch_size)), ascii=True, desc='      Batches: -'):
+            for i in tqdm(range(math.ceil(n_k/batch_size)), ascii=True, desc='   Batch ({:10d}): -'.format(batch_size)):
                 idx_start = i*batch_size
                 idx_end   = min((i+1) * batch_size, n_k)
                 R_ = R[idx_start:idx_end, :]
