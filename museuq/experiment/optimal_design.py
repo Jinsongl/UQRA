@@ -331,7 +331,6 @@ class OptimalDesign(ExperimentBase):
             delta = -(d1 + d3 - d2 - d4)
         return delta
 
-    def _cal_alpha(self,):
 
 
 
