@@ -77,6 +77,16 @@ def upload2gdrive(filename, data, parent_id):
             print('   * {:<7s} : {:d}/ 5'.format('trial', n_times2upload),end="\r")
         n_times2upload +=1
 
+def check_int(x):
+    if x is None:
+        return None
+    else:
+        int_x = int(x)
+        if int_x != x:
+            raise ValueError("deg must be integer")
+        if int_x < 0:
+            raise ValueError("deg must be non-negative")
+        return int_x
 
 def ECDF(x,**kwargs):
     """
@@ -318,21 +328,21 @@ def get_stats(data, qoi2analysis='ALL', stats2cal=['mean', 'std', 'skewness', 'k
         data = data if qoi2analysis == 'ALL' else np.squeeze(data[:, qoi2analysis])
     else:
         raise ValueError('Input format for get_stats are not defined, {}'.format(type(data)))
-    res = _get_stats(data, stats=stats2cal, axis=axis)
+    res = _get_stats(data, stats2cal=stats2cal, axis=axis)
     return res
 
-def _get_stats(data, stats=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=None):
+def _get_stats(data, stats2cal=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=None):
     """ Calculate statistics of data along specified axis
         Parameters:
           - data: np.ndarray 
-          - stats: list, indicator of statistics to be calculated, 
+          - stats2cal: list, indicator of statistics to be calculated, 
             [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
         Return: 
             ndarray (nstats, nsamples/nqois) 
     """
     res = []
 
-    for istats in stats:
+    for istats in stats2cal:
         if istats.lower()  in ['mean', 'mu']:
             res.append(np.mean(data, axis=axis))
         elif istats.lower() in ['std', 'sigma']:
