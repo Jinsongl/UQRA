@@ -11,7 +11,7 @@
 """
 from museuq.experiment._experimentbase import ExperimentBase
 from museuq.utilities.decorators import random_state
-from museuq.utilities.helpers import num2print
+import museuq.utilities.helpers as helpers 
 import numpy as np, scipy as sp
 import numpy.linalg as LA
 import copy
@@ -70,58 +70,72 @@ class OptimalDesign(ExperimentBase):
             orth_basis  = kwargs.get('orth_basis', True)
             curr_set    = kwargs.get('curr_set', self.curr_set)
             try:
-                new_set = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
+                idx_new = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
                 self.curr_set = curr_set
             except:
                 print(curr_set)
                 raise ValueError
-            if len(np.unique(new_set)) != n_samples:
+            if len(np.unique(idx_new)) != n_samples:
                 print('Duplicate samples detected:')
                 print(' -> len(curr_set) = {}'.format(len(curr_set)))
-                print(' -> len(new_set) = {}'.format(len(new_set)))
-                print(' -> len(np.unique(new_set)) = {}'.format(len(np.unique(new_set))))
+                print(' -> len(idx_new) = {}'.format(len(idx_new)))
+                print(' -> len(np.unique(idx_new)) = {}'.format(len(np.unique(idx_new))))
         elif self.optimality.upper() == 'D':
             """ D optimality based on rank revealing QR factorization  """
             curr_set = kwargs.get('curr_set', self.curr_set)
-            new_set  = self._get_rrqr_optimal(n_samples, X, curr_set)
-            self.curr_set = curr_set + new_set
-            if len(np.unique(new_set)) != n_samples:
+            idx_new  = self._get_rrqr_optimal(n_samples, X, curr_set)
+            self.curr_set = curr_set + idx_new
+            if len(np.unique(idx_new)) != n_samples:
                 print('Duplicate samples detected:')
                 print(' -> len(curr_set) = {}'.format(len(curr_set)))
-                print(' -> len(new_set) = {}'.format(len(new_set)))
-                print(' -> len(np.unique(new_set)) = {}'.format(len(np.unique(new_set))))
+                print(' -> len(idx_new) = {}'.format(len(idx_new)))
+                print(' -> len(np.unique(idx_new)) = {}'.format(len(np.unique(idx_new))))
         else:
             raise NotImplementedError
 
         # print('current set: \n{}'.format(curr_set))
-        # print('new set: \n{}'.format(new_set))
-        # print('intersection: \n{}'.format(set(new_set) & set(curr_set)))
-        return new_set 
+        # print('new set: \n{}'.format(idx_new))
+        # print('intersection: \n{}'.format(set(idx_new) & set(curr_set)))
+        return idx_new 
 
-    def _get_rrqr_optimal(self, m, X, curr_set=[]):
+    def _get_rrqr_optimal(self, m, X, idx_selected=[]):
         """
-        Return indices of m D-optimal samples based on RRQR 
+        Return selected rows from design matrix X based on D-optimality implemented by RRQR 
+
+        Arguments:
+            idx_selected: set of selected indices 
         """
+        m       = helpers.check_int(m)
         X       = np.array(X, copy=False, ndmin=2)
-        new_set = []
-        idx_cand= list(set(np.arange(X.shape[0])).difference(set(curr_set)))
-        X_      = X[idx_cand, :]
-        for _ in tqdm(range(math.ceil(m/min(X_.shape))), ascii=True, desc='    -'):
-            idx_cand = list(set(idx_cand).difference(set(new_set)))
+        idx_new = [] ## list containing new selected indices in this run
+        ## list of candidate indices, note that these indices corresponding to the rows in original design matrix X
+        idx_cand= list(set(np.arange(X.shape[0])).difference(set(idx_selected)))
+        X_cand  = X[idx_cand, :]  ## return the candidate design matrix after removing selected rows
+
+        ## each QR iteration returns rank(X_cand) samples, which is min(X_cand.shape)
+        ## to have m samples, need to run RRQR ceil(m/rnak(X_cand)) times
+        for _ in tqdm(range(math.ceil(m/min(X_cand.shape))), ascii=True, desc='    -'):
+            ## remove the new selected indices from candidate 
+            idx_cand = list(set(idx_cand).difference(set(idx_new)))
             if not idx_cand:
+                ## if candidate indices are empty, stop
                 break
             else:
-                X_      = X[idx_cand,:]
-                n, p    = X_.shape
-                _,_,P   = sp.linalg.qr(X_.T, pivoting=True)
+                ## update candidate design matrix, note that X idx_cand is the indices in the original design matrix X
+                X_cand  = X[idx_cand,:]
+                n, p    = X_cand.shape
+                _,_,P   = sp.linalg.qr(X_cand.T, pivoting=True)
+                ## P[i] is the index in X_cand corresponding the largest |singular value|
+                ## need to find its corresponding index in the original matrix X
                 new_set_= [idx_cand[i] for i in P[:min(m,n,p)]]
-                if set(new_set) & set(new_set_):
-                    raise ValueError
-                new_set = new_set + new_set_ 
-        new_set = new_set[:m] if len(new_set) > m else new_set ## break case
-        return new_set 
+                ## check if there is any duplicate indices returned
+                if set(idx_new) & set(new_set_):
+                    raise ValueError('Duplicate samples returned')
+                idx_new = idx_new + new_set_ 
+        idx_new = idx_new[:m] if len(idx_new) > m else idx_new ## break case
+        return idx_new 
         
-    def _get_quasi_optimal(self,m,X,curr_set=[],orth_basis=False):
+    def _get_quasi_optimal(self,m,X,idx_selected=[],orth_basis=False):
         """
         return row selection matrix S containing indices for quasi optimal experimental design
         based on fast greedy algorithm 
@@ -130,58 +144,59 @@ class OptimalDesign(ExperimentBase):
         m -- size of quasi optimal subset
         X -- design matrix with candidates samples of shape (M,p)
              M: number of samples, p: number of features
-        curr_set -- indices, nt ndarray of shape (N,) corresponding row selection matrix of length m
-            if curr_set is None, an empty list will be created first and m items will be appended 
+        idx_selected -- indices, nt ndarray of shape (N,) corresponding row selection matrix of length m
+            if idx_selected is None, an empty list will be created first and m items will be appended 
             Otherwise, additional (m-m0) items (row index in design matrix X) will be appended 
         orth_basis -- Boolean indicating if the basis space is orthogonal
 
         Returns:
-        row selection matrix curr_set of shape (m, M)
+        row selection matrix idx_selected of shape (m, M)
         """
-        int_m = int(m)
-        if int_m != m:
-            raise ValueError("deg must be integer")
-        if int_m < 0:
-            raise ValueError("deg must be non-negative")
-        (Q,R)   = (X, None ) if orth_basis else LA.qr(X)
+        m       = helpers.check_int(m)
         X       = np.array(X, copy=False, ndmin=2)
-        M,p     = X.shape
-        new_set = []
-        assert M >= p, "quasi optimal sebset are design for overdetermined problem only"
+        if X.shape[0] < X.shape[1]:
+            raise ValueError('Quasi optimal sebset are designed for overdetermined problem only')
+        (Q,R)   = (X, None ) if orth_basis else LA.qr(X)
+        idx_new = []
 
-        pbar_x  = tqdm(range(int_m), ascii=True, desc="   - ")
+        pbar_x  = tqdm(range(m), ascii=True, desc="   - ")
         for _ in pbar_x:
-            i = self._greedy_find_next_point(curr_set,Q)
-            if i in curr_set:
-                print(curr_set)
+            ## find the next optimal index from Q which is not currently selected
+            i = self._greedy_find_next_point(idx_selected,Q)
+            ## check if this index is already selected
+            if i in idx_selected:
+                print('Row {:d} already selected'.format(i))
                 raise ValueError('Duplicate sample {:d} already exists'.format(i))
-            curr_set.append(i)
-            new_set.append(i)
-        return new_set 
+            idx_selected.append(i)
+            idx_new.append(i)
+        return idx_new 
 
-    def _greedy_find_next_point(self, curr_set, Q):
+    def _greedy_find_next_point(self, row_selected, Q):
         """
         find the next quasi optimal sample
 
         Arguments:
-        curr_set -- list containing selected row indices from candidate design matrix X
+        row_selected -- list containing selected row indices from original design matrix Q
         Q -- QR factorization of candidate design matrix X if basis is not orthogonal, otherwise is X
 
         Return:
         i -- integer, index with maximum svalue
         """
-        ##  Find the index candidate set to chose from (remove those in curr_set from all (0-M))
+        ##  Find the index candidate set to chose from (remove those in row_selected from all (0-M))
         
-        if not curr_set:
+        ## if row_selected is empty, choose one randomly
+        if not row_selected:
             i = np.random.randint(0,Q.shape[0], size=1).item()
         else:
-            cand_set = list(set(range(Q.shape[0])).difference(set(curr_set)))
-            Q_cand   = Q[np.array(cand_set, dtype=np.int32),:]
-            Q_sltd   = Q[np.array(curr_set, dtype=np.int32),:]
+            row_cand = list(set(range(Q.shape[0])).difference(set(row_selected)))
+            ## split original design matrix Q into candidate matrix Q_cand, and selected Q_sltd
+            Q_cand   = Q[np.array(row_cand    , dtype=np.int32),:]
+            Q_sltd   = Q[np.array(row_selected, dtype=np.int32),:]
+            ## calculate (log)S values for each row in Q_cand together with Q_sltd
             svalues  = self._cal_svalue(Q_cand,Q_sltd)
-            if len(svalues) != len(cand_set):
-                raise ValueError('len(cand_set) = {}, however len(svalues) = {}'.format(len(cand_set), len(svalues)))
-            i = cand_set[np.argmax(svalues)] ## return the index with largest s-value
+            if len(svalues) != len(row_cand):
+                raise ValueError('Expecting {:d} S values, but {:d} given'.format(len(row_cand), len(svalues)))
+            i = row_cand[np.argmax(svalues)] ## return the indices with largest s-value in original matrix Q
         return i
 
     def _cal_svalue(self,R,X):
@@ -239,22 +254,27 @@ class OptimalDesign(ExperimentBase):
 
     def _cal_svalue_over(self, X0, X1):
         """
-        Calculate the S value (without determinant) of candidate vectors w.r.t selected subsets
+        Calculate the log(S) value (without determinant) of candidate vectors w.r.t selected subsets
         when the current selection k >= p (eqn. 3.16) for each pair of (X[i,:], X1)
 
 
         Arguments:
-        X0 -- candidate matrix of shape (number of candidates, p), 
+        X0 -- candidate matrix of shape (n-k, p), 
         X1 -- selected subsets matrix of shape (k,p)
 
         Return:
         S value without determinant (eqn. 3.16)
 
         """
-        AAinv   = LA.inv(np.dot(X1.T,X1))
-        X1_norms = LA.norm(X1, axis=0)
-        d1 = np.log(1.0 + (X0.dot(AAinv) * X0).sum(-1))
-        d2 = np.sum(np.log(X1_norms**2 + X0**2), axis=1) 
+        try:
+            AAinv = LA.inv(X1.T.dot(X1))  ## shape (k, k)
+        except np.linalg.LinAlgError:
+            u,s,v = np.linalg.svd(X1.T.dot(X1))
+            print('singular value of A.T *A: {}'.format(s))
+
+        X1_norms = LA.norm(X1, axis=0)  ## (p,)
+        d1 = np.log(1.0 + (X0.dot(AAinv) * X0).sum(-1)) ## (n-k,)
+        d2 = np.sum(np.log(X1_norms**2 + X0**2), axis=1) ## (n-k,)
         svalues = d1 - d2
         return np.squeeze(svalues)
 
@@ -264,7 +284,7 @@ class OptimalDesign(ExperimentBase):
         when the current selection k < p (eqn. 3.18)
 
         Arguments:
-        X0 -- candidate matrix of shape (number of candidates, p), 
+        X0 -- candidate matrix of shape (n-k, p), 
         X1 -- selected subsets matrix of shape (k,p)
 
         Return:
