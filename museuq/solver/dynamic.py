@@ -35,6 +35,7 @@ class linear_oscillator(SolverBase):
     def __init__(self, **kwargs):
         super().__init__()
         self.name        = 'linaer oscillator'
+        self.nickname    = 'SDOF'
         self.spec_name   = kwargs.get('spec_name', 'JONSWAP')
         self.qoi2analysis= kwargs.get('qoi2analysis', 'ALL')
         self.stats2cal   = kwargs.get('stats2cal', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
@@ -58,7 +59,6 @@ class linear_oscillator(SolverBase):
             self.c      = self.zeta * 2 * np.sqrt(self.m * self.k)
         self.mck         = (self.m, self.c, self.k) 
 
-
     def __str__(self):
         message = 'Single Degree of Fredom Oscillator: \n' + \
                 '   - {:<15s} : {}\n'.format('mck'      , np.around(self.mck, 2))   + \
@@ -74,29 +74,38 @@ class linear_oscillator(SolverBase):
         """
         run linear_oscillator:
         Arguments:
-            x, power spectrum parameters, ndarray of shape(ndim, nsamples)
+            x, power spectrum parameters, ndarray of shape (nsamples, n_parameters)
 
         """
-        x = np.array(x)
-        x = x.reshape(-1,1) if x.ndim == 1 else x
+        x = np.array(x, copy=False, ndmin=2)
+        # x = x.reshape(-1,1) if x.ndim == 1 else x
         ## if x is just one set of input of shape (2, 1)
-        pbar_x  = tqdm(x.T, ascii=True, desc="   - ")
+        pbar_x  = tqdm(x, ascii=True, desc="   - ")
         # Note that xlist and ylist will be tuples (since zip will be unpacked). If you want them to be lists, you can for instance use:
         y_raw, y_QoI = map(list, zip(*[self._linear_oscillator(ix) for ix in pbar_x]))
-        
         return np.array(y_raw), np.array(y_QoI)
 
-    def x_psd(self, f, x):
+    def x_psd(self, f, x, **kwargs):
         """
-        Return the psd estimator of input for the given PowerSpectrum(x)
+        Return the power spectral density (PSD) estimate, pxx, at frequency,f, for the given PowerSpectrum with given parameters x
+
+        Returns:
+            PowerSpectrum object of input signal
         """
-        psd_x = PowerSpectrum(self.spec_name, *x)
+        spec_name = kwargs.get('spec_name', self.spec_name)
+        psd_x = PowerSpectrum(spec_name, *x)
         x_pxx = psd_x.get_pxx(f)
         return psd_x
 
     def psd(self,f,x):
         """
-        Return the psd estimator of response for the given PowerSpectrum(x)
+        Return the psd estimator of both input and output signals at frequency f for specified PowerSpectrum with given parameters x
+
+        Arguments:
+            f: frequency in Hz
+            x: PowerSpectrum parameters
+        Returns:
+            PowerSpectrum object of input and output signal
         """
         H_square = 1.0/np.sqrt( (self.k-self.m*f**2)**2 + (self.c*f)**2 )
         psd_x = self.x_psd(f, x)
@@ -131,10 +140,23 @@ class linear_oscillator(SolverBase):
 
         y_raw = np.vstack((t0, x_t, y_t)).T
         museuq.blockPrint()
-        y_QoI = museuq.get_stats(y_raw, qoi2analysis =self.qoi2analysis, stats2cal = self.stats2cal, axis=0) 
+        y_QoI = museuq.get_stats(y_raw, qoi2analysis=self.qoi2analysis, stats2cal=self.stats2cal, axis=0) 
         museuq.enablePrint()
         return y_raw, y_QoI
             
+    def map_domain(self, u, dist_u):
+        """
+        mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        Argument:
+            two options:
+            1. cdf(u)
+            2. u and dist_u
+        """
+        u, dist_u = super().map_domain(u, dist_u)
+        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
+        x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        return x
 
 # def _cal_normalize_values(zeta,omega0,source_kwargs, *source_args):
     # TF = lambda w : 1.0/np.sqrt((w**2-omega0**2)**2 + (2*zeta*omega0)**2)
