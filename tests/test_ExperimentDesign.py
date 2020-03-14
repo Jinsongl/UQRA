@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import museuq, unittest,warnings,os, sys
+import museuq, unittest,warnings,os, sys, math
 from tqdm import tqdm
 import time
 import numpy as np, chaospy as cp, scipy as sp 
@@ -56,40 +56,47 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_LatinHyperCube(self):
         print('Testing: Latin Hypercube...')
-        doe = museuq.LHS([sp.stats.uniform,]*2)
-        doe_u, doe_x = doe.samples(2000, theta=[[-1,2],[-1,2]])
+        doe = museuq.LHS([sp.stats.norm(0,1),]*2)
+        # doe = museuq.LHS([sp.stats.uniform,]*2)
+        doe_u, doe_x = doe.samples(2048)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
         print(np.min(doe_x, axis=1))
         print(np.max(doe_x, axis=1))
 
+        np.save('DoE_Lhs_d2_2048.npy', doe_x)
+
     def test_OptimalDesign(self):
         """
         Optimal Design
         """
-        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform'
+        # data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform'
+        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Normal'
         filename = 'DoE_McsE6R0.npy'
         data_set = np.load(os.path.join(data_dir, filename))
 
         np.random.seed(100)
         ndim= 2
-        p   = np.array([10])
-        orth_poly = museuq.Legendre(d=ndim,deg=p)
+        p   = np.array([2])
 
-
-        n_cand    = int(1e5)
-        u_samples = data_set[0:ndim, :n_cand]
-        design_matrix = orth_poly.vandermonde(u_samples)
-        n_budget = 10 * design_matrix.shape[1]
-
-        start    = time.time()
-        doe      = museuq.OptimalDesign('D')
-        doe_index= doe.samples(design_matrix, n_samples=n_budget, orth_basis=True)
-        print(doe_index)
-        done     = time.time()
-        print('   >> OED-{:s} (n={:d}) time elapsed: {}'.format('S', n_cand, done - start))
-        np.save('text.npy', doe_index)
+        curr_set = []
+        for p in np.array([10]):
+            orth_poly = museuq.Hermite(d=ndim,deg=p)
+            n_cand    = int(1e5)
+            u_samples = data_set[0:ndim, :n_cand]
+            design_matrix = orth_poly.vandermonde(u_samples)
+            # n_budget  = 10 * design_matrix.shape[1]
+            n_budget  = 2048 
+            # n_budget  =  int(np.exp2(math.ceil(np.log2(design_matrix.shape[1]))))
+            
+            start    = time.time()
+            doe      = museuq.OptimalDesign('D', curr_set=curr_set)
+            doe_index= doe.samples(design_matrix, n_samples=n_budget, orth_basis=True)
+            print(doe_index)
+            done     = time.time()
+            print('   >> OED-{:s} (n={:d}) time elapsed: {}'.format('S', n_cand, done - start))
+            np.save('DoE_McsE6R0_d2_p{:d}_D.npy'.format(p), doe_index)
 
 
     # def test_gauss_quadrature(self):

@@ -9,6 +9,7 @@ from sklearn import datasets
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
 import pickle
+import scipy.stats as stats
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
@@ -28,17 +29,18 @@ class BasicTestSuite(unittest.TestCase):
         # x = np.random.normal(size=(ndim, 1000))
         x = np.arange(10)
         y = solver.run(x)
-        Leg2 = lambda x: 0.5*(3*x**2 - 1)
-        Leg3 = lambda x: 0.5*(5*x**3 - 3*x)
+        Leg2 = lambda x: 0.5*(3*x**2 - 1)/(poly.basis_norms[2])**0.5
+        Leg3 = lambda x: 0.5*(5*x**3 - 3*x)/(poly.basis_norms[3])**0.5
 
 
-
-        print(solver.ndim)
-        print(solver.deg)
-        print(solver.poly.coef)
-        print(x)
-        print(y)
-        print(Leg3(x))
+        assert solver.ndim  == ndim
+        assert solver.deg   == deg
+        assert solver.coef  == coef
+        assert np.array_equal(y,Leg3(x))
+        u = np.random.uniform(0,1,size=(2,100))
+        x = solver.map_domain(u, [stats.uniform(0,1),]*solver.ndim)
+        print(np.max(x))
+        print(np.min(x))
 
     def test_bench4(self):
         print('========================TESTING: BENCH 4 =======================')
@@ -62,8 +64,29 @@ class BasicTestSuite(unittest.TestCase):
             y        = solver.run()
             np.save(os.path.join(data_dir,'DoE_McRE6R{:d}_y_None.npy'.format(r)), y)
 
-    def test_Solver(self):
+    def test_linear_oscillator(self):
+        np.random.seed(100)
+        qoi2analysis = [1,2]
+        stats2cal = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
+        solver = museuq.linear_oscillator(qoi2analysis=qoi2analysis, stats2cal=stats2cal)
+        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Uniform/'
+        for r in range(10):
+            filename = 'DoE_McsE6R{:d}.npy'.format(r)
+            x = np.load(os.path.join(data_dir, filename))
 
+            print(solver)
+            batch_size = int(1e5)
+            for i in range(10):
+                idx_start = i *  batch_size
+                idx_end   = (i+1) * batch_size
+                y_raw, y_QoI = solver.run(x[:,idx_start:idx_end].T)
+                filename = 'DoE_McsE6R{:d}{:d}.npy'.format(r, i)
+                np.save(filename, y_QoI)
+            print(y_raw.shape)
+            print(y_QoI.shape)
+
+
+    def test_Solver(self):
         
         x = np.arange(12).reshape(2,-1)
         np.random.seed(100)

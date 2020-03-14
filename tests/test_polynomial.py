@@ -34,7 +34,7 @@ class BasicTestSuite(unittest.TestCase):
             coef = np.random.normal(size=poly.num_basis)
             print('     - coefficients: {}'.format(np.around(coef, 2)))
             y0=np.polynomial.hermite_e.hermeval(x,coef)
-            poly.set_coef(coef)
+            poly.set_coef(coef*np.sqrt(poly.basis_norms))
             y1=poly(x)
             print('     - max abs error: {}'.format(np.around(max(abs(y0-y1)), 2)))
 
@@ -54,13 +54,18 @@ class BasicTestSuite(unittest.TestCase):
                 coef1 = np.zeros((p+1,))
                 coef1[ideg] = 1 ##np.random.uniform(1)
                 y0= y0 * np.polynomial.hermite_e.hermeval(x[i],coef1)
-            poly.set_coef(coef)
+            poly.set_coef(coef*np.sqrt(poly.basis_norms))
             y1=poly(x)
             # print(y0)
             # print(y1)
             print('     - max abs error: {}'.format(max(abs(y0-y1))))
 
         
+        print('--------------------Testing Orthogonality --------------------')
+
+        x = sp.random.normal(0,1,size=(2,int(1e6)))
+        X = museuq.Hermite(2,4).vandermonde(x)
+        print(np.diag(X.T.dot(X)/1e6))
 
 
         # X = orth_poly.vandermonde(x, normed=False)
@@ -94,7 +99,6 @@ class BasicTestSuite(unittest.TestCase):
 
         print('--------------------Testing Gauss-Quadrature: Legendre(d=1), n=5--------------------')
         x, w = museuq.Legendre(d=1).gauss_quadrature(5)
-        print('Physicist Legendre: ')
         print(x)
         print(w)
 
@@ -107,7 +111,7 @@ class BasicTestSuite(unittest.TestCase):
             coef = np.random.normal(size=poly.num_basis)
             print('     - coefficients: {}'.format(np.around(coef, 2)))
             y0=np.polynomial.legendre.legval(x,coef)
-            poly.set_coef(coef)
+            poly.set_coef(coef*np.sqrt(poly.basis_norms))
             y1=poly(x)
             # y0=np.polynomial.legendre.legval(x,coef)
             # poly.set_coef(coef)
@@ -130,7 +134,7 @@ class BasicTestSuite(unittest.TestCase):
                 coef1 = np.zeros((p+1,))
                 coef1[ideg] = 1 ##np.random.uniform(1)
                 y0= y0 * np.polynomial.legendre.legval(x[i],coef1)
-            poly.set_coef(coef)
+            poly.set_coef(coef*np.sqrt(poly.basis_norms))
             y1=poly(x)
             # print(y0)
             # print(y1)
