@@ -58,6 +58,29 @@ class RandomDesign(ExperimentBase):
             u_samples = [idist.rvs(size=self.n_samples, loc=iloc, scale=iscale) for idist, iloc, iscale in zip(self.distributions, self.loc, self.scale)]
             return  np.array(u_samples) 
             
+        elif self.method.upper() in ['CHRISTOFFEL', 'CLS']:
+            """
+            Sampling from the pluripoential equilibrium corresponding to distributions specified in self.distributions.
+            
+            Ref: Table 2 of "A Christoffel function weighted least squares algorithm for collocation approximations, Akil Harayan, John D. Jakeman, and Tao Zhou"
+            Domain D    | Sampling density domain   |     Sampling density v(y) |
+            [-1,1]^d    |   [1,1]^d                 |   1/(pi ^d \prod _{i=1} ^ d sqrt(1-x_i^2)) 
+
+
+            """
+
+            ## Assuming all distributions in self.distributions are same
+            idist = self.distributions[0]
+            try:
+                dist_name = idist.name
+            except AttributeError:
+                dist_name = idist.dist.name
+            if dist_name == 'uniform':
+                u_samples = stats.uniform.rvs(0,np.pi,size=(self.ndim, n_samples))
+                x_samples = np.cos(u_samples)
+            else:
+                raise NotImplementedError
+
         elif self.method.upper() in ['HALTON', 'HAL', 'H']:
             raise NotImplementedError 
 
@@ -66,3 +89,7 @@ class RandomDesign(ExperimentBase):
 
         else:
             raise NotImplementedError 
+
+
+    def _sampling_chebyshev(self):
+        raise NotImplementedError 
