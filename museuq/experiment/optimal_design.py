@@ -13,7 +13,6 @@ from museuq.experiment._experimentbase import ExperimentBase
 from museuq.utilities.decorators import random_state
 import museuq.utilities.helpers as helpers 
 import numpy as np, scipy as sp
-import numpy.linalg as LA
 import copy
 import itertools
 from tqdm import tqdm
@@ -22,14 +21,6 @@ import multiprocessing as mp
 
 def cal_alpha2(x):
     return x[0].dot(x[1]).dot(x[2]).item()
-
-def append_list(list1, list2, n):
-    len1 = len(list1)
-    for i in list2:
-        if i not in list1:
-            list1.append(i)
-        if len(list1) == len1 + n:
-            return list1
 
 class OptimalDesign(ExperimentBase):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
@@ -70,106 +61,104 @@ class OptimalDesign(ExperimentBase):
             orth_basis  = kwargs.get('orth_basis', True)
             curr_set    = kwargs.get('curr_set', self.curr_set)
             try:
-                idx_new = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
+                ### return a new set of indices, curr_set will be updated
+                row_adding = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
                 self.curr_set = curr_set
             except:
                 print(curr_set)
-                raise ValueError
-            if len(np.unique(idx_new)) != n_samples:
+                raise ValueError('_get_quasi_optimal failed')
+            if len(np.unique(row_adding)) != n_samples:
                 print('Duplicate samples detected:')
                 print(' -> len(curr_set) = {}'.format(len(curr_set)))
-                print(' -> len(idx_new) = {}'.format(len(idx_new)))
-                print(' -> len(np.unique(idx_new)) = {}'.format(len(np.unique(idx_new))))
+                print(' -> len(row_adding) = {}'.format(len(row_adding)))
+                print(' -> len(np.unique(row_adding)) = {}'.format(len(np.unique(row_adding))))
         elif self.optimality.upper() == 'D':
             """ D optimality based on rank revealing QR factorization  """
             curr_set = kwargs.get('curr_set', self.curr_set)
-            idx_new  = self._get_rrqr_optimal(n_samples, X, curr_set)
-            self.curr_set = curr_set + idx_new
-            if len(np.unique(idx_new)) != n_samples:
+            row_adding  = self._get_rrqr_optimal(n_samples, X, curr_set)
+            self.curr_set = curr_set + row_adding
+            if len(np.unique(row_adding)) != n_samples:
                 print('Duplicate samples detected:')
                 print(' -> len(curr_set) = {}'.format(len(curr_set)))
-                print(' -> len(idx_new) = {}'.format(len(idx_new)))
-                print(' -> len(np.unique(idx_new)) = {}'.format(len(np.unique(idx_new))))
+                print(' -> len(row_adding) = {}'.format(len(row_adding)))
+                print(' -> len(np.unique(row_adding)) = {}'.format(len(np.unique(row_adding))))
         else:
             raise NotImplementedError
 
         # print('current set: \n{}'.format(curr_set))
-        # print('new set: \n{}'.format(idx_new))
-        # print('intersection: \n{}'.format(set(idx_new) & set(curr_set)))
-        return idx_new 
+        # print('new set: \n{}'.format(row_adding))
+        # print('intersection: \n{}'.format(set(row_adding) & set(curr_set)))
+        return row_adding 
 
-    def _get_rrqr_optimal(self, m, X, idx_selected=[]):
+    def _get_rrqr_optimal(self, m, X, row_selected=[]):
         """
         Return selected rows from design matrix X based on D-optimality implemented by RRQR 
 
         Arguments:
-            idx_selected: set of selected indices 
+            row_selected: set of selected indices 
         """
         m       = helpers.check_int(m)
         X       = np.array(X, copy=False, ndmin=2)
-        idx_new = [] ## list containing new selected indices in this run
+        row_adding = [] ## list containing new selected indices in this run
         ## list of candidate indices, note that these indices corresponding to the rows in original design matrix X
-        idx_cand= list(set(np.arange(X.shape[0])).difference(set(idx_selected)))
-        X_cand  = X[idx_cand, :]  ## return the candidate design matrix after removing selected rows
+        row_candidate= list(set(np.arange(X.shape[0])).difference(set(row_selected)))
+        X_candidate  = X[row_candidate, :]  ## return the candidate design matrix after removing selected rows
 
-        ## each QR iteration returns rank(X_cand) samples, which is min(X_cand.shape)
-        ## to have m samples, need to run RRQR ceil(m/rnak(X_cand)) times
-        for _ in tqdm(range(math.ceil(m/min(X_cand.shape))), ascii=True, desc='    -'):
+        ## each QR iteration returns rank(X_candidate) samples, which is min(X_candidate.shape)
+        ## to have m samples, need to run RRQR ceil(m/rnak(X_candidate)) times
+        for _ in tqdm(range(math.ceil(m/min(X_candidate.shape))), ascii=True, desc='    -'):
             ## remove the new selected indices from candidate 
-            idx_cand = list(set(idx_cand).difference(set(idx_new)))
-            if not idx_cand:
+            row_candidate = list(set(row_candidate).difference(set(row_adding)))
+            if not row_candidate:
                 ## if candidate indices are empty, stop
                 break
             else:
-                ## update candidate design matrix, note that X idx_cand is the indices in the original design matrix X
-                X_cand  = X[idx_cand,:]
-                n, p    = X_cand.shape
-                _,_,P   = sp.linalg.qr(X_cand.T, pivoting=True)
-                ## P[i] is the index in X_cand corresponding the largest |singular value|
+                ## update candidate design matrix, note that X row_candidate is the indices in the original design matrix X
+                X_candidate  = X[row_candidate,:]
+                n, p    = X_candidate.shape
+                _,_,P   = sp.linalg.qr(X_candidate.T, pivoting=True)
+                ## P[i] is the index in X_candidate corresponding the largest |singular value|
                 ## need to find its corresponding index in the original matrix X
-                new_set_= [idx_cand[i] for i in P[:min(m,n,p)]]
+                new_set_= [row_candidate[i] for i in P[:min(m,n,p)]]
                 ## check if there is any duplicate indices returned
-                if set(idx_new) & set(new_set_):
+                if set(row_adding) & set(new_set_):
                     raise ValueError('Duplicate samples returned')
-                idx_new = idx_new + new_set_ 
-        idx_new = idx_new[:m] if len(idx_new) > m else idx_new ## break case
-        return idx_new 
+                row_adding = row_adding + new_set_ 
+        row_adding = row_adding[:m] if len(row_adding) > m else row_adding ## break case
+        return row_adding 
         
-    def _get_quasi_optimal(self,m,X,idx_selected=[],orth_basis=False):
+    def _get_quasi_optimal(self,m,X,row_selected=[],orth_basis=False):
         """
-        return row selection matrix S containing indices for quasi optimal experimental design
-        based on fast greedy algorithm 
+        return row indices for quasi optimal experimental design based on fast greedy algorithm 
 
         Arguments:
-        m -- size of quasi optimal subset
+        m -- size of 'new' quasi optimal subset
         X -- design matrix with candidates samples of shape (M,p)
              M: number of samples, p: number of features
-        idx_selected -- indices, nt ndarray of shape (N,) corresponding row selection matrix of length m
-            if idx_selected is None, an empty list will be created first and m items will be appended 
+        row_selected -- indices, ndarray of shape (N,) corresponding row selection matrix of length m
+            if row_selected is None, an empty list will be created first and m items will be appended 
             Otherwise, additional (m-m0) items (row index in design matrix X) will be appended 
         orth_basis -- Boolean indicating if the basis space is orthogonal
 
         Returns:
-        row selection matrix idx_selected of shape (m, M)
+        row selection matrix row_selected of shape (m, M)
         """
         m       = helpers.check_int(m)
         X       = np.array(X, copy=False, ndmin=2)
         if X.shape[0] < X.shape[1]:
             raise ValueError('Quasi optimal sebset are designed for overdetermined problem only')
-        (Q,R)   = (X, None ) if orth_basis else LA.qr(X)
-        idx_new = []
-
-        pbar_x  = tqdm(range(m), ascii=True, desc="   - ")
-        for _ in pbar_x:
+        (Q, R)  = (X, None) if orth_basis else np.linalg.qr(X)
+        row_adding = []
+        for _ in tqdm(range(m), ascii=True, desc="   - "):
             ## find the next optimal index from Q which is not currently selected
-            i = self._greedy_find_next_point(idx_selected,Q)
+            i = self._greedy_find_next_point(row_selected,Q)
             ## check if this index is already selected
-            if i in idx_selected:
+            if i in row_selected:
                 print('Row {:d} already selected'.format(i))
                 raise ValueError('Duplicate sample {:d} already exists'.format(i))
-            idx_selected.append(i)
-            idx_new.append(i)
-        return idx_new 
+            row_selected.append(i)
+            row_adding.append(i)
+        return row_adding 
 
     def _greedy_find_next_point(self, row_selected, Q):
         """
@@ -188,15 +177,15 @@ class OptimalDesign(ExperimentBase):
         if not row_selected:
             i = np.random.randint(0,Q.shape[0], size=1).item()
         else:
-            row_cand = list(set(range(Q.shape[0])).difference(set(row_selected)))
+            row_candidate = list(set(range(Q.shape[0])).difference(set(row_selected)))
             ## split original design matrix Q into candidate matrix Q_cand, and selected Q_sltd
-            Q_cand   = Q[np.array(row_cand    , dtype=np.int32),:]
-            Q_sltd   = Q[np.array(row_selected, dtype=np.int32),:]
+            Q_cand   = Q[np.array(row_candidate, dtype=np.int32),:]
+            Q_sltd   = Q[np.array(row_selected , dtype=np.int32),:]
             ## calculate (log)S values for each row in Q_cand together with Q_sltd
             svalues  = self._cal_svalue(Q_cand,Q_sltd)
-            if len(svalues) != len(row_cand):
-                raise ValueError('Expecting {:d} S values, but {:d} given'.format(len(row_cand), len(svalues)))
-            i = row_cand[np.argmax(svalues)] ## return the indices with largest s-value in original matrix Q
+            if len(svalues) != len(row_candidate):
+                raise ValueError('Expecting {:d} S values, but {:d} given'.format(len(row_candidate), len(svalues)))
+            i = row_candidate[np.argmax(svalues)] ## return the indices with largest s-value in original matrix Q
         return i
 
     def _cal_svalue(self,R,X):
@@ -267,12 +256,12 @@ class OptimalDesign(ExperimentBase):
 
         """
         try:
-            AAinv = LA.inv(X1.T.dot(X1))  ## shape (k, k)
+            AAinv = np.linalg.inv(X1.T.dot(X1))  ## shape (k, k)
         except np.linalg.LinAlgError:
             u,s,v = np.linalg.svd(X1.T.dot(X1))
             print('singular value of A.T *A: {}'.format(s))
 
-        X1_norms = LA.norm(X1, axis=0)  ## (p,)
+        X1_norms = np.linalg.norm(X1, axis=0)  ## (p,)
         d1 = np.log(1.0 + (X0.dot(AAinv) * X0).sum(-1)) ## (n-k,)
         d2 = np.sum(np.log(X1_norms**2 + X0**2), axis=1) ## (n-k,)
         svalues = d1 - d2
@@ -285,7 +274,7 @@ class OptimalDesign(ExperimentBase):
 
         Arguments:
         X0 -- candidate matrix of shape (n-k, p), 
-        X1 -- selected subsets matrix of shape (k,p)
+        X1 -- selected submatrix of shape (k,p)
 
         Return:
         S value without determinant (eqn. 3.18)
@@ -294,72 +283,57 @@ class OptimalDesign(ExperimentBase):
         n_k, p  = X0.shape
         k,p     = X1.shape
         # start = time.time()
-        A = copy.copy(X1[0:k, 0:k]) ## shape (k, k)
+        A = copy.copy(X1[0:k, 0:k])                         ## shape (k, k)
         try:
-            AAinv = LA.inv(A.T.dot(A))  ## shape (k, k)
+            AAinv = np.linalg.inv(A.T.dot(A))               ## shape (k, k)
         except np.linalg.LinAlgError:
             u,s,v = np.linalg.svd(A.T.dot(A))
             print('singular value of A.T *A: {}'.format(s))
 
-        R = copy.copy(X0[:, 0:k])  ## shape (n-k, k)
-        B = AAinv.dot(R.T)         ## shape (k, n-k)
-        c = copy.copy(X1[0:k, k]).reshape((k,1))  ## shape(k, 1)  column vector
-        g = AAinv.dot(A.T).dot(c)  ## shape (k, 1)
-        gamma = X0[:,k]            ## shape (n-k,) 
+        R = copy.copy(X0[:, 0:k])                           ## shape (n-k, k)
+        B = AAinv.dot(R.T)                                  ## shape (k, n-k)
+        c = copy.copy(X1[0:k, k]).reshape((k,1))            ## shape(k, 1)  column vector
+        g = AAinv.dot(A.T).dot(c)                           ## shape (k, 1)
+        gamma = X0[:,k]                                     ## shape (n-k,) 
         ### calculating alpha with broadcasting
         ### eqn: 3.14-> alpha = Alpha1 * Alpha2 * Alph3
         ### Alpha1 = c.T A + gamma * r.T
         ### Alpha2 = I - b * r.T / (1 + r.T * b)
         ### Alpha3 = g + gamma * b
-        Alpha1= R.T * gamma         ## R[:,i] * gamma[i] , shape (k, n-k)
-        Alpha1= c.T.dot(A) + Alpha1.T  ## shape (n-k, k), add c.T.dot(A) to each row of Alpha1.T
-        Alpha3= g + B * gamma  ## shape (k, n-k)
+        Alpha1 = R.T * gamma                                ## R[:,i] * gamma[i] , shape (k, n-k)
+        Alpha1 = c.T.dot(A) + Alpha1.T                      ## shape (n-k, k), add c.T.dot(A) to each row of Alpha1.T
+        Alpha3 = g + B * gamma                              ## shape (k, n-k)
 
         size_of_array_8gb = 1e8
         multiprocessing_threshold= 100
         ## size of largest array is of shape (n-k, k, k)
         if n_k * k * k < size_of_array_8gb:
-            d1 = 1.0 + (R * B.T).sum(-1)                    ### shape (n-k, )
-            Alpha2 = B.T[:,:,np.newaxis] * R[:,np.newaxis] ### shape (n-k, k ,k)
-            Alpha2 = np.moveaxis(Alpha2,0,-1)   ## shape(k, k, n-k)
+            d1     = 1.0 + (R * B.T).sum(-1)                ### shape (n-k, )
+            Alpha2 = B.T[:,:,np.newaxis] * R[:,np.newaxis]  ### shape (n-k, k ,k)
+            Alpha2 = np.moveaxis(Alpha2,0,-1)               ### shape (k, k, n-k)
             Alpha2 = Alpha2/d1
-            Alpha2 = np.moveaxis(Alpha2,-1, 0)   ## shape(n-k, k ,k)
-            I = np.identity(Alpha2.shape[-1])
-            Alpha2 = I - Alpha2   ## shape(n-k, k, k)
+            Alpha2 = np.moveaxis(Alpha2,-1, 0)              ### shape (n-k, k ,k)
+            I      = np.identity(Alpha2.shape[-1])
+            Alpha2 = I - Alpha2                             ### shape (n-k, k, k)
             Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])]
-            # if k <= multiprocessing_threshold:
-                # Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])]
-            # else:
-                # pool = mp.Pool(processes=mp.cpu_count())
-                # results = [pool.map_async(cal_alpha2, zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis]))]
-                # Alpha = [p.get() for p in results]
-                # pool.close()
         else:
             batch_size = math.floor(size_of_array_8gb/k/k)  ## large memory is allocated as 8 GB
             Alpha = []
-            for i in tqdm(range(math.ceil(n_k/batch_size)), ascii=True, desc='   Batch ({:10d}): -'.format(batch_size)):
+            for i in tqdm(range(math.ceil(n_k/batch_size)), ascii=True, desc='   Batch (n={:d}): -'.format(batch_size)):
                 idx_start = i*batch_size
                 idx_end   = min((i+1) * batch_size, n_k)
-                R_ = R[idx_start:idx_end, :]
-                B_ = B[:, idx_start:idx_end]
+                R_        = R[idx_start:idx_end, :]
+                B_        = B[:, idx_start:idx_end]
 
                 # time0 = time.time()
-                d1 = 1.0 + (R_ * B_.T).sum(-1)                  ### shape (n-k, )
+                d1     = 1.0 + (R_ * B_.T).sum(-1)              ### shape (n-k, )
                 Alpha2 = B_.T[:,:,np.newaxis] * R_[:,np.newaxis]### shape (n-k, k ,k)
                 Alpha2 = np.moveaxis(Alpha2,0,-1)               ### shape (k, k, n-k)
                 Alpha2 = Alpha2/d1
                 Alpha2 = np.moveaxis(Alpha2,-1, 0)              ### shape (n-k, k ,k)
-                I = np.identity(Alpha2.shape[-1])
+                I      = np.identity(Alpha2.shape[-1])
                 Alpha2 = I - Alpha2                             ### shape (n-k, k, k)
                 Alpha_ =[ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis])]
-
-                # if k <= multiprocessing_threshold:
-                    # Alpha_ =[ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis])]
-                # else:
-                    # pool = mp.Pool(processes=mp.cpu_count())
-                    # results = [pool.map_async(cal_alpha2, zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis]))]
-                    # Alpha_ = [p.get() for p in results]
-                    # pool.close()
                 Alpha.extend(Alpha_)
 
         Alpha = np.array(Alpha)
@@ -367,7 +341,7 @@ class OptimalDesign(ExperimentBase):
             print(Alpha)
             raise ValueError('Expecting Alpha shape to be ({},), but {} given'.format(n_k, Alpha.shape))
         d1 = np.log(1.0 + (R * B.T).sum(-1))  ## shape (n-k, )
-        A_norms = LA.norm(A, axis=0)
+        A_norms = np.linalg.norm(A, axis=0)
         d2 = np.sum(np.log(A_norms**2 + R**2), axis=1) ## shape (n-k, )
         d4 = np.squeeze(c.T.dot(c) + gamma**2)  ## shape(n-k, )
         d3 =  d4 - Alpha 
@@ -375,9 +349,10 @@ class OptimalDesign(ExperimentBase):
 
         if np.any(d3 > 0):
             ## d1, d2, d4 > 0. If there exist at least one d3 > 0, set negative d3 to -inf
-            d3 = np.log(d3)
-            d3 = np.nan_to_num(d3, nan=-np.inf)
-            delta = d1 + d3 - d2 - d4
+            with np.errstate(divide='ignore'):
+                d3 = np.log(d3)
+                d3 = np.nan_to_num(d3, nan=-np.inf)
+                delta = d1 + d3 - d2 - d4
         else:
             ## all d3 < 0. then take the negative of all d3 and return the smallest s value
             d3 = np.log(abs(d3))
@@ -386,4 +361,86 @@ class OptimalDesign(ExperimentBase):
 
 
 
+
+    # def _cal_svalue_over(self, X0, X1):
+        # """
+        # Calculate the S value (without determinant) of candidate vectors w.r.t selected subsets
+        # when the current selection k >= p (eqn. 3.16) for each pair of (X[i,:], X1)
+
+
+        # Arguments:
+        # X0 -- candidate matrix of shape (number of candidates, p), 
+        # X1 -- selected subsets matrix of shape (k,p)
+
+        # Return:
+        # log S value without determinant (eqn. 3.16)
+
+        # """
+        # XXinv   = np.linalg.inv(np.dot(X1.T,X1))
+        # start   = time.time()
+        # A_l2    = np.linalg.norm(X1, axis=0).reshape(1,-1) ## l2 norm for each column in X1, row vector
+        # svalues_log = [] 
+        # for r in X0:
+            # r = r.reshape(1,-1) ## row vector
+            # with np.errstate(invalid='ignore'):
+                # d1 = np.log(1 + np.dot(r, np.dot(XXinv, r.T)))
+                # d2 = np.log(np.prod(A_l2**2 + r**2))
+            # svalues_log.append(d1 - d2)
+        # end = time.time()
+        # print('for loop time elapse  : {}'.format(end-start))
+        # # print(np.around(np.exp(svalues_log), 2))
+        # start = time.time()
+        # X1_norms = np.linalg.norm(X1, axis=0)
+        # # d1 = 1.0 + np.diagonal(X0.dot(XXinv).dot(X0.T))
+        # d1 = 1.0 + (X0.dot(XXinv) * X0).sum(-1)
+        # d2 = np.prod(X1_norms**2 + X0**2, axis=1) 
+        # delta = d1/d2
+        # end = time.time()
+        # # print(np.around(delta, 2))
+        # print('matrix time elapse : {}'.format(end-start))
+
+        # return svalues_log
+
+    # def _cal_svalue_under(self, X0, X1):
+        # """
+        # Calculate the log S-value (without determinant) of a candidate vector w.r.t selected subsets
+        # when the current selection k < p (eqn. 3.18)
+
+        # Arguments:
+        # X0 -- candidate matrix of shape (number of candidates, p), 
+        # X1 -- selected subsets matrix of shape (k,p)
+
+        # Return:
+        # log S value without determinant (eqn. 3.18)
+
+        # """
+        # k,p = X1.shape
+        # assert k < p
+        # X1 = copy.copy(X1[:,0:k])
+        # X0 = copy.copy(X0[:,0:k+1])
+        # svalues_log = [] 
+        # XXinv = np.linalg.inv(np.dot(X1.T,X1))
+        # A_l2 = np.linalg.norm(X1, axis=0).reshape(1,-1)
+
+
+        # for r in X0:
+            # c = r[0:k].reshape((k,1)) ## column vector
+            # gamma = r[k]
+            # r = copy.copy(c)
+
+            # b = np.dot(XXinv,r)
+            # g = np.dot(XXinv,np.dot(X1.T,c))
+
+            # a1 = np.dot(c.T,X1) + gamma * r.T
+            # a2 = np.identity(k) - np.dot(b,r.T)/(1 + np.dot(r.T,b))
+            # a3 = g + gamma *b
+            # a = np.squeeze(np.dot(a1,np.dot(a2,a3)))
+
+            # with np.errstate(invalid='ignore'):
+                # d1 = np.log(np.squeeze(1 + np.dot(r.T, b)))
+                # d2 = np.sum(np.log(A_l2**2 + r.T**2))
+                # d3 = np.log(np.squeeze(np.dot(c.T,c) + gamma**2 - a))
+                # d4 = np.log(np.squeeze(np.dot(c.T,c) + gamma**2))
+            # svalues_log.append(d1 + d3 - d2 - d4)
+        # return svalues_log
 
