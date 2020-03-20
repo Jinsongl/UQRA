@@ -14,6 +14,7 @@ from museuq.utilities.decorators import random_state
 import numpy as np
 import scipy
 import itertools
+import scipy.stats as stats
 
 class RandomDesign(ExperimentBase):
     """ Experimental Design with random sampling methods"""
@@ -55,8 +56,8 @@ class RandomDesign(ExperimentBase):
         super().samples(n_samples, theta)
 
         if self.method.upper() in ['R', 'MC', 'MCS']:
-            u_samples = [idist.rvs(size=self.n_samples, loc=iloc, scale=iscale) for idist, iloc, iscale in zip(self.distributions, self.loc, self.scale)]
-            return  np.array(u_samples) 
+            u = np.array([idist.rvs(size=self.n_samples, loc=iloc, scale=iscale) for idist, iloc, iscale in zip(self.distributions, self.loc, self.scale)])
+            return  u 
             
         elif self.method.upper() in ['CHRISTOFFEL', 'CLS']:
             """
@@ -76,10 +77,20 @@ class RandomDesign(ExperimentBase):
             except AttributeError:
                 dist_name = idist.dist.name
             if dist_name == 'uniform':
-                u_samples = stats.uniform.rvs(0,np.pi,size=(self.ndim, n_samples))
-                x_samples = np.cos(u_samples)
+                u = stats.uniform.rvs(0,np.pi,size=(self.ndim, self.n_samples))
+                x = np.cos(u)
+                # w = np.prod((1 - x**2)**0.25, axis=0)
+
             else:
-                raise NotImplementedError
+                #### Sampling from Ball with radius sqrt(2). 
+                ## 1. z ~ normal(0,1), z / norm(z)
+                ## 2. u ~ uniform(0,1 )
+                ## When using these samples, one needs to scale with p^(1/t) for Gaussian, p: polynomial degree, t =2 for Gaussian 
+                z = stats.norm.rvs(0,1,size=(self.ndim, self.n_samples))
+                z = z/np.linalg.norm(z, axis=0)
+                u = stats.uniform.rvs(0,1,size=(self.n_samples))
+                x = z * 2**0.5 * u **(1/self.ndim)
+            return  x
 
         elif self.method.upper() in ['HALTON', 'HAL', 'H']:
             raise NotImplementedError 
@@ -90,6 +101,3 @@ class RandomDesign(ExperimentBase):
         else:
             raise NotImplementedError 
 
-
-    def _sampling_chebyshev(self):
-        raise NotImplementedError 
