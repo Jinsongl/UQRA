@@ -7,6 +7,12 @@ import numpy as np, chaospy as cp, scipy as sp
 
 sys.stdout  = museuq.utilities.classes.Logger()
 
+def cdf_chebyshev(x):
+    """
+    x in [-1,1]
+    """
+    return np.arcsin(x)/np.pi  + 0.5
+
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
@@ -56,18 +62,18 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_LatinHyperCube(self):
         print('Testing: Latin Hypercube...')
-        doe = museuq.LHS([sp.stats.norm(0,1),]*2)
-        # doe = museuq.LHS([sp.stats.uniform,]*2)
-        doe_u, doe_x = doe.samples(2048)
+        # doe = museuq.LHS([sp.stats.norm(0,1),]*2)
+        doe = museuq.LHS([sp.stats.uniform(-1,2),]*2)
+        doe_u, doe_x = doe.samples(256)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
         print(np.min(doe_x, axis=1))
         print(np.max(doe_x, axis=1))
 
-        np.save('DoE_Lhs_d2_2048.npy', doe_x)
+        np.save('DoE_Lhs_d2_Uniform256.npy', doe_x)
 
-    def test_OptimalDesign(self):
+    def test_Doptimality(self):
         """
         Optimal Design
         """
@@ -97,6 +103,84 @@ class BasicTestSuite(unittest.TestCase):
             done     = time.time()
             print('   >> OED-{:s} (n={:d}) time elapsed: {}'.format('S', n_cand, done - start))
             np.save('DoE_McsE6R0_d2_p{:d}_D.npy'.format(p), doe_index)
+
+    def test_CLS(self):
+        print('Testing: Random Sampling from Pluripotential Equilibrium ...')
+        print('testing: d=1, theta: default')
+        doe = museuq.RandomDesign(sp.stats.uniform, 'CLS')
+        doe_x = doe.samples(n_samples=1e5)
+        print(doe_x.shape)
+        print(np.mean(doe_x, axis=1))
+        print(np.std(doe_x, axis=1))
+        print(np.min(doe_x, axis=1))
+        print(np.max(doe_x, axis=1))
+
+
+        print('Testing: Random Sampling from Pluripotential Equilibrium ...')
+        print('testing: d=2, theta: default')
+        doe = museuq.RandomDesign( [sp.stats.uniform,] * 2, 'CLS')
+        doe_x = doe.samples(n_samples=1e5)
+        print(doe_x.shape)
+        print(np.mean(doe_x, axis=1))
+        print(np.std(doe_x, axis=1))
+        print(np.min(doe_x, axis=1))
+        print(np.max(doe_x, axis=1))
+
+        print('Testing: Random Sampling from Pluripotential Equilibrium ...')
+        print('testing: d=2, theta: default')
+        doe = museuq.RandomDesign( [sp.stats.norm,], 'CLS')
+        doe_x = doe.samples(n_samples=1e6)
+        print(doe_x.shape)
+        print(np.mean(doe_x, axis=1))
+        print(np.std(doe_x, axis=1))
+        print(np.min(doe_x, axis=1))
+        print(np.max(doe_x, axis=1))
+
+
+        print('Testing: Random Sampling from Pluripotential Equilibrium ...')
+        print('testing: d=2, theta: default')
+        for i in range(10):
+            doe = museuq.RandomDesign( [sp.stats.norm,] * 10, 'CLS')
+            doe_x = doe.samples(n_samples=1e6)
+            np.save('DoE_McsE6R{:d}.npy'.format(i), doe_x)
+        print(doe_x.shape)
+        print(np.mean(doe_x, axis=1))
+        print(np.std(doe_x, axis=1))
+        print(np.min(doe_x, axis=1))
+        print(np.max(doe_x, axis=1))
+
+
+    def test_Soptimality(slef):
+        np.random.seed(100)
+        x = np.linspace(-1,1,1000)
+        y = cdf_chebyshev(x)
+        ndim    = 2
+        n_cand  = int(1e5)
+
+        data_dir= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform'
+        filename= r'DoE_McsE6R0.npy'
+        mcs_data_set  = np.load(os.path.join(data_dir, filename))
+        x_cand  = mcs_data_set[:ndim,:n_cand].reshape(ndim, -1)
+
+        for i, p in enumerate([5, ]):
+            mean_kappa = []
+            for _ in range(1):
+                np.random.seed()
+                orth_poly = museuq.Legendre(d=ndim,deg=p)
+                doe     = museuq.OptimalDesign('S', curr_set=[3284,])
+                X       = orth_poly.vandermonde(x_cand)
+                idx     = doe.samples(X, n_samples=math.ceil(1.2 * orth_poly.num_basis), orth_basis=True)
+                print('adding:')
+                print(idx)
+                print('current:')
+                print(doe.curr_set)
+                x_samples = x_cand[:,idx]
+                X_train = orth_poly.vandermonde(x_samples)
+                _, s, _ = np.linalg.svd(X_train)
+                ## condition number, kappa = max(svd)/min(svd)
+                kappa = max(abs(s)) / min(abs(s)) 
+                mean_kappa.append(kappa)
+                print('mean condition number: {}'.format(np.mean(mean_kappa)))
 
 
     # def test_gauss_quadrature(self):
