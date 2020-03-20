@@ -77,9 +77,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         if len(x.T) != len(w):
             raise TypeError("expected x and w to have same length")
 
-        print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
-        print(r'   * {:<25s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
+        # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
+        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        # print(r'   * {:<25s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
 
         # norms = np.sum(X.T**2 * w, -1)
         norms = self.orth_poly.basis_norms *self.orth_poly.basis_norms_const**self.orth_poly.ndim
@@ -112,9 +112,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         n_splits= kwargs.get('n_splits', X.shape[0])
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-        print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
-        print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
+        # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
+        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        # print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
         
         ## calculate k-folder cross-validation error
         model   = linear_model.LinearRegression(fit_intercept=False)
@@ -151,9 +151,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         n_splits= kwargs.get('n_splits', X.shape[0])
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-        print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
-        print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
+        # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
+        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        # print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
         ### 1. Perform variable selection first
         model_lars       = linear_model.Lars(fit_intercept=False).fit(X,y)
         self.active_lars = model_lars.active_ ## Indices of active basis at the end of the path.
@@ -175,7 +175,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                 self.active_  = active_indices
                 self.cv_error = error_loo
                 self.coef     = model.coef_
-        print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
+        # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
 
     def fit_lassolars(self,x,y, *args, **kwargs):
         """
@@ -202,16 +202,16 @@ class PolynomialChaosExpansion(SurrogateBase):
         max_iter= kwargs.get('max_iter', 500)
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-        print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
-        print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
+        # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
+        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        # print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
 
         model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count(),fit_intercept=False).fit(X,y)
         self.active_  = list(*np.nonzero(model.coef_))
         self.model    = model 
         self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
         self.coef     = model.coef_
-        print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
+        # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
 
 
     def predict(self,x, **kwargs):
@@ -234,7 +234,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             X = self.orth_poly.vandermonde(x)
             X = X[:, self.active_]
             y = self.model.predict(X)
-        print(r'   * {:<25s} : {}'.format('Prediction output', y.shape))
+        # print(r'   * {:<25s} : {}'.format('Prediction output', y.shape))
         return y
 
     def sample_y(self,X, nsamples=1, random_state=0):
