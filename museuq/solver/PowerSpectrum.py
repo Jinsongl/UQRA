@@ -11,6 +11,7 @@
 """
 import numpy as np
 from . import spectrums
+import inspect
 
 class PowerSpectrum(object):
     """
@@ -41,6 +42,12 @@ class PowerSpectrum(object):
         self.pxx    = None 
         self.sides  = 'single' 
         self.args   = args
+        try:
+            spectrum_func = getattr(spectrums, self.name.lower())
+            sig =inspect.signature(spectrum_func) 
+            self.ndim = len(sig.parameters) - 1
+        except AttributeError:
+            self.ndim = None
 
     def set_psd(self, f, pxx, sides='single'):
         assert f.shape == pxx.shape, 'f and pxx should have same shape. f.shape={}, pxx.shape={}'.format(f.shape, pxx.shape)
