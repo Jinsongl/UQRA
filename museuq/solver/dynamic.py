@@ -17,6 +17,7 @@ from scipy import interpolate
 from scipy.integrate import odeint, quad
 from scipy.optimize import brentq
 from .PowerSpectrum import PowerSpectrum
+from museuq.environment import Kvitebjorn 
 from tqdm import tqdm
 
 
@@ -37,11 +38,13 @@ class linear_oscillator(SolverBase):
         self.name        = 'linaer oscillator'
         self.nickname    = 'SDOF'
         self.spec_name   = kwargs.get('spec_name', 'JONSWAP')
+        self.ndim        = PowerSpectrum(self.spec_name).ndim
         self.qoi2analysis= kwargs.get('qoi2analysis', 'ALL')
         self.stats2cal   = kwargs.get('stats2cal', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
         self.axis        = kwargs.get('axis', 0)
         self.tmax        = kwargs.get('time_max', 1000)
         self.dt          = kwargs.get('dt', 0.1)
+        self.distributions= kwargs.get('environment', Kvitebjorn)
         # self.theta_m = [] 
         # self.theta_s = [] 
         ### two ways defining mck
@@ -148,14 +151,17 @@ class linear_oscillator(SolverBase):
         """
         mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
         Argument:
-            two options:
-            1. cdf(u)
-            2. u and dist_u
+            u and dist_u
         """
+        ### convert dist_u to list and append to dist_u with U(0,1) if necessary to make sure the dimension matches
         u, dist_u = super().map_domain(u, dist_u)
         u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
-        x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+
+        if isinstance(self.distributions, list):
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        elif self.distributions.__name__ == 'museuq.environment.Kvitebjorn':
+            x = Kvitebjorn.ppf(u_cdf)
         return x
 
 # def _cal_normalize_values(zeta,omega0,source_kwargs, *source_args):

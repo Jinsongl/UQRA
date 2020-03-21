@@ -38,13 +38,14 @@ class SolverBase(object):
         mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
         Argument:
             u: ndarray of shape(ndim, nsamples)
-            dist_u: list of distributions from scipy.stats
+            dist_u: list of distributions have .ppf method 
         """
         u = np.array(u, copy=False, ndmin=2)
         if isinstance(dist_u, (list, tuple)):
-            ## if a list is given but not enough distributions, appending with Uniform(0,1)
+            ## checking if the u distributions are from scipy.stats
             for idist in dist_u:
                 assert isfromstats(idist)
+            ## if a list is given but not enough distributions, appending with Uniform(0,1)
             for _ in range(len(dist_u), self.ndim):
                 dist_u.append(stats.uniform(0,1))
         else:
