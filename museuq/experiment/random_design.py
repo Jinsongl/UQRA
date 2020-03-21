@@ -76,12 +76,12 @@ class RandomDesign(ExperimentBase):
                 dist_name = idist.name
             except AttributeError:
                 dist_name = idist.dist.name
+
             if dist_name == 'uniform':
                 u = stats.uniform.rvs(0,np.pi,size=(self.ndim, self.n_samples))
                 x = np.cos(u)
-                # w = np.prod((1 - x**2)**0.25, axis=0)
 
-            else:
+            elif dist_name in ['norm', 'normal']:
                 #### Sampling from Ball with radius sqrt(2). 
                 ## 1. z ~ normal(0,1), z / norm(z)
                 ## 2. u ~ uniform(0,1 )
@@ -90,6 +90,9 @@ class RandomDesign(ExperimentBase):
                 z = z/np.linalg.norm(z, axis=0)
                 u = stats.uniform.rvs(0,1,size=(self.n_samples))
                 x = z * 2**0.5 * u **(1/self.ndim)
+            else:
+                raise NotImplementedError
+
             return  x
 
         elif self.method.upper() in ['HALTON', 'HAL', 'H']:
