@@ -67,24 +67,37 @@ class BasicTestSuite(unittest.TestCase):
     def test_linear_oscillator(self):
         np.random.seed(100)
         qoi2analysis = [1,2]
+        nsim = 30
         stats2cal = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
         solver = museuq.linear_oscillator(qoi2analysis=qoi2analysis, stats2cal=stats2cal)
-        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Uniform/'
+        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal/'
         for r in range(10):
+            data = []
             filename = 'DoE_McsE6R{:d}.npy'.format(r)
             x = np.load(os.path.join(data_dir, filename))
+            # x = solver.map_domain(u, [stats.norm(0,1),] * solver.ndim) 
+            y_raw, y_QoI = zip(*[solver.run(x.T) for _ in range(nsim)]) 
+            print(np.array(y_QoI).shape)
+            # filename = 'DoE_McsE6R{:d}{:d}.npy'.format(r, i)
+                # np.save(filename, y_QoI)
+                # print(y_raw.shape)
+                # print(y_QoI.shape)
+                # print(y_QoI[:,4, 1])
 
-            print(solver)
-            batch_size = int(1e5)
-            for i in range(10):
-                idx_start = i *  batch_size
-                idx_end   = (i+1) * batch_size
-                y_raw, y_QoI = solver.run(x[:,idx_start:idx_end].T)
-                filename = 'DoE_McsE6R{:d}{:d}.npy'.format(r, i)
-                np.save(filename, y_QoI)
-            print(y_raw.shape)
-            print(y_QoI.shape)
-
+    def test_linear_oscillator_map_domain(self):
+        np.random.seed(100)
+        qoi2analysis = [1,2]
+        stats2cal = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
+        solver = museuq.linear_oscillator(qoi2analysis=qoi2analysis, stats2cal=stats2cal)
+        for r in range(10):
+            filename = r'DoE_McsE6R{:d}.npy'.format(r)
+            print(filename)
+            data_dir = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Uniform'
+            data1    = np.load(os.path.join(data_dir, filename))
+            data_dir = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform/'
+            u        = np.load(os.path.join(data_dir, filename))
+            data2    = solver.map_domain(u, [stats.uniform(-1,2),] * solver.ndim) 
+            print(np.array_equal(data1, data2))
 
     def test_Solver(self):
         
