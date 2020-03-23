@@ -129,24 +129,26 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_duffing(self):
 
-        f = lambda t: 8 * np.cos(0.5 * t)
-        dt = 2 * np.pi /1.4/100
+        # f = lambda t: 8 * np.cos(0.5 * t)
         np.random.seed(100)
+        dt = 0.01 
         qoi2analysis = [1,2]
         nsim = 1
         stats2cal = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
         solver = museuq.duffing_oscillator(qoi2analysis=qoi2analysis, stats2cal=stats2cal, tmax=2000, dt=dt,y0=[1,0], spec_name='JONSWAP')
         print(solver)
-        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal/'
+        data_dir_src    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal/'
+        data_dir_destn  = r'/Volumes/External/MUSE_UQ_DATA/Duffing/Data/' 
         for r in range(1):
             data = []
             filename = 'DoE_McsE6R{:d}.npy'.format(r)
-            x = np.load(os.path.join(data_dir, filename))[:solver.ndim, 0]
+            x = np.load(os.path.join(data_dir_src, filename))[:solver.ndim, :]
             # x = solver.map_domain(u, [stats.norm(0,1),] * solver.ndim) 
-            y_raw, y_QoI = zip(*[solver.run(x.T) for _ in range(nsim)]) 
-            np.save('duffing_time_series_{:d}'.format(r), y_raw)
-            np.save('duffing_stats_{:d}'.format(r), y_QoI)
-            print(np.array(y_QoI).shape)
+            # y_raw, y_QoI = zip(*[solver.run(x.T) for _ in range(nsim)]) 
+            y_raw, y_QoI = solver.run(x.T)
+            # np.save('duffing_time_series_{:d}'.format(r), y_raw)
+            filename = 'DoE_McsE6R{:d}_stats'.format(r)
+            np.save(os.path.join(data_dir_destn, filename), y_QoI)
 
     def test_samples_same(self):
         for r in range(10):
