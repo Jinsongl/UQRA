@@ -12,10 +12,9 @@ Single degree of freedom with time series external loads
 
 import museuq
 from museuq.solver._solverbase import SolverBase
-import os, numpy as np
-from scipy import interpolate
-from scipy.integrate import odeint, quad
-from scipy.optimize import brentq
+import os, numpy as np, scipy as sp
+# from scipy.integrate import odeint
+# from scipy.optimize import brentq
 from .PowerSpectrum import PowerSpectrum
 from museuq.environment import Kvitebjorn 
 from tqdm import tqdm
@@ -24,9 +23,10 @@ from tqdm import tqdm
 class linear_oscillator(SolverBase):
     """
     Solving linear oscillator in frequency domain
-    m x'' + c x' + k x = f => 
-    x'' + 2*zeta*w_n x' + w_n**2 x = 1/m f, where, w_n = sqrt(k/m), zeta = c/(2*sqrt(m*k))
-    default value: omega_n = 0.15 Hz, zeta = 0.01
+        m x'' + c x' + k x = f 
+    =>    x'' + 2*zeta*omega_n x' + omega_n**2 x = 1/m * f
+    where, omega_n = sqrt(k/m), zeta = c/(2*sqrt(m*k))
+    default value: omega_n = 1/pi Hz (2 rad/s), zeta = 0.01
 
     f: frequency in Hz
     t: array, A sequence of time points for which to solve for y. 
@@ -63,13 +63,13 @@ class linear_oscillator(SolverBase):
         self.mck         = (self.m, self.c, self.k) 
 
     def __str__(self):
-        message = 'Single Degree of Fredom Oscillator: \n' + \
-                '   - {:<15s} : {}\n'.format('mck'      , np.around(self.mck, 2))   + \
-                '   - {:<15s} : {}\n'.format('zeta'     , np.around(self.zeta, 2))  + \
-                '   - {:<15s} : {}\n'.format('omega_n'  , np.around(self.omega_n, 2)) + \
-                '   - {:<15s} : {}\n'.format('spec_name', self.spec_name) + \
-                '   - {:<15s} : {}\n'.format('qoi2analysis', self.qoi2analysis) + \
-                '   - {:<15s} : {}\n'.format('time_max' , self.tmax) + \
+        message = 'Single Degree of Fredom Oscillator: \n'                              + \
+                '   - {:<15s} : {}\n'.format('mck'      , np.around(self.mck, 2))       + \
+                '   - {:<15s} : {}\n'.format('zeta'     , np.around(self.zeta, 2))      + \
+                '   - {:<15s} : {}\n'.format('omega_n'  , np.around(self.omega_n, 2))   + \
+                '   - {:<15s} : {}\n'.format('spec_name', self.spec_name)               + \
+                '   - {:<15s} : {}\n'.format('qoi2analysis', self.qoi2analysis)         + \
+                '   - {:<15s} : {}\n'.format('time_max' , self.tmax)                    + \
                 '   - {:<15s} : {}\n'.format('dt' , self.dt)
         return message
 
@@ -122,7 +122,7 @@ class linear_oscillator(SolverBase):
         """
         Solving linear oscillator in frequency domain
         m x'' + c x' + k x = f => 
-        x'' + 2*zeta*w_n x' + w_n**2 x = 1/m f, where, w_n = sqrt(k/m), zeta = c/(2*sqrt(m*k))
+        x'' + 2*zeta*omega_n x' + omega_n**2 x = 1/m f, where, omega_n = sqrt(k/m), zeta = c/(2*sqrt(m*k))
         default value: omega_n = 0.15 Hz, zeta = 0.01
 
         f: frequency in Hz
@@ -164,6 +164,176 @@ class linear_oscillator(SolverBase):
             x = Kvitebjorn.ppf(u_cdf)
         return x
 
+
+class duffing_oscillator(SolverBase):
+    """
+    Solve the Duffing oscillator in time domain solved by Runge-Kutta RK4
+        m x'' + c x' + k x + s x^3 = f 
+    =>    x'' + 2*zeta*omega_n*x' + omega_n^2*x  + s/m x^3 = 1/m * f
+    where, omega_n = sqrt(k/m), zeta = c/(2*sqrt(m*k))
+    Default value: 
+       - mcks     : [1. 0.01  0.1 0.02]
+       - zeta     : 0.01
+       - omega_n  : 2 rad/s
+
+    >> Nonlinear spring term: omega_n^2*x  + s/m x^3 
+        1. Hardening spring: s > 0
+        2. Softening spring: s < 0
+        |(s/m) / (omega_n^2)| => |s / k| ~ 0.1, reference Doostan:[0.25, 0.75]
+        default: s = 0.2 k, => s/m = 0.2*omega_n^2 = 0.0045 
+
+    f   : frequency in Hz
+    dt  : scalar, time step
+
+    args, tuple, oscillator arguments in order of (mass, damping, stiffness) 
+    kwargs, dictionary, spectrum definitions for the input excitation functions
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.name        = 'Duffing oscillator'
+        self.nickname    = 'Duffing'
+        self.spec_name   = kwargs.get('spec_name', None)
+        self.ndim        = PowerSpectrum(self.spec_name).ndim
+        self.excitation  = kwargs.get('excitation', None)
+        self.qoi2analysis= kwargs.get('qoi2analysis', 'ALL')
+        self.stats2cal   = kwargs.get('stats2cal', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
+        self.axis        = kwargs.get('axis', 0)
+        self.tmax        = kwargs.get('time_max', 1000)
+        self.tmax        = kwargs.get('tmax', 1000)
+        self.dt          = kwargs.get('dt', 0.1)
+        self.y0          = kwargs.get('y0', [1,0]) ## initial condition
+        self.distributions= kwargs.get('environment', Kvitebjorn)
+        self.method      = kwargs.get('method', 'RK45')
+
+        ### two ways defining mcks
+        if 'k' in kwargs.keys() and 'c' in kwargs.keys():
+            self.m      = kwargs.get('m', 1)
+            self.k      = kwargs['k'] 
+            self.c      = kwargs['c']
+            self.s      = kwargs.get('s', 0.2* self.k)
+            self.zeta   = self.c/(2*np.sqrt(self.m*self.k))
+            self.omega_n= 2*np.pi*np.sqrt(self.k/self.m) # rad/s 
+        else:
+            self.zeta   = kwargs.get('zeta', 0.01)
+            self.omega_n= kwargs.get('omega_n', 2) # rad/s
+            self.m      = kwargs.get('m', 1)
+            self.k      = (self.omega_n/2/np.pi) **2 * self.m
+            self.c      = self.zeta * 2 * np.sqrt(self.m * self.k)
+            self.s      = kwargs.get('s', 0.2 * self.k)
+        self.mcks       = (self.m, self.c, self.k, self.s) 
+
+    def __str__(self):
+        message = 'Duffing Oscillator: \n'                                              + \
+                '   - {:<15s} : {}\n'.format('mcks'     , np.around(self.mcks, 2))      + \
+                '   - {:<15s} : {}\n'.format('zeta'     , np.around(self.zeta, 2))      + \
+                '   - {:<15s} : {}\n'.format('omega_n'  , np.around(self.omega_n, 2))   + \
+                '   - {:<15s} : {}\n'.format('excitation', self.excitation.__name__ if self.excitation else self.spec_name) + \
+                '   - {:<15s} : {}\n'.format('qoi2analysis', self.qoi2analysis)         + \
+                '   - {:<15s} : {}\n'.format('time_max' , self.tmax)                    + \
+                '   - {:<15s} : {}\n'.format('dt' , self.dt)
+        return message
+
+    def run(self, x):
+        """
+        solving duffing equation:
+        Arguments:
+            x, power spectrum parameters, ndarray of shape (nsamples, n_parameters)
+
+        """
+        x = np.array(x, copy=False, ndmin=2)
+        pbar_x  = tqdm(x, ascii=True, desc="   - ")
+        y_raw, y_QoI = map(list, zip(*[self._duffing_oscillator(ix) for ix in pbar_x]))
+
+        return np.array(y_raw), np.array(y_QoI)
+
+
+    def map_domain(self, u, dist_u):
+        """
+        Mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        Argument:
+            u and dist_u
+        """
+        ### convert dist_u to list and append to dist_u with U(0,1) if necessary to make sure the dimension matches
+        u, dist_u = super().map_domain(u, dist_u)
+        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
+
+        if isinstance(self.distributions, list):
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        elif self.distributions.__name__ == 'museuq.environment.Kvitebjorn':
+            x = Kvitebjorn.ppf(u_cdf)
+        return x
+
+
+    def _duffing_oscillator(self, x):
+
+        t = np.arange(0,int(self.tmax/self.dt) +1) * self.dt
+        self.excitation = self._excitation_func(x)
+        x_t = self.excitation(t)
+        print('t= {}'.format(x_t))
+        solution = sp.integrate.solve_ivp(self._rhs_odes, [0,self.tmax], self.y0, t_eval=t, args=[self.excitation],method=self.method)
+
+        y_raw = np.vstack((t, x_t, solution.y)).T
+        y_QoI = museuq.get_stats(y_raw, qoi2analysis=self.qoi2analysis, stats2cal=self.stats2cal, axis=0) 
+        return y_raw, y_QoI
+
+    def _rhs_odes(self, t, y, f):
+        """
+        Reformulate 2nd order ODE to a system of ODEs.
+            dy / dt = f(t, y)
+        Here t is a scalar, 
+        Let u = y, v = y', then:
+            u' = v
+            v' = -2*zeta*omega_n*v - omega_n^2*u - s/m u^3 + 1/m * f
+        Arguments: 
+            t: scalar
+            y: ndarray has shape (n,), e.g. [y, y']
+            f: callable function taken t as argument
+        Return:
+            (u', v')
+
+        """
+        y0, y1 = y
+        vdot = -2.0 * self.zeta * self.omega_n *y1 - self.omega_n**2*y0 - self.s/self.m * y0**3 + 1.0/self.m * f(t)
+        return y1, vdot 
+
+
+        # V = lambda x: beta/4 * x**4 - alpha/2 * x**2 
+        # dVdx = lambda x: beta*x**3 - alpha*x
+
+        # x, xdot = X
+        # if source_interp is None:
+            # xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) 
+        # else:
+            # xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) + source_interp(t)
+        # return xdot, xdotdot
+
+    def _excitation_func(self, x):
+        """
+        Return the excitation function f on the right hand side 
+
+        Returns:
+            a function take scalar argument
+
+        """
+
+        if self.excitation is not None:
+            f = self.excitation
+        else:
+            if self.spec_name:
+                t    = np.arange(0,int(1.10* self.tmax/self.dt)) * self.dt
+                tmax = t[-1]
+                df   = 0.5/tmax
+                freq    = np.arange(len(t)+1) * df
+                psd_x = PowerSpectrum(self.spec_name, *x)
+                x_pxx = psd_x.get_pxx(freq)
+                t0, x_t = psd_x.gen_process()
+                f = sp.interpolate.interp1d(t0, x_t,kind='cubic')
+            else:
+                f = lambda t: t * 0 
+        return f
+
 # def _cal_normalize_values(zeta,omega0,source_kwargs, *source_args):
     # TF = lambda w : 1.0/np.sqrt((w**2-omega0**2)**2 + (2*zeta*omega0)**2)
     # spec_dict = psd.get_spec_dict() 
@@ -194,79 +364,6 @@ class linear_oscillator(SolverBase):
         # t, y = source_func(*args, **kwargs)
         # return  t*norm_t, y*norm_y/ norm_t**2
     # return wrapper 
-
-# def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *source_args):
-    # source_func = source_func if callable(source_func) else 0
-    # x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,source_func=source_func,t_trans=t_trans)
-    # return x
-
-# def linear_oscillator(t, x, **kwargs):
-    # """
-    # Solving linear oscillator in frequency domain
-    # m x'' + c x' + k x = f => 
-    # x'' + 2*zeta*w_n x' + w_n**2 x = 1/m f, where, w_n = sqrt(k/m), zeta = c/(2*sqrt(m*k))
-    # default value: omega_n = 0.15 Hz, zeta = 0.01
-
-    # f: frequency in Hz
-    # t: array, A sequence of time points for which to solve for y. 
-    # args, tuple, oscillator arguments in order of (mass, damping, stiffness) 
-    # kwargs, dictionary, spectrum definitions for the input excitation functions
-    # """
-
-    # # spec_dict = psd.get_spec_dict() 
-    # # spec_func = spec_dict.get(kwargs.get('spec_name', 'JONSWAP'))
-    # # f,x_pxx   = spec_func(f, *x)
-    # spec_name   = kwargs['spec_name']
-    # return_all  = kwargs['return_all']
-    # m,c,k       = kwargs['mck']
-
-    # tmax, dt    = t[-1], t[1] - t[0]
-    # df          = 0.5/tmax
-    # f           = np.arange(len(t)+1) * df
-    # ##--------- oscillator properties -----------
-    # w_n         = np.sqrt(k/m)          # natural frequency
-    # zeta        = c/(2*np.sqrt(m*k))    # damping ratio
-    # H_square    = 1.0/np.sqrt( (k-m*f**2)**2 + (c*f)**2 )
-
-    # input_psd   = PowerSpectrum(spec_name, *x)
-    # x_pxx       = input_psd.get_pxx(f)
-    # t, x_t      = input_psd.gen_process()
-    # output_psd  = PowerSpectrum('SDOF_out')
-    # y_pxx       = H_square * x_pxx
-    # output_psd.set_psd(f, y_pxx)
-    # t, y_t      = output_psd.gen_process()
-
-    # # t, x_t = psd2process(f, x_pxx)
-    # # t, y_t = psd2process(f, y_pxx)
-
-    # ##---- Reshape-----
-    # t   = np.array(t).reshape((-1,1))
-    # x_t = np.array(x_t).reshape((-1,1))
-    # y_t = np.array(y_t).reshape((-1,1))
-    # y1  = np.concatenate((t,x_t,y_t), axis=1)
-    # # np.save(os.path.join(data_dir, 'sdof_time'), y1)
-    # f   = np.array(f).reshape((-1,1))
-    # x_pxx=np.array(x_pxx).reshape((-1,1))
-    # y_pxx=np.array(y_pxx).reshape((-1,1))
-    # y2  = np.concatenate((f,x_pxx,y_pxx), axis=1)
-    # # np.save(os.path.join(data_dir, 'sdof_frequency'), y2)
-
-    # try:
-        # y  = np.concatenate((t,x_t,y_t, f,x_pxx,y_pxx), axis=1)
-    # except:
-        # print('{:<15s} : {} '.format('t', t.shape))
-        # print('{:<15s} : {} '.format('f', f.shape))
-    # if return_all:
-        # return y
-    # else:
-        # qoi2analysis= kwargs.get('qoi2analysis', 'ALL')
-        # stats2cal   = kwargs.get('stats2cal', [1,1,1,1,1,1,0])
-        # axis        = kwargs.get('axis', 0)
-        # data        = np.concatenate((x_t, y_t), axis=1)
-        # museuq.blockPrint()
-        # y_QoI = museuq.get_stats(data, qoi2analysis =qoi2analysis, stats2cal = stats2cal, axis=axis) 
-        # museuq.enablePrint()
-        # return y_QoI
         
 # def duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,mu,\
         # *source_args, source_func=None, source_kwargs=None,t_trans=0, normalize=False):
@@ -302,22 +399,11 @@ class linear_oscillator(SolverBase):
     # res = np.concatenate((t,X),axis=1)
     # return res, dt, pstep 
 
-# def _deriv(X, t, gamma, delta, omega, alpha, beta, source_interp):
-    # """Return the derivatives dx/dt and d2x/dt2."""
-
-    # V = lambda x: beta/4 * x**4 - alpha/2 * x**2 
-    # dVdx = lambda x: beta*x**3 - alpha*x
-
-    # x, xdot = X
-    # if source_interp is None:
-        # xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) 
-    # else:
-        # xdotdot = -dVdx(x) -delta * xdot + gamma * np.cos(omega*t) + source_interp(t)
-    # return xdot, xdotdot
 
 # def duffing_equation(tmax, dt_per_period, x0, v0,gamma,delta,omega,\
         # *source_args, source_func=None, source_kwargs=None,alpha=1,beta=1,t_trans=0):
-    # """Solve the Duffing equation for parameters gamma, delta, omega.
+    # """
+    # Solve the Duffing equation for parameters gamma, delta, omega.
     # https://scipython.com/blog/the-duffing-oscillator/
     # Find the numerical solution to the Duffing equation using a suitable
     # time grid: 
@@ -345,7 +431,7 @@ class linear_oscillator(SolverBase):
     # if callable(source_func):
         # _t = np.arange(0, tmax+period, dt)
         # _, source = source_func(_t, *source_args, kwargs=source_kwargs)
-        # source_interp = interpolate.interp1d(_t, source,kind='cubic')
+        # source_interp = sp.interpolate.interp1d(_t, source,kind='cubic')
 
     # else:
         # source_interp = None
@@ -353,4 +439,9 @@ class linear_oscillator(SolverBase):
     # X = odeint(_deriv, X0, t, args=(gamma, delta, omega,alpha, beta, source_interp))
     # idx = int(t_trans / dt)
     # return t[idx:], X[idx:], dt, step
+
+# def lin_oscillator(tmax,dt,x0,v0,zeta,omega0,source_func=None,t_trans=0, *source_args):
+    # source_func = source_func if callable(source_func) else 0
+    # x = duffing_oscillator(tmax,dt,x0,v0,zeta,omega0,0,source_func=source_func,t_trans=t_trans)
+    # return x
 

@@ -18,7 +18,7 @@ from museuq.experiment.random_design import RandomDesign
 from museuq.experiment.lhs import LatinHyperCube as LHS
 from museuq.experiment.optimal_design import OptimalDesign 
 
-from museuq.solver.dynamic import linear_oscillator
+from museuq.solver.dynamic import linear_oscillator, duffing_oscillator
 from museuq.solver.static import * 
 from museuq.solver.ErrorClass import NullError, IidError, CovError
 

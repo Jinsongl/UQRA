@@ -70,6 +70,7 @@ class BasicTestSuite(unittest.TestCase):
         nsim = 30
         stats2cal = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
         solver = museuq.linear_oscillator(qoi2analysis=qoi2analysis, stats2cal=stats2cal)
+        print()
         data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal/'
         for r in range(10):
             data = []
@@ -78,11 +79,6 @@ class BasicTestSuite(unittest.TestCase):
             # x = solver.map_domain(u, [stats.norm(0,1),] * solver.ndim) 
             y_raw, y_QoI = zip(*[solver.run(x.T) for _ in range(nsim)]) 
             print(np.array(y_QoI).shape)
-            # filename = 'DoE_McsE6R{:d}{:d}.npy'.format(r, i)
-                # np.save(filename, y_QoI)
-                # print(y_raw.shape)
-                # print(y_QoI.shape)
-                # print(y_QoI[:,4, 1])
 
     def test_linear_oscillator_map_domain(self):
         np.random.seed(100)
@@ -99,18 +95,69 @@ class BasicTestSuite(unittest.TestCase):
             data2    = solver.map_domain(u, [stats.uniform(-1,2),] * solver.ndim) 
             print(np.array_equal(data1, data2))
 
-    def test_Solver(self):
-        
-        x = np.arange(12).reshape(2,-1)
+    def test_four_branch(self):
         np.random.seed(100)
-        # x      = (Hs,Tp) = np.array((4, 12)).reshape(2,1)
-        x      = (Hs,Tp) = np.arange(12).reshape(2,-1)
-        solver = museuq.linear_oscillator()
-        print(solver)
-        y_raw, y_QoI = solver.run(x)
-        # print(y_raw.shape)
-        # print(y_QoI.shape)
+        solver  = museuq.four_branch_system()
+        data_dir_src    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Normal/'
+        data_dir_destn  = r'/Volumes/External/MUSE_UQ_DATA/Four_branch_system/Data'
 
+        for r in tqdm(range(10), ascii=True, desc='     -'):
+            filename = 'DoE_McsE6R{:d}.npy'.format(r)
+            u = np.load(os.path.join(data_dir_src, filename))[:solver.ndim, :]
+            x = solver.map_domain(u, [stats.norm(0,1),] * solver.ndim) 
+            if not np.array_equal(u, x):
+                print(np.max(abs(u-x), axis=1))
+            y = solver.run(x).reshape(1,-1)
+            data = np.vstack((u,x,y))
+            np.save(os.path.join(data_dir_destn, filename), data)
+            
+    def test_franke(self):
+        np.random.seed(100)
+        solver  = museuq.franke()
+        data_dir_src    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform/'
+        data_dir_destn  = r'/Volumes/External/MUSE_UQ_DATA/Franke/Data'
+
+        for r in tqdm(range(10), ascii=True, desc='     -'):
+            filename = 'DoE_McsE6R{:d}.npy'.format(r)
+            u = np.load(os.path.join(data_dir_src, filename))[:solver.ndim, :]
+            x = solver.map_domain(u, [stats.uniform(-1,2),] * solver.ndim) 
+            if not np.array_equal(u, x):
+                print(np.max(abs(u-x), axis=1))
+            y = solver.run(x).reshape(1,-1)
+            data = np.vstack((u,x,y))
+            np.save(os.path.join(data_dir_destn, filename), data)
+
+    def test_duffing(self):
+
+        f = lambda t: 8 * np.cos(0.5 * t)
+        dt = 2 * np.pi /1.4/100
+        np.random.seed(100)
+        qoi2analysis = [1,2]
+        nsim = 1
+        stats2cal = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
+        solver = museuq.duffing_oscillator(qoi2analysis=qoi2analysis, stats2cal=stats2cal, tmax=2000, dt=dt,y0=[1,0], spec_name='JONSWAP')
+        print(solver)
+        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal/'
+        for r in range(1):
+            data = []
+            filename = 'DoE_McsE6R{:d}.npy'.format(r)
+            x = np.load(os.path.join(data_dir, filename))[:solver.ndim, 0]
+            # x = solver.map_domain(u, [stats.norm(0,1),] * solver.ndim) 
+            y_raw, y_QoI = zip(*[solver.run(x.T) for _ in range(nsim)]) 
+            np.save('duffing_time_series_{:d}'.format(r), y_raw)
+            np.save('duffing_stats_{:d}'.format(r), y_QoI)
+            print(np.array(y_QoI).shape)
+
+    def test_samples_same(self):
+        for r in range(10):
+            filename = r'DoE_McsE6R{:d}.npy'.format(r)
+            print(filename)
+            data_dir = r'/Volumes/External/MUSE_UQ_DATA/Four_branch_system/Data/'
+            data1    = np.load(os.path.join(data_dir, filename))[:2,:]
+            data_dir = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Normal/'
+            data2    = np.load(os.path.join(data_dir, filename))[:2,:]
+            print(np.array_equal(data1, data2))
+    
         # x = np.arange(30).reshape(3,10)
         # solver = museuq.Ishigami()
         # solver.run(x)
