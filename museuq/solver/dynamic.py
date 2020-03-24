@@ -212,8 +212,8 @@ class duffing_oscillator(SolverBase):
             self.k      = kwargs['k'] 
             self.c      = kwargs['c']
             self.s      = kwargs.get('s', 0.2* self.k)
-            self.zeta   = self.c/(2*np.sqrt(self.m*self.k))
-            self.omega_n= 2*np.pi*np.sqrt(self.k/self.m) # rad/s 
+            # self.zeta   = self.c/(2*np.sqrt(self.m*self.k))
+            # self.omega_n= 2*np.pi*np.sqrt(self.k/self.m) # rad/s 
         else:
             self.zeta   = kwargs.get('zeta', 0.01)
             self.omega_n= kwargs.get('omega_n', 2) # rad/s
@@ -226,8 +226,6 @@ class duffing_oscillator(SolverBase):
     def __str__(self):
         message = 'Duffing Oscillator: \n'                                              + \
                 '   - {:<15s} : {}\n'.format('mcks'     , np.around(self.mcks, 2))      + \
-                '   - {:<15s} : {}\n'.format('zeta'     , np.around(self.zeta, 2))      + \
-                '   - {:<15s} : {}\n'.format('omega_n'  , np.around(self.omega_n, 2))   + \
                 '   - {:<15s} : {}\n'.format('excitation', self.excitation.__name__ if self.excitation else self.spec_name) + \
                 '   - {:<15s} : {}\n'.format('qoi2analysis', self.qoi2analysis)         + \
                 '   - {:<15s} : {}\n'.format('time_max' , self.tmax)                    + \
@@ -271,11 +269,12 @@ class duffing_oscillator(SolverBase):
         t = np.arange(0,int(self.tmax/self.dt) +1) * self.dt
         self.excitation = self._excitation_func(x)
         x_t = self.excitation(t)
-        print('t= {}'.format(x_t))
         solution = sp.integrate.solve_ivp(self._rhs_odes, [0,self.tmax], self.y0, t_eval=t, args=[self.excitation],method=self.method)
-
         y_raw = np.vstack((t, x_t, solution.y)).T
+
+        museuq.blockPrint()
         y_QoI = museuq.get_stats(y_raw, qoi2analysis=self.qoi2analysis, stats2cal=self.stats2cal, axis=0) 
+        museuq.enablePrint()
         return y_raw, y_QoI
 
     def _rhs_odes(self, t, y, f):
@@ -295,7 +294,7 @@ class duffing_oscillator(SolverBase):
 
         """
         y0, y1 = y
-        vdot = -2.0 * self.zeta * self.omega_n *y1 - self.omega_n**2*y0 - self.s/self.m * y0**3 + 1.0/self.m * f(t)
+        vdot =1.0/self.m * (-self.c *y1 - self.k*y0 - self.s * y0**3 + f(t))
         return y1, vdot 
 
 
