@@ -18,21 +18,23 @@ class Hermite(PolyBase):
     Probabilists Hermite polynomial
 
     Orthoganality:
-    \int Hm(x) Hn(x) exp(-x^2/2) dx = sqrt(2pi) n! 1{mn}
+    probabilists: \int Hm(x) Hn(x) exp(-x^2/2) dx = sqrt(2pi) n! 1{mn}
+    physicists  : \int Hm(x) Hn(x) exp(-x^2  ) dx = sqrt(pi)  2**n  n! 1{mn}
 
     """
 
-    def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total'):
+    def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total', hem_type='probabilists'):
         super().__init__(d=d, deg=deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
         self.name = 'Hermite'
-        self.nickname = 'Hem'
+        self.hem_type = hem_type
+        self.nickname = 'Heme' if hem_type.lower() == 'probabilists' else 'Hem'
         self._update_basis()
 
     def gauss_quadrature(self, n, loc=[], scale=[]):
         """
         Gauss-HermiteE quadrature.
         Computes the sample points and weights for Gauss-HermiteE quadrature. 
-        These sample points and weights will correctly integrate polynomials of degree 2*deg - 1 or less over the interval [-\inf, \inf] with the weight function f(x) = \exp(-x^2/2).
+        These sample points and weights will correctly integrate polynomials of degree 2*deg - 1 or less over the interval [-\inf, \inf] with the weight function f(x) = \exp(-x^2/2) for probabilists and weight function f(x) = \exp(-x^2) for physicists
 
         Parameters:	
         deg : int
@@ -55,12 +57,23 @@ class Hermite(PolyBase):
 
         coords = []
         weight = []
-        for iloc, iscale in zip(loc, scale):
-            x, w = np.polynomial.hermite_e.hermegauss(self.n_gauss) 
-            x = iloc + iscale* x
-            w = iscale * w
-            coords.append(x)
-            weight.append(w)
+
+        if self.hem_type == 'probabilists':
+            for iloc, iscale in zip(loc, scale):
+                x, w = np.polynomial.hermite_e.hermegauss(self.n_gauss) 
+                x = iloc + iscale* x
+                w = iscale * w
+                coords.append(x)
+                weight.append(w)
+        elif self.hem_type == 'physicists':
+            for iloc, iscale in zip(loc, scale):
+                x, w = np.polynomial.hermite.hermgauss(self.n_gauss) 
+                x = iloc + iscale* x
+                w = iscale * w
+                coords.append(x)
+                weight.append(w)
+        else:
+            raise ValueError('hem_type is either probabilists or physicists')
 
         x = np.array(list(itertools.product(*coords))).T
         x = x.reshape(self.ndim, -1)
@@ -81,9 +94,15 @@ class Hermite(PolyBase):
         """
         x    = np.array(x, copy=0, ndmin=2) + 0.0
         d, n = x.shape
-        assert (d == self.ndim), 'Input dimension is {:d}, given {:d}'.format(self.ndim, d)
+        assert (d == self.ndim), 'Expected input dimension {:d}, but {:d} given '.format(self.ndim, d)
         vander      = np.ones((n, self.num_basis), x.dtype)
-        vander_ind  = np.array([np.polynomial.hermite_e.hermevander(ix, self.deg) for ix in x])
+        if self.hem_type == 'probabilists':
+            vander_ind  = np.array([np.polynomial.hermite_e.hermevander(ix, self.deg) for ix in x])
+        elif self.hem_type == 'physicists':
+            vander_ind  = np.array([np.polynomial.hermite.hermvander(ix, self.deg) for ix in x])
+        else:
+            raise ValueError('hem_type is either probabilists or physicists')
+
         ### basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
         if self.basis_degree is None:
             self._update_basis()
@@ -118,27 +137,49 @@ class Hermite(PolyBase):
     def _update_basis(self):
         """
         Return a list of polynomial basis function with specified degree and multi_index rule
+
+        
         """
         ### get self.basis_degree and self.num_basis
+        ###    - basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
         super()._update_basis()
         if self.basis_degree is None:
-            self.basis = None
-            self.basis_norms = None
+            self.basis        = None
+            self.basis_norms  = None
         else:
-            norms_1d    = np.array([math.factorial(i) for i in range(self.deg+1)])
-            basis       = []
-            basis_norms = [] 
-            for ibasis_degree in self.basis_degree:
-                ibasis = 1.0
-                inorms = 1.0
-                for ideg in ibasis_degree:
-                    ibasis = ibasis * np.polynomial.hermite_e.HermiteE.basis(ideg) 
-                    inorms = inorms * norms_1d[ideg]
-                basis.append(ibasis)
-                basis_norms.append(inorms)
-            self.basis = basis
-            self.basis_norms = np.array(basis_norms)
-            self.basis_norms_const = np.sqrt(2* np.pi)
+            if self.hem_type == 'probabilists':
+                self.basis_norms_const = np.sqrt(2* np.pi)
+                norms_1d    = np.array([math.factorial(i) for i in range(self.deg+1)])
+                basis       = []
+                basis_norms = [] 
+                for ibasis_degree in self.basis_degree:
+                    ibasis = 1.0
+                    inorms = 1.0
+                    for ideg in ibasis_degree:
+                        ibasis = ibasis * np.polynomial.hermite_e.HermiteE.basis(ideg) 
+                        inorms = inorms * norms_1d[ideg]
+                    basis.append(ibasis)
+                    basis_norms.append(inorms)
+                self.basis = basis
+                self.basis_norms = np.array(basis_norms)
+
+            elif self.hem_type == 'physicists':
+                self.basis_norms_const = np.sqrt(np.pi)
+                norms_1d    = np.array([math.factorial(i) * 2**i for i in range(self.deg+1)])
+                basis       = []
+                basis_norms = [] 
+                for ibasis_degree in self.basis_degree:
+                    ibasis = 1.0
+                    inorms = 1.0
+                    for ideg in ibasis_degree:
+                        ibasis = ibasis * np.polynomial.hermite.Hermite.basis(ideg) 
+                        inorms = inorms * norms_1d[ideg]
+                    basis.append(ibasis)
+                    basis_norms.append(inorms)
+                self.basis = basis
+                self.basis_norms = np.array(basis_norms)
+            else:
+                raise ValueError('hem_type is either probabilists or physicists')
 
         return self.basis, self.basis_norms
     def __call__(self, x):
