@@ -127,22 +127,25 @@ class BasicTestSuite(unittest.TestCase):
         print(np.max(doe_x, axis=1))
 
         print('Testing: Random Sampling from Pluripotential Equilibrium ...')
-        print('testing: d=2, theta: default')
-        doe = museuq.RandomDesign( [sp.stats.norm,], 'CLS')
-        doe_x = doe.samples(n_samples=1e6)
+        ndim = 2
+        print('testing: d={:d}, theta: default'.format(ndim))
+        doe = museuq.RandomDesign( [sp.stats.norm,] *ndim, 'CLS')
+        doe_x = doe.samples(n_samples=1e5)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
         print(np.min(doe_x, axis=1))
         print(np.max(doe_x, axis=1))
+        np.save('cls_norm_d2', doe_x)
 
 
         print('Testing: Random Sampling from Pluripotential Equilibrium ...')
-        print('testing: d=2, theta: default')
+        ndim = 3
+        print('testing: d={:d}, theta: default'.format(ndim))
         for i in range(10):
-            doe = museuq.RandomDesign( [sp.stats.norm,] * 10, 'CLS')
+            doe = museuq.RandomDesign( [sp.stats.norm,] * ndim, 'CLS')
             doe_x = doe.samples(n_samples=1e6)
-            np.save('DoE_McsE6R{:d}.npy'.format(i), doe_x)
+            np.save('DoE_McsE6d{:d}R{:d}.npy'.format(ndim,i), doe_x)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
