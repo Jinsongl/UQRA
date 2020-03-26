@@ -25,41 +25,41 @@ class PolynomialChaosExpansion(SurrogateBase):
         super().__init__(random_seed=random_seed)
         self.name           = 'Polynomial Chaos Expansion'
         self.nickname       = 'PCE'
-        self.distributions  = distributions  ### a list of marginal distributions
+        self.basis          = distributions  ### a list of marginal distributions
         self.poly_order     = p
 
         if distributions is None:
             self.ndim       = None 
-            self.orth_poly  = None
+            self.num_basis  = None 
             self.active_    = None
             self.cv_error   = np.inf
         else:
             # if isinstance(self.distributions, (list, tuple))
             # if hasattr(stats, self.distributions.name):
                 # self.distributions = [self.distributions,]
-            self.ndim = len(self.distributions)
-            ### Now assuming same marginal distributions
-            try:
-                dist_name = self.distributions[0].name 
-            except AttributeError:
-                dist_name = self.distributions[0].dist.name 
-
-            if dist_name == 'norm':
-                self.orth_poly = museuq.Hermite(d=self.ndim, deg=self.poly_order)
-            elif dist_name == 'uniform':
-                self.orth_poly = museuq.Legendre(d=self.ndim, deg=self.poly_order)
-            else:
-                raise ValueError('Polynomial for {} has not been defined yet'.format(distributions[0].name))
-            self.num_basis  = self.orth_poly.num_basis
+            self.ndim       = distributions.ndim 
+            self.num_basis  = self.basis.num_basis
             self.active_    = range(self.num_basis) 
             self.cv_error   = np.inf
+            # ### Now assuming same marginal distributions
+            # try:
+                # dist_name = self.distributions[0].name 
+            # except AttributeError:
+                # dist_name = self.distributions[0].dist.name 
+
+            # if dist_name == 'norm':
+                # self.basis = museuq.Hermite(d=self.ndim, deg=self.poly_order)
+            # elif dist_name == 'uniform':
+                # self.basis = museuq.Legendre(d=self.ndim, deg=self.poly_order)
+            # else:
+                # raise ValueError('Polynomial for {} has not been defined yet'.format(distributions[0].name))
 
     def info():
         print(r'   * {:<25s} : {:<20s}'.format('Surrogate Model Name', self.name))
         if self.poly_order is not None:
-            print(r'     - {:<23s} : {}'.format('Askey-Wiener distributions'   , [idist.name for idist in self.distributions]))
+            print(r'     - {:<23s} : {}'.format('Askey-Wiener distributions'   , self.basis.name))
             print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.poly_order ))
-            print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)', self.orth_poly.num_basis))
+            print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)', self.basis.num_basis))
             print(r'     - {:<23s} : {:d}'.format('No. active basis (P)', len(self.active_)))
 
     def fit_quadrature(self, x, w, y):
@@ -69,7 +69,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.fit_method = 'GLK' 
         x = np.array(x, copy=False, ndmin=2)
         y = np.array(y, copy=False, ndmin=2)
-        X = self.orth_poly.vandermonde(x, normed=False)
+        X = self.basis.vandermonde(x, normed=False)
         y = np.squeeze(y) + 0.0
         w = np.asarray(w) + 0.0
         if w.ndim != 1:
@@ -82,9 +82,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         # print(r'   * {:<25s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
 
         # norms = np.sum(X.T**2 * w, -1)
-        norms = self.orth_poly.basis_norms *self.orth_poly.basis_norms_const**self.orth_poly.ndim
+        norms = self.basis.basis_norms *self.basis.basis_norms_const**self.basis.ndim
         coef = np.sum(X.T * y * w, -1) / norms 
-        self.model  = self.orth_poly.set_coef(coef) 
+        self.model  = self.basis.set_coef(coef) 
         self.active_= range(self.num_basis)
         self.coef   = coef
 
@@ -106,7 +106,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.fit_method = 'OLS' 
         x = np.array(x, copy=False, ndmin=2)
         y = np.array(y, copy=False, ndmin=2)
-        X = self.orth_poly.vandermonde(x)
+        X = self.basis.vandermonde(x)
         y = np.squeeze(y)
 
         n_splits= kwargs.get('n_splits', X.shape[0])
@@ -145,7 +145,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.fit_method = 'OLSLARS' 
         x = np.array(x, copy=False, ndmin=2)
         y = np.array(y, copy=False, ndmin=2)
-        X = self.orth_poly.vandermonde(x)
+        X = self.basis.vandermonde(x)
         y = np.squeeze(y)
         ## parameters for LassoLars 
         n_splits= kwargs.get('n_splits', X.shape[0])
@@ -195,7 +195,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.fit_method = 'LASSOLARS' 
         x = np.array(x, copy=False, ndmin=2)
         y = np.array(y, copy=False, ndmin=2)
-        X = self.orth_poly.vandermonde(x)
+        X = self.basis.vandermonde(x)
         y = np.squeeze(y)
         ## parameters for LassoLars 
         n_splits= kwargs.get('n_splits', X.shape[0])
@@ -229,9 +229,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         if x.shape[0] != self.ndim:
             raise ValueError('Expecting {:d}-D sampels, but {:d} given'.format(self.ndim, x.shape[0]))
         if self.fit_method == 'GLK':
-            y = self.orth_poly(x)
+            y = self.basis(x)
         else:
-            X = self.orth_poly.vandermonde(x)
+            X = self.basis.vandermonde(x)
             X = X[:, self.active_]
             y = self.model.predict(X)
         # print(r'   * {:<25s} : {}'.format('Prediction output', y.shape))
