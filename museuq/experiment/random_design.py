@@ -86,10 +86,23 @@ class RandomDesign(ExperimentBase):
                 ## 1. z ~ normal(0,1), z / norm(z)
                 ## 2. u ~ uniform(0,1 )
                 ## When using these samples, one needs to scale with p^(1/t) for Gaussian, p: polynomial degree, t =2 for Gaussian 
-                z = stats.norm.rvs(0,1,size=(self.ndim, self.n_samples))
+                ### Rerection sampling
+                ###     1. Uniformly sampling from ball with radius sqrt(2), x ~ sqrt(2)*Ball(n)
+                ###     2. Uniformly sampling y from U(0,1), y ~ U(0,1)
+                ###     3. If y <= f(x)/M accept
+                ###         Acceptance rate 1/M
+                M = 2 ** (self.ndim/2)
+                print('M = {}'.format(M))
+                n = int(2*M*self.n_samples) ## generate twice more samples
+                y = stats.uniform.rvs(0,1,size=n) 
+                
+                z = stats.norm.rvs(0,1,size=(self.ndim, n))
                 z = z/np.linalg.norm(z, axis=0)
-                u = stats.uniform.rvs(0,1,size=(self.n_samples))
+                u = stats.uniform.rvs(0,1,size=n)
                 x = z * 2**0.5 * u **(1/self.ndim)
+                fx= (2 - np.linalg.norm(x, axis=0)**2)**(self.ndim/2.0)
+                x = x.T[y <= fx/M].T
+                x = x[:,:self.n_samples]
             else:
                 raise NotImplementedError
 
