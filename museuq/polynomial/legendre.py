@@ -146,7 +146,7 @@ class Legendre(PolyBase):
         """
         self._update_basis()
         x = np.array(x, copy=False, ndmin=2)
-        vander = self.vandermonde(x, normed=False)
+        vander = self.vandermonde(x)
         d, n = x.shape ## (ndim, samples)
         if d != self.ndim:
             raise TypeError('Expected x has dimension {}, but {} is given'.format(self.ndim, d))

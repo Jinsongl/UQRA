@@ -182,6 +182,7 @@ class Hermite(PolyBase):
                 raise ValueError('hem_type is either probabilists or physicists')
 
         return self.basis, self.basis_norms
+
     def __call__(self, x):
         """
         Evaluate polynomials at given values x
@@ -190,7 +191,8 @@ class Hermite(PolyBase):
         """
         self._update_basis()
         x = np.array(x, copy=False, ndmin=2)
-        vander = self.vandermonde(x, normed=False)
+        vander = self.vandermonde(x)
+        # vander = self.vandermonde(x, normed=False)
         d, n = x.shape ## (ndim, samples)
         if d != self.ndim:
             raise TypeError('Expected x has dimension {}, but {} is given'.format(self.ndim, d))
