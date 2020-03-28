@@ -19,7 +19,7 @@ class Legendre(PolyBase):
 
     Orthogonality:
     domain: [-1,1]
-    \int Pm(x) Pn(x) dx = 1/(2n+1) 1{mn} 
+    \int Pm(x) Pn(x) dx = 2/(2n+1) 1{mn} 
     """
 
     def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total'):
@@ -47,18 +47,18 @@ class Legendre(PolyBase):
 
         """
         super().gauss_quadrature(n)
-
-        ## for unspecified distribution parameters, default (loc, scale) = (0,1)
+        ## for unspecified distribution parameters, default (loc, scale) = (-1,2)
+        ## tradition from scipy.stats
         for _ in range(len(loc), self.ndim):
-            loc.append(0)
-            scale.append(1)
+            loc.append(-1)
+            scale.append(2)
 
         coords = []
         weight = []
         for iloc, iscale in zip(loc, scale):
             x, w = np.polynomial.legendre.leggauss(self.n_gauss) 
-            x = iloc + iscale* x
-            w = iscale * w
+            x = iloc + iscale/2.0*(x+1)
+            w = iscale/2.0 * w
             coords.append(x)
             weight.append(w)
 
@@ -73,6 +73,7 @@ class Legendre(PolyBase):
             Pseudo-Vandermonde matrix of given degree.
         Arguments:
             x, ndarray of shape(ndim, nsamples)
+            normed: boolean. If true, each column is normalized such that \int_-1,1 Pm(x) Pm(x) dx = 1
         """
         x    = np.array(x, copy=0, ndmin=2) + 0.0
         d, n = x.shape
@@ -145,7 +146,7 @@ class Legendre(PolyBase):
         """
         self._update_basis()
         x = np.array(x, copy=False, ndmin=2)
-        vander = self.vandermonde(x)
+        vander = self.vandermonde(x, normed=False)
         d, n = x.shape ## (ndim, samples)
         if d != self.ndim:
             raise TypeError('Expected x has dimension {}, but {} is given'.format(self.ndim, d))
