@@ -32,20 +32,22 @@ class BasicTestSuite(unittest.TestCase):
         print(w)
 
         print('--------------------Testing Hermite.call(): Hermite(d=1, p=4)--------------------')
+        print(' >>> Testing np.polynomial.hermite_e.hermeval(x) v.s. Poly(x) with random coefficients: ')
         d, p = 1, 4
         poly = museuq.Hermite(d,p)
         print(poly)
         x = np.arange(-4,4,0.5)
         for _ in range(5):
             coef = np.random.normal(size=poly.num_basis)
-            print('     - coefficients: {}'.format(np.around(coef, 2)))
+            # print('     - coefficients: {}'.format(np.around(coef, 2)))
             y0=np.polynomial.hermite_e.hermeval(x,coef)
-            poly.set_coef(coef*np.sqrt(poly.basis_norms))
+            poly.set_coef(coef)
             y1=poly(x)
             print('     - max abs error: {}'.format(np.around(max(abs(y0-y1)), 2)))
 
         
         print('--------------------Testing Hermite.call(): Hermite(d=2, p=4)--------------------')
+        print(' >>> Testing each basis one by one:')
         d, p = 2, 4
         poly = museuq.Hermite(d,p)
         print(poly)
@@ -60,26 +62,60 @@ class BasicTestSuite(unittest.TestCase):
                 coef1 = np.zeros((p+1,))
                 coef1[ideg] = 1 ##np.random.uniform(1)
                 y0= y0 * np.polynomial.hermite_e.hermeval(x[i],coef1)
-            poly.set_coef(coef*np.sqrt(poly.basis_norms))
+            poly.set_coef(coef)
             y1=poly(x)
             # print(y0)
             # print(y1)
             print('     - max abs error: {}'.format(max(abs(y0-y1))))
+            print('\n')
 
         print('--------------------Testing Vandermonde --------------------')
         ndim= 1
         p   = 3
+        print('d={:d}, p={:d}'.format(ndim, p))
         print('Physicist')
         orth_poly = museuq.Hermite(ndim, p, hem_type='physicists')
         x = np.array([-1,0,1])
         X = orth_poly.vandermonde(x, normed=False)
-        print(X)
+        X1= np.polynomial.hermite.hermvander(x,p)
+        if np.array_equal(X,X1):
+            print('     Pass: Poly.vandermonde == np.polynomial.hermite.hermvander')
 
         print('Probabilists')
         orth_poly = museuq.Hermite(ndim, p, hem_type='probabilists')
         x = np.array([-1,0,1])
         X = orth_poly.vandermonde(x, normed=False)
-        print(X)
+        X1= np.polynomial.hermite_e.hermevander(x,p)
+        if np.array_equal(X,X1):
+            print('     Pass: Poly.vandermonde == np.polynomial.hermite.hermvander')
+
+        # ndim= 2
+        # p   = 4
+        # print('d={:d}, p={:d}'.format(d, p))
+        # print('Physicist')
+        # orth_poly = museuq.Hermite(ndim, p, hem_type='physicists')
+        # x = np.random.normal(size=(ndim,10)) 
+        # X = orth_poly.vandermonde(x, normed=False)
+        # X1= np.polynomial.hermite.hermvander2d(x,p)
+        # if np.array_equal(X,X1):
+            # print('     Pass: Poly.vandermonde == np.polynomial.hermite.hermvander')
+        # else:
+            # raise ValueError
+
+
+        # print('Probabilists')
+        # orth_poly = museuq.Hermite(ndim, p, hem_type='probabilists')
+        # x = np.random.normal(size=(ndim,10)) 
+        # X = orth_poly.vandermonde(x, normed=False)
+        # X1= np.polynomial.hermite_e.hermevander2d(x,p)
+        # if np.array_equal(X,X1):
+            # print('     Pass: Poly.vandermonde == np.polynomial.hermite.hermvander')
+        # else:
+            # raise ValueError
+
+
+
+
 
         print('--------------------Testing Orthogonality --------------------')
         ndim= 2
@@ -138,7 +174,6 @@ class BasicTestSuite(unittest.TestCase):
         # X = museuq.Hermite(2,4).vandermonde(x)
         # print(np.diag(X.T.dot(X)/1000000))
 
-
     def test_Legendre(self):
         print('--------------------Testing empty instance--------------------')
         poly = museuq.Legendre()
@@ -155,24 +190,21 @@ class BasicTestSuite(unittest.TestCase):
         d, p = 1, 4
         poly = museuq.Legendre(d,p)
         print(poly)
-        x = np.arange(-4,4,0.5)
+        x = np.arange(-1,1,0.5)
         for _ in range(5):
             coef = np.random.normal(size=poly.num_basis)
             print('     - coefficients: {}'.format(np.around(coef, 2)))
             y0=np.polynomial.legendre.legval(x,coef)
+            print(max(y0))
             poly.set_coef(coef*np.sqrt(poly.basis_norms))
             y1=poly(x)
-            # y0=np.polynomial.legendre.legval(x,coef)
-            # poly.set_coef(coef)
-            # y1=poly(x)
             print('     - max abs error: {}'.format(np.around(max(abs(y0-y1)), 2)))
-
         
         print('--------------------Testing Legendre.call(): Legendre(d=2, p=4)--------------------')
         d, p = 2, 4
         poly = museuq.Legendre(d,p)
         print(poly)
-        x = np.random.normal(size=(2,1000))
+        x = np.random.uniform(-1,1,size=(d,1000))
         for i in range(poly.num_basis):
             coef = np.zeros((poly.num_basis,))
             coef[i] = 1 
@@ -183,18 +215,32 @@ class BasicTestSuite(unittest.TestCase):
                 coef1 = np.zeros((p+1,))
                 coef1[ideg] = 1 ##np.random.uniform(1)
                 y0= y0 * np.polynomial.legendre.legval(x[i],coef1)
-            poly.set_coef(coef*np.sqrt(poly.basis_norms))
+            poly.set_coef(coef)
             y1=poly(x)
-            # print(y0)
-            # print(y1)
             print('     - max abs error: {}'.format(max(abs(y0-y1))))
 
         print('--------------------Testing Orthogonality --------------------')
-        x = sp.random.uniform(-1,1,size=(2,int(1e6)))
+        ndim= 1
+        n   = int(1e6)
+        print('d={:d}, n={:d}'.format(ndim, n))
+        x = sp.random.uniform(-1,1,size=(ndim,n))
         print(np.mean(x,axis=1))
-        X = museuq.Legendre(2,4).vandermonde(x)
-        print(np.diag(X.T.dot(X)/1000000))
+        print(np.max( x,axis=1))
+        print(np.min( x,axis=1))
+        for p in range(1,10):
+            X = museuq.Legendre(ndim,p).vandermonde(x)
+            print(np.diag(X.T.dot(X)/n))
 
+        ndim= 2
+        n   = int(1e6)
+        print('d={:d}, n={:d}'.format(ndim, n))
+        x = sp.random.uniform(-1,1,size=(ndim,n))
+        print(np.mean(x,axis=1))
+        print(np.max( x,axis=1))
+        print(np.min( x,axis=1))
+        for p in range(1,10):
+            X = museuq.Legendre(ndim,p).vandermonde(x)
+            print(np.diag(X.T.dot(X)/n))
     def test_cls_Legendre(self):
         print('--------------------Testing CLS Legendre--------------------')
         ndim= 2
@@ -209,7 +255,6 @@ class BasicTestSuite(unittest.TestCase):
         w = np.sqrt(P/Kp)
         Psi = (X.T * w).T
         print(np.diag(Psi.T.dot(Psi)/x.shape[1]))
-
 
     def test_cls_Hermite(self):
         print('--------------------Testing CLS Hermite --------------------')
@@ -232,7 +277,6 @@ class BasicTestSuite(unittest.TestCase):
             ## condition number, kappa = max(svd)/min(svd)
             kappa = max(abs(s)) / min(abs(s)) 
             print('kappa = {:.2f}'.format(kappa))
-
 
 if __name__ == '__main__':
     unittest.main()
