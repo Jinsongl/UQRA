@@ -11,6 +11,7 @@
 """
 import numpy as np
 import itertools, math
+import scipy.stats as stats
 from ._polybase import PolyBase
 
 class Legendre(PolyBase):
@@ -24,8 +25,10 @@ class Legendre(PolyBase):
 
     def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total'):
         super().__init__(d=d, deg=deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
-        self.name = 'Legendre'
-        self.nickname = 'Leg'
+        self.name       = 'Legendre'
+        self.nickname   = 'Leg'
+        self.dist_name  = 'Uniform'
+        self.dist_u     = [stats.uniform(-1,2), ] * self.ndim 
         self._update_basis()
 
     def gauss_quadrature(self, n, loc=[], scale=[]):

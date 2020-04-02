@@ -12,6 +12,7 @@
 import numpy as np
 import itertools, math
 from ._polybase import PolyBase
+import scipy.stats as stats
 
 class Hermite(PolyBase):
     """
@@ -25,9 +26,11 @@ class Hermite(PolyBase):
 
     def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total', hem_type='probabilists'):
         super().__init__(d=d, deg=deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
-        self.name = 'Hermite'
-        self.hem_type = hem_type
-        self.nickname = 'Heme' if hem_type.lower() == 'probabilists' else 'Hem'
+        self.name      = 'Hermite'
+        self.hem_type  = hem_type
+        self.nickname  = 'Heme' if hem_type.lower() == 'probabilists' else 'Hem'
+        self.dist_name = 'Normal'
+        self.dist_u    = [stats.norm(0,1),] * self.ndim if hem_type.lower() == 'probabilists' else [stats.norm(0,0.25),] * self.ndim 
         self._update_basis()
 
     def gauss_quadrature(self, n, loc=[], scale=[]):
