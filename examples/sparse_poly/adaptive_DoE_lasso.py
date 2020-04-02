@@ -38,7 +38,6 @@ def get_candidate_data(simparams, sampling_method, orth_poly, n_cand, n_test):
 
     return u_cand, u_test
 
-
 def get_train_data(sampling_method, optimality, sample_selected, pce_model, active_basis, nsamples, u_cand_p):
 
 
@@ -91,7 +90,7 @@ def main():
     pf          = 1e-4
 
     ## ------------------------ Define solver ----------------------- ###
-    ndim        = 2
+    # ndim        = 2
     # orth_poly   = museuq.Legendre(d=ndim, deg=15)
     # orth_poly   = museuq.Hermite(d=ndim, deg=15)
     # solver      = museuq.sparse_poly(orth_poly, sparsity=5, seed=100)
@@ -132,7 +131,7 @@ def main():
     print(' - {:<25s} : {}'.format('Simulation budget', n_budget  ))
     print(' - {:<25s} : {}'.format('Poly degree limit', plim      ))
     ### ============ Initial Values ============
-    p_init      = 2
+    p_iter_0    = 2
     n_new       = 5
     n_eval_done = 0
     n_eval_init = 20
@@ -161,7 +160,7 @@ def main():
     while True:
         i_iteration += 1
         print(' >>> Iteration No: {:d}'.format(i_iteration))
-        p = p_init if i_iteration == 0 else p
+        p = p_iter_0 if i_iteration == 0 else p
         ### update candidate data set for this p degree, cls unbuounded
         if sampling.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
             u_cand_p = p**0.5 * u_cand
@@ -220,10 +219,11 @@ def main():
         ### ============ Cheking Overfitting ============
         cv_error.append(pce_model.cv_error)
         if simparams.check_overfitting(cv_error):
-            print('     - Overfitting detected, setting p = p - 1')
+            print('     - Possible overfitting detected, setting p = p - 1')
             while len(active_basis) > 1:
                 p -= 1
                 active_basis.pop()
+                cv_error.pop()
             continue
         ### ============ calculating & updating metrics ============
         r2_score_adj.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
