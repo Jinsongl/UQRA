@@ -21,16 +21,16 @@ class PolynomialChaosExpansion(SurrogateBase):
     Class to build polynomial chaos expansion (PCE) model
     """
 
-    def __init__(self, distributions=None, p=None, random_seed=None):
+    def __init__(self, distributions=None, random_seed=None):
         super().__init__(random_seed=random_seed)
         self.name           = 'Polynomial Chaos Expansion'
         self.nickname       = 'PCE'
         self.basis          = distributions  ### a list of marginal distributions
-        self.poly_order     = p
 
         if distributions is None:
             self.ndim       = None 
             self.num_basis  = None 
+            self.poly_order = None
             self.active_    = None
             self.cv_error   = np.inf
         else:
@@ -39,7 +39,8 @@ class PolynomialChaosExpansion(SurrogateBase):
                 # self.distributions = [self.distributions,]
             self.ndim       = distributions.ndim 
             self.num_basis  = self.basis.num_basis
-            self.active_    = range(self.num_basis) 
+            self.poly_order = self.basis.deg
+            self.active_    = range(self.num_basis) if self.num_basis is not None else None
             self.cv_error   = np.inf
             # ### Now assuming same marginal distributions
             # try:
@@ -177,7 +178,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                 self.coef     = model.coef_
         # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
 
-    def fit_lassolars(self,x,y, *args, **kwargs):
+    def fit_lassolars(self,x,y,w=None, *args, **kwargs):
         """
         (weighted) Ordinary Least Error on selected basis (LARs)
         Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
@@ -197,6 +198,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         y = np.array(y, copy=False, ndmin=2)
         X = self.basis.vandermonde(x)
         y = np.squeeze(y)
+        if w is not None:
+            X = (X.T * w).T
+            y = y *w
         ## parameters for LassoLars 
         n_splits= kwargs.get('n_splits', X.shape[0])
         max_iter= kwargs.get('max_iter', 500)
@@ -232,7 +236,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             y = self.basis(x)
         else:
             X = self.basis.vandermonde(x)
-            X = X[:, self.active_]
+            # X = X[:, self.active_]
             y = self.model.predict(X)
         # print(r'   * {:<25s} : {}'.format('Prediction output', y.shape))
         return y
