@@ -22,8 +22,7 @@ class simParameters(object):
     System parameters will be different depending on solver 
 
     Arguments:
-        dist_zeta: list of selected marginal distributions from Wiener-Askey scheme
-        *OPTIONAL:
+        model_name: 
         doe_params  = [doe_method, doe_rule, doe_order]
         time_params = [time_start, time_ramp, time_max, dt]
         post_params = [qoi2analysis=[0,], stats=[1,1,1,1,1,1,0]]
@@ -35,28 +34,30 @@ class simParameters(object):
         normalize: 
     """
 
-    def __init__(self, model_name, dist_zeta_J, **kwargs):
+    def __init__(self, model_name,  **kwargs):
         sys.stdout = Logger()
         ###---------- Random system properties ------------------------
         self.seed       = [0,100]
         self.model_name = model_name.capitalize()
-        self.dist_zeta_J= dist_zeta_J   ## Joint distribution
-        self.dist_zeta_M= None          ## List of marginal distributions
 
         ###------------- Adaptive setting -----------------------------
-        self.n_budget   = kwargs.get('n_budget' , None  )
-        self.r2_bound   = kwargs.get('r2_bound' , 0.9   ) ## R-squared
-        self.mse_bound  = kwargs.get('mse_bound', None  )
-        self.mse_diff   = kwargs.get('mse_diff' , 0.05  ) 
-        self.plim       = kwargs.get('plim'     , (0, 15)) ## polynomial order limit
-        self.qdiff_bound= kwargs.get('mquantiles', 0.05  ) 
-        self.cv_bound   = kwargs.get('cv_bound' , 0.10  ) 
+        self.plim       = kwargs.get('plim'     , (0,1000))   ## polynomial degree limit
+        self.n_budget   = kwargs.get('n_budget' , 100000)
+        self.min_r2     = kwargs.get('min_r2'   , None  )   ## minimum adjusted R-squared threshold value to take
+        self.rel_mse    = kwargs.get('rel_mse'  , None  )   ## Relative mean square error 
+        self.abs_mse    = kwargs.get('abs_mse'  , None  )   ## Absolute mean square error
+        self.rel_qoi    = kwargs.get('rel_qoi'  , None  )   ## Relative error for QoI, i.e. percentage difference relative to previous simulation
+        self.abs_qoi    = kwargs.get('abs_qoi'  , None  )   ## Absolute error for QoI, i.e. decimal accuracy 
+        self.rel_cv     = kwargs.get('rel_cv'   , 0.05  )   ## percentage difference relative to previous simulation
         
         ###-------------Directories setting -----------------------------
+
         self.pwd            = ''
-        self.data_dir       = ''
-        self.data_dir_id    = ''
         self.figure_dir     = ''
+        self.data_dir_sample= ''
+        self.data_dir_result= ''
+        self.dir_id_sample  = ''
+        self.dir_id_result  = ''
         self.outfilename    = ''
 
         ###-------------Output file names -----------------------------
@@ -86,28 +87,29 @@ class simParameters(object):
 
         self.update_dir(MDOEL_NAME)  (set as default and has priority).
             if model_name is given, kwargs is ignored
-        self.update_dir(pwd=, data_dir=, figure_dir=)
+        self.update_dir(pwd=, data_dir_result=, figure_dir=)
 
         Updating directories of
             pwd: present working directory, self.pwd
-            data_dir: directory saving all data, self.data_dir
+            data_dir_result: directory saving all data, self.data_dir_result
             figure_dir: directory saving all figures, self.figure_dir
         """
-        data_dir_id, data_dir, figure_dir =  self._make_output_dir(self.model_name)
-        self.pwd        = kwargs.get('pwd'          , os.getcwd()   )
-        self.data_dir   = kwargs.get('data_dir'     , data_dir      )
-        self.figure_dir = kwargs.get('figure_dir'   , figure_dir    )
-        self.data_dir_id= kwargs.get('data_dir_id'  , data_dir_id   )
+        data_dir_sample, data_dir_result, dir_id_sample, dir_id_result, figure_dir =  self._make_output_dir()
+        self.pwd            = kwargs.get('pwd'              , os.getcwd()    )
+        self.figure_dir     = kwargs.get('figure_dir'       , figure_dir     )
+        self.data_dir_result= kwargs.get('data_dir_result'  , data_dir_result)
+        self.data_dir_sample= kwargs.get('data_dir_sample'  , data_dir_sample)
+        self.dir_id_sample  = kwargs.get('dir_id_sample'    , dir_id_sample  )
+        self.dir_id_result  = kwargs.get('dir_id_result'    , dir_id_result  )
 
     def set_adaptive_parameters(self, **kwargs):
 
         self.is_adaptive=True
-        self.n_budget   = kwargs.get('n_budget' , np.inf)
-        self.r2_bound   = kwargs.get('r2_bound' , 0.9   )
-        self.mse_bound  = kwargs.get('mse_bound', None  )
-        self.mse_diff   = kwargs.get('mse_diff' , 0.05  ) 
-        self.plim       = kwargs.get('plim'     , (0, 15))
-        self.qdiff_bound= kwargs.get('q_bound'  , 0.05  ) 
+        for ikey, ivalue in kwargs.items():
+            try:
+                setattr(self, ikey, ivalue)
+            except:
+                raise KeyError
 
     def set_params(self, **kwargs):
         """
@@ -122,7 +124,7 @@ class simParameters(object):
         self.dt         = kwargs.get('dt'           , self.time_params)
 
         ## define parameters related to post processing
-        self.post_params    = kwargs.get('post_params'  , [None, [1,1,1,1,1,1,0]])
+        self.post_params    = kwargs.get('post_params'  , [None, ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']])
         self.qoi2analysis   = kwargs.get('qoi2analysis' , self.post_params[0]) 
         self.stats          = kwargs.get('stats'        , self.post_params[1])
 
@@ -140,7 +142,6 @@ class simParameters(object):
         ## 
         ###-------------Other special params ----------------------------
         self.normalize = kwargs.get('normalize', False)
-        self.dist_zeta_M = kwargs.get('dist_zeta_M', None)
 
     def info(self):
         print(r'------------------------------------------------------------')
@@ -148,25 +149,14 @@ class simParameters(object):
         print(r'------------------------------------------------------------')
         print(r' > Required parameters:')
         print(r'   * {:<25s} : {}'.format('Model Name:', self.model_name))
-        dist_zeta_J_names = []
-        for idist in self.dist_zeta_J:
-            try:
-                dist_name = idist.name
-            except AttributeError:
-                dist_name = idist.dist.name
-            dist_zeta_J_names.append(dist_name)
-        print(r'   * {:<25s} : {} '.format('Joint zeta distribution', dist_zeta_J_names))
-        # print(r'   * {:<25s} : {} '.format('Joint x distribution', self.dist_x_J))
 
         print(r' > Working directory:')
         print(r'   WORKING_DIR: {}'.format(os.getcwd()))
         print(r'   +-- MODEL: {}'.format(self.figure_dir[:-7]))
         print(r'   |   +-- {:<6s}: {}'.format('FIGURE',self.figure_dir))
-        print(r'   |   +-- {:<6s}: {}'.format('DATA',self.data_dir))
+        print(r'   |   +-- {:<6s}: {}'.format('DATA',self.data_dir_result))
 
         print(r' > Optional parameters:')
-        if self.dist_zeta_M:
-            print(r'   * {:<15s} : '.format('Marginal distributions'))
         if self.time_params:
             print(r'   * {:<15s} : '.format('time parameters'))
             print(r'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('start', self.time_start, 'end', self.time_max ))
@@ -175,20 +165,24 @@ class simParameters(object):
             print(r'   * {:<15s} '.format('post analysis parameters'))
             qoi2analysis = self.qoi2analysis if self.qoi2analysis is not None else 'All'
             print(r'     - {:<23s} : {} '.format('qoi2analysis', qoi2analysis))
-            stats_list = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
-            print(r'     - {:<23s} : {} '.format('statistics'  , list(compress(stats_list, self.stats)) ))
+            print(r'     - {:<23s} : {} '.format('statistics'  , self.stats)) 
         if self.is_adaptive:
             print(r'   * {:<15s} '.format('Adaptive parameters'))
-            print(r'     - {:<23s} : {} '.format('# Budget', self.n_budget))
-            print(r'     - {:<23s} : {} '.format('p-order', self.plim))
-            print(r'     - {:<23s} : {} '.format('r2 bound', self.r2_bound))
-            print(r'     - {:<23s} : {} '.format('mse bound', self.mse_bound))
-            print(r'     - {:<23s} : {} '.format('diff mse bound', self.mse_diff))
-            print(r'     - {:<23s} : {} '.format('diff quantile bound', self.qdiff_bound))
+            print(r'     - {:<23s} : {} '.format('Simulation budget', self.n_budget))
+            print(r'     - {:<23s} : {} '.format('Poly degree limit', self.plim))
+            print(r'     - {:<23s} : {} '.format('Relvative CV error', self.rel_cv))
+            if self.min_r2:
+                print(r'     - {:<23s} : {} '.format('R2 bound', self.min_r2))
+            if self.rel_mse:
+                print(r'     - {:<23s} : {} '.format('Relative MSE', self.rel_mse))
+            if self.abs_mse:
+                print(r'     - {:<23s} : {} '.format('Absolute MSE', self.abs_mse))
+            if self.rel_qoi:
+                print(r'     - {:<23s} : {} '.format('Relative QoI', self.rel_qoi))
+            if self.abs_qoi:
+                print(r'     - {:<23s} : {} '.format('QoI decimal accuracy', self.abs_qoi))
 
-
-
-    def _make_output_dir(self, model_name):
+    def _make_output_dir(self):
         """
         WORKING_DIR/
         +-- MODEL_DIR
@@ -199,39 +193,42 @@ class simParameters(object):
         |   +-- DATA_DIR
 
         """
-        model_name = model_name.capitalize()
-        WORKING_DIR     = os.getcwd()
-        MODEL_DIR       = os.path.join(WORKING_DIR, model_name)
-        FIGURE_DIR= os.path.join(MODEL_DIR,r'Figures')
-        # DATA_DIR  = os.path.join(MODEL_DIR,r'Data')
+        working_dir = os.getcwd()
+        model_dir   = os.path.join(working_dir, self.model_name)
+        figure_dir  = os.path.join(model_dir,r'Figures')
         current_os  = sys.platform
         if current_os.upper()[:3] == 'WIN':
-            DATA_DIR= os.path.join('G:','My Drive','MUSE_UQ_DATA')
-            MODEL_DIR_DATA_ID = self._get_gdrive_folder_id(model_name)
+            data_dir_sample = r'G:\My Drive\MUSE_UQ_DATA\Samples' 
+            data_dir_result = os.path.join('G:','My Drive','MUSE_UQ_DATA')
+            dir_id_result   = self._get_gdrive_folder_id(self.model_name)
+            dir_id_sample   = None 
         elif current_os.upper() == 'DARWIN':
-            DATA_DIR= '/Users/jinsongliu/External/MUSE_UQ_DATA'
-            MODEL_DIR_DATA_ID = self._get_gdrive_folder_id(model_name)
+            data_dir_sample = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
+            data_dir_result = '/Users/jinsongliu/External/MUSE_UQ_DATA'
+            dir_id_result   = self._get_gdrive_folder_id(self.model_name)
+            dir_id_sample   = None 
         elif current_os.upper() == 'LINUX':
-            MODEL_DIR_DATA_ID = None 
-            DATA_DIR = WORKING_DIR
-            # DATA_DIR= '/home/jinsong/Box/MUSE_UQ_DATA'
+            dir_id_result   = None 
+            dir_id_sample   = None 
+            data_dir_result = WORKING_DIR
+            data_dir_sample = r'/home/jinsong/Documents/MUSE_UQ_DATA/Samples'
         else:
             raise ValueError('Operating system {} not found'.format(current_os))    
         
-        DATA_DIR  = os.path.join(DATA_DIR, model_name,r'Data')
-        # MODEL_DIR_DATA_ID = GDRIVE_DIR_ID[model_name.upper()] 
+        data_dir_result  = os.path.join(data_dir_result, self.model_name)
+        # dir_id_result = GDRIVE_DIR_ID[self.model_name.upper()] 
 
         # Create directory for model  
         try:
-            os.makedirs(MODEL_DIR)
-            os.makedirs(DATA_DIR)
-            os.makedirs(FIGURE_DIR)
-            # print(r'Data, Figure directories for model {} is created'.format(model_name))
+            os.makedirs(model_dir)
+            os.makedirs(data_dir_result)
+            os.makedirs(figure_dir)
+            # print(r'Data, Figure directories for model {} is created'.format(self.model_name))
         except FileExistsError:
             # one of the above directories already exists
-            # print(r'Data, Figure directories for model {} already exist'.format(model_name))
+            # print(r'Data, Figure directories for model {} already exist'.format(self.model_name))
             pass
-        return MODEL_DIR_DATA_ID, DATA_DIR, FIGURE_DIR
+        return data_dir_sample, data_dir_result, dir_id_sample, dir_id_result, figure_dir
 
     def _get_gdrive_folder_id(self, folder_name):
         """
@@ -254,14 +251,32 @@ class simParameters(object):
         return folder_id[:33]
 
 
-    def is_adaptive_continue(self, nsim, **kwargs):
+    def check_overfitting(self, cv_error):
+        """
+        Return True if overfitting detected
+
+        """
+
+        ## Cross validation error used to check overfitting. 
+        ## At least three cv error are needed to check overfitting, [cv1, cv2, cv3]
+        ##  Return overfitting warning when 1: cv2 > (1+rel_cv)*cv1; 2: cv3 > cv2 
+        ##  two consecutive increasing of cv error, and previous increment is larger than rel_cv
+
+        if len(cv_error) < 3:
+            return False
+        else:
+            cv_error = np.array(cv_error)
+            if ((cv_error[-2]- cv_error[-3])/cv_error[-3] > self.rel_cv ) and (cv_error[-2] < cv_error[-1]):
+                return True
+
+    def is_adaptive_continue(self, nsim_completed, poly_order, **kwargs):
         """
         Stopping criteria for adaptive algorithm
-            Algorithm will have a hard stop (return False) when either of following occurs:
-                1. nsim >= n_budget
-                2. for PCE, poly_order > plim[-1]
+            Algorithm will have a hard stop (return False) when one of following occurs:
+                1. nsim_completed >= n_budget
+                2. for PCE, poly_order exceeding the largest allowable, plim[-1]
         Arguments:
-            nsim: number of evaluations has been done (should be <= self.n_budget)
+            nsim_completed: number of evaluations has been done (should be <= self.n_budget)
         Optional:
             poly_order: for PCE model, polynomial order (should be in range self.plim) 
 
@@ -272,115 +287,98 @@ class simParameters(object):
                 2. at least one of the given metric criteria is NOT met
         """
 
-        print(' > Checking adaptive conditions...')
-        is_adaptive = []
-        ## Algorithm stop when nsim >= n_budget 
-        if nsim > self.n_budget:
-            print(' >! Stopping... Reach simulation budget < {:d} >= {:d} >'.format(nsim, self.n_budget))
+        ## Algorithm stop when nsim_completed >= n_budget 
+        if nsim_completed > self.n_budget:
+            print(' >! Stopping... Reach simulation budget,  {:d} >= {:d} '.format(nsim_completed, self.n_budget))
             return False
 
         ## Algorithm stop when poly_order > self.plim[-1]
-        ## If poly_order is not given, this criteria should not affect the running of the algorithm. Return True
-        poly_order = kwargs.pop('poly_order', -np.inf)
+        ## If poly_order is not given, setting the poly_order value to -inf, which will not affect the checking of other criteria 
         if poly_order > self.plim[1]:
             print(' >! Stopping... Exceed max polynomial order p({:d}) > {:d}'.format(poly_order, self.plim[1]))
             return False
 
-        cv_error = kwargs.pop('cv_error', None)
-        if (cv_error is None) or (not cv_error) or (len(cv_error) < 3):
-            pass
-        else:
-            cv_error = np.array(cv_error)
-            if ((cv_error[-2]- cv_error[-3])/cv_error[-3] > self.cv_bound ) and (cv_error[-2] < cv_error[-1]):
-                print(' > Warning: Potential overfitting detected (CV error increasing) {}'.format( np.around(cv_error, 4)))
 
         ### For following metrics, algorithm stop (False) when all of these met.
-        ### i.e. Algorithm continue (True) when at least one of these metrics not met
-        is_metrics = []
+        ### i.e. If any metric is True ( NOT met), algorithm will continue (return True) 
+        is_any_metrics_not_met = []
+
+        # for imetric_name, imetric_value in kwargs.items():
+            # threshold_value = getattr(self, imetric_name)
+            # if threshold_value is None:
+                # print(' Warning: {:s} provided but threshold value was not given'.format(imetric_name))
+                # continue
 
 
-        ## Algorithm continue when r2 <= r2_bound (NOT met, return True)
-        r2    = kwargs.pop('r2', None)
+        ## Algorithm continue when r2 <= min_r2 (NOT met, return True)
+
+        if self.min_r2 is None:
+            raise ValueError(' R squared value provided but R2 threshold was not given. min_r2 = None')
+        try: 
+            r2 = kwargs.pop('r2')
+        except KeyError:
+            try:
+                r2 = kwargs.pop('adj_r2')
+            except KeyError:
+                r2 = None
+
         if r2 is None:
-            is_r2 = False
-        elif (not r2) or (len(r2) < 2): ## [r2 is empty (initial step), not defined, not engouth data]
-            is_r2 = True
+            is_r2 = False  ## if not defined, then return False. is_any_metrics_not_met=[*, *, False, *, *].any() will not affect the continue of adaptive
         else:
-            r2    = np.array(r2)
-            if (r2 > 1.0).any():
-                print(' > Warning: Potential overfitting detected (R-Squared > 1): {}'.format( np.around(cv_error, 4)))
-            else:
-                is_r2 = r2 < self.r2_bound
-                is_r2 = is_r2[-2:]
-                is_r2 = is_r2.any()
-                if not is_r2:
-                    print('     - Condition met: < {:<15s}: {} >'.format('R-squred', np.squeeze(r2[-2:])))
-        is_metrics.append(is_r2)
+            ## condition met when consecutive two runs meet condition
+            ## [r2 is empty (initial step), not defined, not engouth data] or one of last two R2 is less than min_r2
+            is_r2 = len(r2) < 2 or  r2[-2] < self.min_r2 or r2[-1] < self.min_r2 
 
-        ## Algorithm continue when r2_adj <= r2_bound (NOT met, return True)
-        r2_adj = kwargs.pop('r2_adj', None)
-        if r2_adj is None:
-            is_r2_adj = False
-        elif (not r2_adj)  or (len(r2_adj) < 2): ## [r2_adj is empty (initial step), not defined, not engouth data]
-            is_r2_adj = True
-        else:
-            r2_adj    = np.array(r2_adj)
-            is_r2_adj = r2_adj < self.r2_bound
-            is_r2_adj = is_r2_adj[-2:]
-            is_r2_adj = is_r2_adj.any()
-            if not is_r2_adj:
-                print('     - Condition met: < {:<15s}: {} >'.format('Adjusted R2', np.squeeze(r2_adj[-2:])))
-        is_metrics.append(is_r2_adj)
+        is_any_metrics_not_met.append(is_r2)
 
         ## Algorithm continue when mse continue when mse > mse_bound(NOT met, return True)
-        mse    = kwargs.pop('mse', None)
+        mse = kwargs.pop('mse', None)
         if mse is None:
             is_mse = False
-        elif not mse:
-            is_mse = True
+            is_any_metrics_not_met.append(is_mse)
         else:
-            mse    = np.array(mse)
-            is_mse = mse >= self.mse_bound 
-            is_mse = is_mse[-2:]
-            is_mse = is_mse.any()
-            if not is_mse:
-                print('     - Condition met: < {:<15s}: {} >'.format('MSE ', np.squeeze(mse[-2:])))
-        is_metrics.append(is_mse)
+            mse = np.array(mse)
+            if self.abs_mse is None and self.rel_mse is None:
+                raise ValueError(' MSE value provided but neither rel_mse or abs_mse was given')
+            if self.abs_mse:
+                is_mse = len(mse) < 2 or mse[-2] > self.abs_mse or mse[-1] > self.abs_mse
+                is_any_metrics_not_met.append(is_mse)
+            if self.rel_mse:
+                if len(mse) < 3:
+                    is_mse = True
+                else:
+                    rel_mse = abs((mse[1:] - mse[:-1])/mse[:-1])
+                    is_mse = rel_mse[-2] > self.rel_mse or rel_mse[-1] > self.rel_mse
+                is_any_metrics_not_met.append(is_mse)
 
-        ## Algorithm continue when mse_diff continue when mse_diff > self.mse_diff(NOT met, return True)
-        if mse is None:
-            is_mse_diff = False
-        elif (not mse) or (len(mse) < 3): ## no mse is given or empty for initial step
-            is_mse_diff = True
+        ## Algorithm stop when rel_qoi continue when qdiff > self.rel_qoi
+        qoi = kwargs.pop('qoi', None)
+        if qoi is None:
+            is_qoi = False
+            is_any_metrics_not_met.append(is_qoi)
         else:
-            mse      = np.array(mse)
-            mse_diff = abs((mse[1:] - mse[:-1])/mse[:-1])
-            is_mse_diff = mse_diff > self.mse_diff
-            is_mse_diff = is_mse_diff[-2:]
-            is_mse_diff = is_mse_diff.any()
-            if not is_mse_diff:
-                print('     - Condition met: < {:<15s}: {} >'.format('MSE diff', np.squeeze(mse_diff[-2:])))
-        is_metrics.append(is_mse_diff)
+            qoi = np.array(qoi)
+            if self.abs_qoi is None and self.rel_qoi is None:
+                raise ValueError(' MSE value provided but neither rel_qoi or abs_qoi was given')
+            if self.abs_qoi:
+                if len(qoi) < 3:
+                    is_qoi = True
+                else:
+                    qoi_diff = abs((qoi[1:] - qoi[:-1]))
+                    is_qoi = qoi_diff[-2] > self.abs_qoi or qoi_diff[-1] > self.abs_qoi
+                is_any_metrics_not_met.append(is_qoi)
+            if self.rel_qoi:
+                if len(qoi) < 3:
+                    is_qoi = True
+                else:
+                    rel_qoi = abs((qoi[1:] - qoi[:-1])/qoi[:-1])
+                    is_qoi = rel_qoi[-2] > self.rel_qoi or rel_qoi[-1] > self.rel_qoi
+                is_any_metrics_not_met.append(is_qoi)
 
-        ## Algorithm stop when mquantiles continue when qdiff > self.qdiff_bound
-        mquantiles = kwargs.pop('mquantiles', None)
-        if mquantiles is None:
-            is_qdiff = False
-        elif (not mquantiles) or (len(mquantiles) < 3):
-            is_qdiff = True
-        else:
-            mquantiles = np.array(mquantiles)
-            qdiff    = abs((mquantiles[1:] - mquantiles[:-1])/mquantiles[:-1])
-            is_qdiff = qdiff > self.qdiff_bound
-            is_qdiff = is_qdiff[-2:]
-            is_qdiff = is_qdiff.any()
-            if not is_qdiff:
-                print('     - Condition met: < {:<15s}: {} >'.format('mquantiles', np.squeeze(mquantiles[-2:])))
-        is_metrics.append(is_qdiff)
         ### If any above metric is True ( NOT met), algorithm will continue (return True)
-
         if not kwargs:
-            is_adaptive = np.array(is_metrics).any()
+            ### kwargs should be empty by now, otherwise raise valueerror
+            is_adaptive = np.array(is_any_metrics_not_met).any()
             return is_adaptive
         else:
             raise ValueError('Given stopping criteria {} not defined'.format(kwargs.keys()))
