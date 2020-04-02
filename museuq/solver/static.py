@@ -75,16 +75,15 @@ class Ishigami(SolverBase):
         # else:
             # y = np.sin(x[0,:]) + self.p[0] * np.sin(x[1,:])**2 + self.p[1]*x[2,:]**4 * np.sin(x[0,:])
 
-    def map_domain(self, u, dist_u):
+    def map_domain(self, u, u_cdf):
         """
-        mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
         Argument:
             two options:
             1. cdf(u)
-            2. u and dist_u
+            2. u and u_cdf
         """
-        u, dist_u = super().map_domain(u, dist_u)
-        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -108,16 +107,15 @@ class xsinx(SolverBase):
         y = x * np.sin(x)
         return y
 
-    def map_domain(self, u_cdf=None, u=None, dist_u=None):
+    def map_domain(self, u, u_cdf):
         """
-        mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
         Argument:
             two options:
             1. cdf(u)
-            2. u and dist_u
+            2. u and u_cdf
         """
-        u, dist_u = super().map_domain(u, dist_u)
-        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -165,15 +163,15 @@ class sparse_poly(SolverBase):
         coef[random.sample(range(0, self.num_basis), self.num_basis - k)] = 0.0
         return coef
 
-    def map_domain(self, u, dist_u):
+    def map_domain(self, u, u_cdf):
         """
-        mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
         Argument:
-            u: ndarray of shape(ndim, nsamples)
-            dist_u: list of distributions from scipy.stats
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
         """
-        u, dist_u = super().map_domain(u, dist_u)
-        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+
+        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -198,28 +196,16 @@ class poly4th(SolverBase):
         y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
         return y
 
-    def map_domain(self, u_cdf=None, u=None, dist_u=None):
+    def map_domain(self,u, u_cdf):
         """
-        mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
         Argument:
             two options:
             1. cdf(u)
-            2. u and dist_u
+            2. u and u_cdf
         """
 
-        u_cdf = []
-        u = np.array(u, copy=False, ndmin=2)
-        if isinstance(dist_u, (list, tuple)):
-            for _ in range(len(dist_u), self.ndim):
-                dist_u.append(stats.uniform(0,1))
-        else:
-            assert hasattr(stats, dist_u.dist.name)
-            dist_u = [dist_u,] * self.ndim
-
-        for iu, idist in zip(u, dist_u):
-            assert hasattr(stats, idist.dist.name)
-            u_cdf.append(idist.cdf(iu))
-        u_cdf = np.array(u_cdf)
+        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -251,17 +237,16 @@ class polynomial_square_root_function(SolverBase):
         return y
 
 
-    def map_domain(self, u_cdf=None, u=None, dist_u=None):
+    def map_domain(self,u, u_cdf):
         """
-        mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
         Argument:
             two options:
             1. cdf(u)
-            2. u and dist_u
+            2. u and u_cdf
         """
 
-        u, dist_u = super().map_domain(u, dist_u)
-        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -306,14 +291,13 @@ class four_branch_system(SolverBase):
         y = 10 - y 
         return y
 
-    def map_domain(self, u, dist_u):
+    def map_domain(self, u, u_cdf):
         """
-        mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
         Argument:
-            u and dist_u
+            u and u_cdf
         """
-        u, dist_u = super().map_domain(u, dist_u)
-        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -323,7 +307,7 @@ class polynomial_product_function(SolverBase):
     y = 1/2 * sum( xi**4 + xi**2 + 5xi), i = 1, ..., d
 
     This toy case is useful to evaluate the ability of the methods to cope with high dimensional problems. 
-    x: ndarray of shape(ndim, n_samples)
+    x: np.ndarray of shape(ndim, n_samples)
 
     Benchmarks:
     d        T        prob(y > T)
@@ -352,16 +336,15 @@ class polynomial_product_function(SolverBase):
         y = 0.5 * np.sum(y, axis=0)
         return y
 
-    def map_domain(self, u_cdf=None, u=None, dist_u=None):
+    def map_domain(self,u, u_cdf):
         """
-        mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
         Argument:
             two options:
             1. cdf(u)
-            2. u and dist_u
+            2. u and u_cdf
         """
-        u, dist_u = super().map_domain(u, dist_u)
-        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x
@@ -470,14 +453,13 @@ class franke(SolverBase):
         f  =  f1 + f2 + f3 - f4
         return f
 
-    def map_domain(self, u, dist_u):
+    def map_domain(self, u, u_cdf):
         """
-        mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
         Argument:
-            u and dist_u
+            u and u_cdf
         """
-        u, dist_u = super().map_domain(u, dist_u)
-        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         return x

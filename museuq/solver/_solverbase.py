@@ -51,8 +51,8 @@ class SolverBase(object):
         else:
             assert isfromstats(dist_u)
             dist_u = [dist_u,] * self.ndim
-
-        return u, dist_u
+        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        return u_cdf
 
 
 
