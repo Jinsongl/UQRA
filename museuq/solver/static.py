@@ -59,7 +59,6 @@ class Ishigami(SolverBase):
         self.ndim = int(3)
         self.p    = p
         self.distributions = [stats.uniform(-np.pi, 2*np.pi),] * self.ndim
-
      
     def __str__(self):
         return 'solver: Ishigami function (p={})'.format(self.p)
@@ -160,6 +159,7 @@ class sparse_poly(SolverBase):
         """
         np.random.seed(seed)
         coef = dist.rvs(loc=theta[0], scale=theta[1], size=self.num_basis)
+        random.seed(seed)
         coef[random.sample(range(0, self.num_basis), self.num_basis - k)] = 0.0
         return coef
 
