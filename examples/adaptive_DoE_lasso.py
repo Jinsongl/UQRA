@@ -10,9 +10,7 @@
 
 """
 import museuq, warnings
-import numpy as np, chaospy as cp, os, sys
-from tqdm import tqdm
-import scipy.stats as stats
+import numpy as np, os, sys
 import collections
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
@@ -314,9 +312,7 @@ def main():
     else:
         filename = 'Adaptive_{:s}_{:s}_{:s}.npy'.format(solver.nickname.capitalize(), sampling.capitalize(), fit_method.capitalize())
     data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
-    print(data.shape)
-    np.save(filename, data)
-    # np.save(os.path.join(simparams.data_dir_result, filename), np.array(QoI))
+    np.save(os.path.join(simparams.data_dir_result, filename), data)
 
 
 
