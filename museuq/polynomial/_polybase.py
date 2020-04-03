@@ -76,7 +76,18 @@ class PolyBase(object):
         raise NotImplementedError
     def __get_basis_degree(self):
         """
-        self.basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
+        self.basis_degree, list of tuples containing degree component for each basis function.
+        E.g. for ndim = 3, deg = 5, the results are: 
+        (   (0, 0, 0)
+            (0, 0, 1)
+            ...
+            (0, 2, 3)
+            (0, 3, 2)
+            (0, 5, 0)
+            ...
+            (5, 0, 0) )
+        len(tuple) = ndim
+            (3,0,2) -> x1**3 + x2**0 + x3**2
         """
 
         basis_degree = []

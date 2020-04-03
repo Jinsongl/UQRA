@@ -110,8 +110,9 @@ class Hermite(PolyBase):
         if self.basis_degree is None:
             self._update_basis()
         for i, ibasis_degree in enumerate(self.basis_degree):
-            ### ith polynomial, it is composed of ibasis_degree = (l,m,n)
+            ### ibasis_degree = (l,m,n,k), assume ndim=4
             for idim, ideg in enumerate(ibasis_degree):
+                ### (0,l), (1,m), (2,n), (3,k)
                 vander[:,i] = vander[:,i] * vander_ind[idim,:,ideg]
         if normed:
             vander = vander / np.sqrt(self.basis_norms)
