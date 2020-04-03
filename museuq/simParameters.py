@@ -48,6 +48,7 @@ class simParameters(object):
         self.abs_mse    = kwargs.get('abs_mse'  , None  )   ## Absolute mean square error
         self.rel_qoi    = kwargs.get('rel_qoi'  , None  )   ## Relative error for QoI, i.e. percentage difference relative to previous simulation
         self.abs_qoi    = kwargs.get('abs_qoi'  , None  )   ## Absolute error for QoI, i.e. decimal accuracy 
+        self.qoi_val    = kwargs.get('qoi_val'  , None  )   ## QoI value up to decimal accuracy 
         self.rel_cv     = kwargs.get('rel_cv'   , 0.05  )   ## percentage difference relative to previous simulation
         
         ###-------------Directories setting -----------------------------
@@ -358,8 +359,15 @@ class simParameters(object):
             is_any_metrics_not_met.append(is_qoi)
         else:
             qoi = np.array(qoi)
-            if self.abs_qoi is None and self.rel_qoi is None:
-                raise ValueError(' MSE value provided but neither rel_qoi or abs_qoi was given')
+            if self.abs_qoi is None and self.rel_qoi is None and self.qoi_val is None:
+                raise ValueError(' QoI value provided but none of rel_qoi, abs_qoi, qoi_val was given')
+
+            if self.qoi_val:
+                if len(qoi) < 1:
+                    is_qoi = True
+                else:
+                    is_qoi = qoi[-1] > self.qoi_val
+                is_any_metrics_not_met.append(is_qoi)
             if self.abs_qoi:
                 if len(qoi) < 3:
                     is_qoi = True
