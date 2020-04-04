@@ -113,32 +113,32 @@ def main():
     ## ------------------------ Parameters set-up ----------------------- ###
     pf          = 1e-4
     ## ------------------------ Define solver ----------------------- ###
-    ndim        = 2
-    orth_poly   = museuq.Legendre(d=ndim, deg=15)
+    # ndim        = 2
+    # orth_poly   = museuq.Legendre(d=ndim, deg=50)
     # orth_poly   = museuq.Hermite(d=ndim, deg=15, hem_type='physicists')
     # orth_poly   = museuq.Hermite(d=ndim, deg=15, hem_type='probabilists')
-    solver      = museuq.sparse_poly(orth_poly, sparsity=5, seed=100)
-    orth_poly   = museuq.Legendre(d=solver.ndim)
+    # solver      = museuq.sparse_poly(orth_poly, sparsity=10, seed=100)
+    # orth_poly   = museuq.Legendre(d=solver.ndim)
     # orth_poly   = museuq.Hermite(d=solver.ndim)
 
-    # solver      = museuq.Ishigami()
+    solver      = museuq.Ishigami()
 
     simparams   = museuq.simParameters(solver.nickname)
-
+    print(simparams.data_dir_result)
     ### ============ Adaptive parameters ============
     plim        = (2,100)
-    n_budget    = 2000 
+    n_budget    = 200000 
     n_cand      = int(1e5)
     n_test      = -1 
     sampling    = 'CLS'
-    optimality  = None #'D'
+    optimality  = None #'D', 'S', None
     fit_method  = 'LASSOLARS'
-    k_sparsity  = 25 # guess. K sparsity to meet RIP condition 
-    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, min_r2=0.9, qoi_val=0.0001)
+    k_sparsity  = 15 # guess. K sparsity to meet RIP condition 
+    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, min_r2=0.9, abs_qoi=0.01)
     simparams.info()
 
-    orth_poly   = museuq.Hermite(d=ndim, hem_type='physicists')
-    orth_poly   = museuq.Hermite(d=ndim, hem_type='probabilists')
+    # orth_poly   = museuq.Hermite(d=ndim, hem_type='physicists')
+    # orth_poly   = museuq.Hermite(d=ndim, hem_type='probabilists')
     orth_poly   = museuq.Legendre(d=solver.ndim)
     pce_model   = museuq.PCE(orth_poly)
 
@@ -150,9 +150,9 @@ def main():
     print(' - {:<25s} : {}'.format('Simulation budget', n_budget  ))
     print(' - {:<25s} : {}'.format('Poly degree limit', plim      ))
     ### ============ Initial Values ============
-    p_iter_0    = 10
+    p_iter_0    = 6
     n_new       = 5
-    n_eval_init = 20
+    n_eval_init = 50
     n_eval_init = max(n_eval_init, 2 * k_sparsity) ## for ols, oversampling rate at least 2
     i_iteration = -1
     sample_selected = []
@@ -243,23 +243,23 @@ def main():
         y_test_hat  = pce_model.predict(u_test_p)
 
         ### ============ calculating & updating metrics ============
-        qoi = sparse_poly_coef_error(solver, pce_model)
+       
         n_eval_path.append(u_train.shape[1])
         poly_order_path.append(p)
+        
+        cv_error.append(pce_model.cv_error)        
         cv_error_path.append(pce_model.cv_error)
+        active_basis.append(pce_model.active_)        
         active_basis_path.append(pce_model.active_)
+        adj_r2.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))        
         adj_r2_path.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))
-        QoI_path.append(qoi)
-        test_error_path.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
-
-
-
-        cv_error.append(pce_model.cv_error)
-        active_basis.append(pce_model.active_)
-        adj_r2.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))
-        # QoI.append(museuq.metrics.mquantiles(y_test_hat, 1-pf))
+         # qoi = sparse_poly_coef_error(solver, pce_model)
+        qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
         QoI.append(qoi)
+        QoI_path.append(qoi)
+
         test_error.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
+        test_error_path.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
 
         ### ============ Cheking Overfitting ============
         if simparams.check_overfitting(cv_error):
@@ -299,8 +299,8 @@ def main():
     print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
     print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI)), 2)))
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
-    print(pce_model.coef)
-    print(solver.coef)
+    # print(pce_model.coef)
+    # print(solver.coef)
 
     # print(np.array(QoI).shape)
     # print(np.array(adj_r2).shape)
