@@ -234,10 +234,13 @@ class PolynomialChaosExpansion(SurrogateBase):
             raise ValueError('Expecting {:d}-D sampels, but {:d} given'.format(self.ndim, x.shape[0]))
         if self.fit_method == 'GLK':
             y = self.basis(x)
-        else:
+        elif self.fit_method in ['OLS','OLSLARS','LASSOLARS']:
+            w = kwargs.get('w', None)
             X = self.basis.vandermonde(x)
-            # X = X[:, self.active_]
+            X = (X.T * w).T if w else X
             y = self.model.predict(X)
+            y = y/w if w else y
+
         # print(r'   * {:<25s} : {}'.format('Prediction output', y.shape))
         return y
 
