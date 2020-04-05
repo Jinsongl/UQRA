@@ -123,33 +123,34 @@ class sparse_poly(SolverBase):
     """
     Sparse Polynomial
     """
-    def __init__(self, poly, coef= stats.norm, sparsity='full', seed=None):
+    def __init__(self, basis, coef= stats.norm, sparsity='full', seed=None):
         self.name = 'sparse polynomial'
         self.nickname = 'sparse_poly'
-        self.poly = poly
-        self.ndim = poly.ndim
-        self.deg  = poly.deg
-        self.num_basis = poly.num_basis
-        if self.poly.name == 'Legendre':
-            self.distributions = [stats.uniform(-1,2),] * self.ndim
-        elif self.poly.name == 'Hermite':
-            self.distributions = [stats.norm(), ] * self.ndim
-        else:
-            raise NotImplementedError
+        self.basis = basis
+        self.ndim = basis.ndim
+        self.deg  = basis.deg
+        self.num_basis = basis.num_basis
+        self.distributions = basis.dist_u
+
+        # if self.basis.name == 'Legendre':
+        # elif self.basis.name == 'Hermite':
+            # self.distributions = [stats.norm(), ] * self.ndim
+        # else:
+            # raise NotImplementedError
 
         if isfromstats(coef):
             k = self.num_basis if sparsity == 'full' else sparsity
             coef = self._random_coef(k, seed=seed)
-            self.poly.set_coef(coef)
+            self.basis.set_coef(coef)
         else:
-            self.poly.set_coef(coef)
-        self.coef = self.poly.coef
+            self.basis.set_coef(coef)
+        self.coef = self.basis.coef
 
     def __str__(self):
         return 'solver: sparse polynomial function'
 
     def run(self, x):
-        y = self.poly(x)
+        y = self.basis(x)
         return y
 
     def _random_coef(self, k, dist=stats.norm, seed=None, theta=(0,1)):
