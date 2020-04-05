@@ -41,8 +41,9 @@ class simParameters(object):
         self.model_name = model_name.capitalize()
 
         ###------------- Adaptive setting -----------------------------
-        self.plim       = kwargs.get('plim'     , (0,1000))   ## polynomial degree limit
-        self.n_budget   = kwargs.get('n_budget' , 100000)
+        self.is_adaptive= False
+        self.plim       = kwargs.get('plim'     , None)   ## polynomial degree limit
+        self.n_budget   = kwargs.get('n_budget' , None)
         self.min_r2     = kwargs.get('min_r2'   , None  )   ## minimum adjusted R-squared threshold value to take
         self.rel_mse    = kwargs.get('rel_mse'  , None  )   ## Relative mean square error 
         self.abs_mse    = kwargs.get('abs_mse'  , None  )   ## Absolute mean square error
@@ -50,6 +51,8 @@ class simParameters(object):
         self.abs_qoi    = kwargs.get('abs_qoi'  , None  )   ## Absolute error for QoI, i.e. decimal accuracy 
         self.qoi_val    = kwargs.get('qoi_val'  , None  )   ## QoI value up to decimal accuracy 
         self.rel_cv     = kwargs.get('rel_cv'   , 0.05  )   ## percentage difference relative to previous simulation
+        if self.plim is not None or self.n_budget is not None:
+            self.is_adaptive = True
         
         ###-------------Directories setting -----------------------------
 
@@ -155,7 +158,7 @@ class simParameters(object):
         print(r'   WORKING_DIR: {}'.format(os.getcwd()))
         print(r'   +-- MODEL: {}'.format(self.figure_dir[:-7]))
         print(r'   |   +-- {:<6s}: {}'.format('FIGURE',self.figure_dir))
-        print(r'   |   +-- {:<6s}: {}'.format('DATA',self.data_dir_result))
+        print(r'   |   +-- {:<6s}: {}'.format('DATA(RESULT)',self.data_dir_result))
 
         print(r' > Optional parameters:')
         if self.time_params:
