@@ -12,14 +12,14 @@
 import museuq, warnings
 import numpy as np, os, sys
 import collections
-
+import scipy.stats as stats
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
 def sparse_poly_coef_error(solver, model):
     beta    = np.array(solver.coef, copy=True)
     beta_hat= np.array(model.coef, copy=True)
 
-    solver_basis_degree = solver.poly.basis_degree
+    solver_basis_degree = solver.basis.basis_degree
     model_basis_degree  = model.basis.basis_degree
 
     if len(solver_basis_degree) > len(model_basis_degree):
@@ -113,33 +113,31 @@ def main():
     ## ------------------------ Parameters set-up ----------------------- ###
     pf          = 1e-4
     ## ------------------------ Define solver ----------------------- ###
-    # ndim        = 2
+    ndim        = 2
     # orth_poly   = museuq.Legendre(d=ndim, deg=50)
-    # orth_poly   = museuq.Hermite(d=ndim, deg=15, hem_type='physicists')
-    # orth_poly   = museuq.Hermite(d=ndim, deg=15, hem_type='probabilists')
-    # solver      = museuq.sparse_poly(orth_poly, sparsity=10, seed=100)
-    # orth_poly   = museuq.Legendre(d=solver.ndim)
-    # orth_poly   = museuq.Hermite(d=solver.ndim)
+    orth_poly   = museuq.Hermite(d=ndim, deg=30, hem_type='physicists')
+    # orth_poly   = museuq.Hermite(d=ndim, deg=20, hem_type='probabilists')
+    solver      = museuq.sparse_poly(orth_poly, sparsity=5, seed=100)
+    print(solver.coef)
 
-    solver      = museuq.Ishigami()
-
+    # solver      = museuq.Ishigami()
     simparams   = museuq.simParameters(solver.nickname)
-    print(simparams.data_dir_result)
+    # print(simparams.data_dir_result)
     ### ============ Adaptive parameters ============
     plim        = (2,100)
     n_budget    = 200000 
     n_cand      = int(1e5)
     n_test      = -1 
-    sampling    = 'CLS'
+    sampling    = 'MCS'
     optimality  = None #'D', 'S', None
     fit_method  = 'LASSOLARS'
-    k_sparsity  = 15 # guess. K sparsity to meet RIP condition 
-    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, min_r2=0.9, abs_qoi=0.01)
+    k_sparsity  = 20 # guess. K sparsity to meet RIP condition 
+    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, qoi_val=0.0001)
     simparams.info()
 
-    # orth_poly   = museuq.Hermite(d=ndim, hem_type='physicists')
+    # orth_poly   = museuq.Legendre(d=solver.ndim)
+    orth_poly   = museuq.Hermite(d=ndim, hem_type='physicists')
     # orth_poly   = museuq.Hermite(d=ndim, hem_type='probabilists')
-    orth_poly   = museuq.Legendre(d=solver.ndim)
     pce_model   = museuq.PCE(orth_poly)
 
     print(' Parameters:')
@@ -150,8 +148,8 @@ def main():
     print(' - {:<25s} : {}'.format('Simulation budget', n_budget  ))
     print(' - {:<25s} : {}'.format('Poly degree limit', plim      ))
     ### ============ Initial Values ============
-    p_iter_0    = 6
-    n_new       = 5
+    p_iter_0    = 10
+    n_new       = 2
     n_eval_init = 50
     n_eval_init = max(n_eval_init, 2 * k_sparsity) ## for ols, oversampling rate at least 2
     i_iteration = -1
@@ -167,8 +165,8 @@ def main():
     poly_order_path = []
     cv_error        = []
     cv_error_path   = []
-    adj_r2        = []
-    adj_r2_path   = []
+    adj_r2          = []
+    adj_r2_path     = []
     test_error      = []
     test_error_path = []
     QoI             = []
@@ -208,17 +206,29 @@ def main():
         if len(sample_selected) != len(np.unique(sample_selected)):
             print('sample_selected len: {}'.format(len(sample_selected)))
 
-        x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
+        # x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
+        x_train_new = u_train_new
         y_train_new = solver.run(x_train_new)
 
         u_train = np.hstack((u_train, u_train_new)) if u_train.any() else u_train_new
         x_train = np.hstack((x_train, x_train_new)) if x_train.any() else x_train_new
         y_train = np.hstack((y_train, y_train_new)) if y_train.any() else y_train_new
+        if np.isnan(y_train).any():
+            print(y_train)
+            raise ValueError('nan in y_train')
 
         if len(sample_selected) != len(np.unique(sample_selected)):
             print(len(sample_selected))
             print(len(np.unique(sample_selected)))
             raise ValueError('Duplciate samples')
+
+        ### ============ Testing ============
+        y_test      = get_test_data(simparams, u_test_p, pce_model, solver, sampling) 
+        print('max test: {}'.format(np.max(y_test)))
+
+        if np.isnan(y_test).any():
+            print(y_test)
+            raise ValueError('nan in y_test')
 
         if i_iteration == 0:
             ### 0 iteration only initialize the samples, no fitting is need to be done 
@@ -235,12 +245,18 @@ def main():
             w = None
 
         pce_model.fit_lassolars(u_train, y_train, w=w)
-        y_train_hat = pce_model.predict(u_train)
+        y_train_hat = pce_model.predict(u_train, w=w)
 
+        U_test = pce_model.basis.vandermonde(u_test_p)
+        if sampling.lower().startswith('cls'):
+            ### reproducing kernel
+            Kp = np.sum(U_test * U_test, axis=1)
+            w =  np.sqrt(pce_model.num_basis / Kp)
+        else:
+            w = None
+        y_test_hat  = pce_model.predict(u_test_p, w=w)
+        print('max test hat: {}'.format(np.max(y_test_hat)))
 
-        ### ============ Testing ============
-        y_test      = get_test_data(simparams, u_test_p, pce_model, solver, sampling) 
-        y_test_hat  = pce_model.predict(u_test_p)
 
         ### ============ calculating & updating metrics ============
        
@@ -253,8 +269,8 @@ def main():
         active_basis_path.append(pce_model.active_)
         adj_r2.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))        
         adj_r2_path.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))
-         # qoi = sparse_poly_coef_error(solver, pce_model)
-        qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
+        qoi = sparse_poly_coef_error(solver, pce_model)
+        # qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
         QoI.append(qoi)
         QoI_path.append(qoi)
 
@@ -280,14 +296,15 @@ def main():
             beta = pce_model.coef
             beta = beta[abs(beta) > 1e-6]
             print(' - {:<25s} : #{:d}'.format('Active basis', len(beta)))
-        print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
+        # print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
+        print(' - {:<25s} : {}'.format('cv error ', np.squeeze(np.array(cv_error))))
         print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI)), 2)))
         print(' - {:<25s} : {}'.format('test error', np.squeeze(np.array(test_error))))
         print('     ------------------------------------------------------------')
 
         ### ============ updating parameters ============
         p +=1
-        if not simparams.is_adaptive_continue(n_eval_path[-1], p, adj_r2=adj_r2, qoi=QoI):
+        if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI):
             break
 
     print('------------------------------------------------------------')
@@ -296,11 +313,11 @@ def main():
     print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
     print(' - {:<25s} : {} -> #{:d}'.format('Active basis', pce_model.active_, len(pce_model.active_)))
     print(' - {:<25s} : {}'.format('# Evaluations ', n_eval_path[-1]))
-    print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
+    # print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
     print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI)), 2)))
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
-    # print(pce_model.coef)
-    # print(solver.coef)
+    print(pce_model.coef)
+    print(solver.coef)
 
     # print(np.array(QoI).shape)
     # print(np.array(adj_r2).shape)
@@ -311,8 +328,8 @@ def main():
         filename = 'Adaptive_{:s}_{:s}_{:s}_{:s}.npy'.format(solver.nickname.capitalize(), sampling.capitalize(), optimality, fit_method.capitalize())
     else:
         filename = 'Adaptive_{:s}_{:s}_{:s}.npy'.format(solver.nickname.capitalize(), sampling.capitalize(), fit_method.capitalize())
-    data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
-    np.save(os.path.join(simparams.data_dir_result, filename), data)
+    # data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
+    # np.save(os.path.join(simparams.data_dir_result, filename), data)
 
 
 
