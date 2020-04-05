@@ -313,8 +313,6 @@ class simParameters(object):
 
         ## Algorithm continue when r2 <= min_r2 (NOT met, return True)
 
-        if self.min_r2 is None:
-            raise ValueError(' R squared value provided but R2 threshold was not given. min_r2 = None')
         try: 
             r2 = kwargs.pop('r2')
         except KeyError:
@@ -326,6 +324,8 @@ class simParameters(object):
         if r2 is None:
             is_r2 = False  ## if not defined, then return False. is_any_metrics_not_met=[*, *, False, *, *].any() will not affect the continue of adaptive
         else:
+            if self.min_r2 is None:
+                raise ValueError(' R squared value provided but R2 threshold was not given. min_r2 = None')
             ## condition met when consecutive two runs meet condition
             ## [r2 is empty (initial step), not defined, not engouth data] or one of last two R2 is less than min_r2
             is_r2 = len(r2) < 2 or  r2[-2] < self.min_r2 or r2[-1] < self.min_r2 
