@@ -87,28 +87,27 @@ def get_candidate_data(simparams, sampling_method, orth_poly, n_cand, n_test):
 
 def get_train_data(simparams, sampling_method, optimality, pce_model, nsamples, u_cand_p, nrepeat):
 
+    if optimality is None:
+        print('No Optimality')
+        idx     = np.random.randint(0, u_cand_p.shape[1], size=(nrepeat,nsamples))
+        u_train = [u_cand_p[:, i] for i in idx]
 
-        if sampling_method.lower() in ['mcs', 'cls'] or optimality is None:
-            print('No Optimality')
-            idx     = np.random.randint(0, u_cand_p.shape[1], size=(nrepeat,nsamples))
-            u_train = [u_cand_p[:, i] for i in idx]
+    elif optimality:
+        filename     = 'DoE_McsE5R0_d{:d}_p{:d}_{:s}.npy'.format(pce_model.ndim, pce_model.deg, optimality)
+        oed_data_dir = 'MCS_OED' if sampling_method.lower().startswith('mcs') else 'CLS_OED'
+        try:
+            idx     = np.load(os.path.join(simparams.data_dir_sample, oed_data_dir, pce_model.dist_name.capitalize(), filename))
+            idx     = idx[:nsamples]
+        except FileNotFoundError:
+            print('Running museuq.experiment to get train data samples: {:s}-{:s} '.format(sampling_method, optimality))
+            doe = museuq.OptimalDesign(optimality, curr_set=[])
+            X   = pce_model.basis.vandermonde(u_cand_p)
+            if sampling_method.lower().startswith('cls'):
+                X  = pce_model.basis.num_basis**0.5*(X.T / np.linalg.norm(X, axis=1)).T
+            idx = doe.samples(X, n_samples=nsamples, orth_basis=True)
+        u_train     = [u_cand_p[:,idx],]
 
-        elif optimality:
-            filename     = 'DoE_McsE5R0_d{:d}_p{:d}_{:s}.npy'.format(pce_model.ndim, pce_model.deg, optimality)
-            oed_data_dir = 'MCS_OED' if sampling_method.lower().startswith('mcs') else 'CLS_OED'
-            try:
-                idx     = np.load(os.path.join(simparams.data_dir_sample, oed_data_dir, pce_model.dist_name.capitalize(), filename))
-                idx     = idx[:nsamples]
-            except FileNotFoundError:
-                print('Running museuq.experiment to get train data samples: {:s}-{:s} '.format(sampling_method, optimality))
-                doe = museuq.OptimalDesign(optimality, curr_set=[])
-                X   = pce_model.basis.vandermonde(u_cand_p)
-                if sampling_method.lower().startswith('cls'):
-                    X  = pce_model.basis.num_basis**0.5*(X.T / np.linalg.norm(X, axis=1)).T
-                idx = doe.samples(X, n_samples=nsamples, orth_basis=True)
-            u_train     = [u_cand_p[:,idx],]
-
-        return u_train
+    return u_train
 
 def get_test_data(simparams, u_test_p, pce_model, solver, sampling_method):
 
@@ -145,13 +144,13 @@ def get_test_data(simparams, u_test_p, pce_model, solver, sampling_method):
 def main():
 
     ndim      = 2
-    nrepeat   = 50
+    nrepeat   = 100
     n_splits  = 10
-    p_orders  = np.array(np.arange(80,90,10))
+    p_orders  = np.array(np.arange(30,35,10))
     n_cand    = int(1e5)
     n_test    = -1 
-    doe_method= 'MCS'
-    optimality= None #'D', 'S', None
+    doe_method= 'CLS'
+    optimality= 'D'#'D', 'S', None
     fit_method= 'OLS'
 
     print(' Parameters:')
@@ -163,8 +162,8 @@ def main():
     for p in p_orders:
         ## ------------------------  ----------------------- ###
         ### ============ Define solver ============
-        orth_poly   = museuq.Legendre(d=ndim, deg=p)
-        # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='physicists')
+        # orth_poly   = museuq.Legendre(d=ndim, deg=p)
+        orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='physicists')
         # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='probabilists')
         solver      = museuq.sparse_poly(orth_poly, sparsity='full', seed=100)
         simparams = museuq.simParameters(solver.nickname)
@@ -183,8 +182,8 @@ def main():
 
         
         ### ============ Define PCE ============
-        orth_poly   = museuq.Legendre(d=solver.ndim, deg=p)
-        # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='physicists')
+        # orth_poly   = museuq.Legendre(d=solver.ndim, deg=p)
+        orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='physicists')
         # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='probabilists')
         pce_model   = museuq.PCE(orth_poly)
 
@@ -202,9 +201,9 @@ def main():
 
         ### > 2. fixed over_sampling_ratio for each p
         over_sampling_ratio=[]
-        over_sampling_ratio.append(np.linspace(1, 2, 11)) 
-        over_sampling_ratio.append(np.linspace(2, 4, 11))
-        over_sampling_ratio.append(np.linspace(4,10, 11))
+        over_sampling_ratio.append(np.linspace( 1, 4,  6)) 
+        over_sampling_ratio.append(np.linspace( 4,10,  6))
+        over_sampling_ratio.append(np.linspace(10,20, 11))
         over_sampling_ratio = np.unique(np.hstack(over_sampling_ratio))
         # print(over_sampling_ratio)
 
