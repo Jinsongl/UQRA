@@ -67,6 +67,9 @@ class Ishigami(SolverBase):
         x = np.array(x, copy=False, ndmin=2)
         assert x.shape[0] == int(3), 'Ishigami function expecting 3 random variables, {:d} given'.format(x.shape[0])
         y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
+
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
         return y
 
         # if x.ndim == 1:
@@ -104,6 +107,8 @@ class xsinx(SolverBase):
     def run(self, x):
         x = np.array(x,copy=False, ndmin=1)
         y = x * np.sin(x)
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
         return y
 
     def map_domain(self, u, u_cdf):
@@ -151,6 +156,8 @@ class sparse_poly(SolverBase):
 
     def run(self, x):
         y = self.basis(x)
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
         return y
 
     def _random_coef(self, k, dist=stats.norm, seed=None, theta=(0,1)):
@@ -195,6 +202,8 @@ class poly4th(SolverBase):
     def run(self, x):
         x = np.array(x, copy=False, ndmin=1)
         y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
         return y
 
     def map_domain(self,u, u_cdf):
@@ -290,6 +299,8 @@ class four_branch_system(SolverBase):
 
         y = np.array([y1, y2, y3, y4]).min(axis=0)
         y = 10 - y 
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
         return y
 
     def map_domain(self, u, u_cdf):
@@ -335,6 +346,8 @@ class polynomial_product_function(SolverBase):
         assert x.shape[0] == self.ndim
         y = np.array([ix**4 + ix**2 + 5*ix for ix in x])
         y = 0.5 * np.sum(y, axis=0)
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
         return y
 
     def map_domain(self,u, u_cdf):
@@ -451,7 +464,9 @@ class franke(SolverBase):
         f2 = 0.75 * np.exp(-(9.0*x1 +1.0)**2/49.0 - (9.0*x2 +1.0)/10.0)
         f3 = 0.50 * np.exp(-(9.0*x1 -7.0)**2/ 4.0 - (9.0*x2 -3.0)**2 /4.0)
         f4 = 0.20 * np.exp(-(9.0*x1 -4.0)**2 - (9.0*x2 -7.0)**2)
-        f  =  f1 + f2 + f3 - f4
+        y  =  f1 + f2 + f3 - f4
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
         return f
 
     def map_domain(self, u, u_cdf):
