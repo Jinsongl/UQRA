@@ -88,15 +88,13 @@ def get_candidate_data(simparams, sampling_method, orth_poly, n_cand, n_test):
 def get_train_data(simparams, sampling_method, optimality, pce_model, nsamples, u_cand_p, nrepeat):
 
     if optimality is None:
-        print('No Optimality')
         idx     = np.random.randint(0, u_cand_p.shape[1], size=(nrepeat,nsamples))
         u_train = [u_cand_p[:, i] for i in idx]
-
     elif optimality:
         filename     = 'DoE_McsE5R0_d{:d}_p{:d}_{:s}.npy'.format(pce_model.ndim, pce_model.deg, optimality)
         oed_data_dir = 'MCS_OED' if sampling_method.lower().startswith('mcs') else 'CLS_OED'
         try:
-            idx     = np.load(os.path.join(simparams.data_dir_sample, oed_data_dir, pce_model.dist_name.capitalize(), filename))
+            idx     = np.load(os.path.join(simparams.data_dir_sample, oed_data_dir, pce_model.basis.dist_name.capitalize(), filename))
             idx     = idx[:nsamples]
         except FileNotFoundError:
             print('Running museuq.experiment to get train data samples: {:s}-{:s} '.format(sampling_method, optimality))
@@ -146,11 +144,11 @@ def main():
     ndim      = 2
     nrepeat   = 100
     n_splits  = 10
-    p_orders  = np.array(np.arange(30,35,10))
+    p_orders  = np.array(np.arange(15,25,10))
     n_cand    = int(1e5)
     n_test    = -1 
     doe_method= 'CLS'
-    optimality= 'D'#'D', 'S', None
+    optimality= None #'D', 'S', None
     fit_method= 'OLS'
 
     print(' Parameters:')
@@ -186,6 +184,8 @@ def main():
         orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='physicists')
         # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='probabilists')
         pce_model   = museuq.PCE(orth_poly)
+        pce_model.info()
+        
 
 
         ### ============ Number of samples based on oversampling ratio ============
@@ -201,9 +201,9 @@ def main():
 
         ### > 2. fixed over_sampling_ratio for each p
         over_sampling_ratio=[]
-        over_sampling_ratio.append(np.linspace( 1, 4,  6)) 
-        over_sampling_ratio.append(np.linspace( 4,10,  6))
-        over_sampling_ratio.append(np.linspace(10,20, 11))
+        over_sampling_ratio.append(np.linspace( 2, 2, 6)) 
+        over_sampling_ratio.append(np.linspace( 2, 4,11))
+        over_sampling_ratio.append(np.linspace( 4,20, 9))
         over_sampling_ratio = np.unique(np.hstack(over_sampling_ratio))
         # print(over_sampling_ratio)
 
@@ -239,22 +239,20 @@ def main():
             for iu_train in tqdm(u_train, ascii=True, desc='   repeat:'):
                 ### 3. train model 
                 y_train = solver.run(iu_train) 
-                if np.isnan(y_train).any():
-                    raise ValueError('nan in y_train')
                 U_train = pce_model.basis.vandermonde(iu_train)
                 # U_train = orth_poly.vandermonde(iu_train)
-                if doe_method.startswith('cls') or doe_method == 'reference':
-                    # WX_train = pce_model.num_basis**0.5*(U_train.T / np.linalg.norm(U_train, axis=1)).T
+                if doe_method.lower().startswith('cls') or doe_method.lower() == 'reference':
+                    # WU_train = pce_model.num_basis**0.5*(U_train.T / np.linalg.norm(U_train, axis=1)).T
                     ### reproducing kernel
                     Kp = np.sum(U_train * U_train, axis=1)
                     w =  np.sqrt(pce_model.num_basis / Kp)
-                    WX_train = (U_train.T * w).T
+                    WU_train = (U_train.T * w).T
                 else:
-                    WX_train = U_train
+                    WU_train = U_train
                     w = None
 
                 ## condition number, kappa = max(svd)/min(svd)
-                _, s, _ = np.linalg.svd(WX_train)
+                _, s, _ = np.linalg.svd(WU_train)
                 kappa = max(abs(s)) / min(abs(s)) 
 
                 if fit_method.lower() == 'ols':
@@ -288,7 +286,11 @@ def main():
   
 
         data = np.vstack((nsamples_sets,  rate_coef, cond_number))
-        filename = 'Stability_{:s}_d{:d}_p{:d}_{:s}'.format(orth_poly.nickname,ndim, p, doe_method)
+        if optimality:
+            filename = 'Stability_{:s}_d{:d}_p{:d}_{:s}{:s}'.format(pce_model.basis.nickname, pce_model.ndim,pce_model.deg, doe_method.capitalize(), optimality)
+        else:
+            filename = 'Stability_{:s}_d{:d}_p{:d}_{:s}'.format(pce_model.basis.nickname, pce_model.ndim,pce_model.deg, doe_method.capitalize())
+        print('>>> Saving result data to: \n{:s}'.format(simparams.data_dir_result))
         np.save(os.path.join(simparams.data_dir_result, filename), data)
 
 if __name__ == '__main__':
