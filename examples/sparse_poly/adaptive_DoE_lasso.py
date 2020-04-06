@@ -53,7 +53,7 @@ def get_candidate_data(simparams, sampling_method, orth_poly, n_cand, n_test):
         u_cand = mcs_data_set[:orth_poly.ndim,:n_cand].reshape(orth_poly.ndim, -1)
         u_test = mcs_data_set[:orth_poly.ndim,:n_test] if n_test > 1 else mcs_data_set[:orth_poly.ndim,:]
 
-    elif sampling_method.lower().startswith('cls'):
+    elif sampling_method.lower().startswith('cls') or sampling_method.lower() == 'reference':
         filename= r'DoE_McsE6d{:d}R0.npy'.format(orth_poly.ndim) if orth_poly.dist_name.lower() == 'normal' else r'DoE_McsE6R0.npy'
         cls_data_set  = np.load(os.path.join(simparams.data_dir_sample, 'Pluripotential', orth_poly.dist_name, filename))
         u_cand = cls_data_set[:orth_poly.ndim,:n_cand].reshape(orth_poly.ndim, -1)
@@ -66,7 +66,7 @@ def get_candidate_data(simparams, sampling_method, orth_poly, n_cand, n_test):
 def get_train_data(sampling_method, optimality, sample_selected, pce_model, active_basis, nsamples, u_cand_p):
 
 
-        if sampling_method.lower() in ['mcs', 'cls'] or optimality is None:
+        if optimality is None:
             idx = list(set(np.random.randint(0, u_cand_p.shape[1], size=nsamples*10)).difference(set(sample_selected)))
             samples_new = idx[:nsamples]
             sample_selected += samples_new
@@ -86,25 +86,28 @@ def get_train_data(sampling_method, optimality, sample_selected, pce_model, acti
 def get_test_data(simparams, u_test_p, pce_model, solver, sampling_method):
 
     if sampling_method.lower().startswith('mcs'):
-        filename= r'DoE_McsE6R0.npy'
+        filename= r'DoE_McsE6R0_d{:d}_p{:d}.npy'.format(solver.ndim, solver.basis.deg)
         try:
             data_set = np.load(os.path.join(simparams.data_dir_result, 'MCS', filename))
             y_test   = data_set[-1,:]
         except FileNotFoundError:
             print(' Running solver to get test data ')
-            x_test = solver.map_domain(u_test_p, pce_model.basis.dist_u)
+            # x_test = solver.map_domain(u_test_p, pce_model.basis.dist_u)
+            x_test = u_test_p
             y_test = solver.run(x_test)
             data   = np.vstack((u_test_p, x_test, y_test.reshape(1,-1)))
             np.save(os.path.join(simparams.data_dir_result, 'MCS', filename), data)
 
     elif sampling_method.lower().startswith('cls'):
-        filename= r'DoE_McsE6d{:d}R0.npy'.format(solver.ndim) if pce_model.basis.dist_name.lower() == 'normal' else r'DoE_McsE6R0.npy'
+        filename= r'DoE_McsE6R0_d{:d}_p{:d}.npy'.format(solver.ndim, solver.basis.deg)
+        # filename= r'DoE_McsE6d{:d}R0.npy'.format(solver.ndim) if pce_model.basis.dist_name.lower() == 'normal' else r'DoE_McsE6R0.npy'
         try:
             data_set = np.load(os.path.join(simparams.data_dir_result, 'Pluripotential', filename))
             y_test   = data_set[-1,:]
         except FileNotFoundError:
             print(' Running solver to get test data ')
-            x_test = solver.map_domain(u_test_p, pce_model.basis.dist_u)
+            x_test = u_test_p
+            # x_test = solver.map_domain(u_test_p, pce_model.basis.dist_u)
             y_test = solver.run(x_test)
             data   = np.vstack((u_test_p, x_test, y_test.reshape(1,-1)))
             np.save(os.path.join(simparams.data_dir_result, 'Pluripotential', filename), data)
@@ -116,7 +119,7 @@ def main():
     ## ------------------------ Define solver ----------------------- ###
     ndim        = 2
     # orth_poly   = museuq.Legendre(d=ndim, deg=50)
-    orth_poly   = museuq.Hermite(d=ndim, deg=30, hem_type='physicists')
+    orth_poly   = museuq.Hermite(d=ndim, deg=20, hem_type='physicists')
     # orth_poly   = museuq.Hermite(d=ndim, deg=20, hem_type='probabilists')
     solver      = museuq.sparse_poly(orth_poly, sparsity=5, seed=100)
     print(solver.coef)
@@ -128,7 +131,7 @@ def main():
     n_budget    = 200000 
     n_cand      = int(1e5)
     n_test      = -1 
-    sampling    = 'MCS'
+    doe_method    = 'MCS'
     optimality  = None #'D', 'S', None
     fit_method  = 'LASSOLARS'
     k_sparsity  = 20 # guess. K sparsity to meet RIP condition 
@@ -142,7 +145,7 @@ def main():
 
     print(' Parameters:')
     print('------------------------------------------------------------')
-    print(' - {:<25s} : {}'.format('Sampling method'  , sampling  ))
+    print(' - {:<25s} : {}'.format('Sampling method'  , doe_method  ))
     print(' - {:<25s} : {}'.format('Optimality '      , optimality))
     print(' - {:<25s} : {}'.format('Fitting method'   , fit_method))
     print(' - {:<25s} : {}'.format('Simulation budget', n_budget  ))
@@ -177,7 +180,7 @@ def main():
 
     ### ============ Candidate data set for DoE ============
     print(' > loading candidate data set...')
-    u_cand, u_test = get_candidate_data(simparams, sampling, orth_poly, n_cand, n_test)
+    u_cand, u_test = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
 
     ### ============ Start adaptive iteration ============
     print(' > Starting iteration ...')
@@ -190,7 +193,7 @@ def main():
         pce_model = museuq.PCE(orth_poly)
 
         ### update candidate data set for this p degree, cls unbuounded
-        if sampling.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
+        if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
             u_cand_p = p**0.5 * u_cand
             u_test_p = p**0.5 * u_test
         else:
@@ -200,8 +203,8 @@ def main():
         ### ============ Get training points ============
         nsamples = n_new if i_iteration else n_eval_init
         print(' - Getting sample points ...', end='')
-        u_train_new = get_train_data(sampling, optimality, sample_selected, pce_model, active_basis, nsamples, u_cand_p)
-        print('    --> New samples: {:s} {}, #{:d}'.format(sampling, optimality, nsamples))
+        u_train_new = get_train_data(doe_method, optimality, sample_selected, pce_model, active_basis, nsamples, u_cand_p)
+        print('    --> New samples: {:s} {}, #{:d}'.format(doe_method, optimality, nsamples))
         ## need to check if sample_selected will be updated by reference
         if len(sample_selected) != len(np.unique(sample_selected)):
             print('sample_selected len: {}'.format(len(sample_selected)))
@@ -213,9 +216,6 @@ def main():
         u_train = np.hstack((u_train, u_train_new)) if u_train.any() else u_train_new
         x_train = np.hstack((x_train, x_train_new)) if x_train.any() else x_train_new
         y_train = np.hstack((y_train, y_train_new)) if y_train.any() else y_train_new
-        if np.isnan(y_train).any():
-            print(y_train)
-            raise ValueError('nan in y_train')
 
         if len(sample_selected) != len(np.unique(sample_selected)):
             print(len(sample_selected))
@@ -223,12 +223,7 @@ def main():
             raise ValueError('Duplciate samples')
 
         ### ============ Testing ============
-        y_test      = get_test_data(simparams, u_test_p, pce_model, solver, sampling) 
-        print('max test: {}'.format(np.max(y_test)))
-
-        if np.isnan(y_test).any():
-            print(y_test)
-            raise ValueError('nan in y_test')
+        y_test      = get_test_data(simparams, u_test_p, pce_model, solver, doe_method) 
 
         if i_iteration == 0:
             ### 0 iteration only initialize the samples, no fitting is need to be done 
@@ -237,7 +232,7 @@ def main():
         ### ============ Build Surrogate Model ============
 
         U_train = pce_model.basis.vandermonde(u_train)
-        if sampling.lower().startswith('cls'):
+        if doe_method.lower().startswith('cls'):
             ### reproducing kernel
             Kp = np.sum(U_train * U_train, axis=1)
             w =  np.sqrt(pce_model.num_basis / Kp)
@@ -248,14 +243,13 @@ def main():
         y_train_hat = pce_model.predict(u_train, w=w)
 
         U_test = pce_model.basis.vandermonde(u_test_p)
-        if sampling.lower().startswith('cls'):
+        if doe_method.lower().startswith('cls'):
             ### reproducing kernel
             Kp = np.sum(U_test * U_test, axis=1)
             w =  np.sqrt(pce_model.num_basis / Kp)
         else:
             w = None
         y_test_hat  = pce_model.predict(u_test_p, w=w)
-        print('max test hat: {}'.format(np.max(y_test_hat)))
 
 
         ### ============ calculating & updating metrics ============
@@ -325,11 +319,11 @@ def main():
     # print(np.array(n_eval_path).shape)
 
     if optimality:
-        filename = 'Adaptive_{:s}_{:s}_{:s}_{:s}.npy'.format(solver.nickname.capitalize(), sampling.capitalize(), optimality, fit_method.capitalize())
+        filename = 'Adaptive_{:s}_{:s}{:s}_{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), optimality, fit_method.capitalize())
     else:
-        filename = 'Adaptive_{:s}_{:s}_{:s}.npy'.format(solver.nickname.capitalize(), sampling.capitalize(), fit_method.capitalize())
-    # data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
-    # np.save(os.path.join(simparams.data_dir_result, filename), data)
+        filename = 'Adaptive_{:s}_{:s}{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), fit_method.capitalize())
+    data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
+    np.save(os.path.join(simparams.data_dir_result, filename), data)
 
 
 
