@@ -30,7 +30,14 @@ class Hermite(PolyBase):
         self.hem_type  = hem_type
         self.nickname  = 'Heme' if hem_type.lower() == 'probabilists' else 'Hem'
         self.dist_name = 'Normal'
-        self.dist_u    = [stats.norm(0,1),] * self.ndim if hem_type.lower() == 'probabilists' else [stats.norm(0,0.25),] * self.ndim 
+        if self.ndim is None:
+            self.dist_u = None
+        elif hem_type.lower() == 'probabilists':
+            self.dist_u = [stats.norm(0,1),] * self.ndim
+        elif hem_type.lower() == 'physicists':
+            self.dist_u = [stats.norm(0,0.25),] * self.ndim 
+        else:
+            raise ValueError
         self._update_basis()
 
     def gauss_quadrature(self, n, loc=[], scale=[]):
@@ -90,32 +97,44 @@ class Hermite(PolyBase):
         Arguments:
             x: ndarray of shape(ndim, nsamples)
             normed: boolean
-            
         return:
             vandermonde matrix of shape(nsampels, deg)
             
         """
-        x    = np.array(x, copy=0, ndmin=2) + 0.0
+        x    = np.array(x, copy=0, ndmin=2, dtype=np.float128) + 0.0
         d, n = x.shape
         assert (d == self.ndim), 'Expected input dimension {:d}, but {:d} given '.format(self.ndim, d)
-        vander      = np.ones((n, self.num_basis), x.dtype)
         if self.hem_type == 'probabilists':
-            vander_ind  = np.array([np.polynomial.hermite_e.hermevander(ix, self.deg) for ix in x])
+            vander_1d  = np.array([np.polynomial.hermite_e.hermevander(ix, self.deg) for ix in x])
         elif self.hem_type == 'physicists':
-            vander_ind  = np.array([np.polynomial.hermite.hermvander(ix, self.deg) for ix in x])
+            vander_1d  = np.array([np.polynomial.hermite.hermvander(ix, self.deg) for ix in x])
         else:
             raise ValueError('hem_type is either probabilists or physicists')
 
-        ### basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
+        vander = np.ones((n, self.num_basis), dtype=np.float128)
+        ## basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
         if self.basis_degree is None:
             self._update_basis()
         for i, ibasis_degree in enumerate(self.basis_degree):
             ### ibasis_degree = (l,m,n,k), assume ndim=4
             for idim, ideg in enumerate(ibasis_degree):
                 ### (0,l), (1,m), (2,n), (3,k)
-                vander[:,i] = vander[:,i] * vander_ind[idim,:,ideg]
+                vander[:,i] = vander[:,i] * vander_1d[idim,:,ideg]
+
+        # vander_1d_sign= np.sign(vander_1d) 
+        # vander_1d_log = np.log(abs(vander_1d))
+        # vander      = np.zeros((n, self.num_basis))
+        # vander_sign = np.ones((n, self.num_basis))
+        # if self.basis_degree is None:
+            # self._update_basis()
+        # for i, ibasis_degree in enumerate(self.basis_degree):### ibasis_degree = (l,m,n,k), assume ndim=4
+            # for idim, ideg in enumerate(ibasis_degree):### (0,l), (1,m), (2,n), (3,k)
+                # # vander_sign[:,i]= vander_sign[:,i] 
+                # vander[:,i]     = vander[:,i] + vander_1d_log[idim,:,ideg]* vander_1d_sign[idim,:,ideg]
+        # vander = np.exp(vander)
         if normed:
             vander = vander / np.sqrt(self.basis_norms)
+
         return vander
 
     def set_ndim(self, ndim):
@@ -194,7 +213,7 @@ class Hermite(PolyBase):
             x, ndarray of shape (ndim, nsamples)
         """
         self._update_basis()
-        x = np.array(x, copy=False, ndmin=2)
+        x = np.array(x, copy=False, ndmin=2, dtype=np.float128)
         vander = self.vandermonde(x)
         # vander = self.vandermonde(x, normed=False)
         d, n = x.shape ## (ndim, samples)
