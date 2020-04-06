@@ -31,21 +31,79 @@ class BasicTestSuite(unittest.TestCase):
         print(x)
         print(w)
 
-        print('--------------------Testing Hermite.call(): Hermite(d=1, p=4)--------------------')
-        print(' >>> Testing np.polynomial.hermite_e.hermeval(x) v.s. Poly(x) with random coefficients: ')
+        print('--------------------Testing Hermite.call(): Probabilists Hermite(d, p)--------------------')
+        x = np.arange(-5,5,0.5)
         d, p = 1, 4
+        print('     > ndim={:d}, p = {:d}'.format(d, p))
         poly = museuq.Hermite(d,p)
-        print(poly)
-        x = np.arange(-4,4,0.5)
+        for _ in range(5):
+            coef = np.random.normal(size=poly.num_basis)
+            y0=np.polynomial.hermite_e.hermeval(x,coef)
+            poly.set_coef(coef)
+            y1=poly(x)
+            # print(poly)
+            if not np.array_equal(y0, y1):
+                print('     - max abs error: {:.2e}'.format(np.around(max(abs(y0-y1)), 2)))
+            else:
+                print('     > Equal output')
+
+        d, p = 1, 30
+        print('     > ndim={:d}, p = {:d}'.format(d, p))
+        poly = museuq.Hermite(d,p)
+        for _ in range(5):
+            coef = np.random.normal(size=poly.num_basis)
+            y0=np.polynomial.hermite_e.hermeval(x,coef)
+            poly.set_coef(coef)
+            y1=poly(x)
+            # print(poly)
+            if not np.array_equal(y0, y1):
+                print('     - max abs error: {:.2e}'.format(np.around(max(abs(y0-y1)), 2)))
+            else:
+                print('     > Equal output')
+        
+        p = 40
+        x = np.arange(-10,10,0.5)
+        y = np.arange(-10,10,0.5)
+        y0=np.polynomial.hermite.hermvander2d(x,y, [p,p])
+        y0= np.sum(y0, axis=1)
+        print(y0.shape)
+        print(np.max(y0))
+        poly = museuq.Hermite(d=2,deg=p, hem_type='physicists')
+        y1=poly(np.array([x,y]))
+        print(y1.shape)
+        print(np.max(y1))
+
+
+
+        print('--------------------Testing Hermite.call(): Physicists Hermite(d, p)--------------------')
+        d, p = 1, 4
+        print('     > ndim={:d}, p = {:d}'.format(d, p))
+        poly = museuq.Hermite(d,p)
         for _ in range(5):
             coef = np.random.normal(size=poly.num_basis)
             # print('     - coefficients: {}'.format(np.around(coef, 2)))
             y0=np.polynomial.hermite_e.hermeval(x,coef)
             poly.set_coef(coef)
+            # print(poly)
             y1=poly(x)
             print('     - max abs error: {}'.format(np.around(max(abs(y0-y1)), 2)))
 
-        
+        d, p = 1, 30
+        print('     > ndim={:d}, p = {:d}'.format(d, p))
+        poly = museuq.Hermite(d,p)
+        for _ in range(5):
+            coef = np.random.normal(size=poly.num_basis)
+            # print('     - coefficients: {}'.format(np.around(coef, 2)))
+            y0=np.polynomial.hermite_e.hermeval(x,coef)
+            poly.set_coef(coef)
+            # print(poly)
+            y1=poly(x)
+            print('     - max abs error: {}'.format(np.around(max(abs(y0-y1)), 2)))
+
+
+
+
+
         print('--------------------Testing Hermite.call(): Hermite(d=2, p=4)--------------------')
         print(' >>> Testing each basis one by one:')
         d, p = 2, 4
