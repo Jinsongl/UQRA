@@ -30,7 +30,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         if distributions is None:
             self.ndim       = None 
             self.num_basis  = None 
-            self.poly_order = None
+            self.deg        = None
             self.active_    = None
             self.cv_error   = np.inf
         else:
@@ -39,7 +39,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                 # self.distributions = [self.distributions,]
             self.ndim       = distributions.ndim 
             self.num_basis  = self.basis.num_basis
-            self.poly_order = self.basis.deg
+            self.deg = self.basis.deg
             self.active_    = range(self.num_basis) if self.num_basis is not None else None
             self.cv_error   = np.inf
             # ### Now assuming same marginal distributions
@@ -49,17 +49,17 @@ class PolynomialChaosExpansion(SurrogateBase):
                 # dist_name = self.distributions[0].dist.name 
 
             # if dist_name == 'norm':
-                # self.basis = museuq.Hermite(d=self.ndim, deg=self.poly_order)
+                # self.basis = museuq.Hermite(d=self.ndim, deg=self.deg)
             # elif dist_name == 'uniform':
-                # self.basis = museuq.Legendre(d=self.ndim, deg=self.poly_order)
+                # self.basis = museuq.Legendre(d=self.ndim, deg=self.deg)
             # else:
                 # raise ValueError('Polynomial for {} has not been defined yet'.format(distributions[0].name))
 
     def info():
         print(r'   * {:<25s} : {:<20s}'.format('Surrogate Model Name', self.name))
-        if self.poly_order is not None:
+        if self.deg is not None:
             print(r'     - {:<23s} : {}'.format('Askey-Wiener distributions'   , self.basis.name))
-            print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.poly_order ))
+            print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.deg ))
             print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)', self.basis.num_basis))
             print(r'     - {:<23s} : {:d}'.format('No. active basis (P)', len(self.active_)))
 
@@ -79,7 +79,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             raise TypeError("expected x and w to have same length")
 
         # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.deg))
         # print(r'   * {:<25s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
 
         # norms = np.sum(X.T**2 * w, -1)
@@ -114,7 +114,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
         # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.deg))
         # print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
         
         ## calculate k-folder cross-validation error
@@ -153,7 +153,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
         # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.deg))
         # print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
         ### 1. Perform variable selection first
         model_lars       = linear_model.Lars(fit_intercept=False).fit(X,y)
@@ -207,7 +207,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
         # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.poly_order))
+        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.deg))
         # print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
 
         model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count(),fit_intercept=False).fit(X,y)
