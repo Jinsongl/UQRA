@@ -21,44 +21,44 @@ class PolynomialChaosExpansion(SurrogateBase):
     Class to build polynomial chaos expansion (PCE) model
     """
 
-    def __init__(self, distributions=None, random_seed=None):
+    def __init__(self, basis=None, random_seed=None):
         super().__init__(random_seed=random_seed)
         self.name           = 'Polynomial Chaos Expansion'
         self.nickname       = 'PCE'
-        self.basis          = distributions  ### a list of marginal distributions
+        self.basis          = basis  ### a list of marginal basis
 
-        if distributions is None:
+        if basis is None:
             self.ndim       = None 
             self.num_basis  = None 
             self.deg        = None
             self.active_    = None
             self.cv_error   = np.inf
         else:
-            # if isinstance(self.distributions, (list, tuple))
-            # if hasattr(stats, self.distributions.name):
-                # self.distributions = [self.distributions,]
-            self.ndim       = distributions.ndim 
+            # if isinstance(self.basis, (list, tuple))
+            # if hasattr(stats, self.basis.name):
+                # self.basis = [self.basis,]
+            self.ndim       = basis.ndim 
             self.num_basis  = self.basis.num_basis
             self.deg = self.basis.deg
             self.active_    = range(self.num_basis) if self.num_basis is not None else None
             self.cv_error   = np.inf
-            # ### Now assuming same marginal distributions
+            # ### Now assuming same marginal basis
             # try:
-                # dist_name = self.distributions[0].name 
+                # dist_name = self.basis[0].name 
             # except AttributeError:
-                # dist_name = self.distributions[0].dist.name 
+                # dist_name = self.basis[0].dist.name 
 
             # if dist_name == 'norm':
                 # self.basis = museuq.Hermite(d=self.ndim, deg=self.deg)
             # elif dist_name == 'uniform':
                 # self.basis = museuq.Legendre(d=self.ndim, deg=self.deg)
             # else:
-                # raise ValueError('Polynomial for {} has not been defined yet'.format(distributions[0].name))
+                # raise ValueError('Polynomial for {} has not been defined yet'.format(basis[0].name))
 
-    def info():
+    def info(self):
         print(r'   * {:<25s} : {:<20s}'.format('Surrogate Model Name', self.name))
         if self.deg is not None:
-            print(r'     - {:<23s} : {}'.format('Askey-Wiener distributions'   , self.basis.name))
+            print(r'     - {:<23s} : {}'.format('Askey-Wiener basis'   , self.basis.name))
             print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.deg ))
             print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)', self.basis.num_basis))
             print(r'     - {:<23s} : {:d}'.format('No. active basis (P)', len(self.active_)))
