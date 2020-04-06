@@ -208,7 +208,7 @@ class simParameters(object):
             dir_id_sample   = None 
         elif current_os.upper() == 'DARWIN':
             data_dir_sample = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
-            data_dir_result = '/Users/jinsongliu/External/MUSE_UQ_DATA'
+            data_dir_result = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA'
             dir_id_result   = self._get_gdrive_folder_id(self.model_name)
             dir_id_sample   = None 
         elif current_os.upper() == 'LINUX':
