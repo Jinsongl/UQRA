@@ -89,6 +89,7 @@ def get_train_data(simparams, sampling_method, optimality, pce_model, nsamples, 
 
 
         if sampling_method.lower() in ['mcs', 'cls'] or optimality is None:
+            print('No Optimality')
             idx     = np.random.randint(0, u_cand_p.shape[1], size=(nrepeat,nsamples))
             u_train = [u_cand_p[:, i] for i in idx]
 
@@ -144,9 +145,9 @@ def get_test_data(simparams, u_test_p, pce_model, solver, sampling_method):
 def main():
 
     ndim      = 2
-    nrepeat   = 10
+    nrepeat   = 50
     n_splits  = 10
-    p_orders  = np.array(np.arange(20,30,5))
+    p_orders  = np.array(np.arange(80,90,10))
     n_cand    = int(1e5)
     n_test    = -1 
     doe_method= 'MCS'
@@ -162,28 +163,28 @@ def main():
     for p in p_orders:
         ## ------------------------  ----------------------- ###
         ### ============ Define solver ============
-        # orth_poly   = museuq.Legendre(d=ndim, deg=p)
-        orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='physicists')
+        orth_poly   = museuq.Legendre(d=ndim, deg=p)
+        # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='physicists')
         # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='probabilists')
         solver      = museuq.sparse_poly(orth_poly, sparsity='full', seed=100)
         simparams = museuq.simParameters(solver.nickname)
         simparams.info()
-        print(solver.coef)
+        # print(solver.coef)
 
         ### ============ Candidate data set for DoE ============
         print(' > loading candidate data set...')
         u_cand, u_test = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
         if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
             u_cand_p = p**0.5 * u_cand
-            u_test_p = p**0.5 * u_test
+            # u_test_p = p**0.5 * u_test
         else:
             u_cand_p = u_cand
-            u_test_p = u_test
+            # u_test_p = u_test
 
         
         ### ============ Define PCE ============
-        # orth_poly   = museuq.Legendre(d=solver.ndim, deg=p)
-        orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='physicists')
+        orth_poly   = museuq.Legendre(d=solver.ndim, deg=p)
+        # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='physicists')
         # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='probabilists')
         pce_model   = museuq.PCE(orth_poly)
 
@@ -201,11 +202,11 @@ def main():
 
         ### > 2. fixed over_sampling_ratio for each p
         over_sampling_ratio=[]
-        # over_sampling_ratio.append(np.linspace(1, 2, 3)) 
-        over_sampling_ratio.append(np.linspace(2, 4, 3))
-        over_sampling_ratio.append(np.linspace(4,10, 3))
+        over_sampling_ratio.append(np.linspace(1, 2, 11)) 
+        over_sampling_ratio.append(np.linspace(2, 4, 11))
+        over_sampling_ratio.append(np.linspace(4,10, 11))
         over_sampling_ratio = np.unique(np.hstack(over_sampling_ratio))
-        print(over_sampling_ratio)
+        # print(over_sampling_ratio)
 
         ### > 3. User defined over_sampling_ratio
         # over_sampling_ratio = np.array([1.2, 2.0])
@@ -214,8 +215,8 @@ def main():
         # if doe_method.lower() == 'reference':
             # over_sampling_ratio = np.array([max(1, 1.5 * np.log(orth_poly.num_basis))])
         nsamples_sets = np.array([math.ceil(pce_model.num_basis * ialpha) for ialpha in over_sampling_ratio])
-        mse_global  = [] 
-        mse_exceed  = []
+        # mse_global  = [] 
+        # mse_exceed  = []
         cond_number = []
         rate_coef   = []
         print(' >>> ndim = {:d}, polynomial degree = {:d}, # simulation sets = {:d}, \n alpha = {}'.format(solver.ndim, p, len(nsamples_sets), over_sampling_ratio ))
@@ -229,16 +230,18 @@ def main():
             print('    --> New samples: {:s} {}, #{:d}'.format(doe_method, optimality, nsamples))
 
             ### ============ Testing ============
-            y_test  = get_test_data(simparams, u_test_p, pce_model, solver, doe_method) 
-            y0      = np.sort(y_test)[-math.ceil(len(y_test)*0.01)] ## threshold value for y, top 1%
+            # y_test  = get_test_data(simparams, u_test_p, pce_model, solver, doe_method) 
+            # y0      = np.sort(y_test)[-math.ceil(len(y_test)*0.01)] ## threshold value for y, top 1%
 
-            mse_exceed_ = []
-            mse_global_ = []
-            cond_number_= []
+            # mse_exceed_   = []
+            # mse_global_   = []
+            cond_number_  = []
             coef_inf_norm_= []
             for iu_train in tqdm(u_train, ascii=True, desc='   repeat:'):
                 ### 3. train model 
                 y_train = solver.run(iu_train) 
+                if np.isnan(y_train).any():
+                    raise ValueError('nan in y_train')
                 U_train = pce_model.basis.vandermonde(iu_train)
                 # U_train = orth_poly.vandermonde(iu_train)
                 if doe_method.startswith('cls') or doe_method == 'reference':
@@ -264,34 +267,30 @@ def main():
 
                 ### 4. prediction 
                 ## 4.1. calculate test data set 
-                y_pred  = pce_model.predict(u_test_p)
-                beta_hat= np.sort(pce_model.coef)
-                beta    = np.sort(solver.coef)
-
+                # y_pred  = pce_model.predict(u_test_p)
                 coef_inf_norm_.append(sparse_poly_coef_error(solver, pce_model, normord=np.inf))
-                mse_global_.append(metrics.mean_squared_error(y_test, y_pred))
+                # mse_global_.append(metrics.mean_squared_error(y_test, y_pred))
                 ## exceeding mse
-                exceed_idx = np.argwhere(y_test >= y0)
-                mse_exceed_.append(metrics.mean_squared_error(y_test[exceed_idx], y_pred[exceed_idx]))
+                # exceed_idx = np.argwhere(y_test >= y0)
+                # mse_exceed_.append(metrics.mean_squared_error(y_test[exceed_idx], y_pred[exceed_idx]))
                 cond_number_.append(kappa)
 
             # print(np.linalg.norm(pce_model.coef))
-            rate_coef.append(np.mean(np.array(coef_inf_norm_)<0.02))
-            mse_global.append(np.mean(np.array(mse_global_)))
-            mse_exceed.append(np.mean(np.array(mse_exceed_)))
+            rate_coef.append(np.mean(np.array(coef_inf_norm_)<1e-6))
+            # mse_global.append(np.mean(np.array(mse_global_)))
+            # mse_exceed.append(np.mean(np.array(mse_exceed_)))
             cond_number.append(np.mean(np.array(cond_number_)))
             print(' >>> Returns:')
             print('{:<15s} : {}'.format( 'Coef Recovery rate:', rate_coef))
-            print('{:<15s} : {}'.format( 'Global MSE', mse_global))
-            print('{:<15s} : {}'.format( 'Exceed MSE', mse_exceed))
+            # print('{:<15s} : {}'.format( 'Global MSE', mse_global))
+            # print('{:<15s} : {}'.format( 'Exceed MSE', mse_exceed))
             print('{:<15s} : {}'.format( 'Condition Num:', cond_number))
 
   
-        ### ============ Build Surrogate Model ============
 
-        # data = np.vstack((nsamples_sets,  rate_coef, mse_global , mse_exceed, cond_number))
-        # filename = 'Stability_{:s}_d{:d}_p{:d}_{:s}'.format(orth_poly.nickname,ndim, p, doe_method)
-        # np.save(os.path.join('./Data', filename), data)
+        data = np.vstack((nsamples_sets,  rate_coef, cond_number))
+        filename = 'Stability_{:s}_d{:d}_p{:d}_{:s}'.format(orth_poly.nickname,ndim, p, doe_method)
+        np.save(os.path.join(simparams.data_dir_result, filename), data)
 
 if __name__ == '__main__':
     main()
