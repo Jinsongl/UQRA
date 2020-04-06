@@ -214,7 +214,7 @@ class simParameters(object):
         elif current_os.upper() == 'LINUX':
             dir_id_result   = None 
             dir_id_sample   = None 
-            data_dir_result = WORKING_DIR
+            data_dir_result = r'/home/jinsong/Documents/MUSE_UQ_DATA'
             data_dir_sample = r'/home/jinsong/Documents/MUSE_UQ_DATA/Samples'
         else:
             raise ValueError('Operating system {} not found'.format(current_os))    
