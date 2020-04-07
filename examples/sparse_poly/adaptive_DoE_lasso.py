@@ -76,8 +76,10 @@ def get_train_data(sampling_method, optimality, sample_selected, pce_model, acti
             X   = pce_model.basis.vandermonde(u_cand_p)
             if sampling_method.lower().startswith('cls'):
                 X  = pce_model.basis.num_basis**0.5*(X.T / np.linalg.norm(X, axis=1)).T
-
-            X   = X[:, active_basis[-1]] if len(active_basis) else X
+            if active_basis[pce_model.deg] != 0:
+                X = X[:, active_basis[pce_model.deg]]
+            else:
+                X = X
             samples_new = doe.samples(X, n_samples=nsamples, orth_basis=True)
 
         u_train_new = u_cand_p[:,samples_new]
@@ -137,7 +139,7 @@ def main():
     n_cand      = int(1e5)
     n_test      = -1 
     doe_method    = 'MCS'
-    optimality  = None #'D', 'S', None
+    optimality  = 'S'#'D', 'S', None
     fit_method  = 'LASSOLARS'
     k_sparsity  = 5 # guess. K sparsity to meet RIP condition 
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, qoi_val=0.0001)
@@ -157,8 +159,8 @@ def main():
     print(' - {:<25s} : {}'.format('Poly degree limit', plim      ))
     ### ============ Initial Values ============
     p_iter_0    = 10
-    n_new       = 2
-    n_eval_init = 20
+    n_new       = 5
+    n_eval_init = 50
     n_eval_init = max(n_eval_init, 2 * k_sparsity) ## for ols, oversampling rate at least 2
     i_iteration = -1
     sample_selected = []
@@ -171,15 +173,15 @@ def main():
 
     n_eval_path     = []
     poly_order_path = []
-    cv_error        = []
+    cv_error        = [0,] * (plim[1]+1)
     cv_error_path   = []
-    adj_r2          = []
+    adj_r2          = [0,] * (plim[1]+1)
     adj_r2_path     = []
-    test_error      = []
+    test_error      = [0,] * (plim[1]+1)
     test_error_path = []
-    QoI             = []
+    QoI             = [0,] * (plim[1]+1)
     QoI_path        = []
-    active_basis    = collections.deque(maxlen=3)
+    active_basis    = [0,] * (plim[1]+1)
     active_basis_path= [] 
 
 
@@ -262,34 +264,31 @@ def main():
         n_eval_path.append(u_train.shape[1])
         poly_order_path.append(p)
         
-        cv_error.append(pce_model.cv_error)        
+        cv_error[p] = pce_model.cv_error        
         cv_error_path.append(pce_model.cv_error)
-        active_basis.append(pce_model.active_)        
+        active_basis[p] = pce_model.active_        
         active_basis_path.append(pce_model.active_)
-        adj_r2.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))        
+        adj_r2[p] = museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis)        
         adj_r2_path.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))
         qoi = sparse_poly_coef_error(solver, pce_model)
         # qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
-        QoI.append(qoi)
+        QoI[p] = qoi
         QoI_path.append(qoi)
 
-        test_error.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
+        test_error[p] = museuq.metrics.mean_squared_error(y_test, y_test_hat)
         test_error_path.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
 
         ### ============ Cheking Overfitting ============
-        if simparams.check_overfitting(cv_error):
-            print('     >> Possible overfitting detected, reducing p and increasing samples...')
-            print('     -> p = {}'.format(p))
-            print('     -> Active basis:\n{}'.format(active_basis[-1]))
-            while len(active_basis) > 1:
-                p -= 1
-                active_basis.pop()
-                cv_error.pop()
-                adj_r2.pop()
-                QoI.pop()
-                test_error.pop()
-                print('     -> p = p - 1 , p = {}'.format(p))
-                print('     -> Active basis:\n{}'.format(active_basis[-1]))
+        if simparams.check_overfitting(cv_error[:p+1]):
+            p = max(plim[0], p -2)
+            print('     >> Possible overfitting detected, setting p = {:d} '.format(p))
+            print('        Reseting results for PCE order higher than {:d} '.format(p))
+            for i in range(p+1, len(active_basis)):
+                QoI[i]          = 0
+                adj_r2[i]       = 0
+                cv_error[i]     = 0
+                test_error[i]   = 0
+                active_basis[i] = 0
             continue
 
         print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
@@ -300,14 +299,14 @@ def main():
             beta = beta[abs(beta) > 1e-6]
             print(' - {:<25s} : #{:d}'.format('Active basis', len(beta)))
         # print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
-        print(' - {:<25s} : {}'.format('cv error ', np.squeeze(np.array(cv_error))))
-        print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI)), 2)))
-        print(' - {:<25s} : {}'.format('test error', np.squeeze(np.array(test_error))))
+        print(' - {:<25s} : {}'.format('cv error ', np.squeeze(np.array(cv_error[plim[0]:p+1]))))
+        print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p+1])), 2)))
+        print(' - {:<25s} : {}'.format('test error', np.squeeze(np.array(test_error[plim[0]:p+1]))))
         print('     ------------------------------------------------------------')
 
         ### ============ updating parameters ============
         p +=1
-        if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI):
+        if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p]):
             break
 
     print('------------------------------------------------------------')

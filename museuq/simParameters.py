@@ -186,7 +186,7 @@ class simParameters(object):
             if self.abs_qoi:
                 print(r'     - {:<23s} : {} '.format('QoI decimal accuracy', self.abs_qoi))
             if self.qoi_val:
-                print(r'     - {:<23s} : {} '.format('QoI=0, decimal accuracy', self.abs_qoi))
+                print(r'     - {:<23s} : {} '.format('QoI=0, decimal accuracy', self.qoi_val))
 
     def _make_output_dir(self):
         """

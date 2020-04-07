@@ -39,7 +39,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                 # self.basis = [self.basis,]
             self.ndim       = basis.ndim 
             self.num_basis  = self.basis.num_basis
-            self.deg = self.basis.deg
+            self.deg        = self.basis.deg
             self.active_    = range(self.num_basis) if self.num_basis is not None else None
             self.cv_error   = np.inf
             # ### Now assuming same marginal basis
