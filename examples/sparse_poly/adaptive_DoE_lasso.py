@@ -116,13 +116,18 @@ def get_test_data(simparams, u_test_p, pce_model, solver, sampling_method):
     return y_test
 
 def main():
+
     ## ------------------------ Define solver ----------------------- ###
     ndim        = 2
-    # orth_poly   = museuq.Legendre(d=ndim, deg=50)
-    orth_poly   = museuq.Hermite(d=ndim, deg=20, hem_type='physicists')
-    # orth_poly   = museuq.Hermite(d=ndim, deg=20, hem_type='probabilists')
-    solver      = museuq.sparse_poly(orth_poly, sparsity=5, seed=100)
+    # orth_poly   = museuq.Legendre(d=ndim, deg=30)
+    orth_poly   = museuq.Hermite(d=ndim, deg=30, hem_type='physicists')
+    # orth_poly   = museuq.Hermite(d=ndim, deg=30, hem_type='probabilists')
+    solver      = museuq.sparse_poly(orth_poly, sparsity=10, seed=100)
     print(solver.coef)
+    ## ------------------------ Displaying set up ------------------- ###
+    np.set_printoptions(precision=4)
+    np.set_printoptions(threshold=8)
+    np.set_printoptions(suppress=True)
 
     simparams   = museuq.simParameters(solver.nickname)
     # print(simparams.data_dir_result)
@@ -134,7 +139,7 @@ def main():
     doe_method    = 'MCS'
     optimality  = None #'D', 'S', None
     fit_method  = 'LASSOLARS'
-    k_sparsity  = 20 # guess. K sparsity to meet RIP condition 
+    k_sparsity  = 5 # guess. K sparsity to meet RIP condition 
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, qoi_val=0.0001)
     simparams.info()
 
@@ -153,7 +158,7 @@ def main():
     ### ============ Initial Values ============
     p_iter_0    = 10
     n_new       = 2
-    n_eval_init = 50
+    n_eval_init = 20
     n_eval_init = max(n_eval_init, 2 * k_sparsity) ## for ols, oversampling rate at least 2
     i_iteration = -1
     sample_selected = []
@@ -202,9 +207,9 @@ def main():
 
         ### ============ Get training points ============
         nsamples = n_new if i_iteration else n_eval_init
-        print(' - Getting sample points ...', end='')
+        print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality),end='')
         u_train_new = get_train_data(doe_method, optimality, sample_selected, pce_model, active_basis, nsamples, u_cand_p)
-        print('    --> New samples: {:s} {}, #{:d}'.format(doe_method, optimality, nsamples))
+        print('    --> #{:d}'.format(nsamples))
         ## need to check if sample_selected will be updated by reference
         if len(sample_selected) != len(np.unique(sample_selected)):
             print('sample_selected len: {}'.format(len(sample_selected)))
@@ -273,7 +278,9 @@ def main():
 
         ### ============ Cheking Overfitting ============
         if simparams.check_overfitting(cv_error):
-            print('     - Possible overfitting detected, setting p = p - 1')
+            print('     >> Possible overfitting detected, reducing p and increasing samples...')
+            print('     -> p = {}'.format(p))
+            print('     -> Active basis:\n{}'.format(active_basis[-1]))
             while len(active_basis) > 1:
                 p -= 1
                 active_basis.pop()
@@ -281,6 +288,8 @@ def main():
                 adj_r2.pop()
                 QoI.pop()
                 test_error.pop()
+                print('     -> p = p - 1 , p = {}'.format(p))
+                print('     -> Active basis:\n{}'.format(active_basis[-1]))
             continue
 
         print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
@@ -321,7 +330,7 @@ def main():
     if optimality:
         filename = 'Adaptive_{:s}_{:s}{:s}_{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), optimality, fit_method.capitalize())
     else:
-        filename = 'Adaptive_{:s}_{:s}{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), fit_method.capitalize())
+        filename = 'Adaptive_{:s}_{:s}_{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), fit_method.capitalize())
     data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
     np.save(os.path.join(simparams.data_dir_result, filename), data)
 
