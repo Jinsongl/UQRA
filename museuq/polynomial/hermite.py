@@ -101,7 +101,7 @@ class Hermite(PolyBase):
             vandermonde matrix of shape(nsampels, deg)
             
         """
-        x    = np.array(x, copy=0, ndmin=2, dtype=np.float128) + 0.0
+        x    = np.array(x, copy=0, ndmin=2) + 0.0
         d, n = x.shape
         assert (d == self.ndim), 'Expected input dimension {:d}, but {:d} given '.format(self.ndim, d)
         if self.hem_type == 'probabilists':
@@ -111,7 +111,7 @@ class Hermite(PolyBase):
         else:
             raise ValueError('hem_type is either probabilists or physicists')
 
-        vander = np.ones((n, self.num_basis), dtype=np.float128)
+        vander = np.ones((n, self.num_basis))
         ## basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
         if self.basis_degree is None:
             self._update_basis()
@@ -213,7 +213,7 @@ class Hermite(PolyBase):
             x, ndarray of shape (ndim, nsamples)
         """
         self._update_basis()
-        x = np.array(x, copy=False, ndmin=2, dtype=np.float128)
+        x = np.array(x, copy=False, ndmin=2)
         vander = self.vandermonde(x)
         # vander = self.vandermonde(x, normed=False)
         d, n = x.shape ## (ndim, samples)
