@@ -85,7 +85,7 @@ def get_train_data(sampling_method, optimality, sample_selected, pce_model, acti
         u_train_new = u_cand_p[:,samples_new]
         return u_train_new
 
-def get_test_data(simparams, u_test_p, pce_model, solver, sampling_method):
+def get_test_data(simparams, u_test, solver, sampling_method):
 
     if sampling_method.lower().startswith('mcs'):
         filename= r'DoE_McsE6R0_d{:d}_p{:d}.npy'.format(solver.ndim, solver.basis.deg)
@@ -94,24 +94,21 @@ def get_test_data(simparams, u_test_p, pce_model, solver, sampling_method):
             y_test   = data_set[-1,:]
         except FileNotFoundError:
             print(' Running solver to get test data ')
-            # x_test = solver.map_domain(u_test_p, pce_model.basis.dist_u)
-            x_test = u_test_p
+            x_test = u_test
             y_test = solver.run(x_test)
-            data   = np.vstack((u_test_p, x_test, y_test.reshape(1,-1)))
+            data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
             np.save(os.path.join(simparams.data_dir_result, 'MCS', filename), data)
 
     elif sampling_method.lower().startswith('cls'):
         filename= r'DoE_McsE6R0_d{:d}_p{:d}.npy'.format(solver.ndim, solver.basis.deg)
-        # filename= r'DoE_McsE6d{:d}R0.npy'.format(solver.ndim) if pce_model.basis.dist_name.lower() == 'normal' else r'DoE_McsE6R0.npy'
         try:
             data_set = np.load(os.path.join(simparams.data_dir_result, 'Pluripotential', filename))
             y_test   = data_set[-1,:]
         except FileNotFoundError:
-            print(' Running solver to get test data ')
-            x_test = u_test_p
-            # x_test = solver.map_domain(u_test_p, pce_model.basis.dist_u)
+            print(' >>> Running solver to get test data ')
+            x_test = u_test
             y_test = solver.run(x_test)
-            data   = np.vstack((u_test_p, x_test, y_test.reshape(1,-1)))
+            data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
             np.save(os.path.join(simparams.data_dir_result, 'Pluripotential', filename), data)
     else:
         raise ValueError
@@ -138,8 +135,8 @@ def main():
     n_budget    = 200000 
     n_cand      = int(1e5)
     n_test      = -1 
-    doe_method    = 'MCS'
-    optimality  = 'S'#'D', 'S', None
+    doe_method  = 'CLS'
+    optimality  = None #'D', 'S', None
     fit_method  = 'LASSOLARS'
     k_sparsity  = 5 # guess. K sparsity to meet RIP condition 
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, qoi_val=0.0001)
@@ -185,9 +182,14 @@ def main():
     active_basis_path= [] 
 
 
-    ### ============ Candidate data set for DoE ============
+    ### ============ Candidate and testing data set for DoE ============
     print(' > loading candidate data set...')
     u_cand, u_test = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
+
+    ### update candidate data set for this p degree, cls unbuounded
+    if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
+        u_test = solver.deg**0.5 * u_test
+    y_test = get_test_data(simparams, u_test, solver, doe_method) 
 
     ### ============ Start adaptive iteration ============
     print(' > Starting iteration ...')
@@ -202,10 +204,8 @@ def main():
         ### update candidate data set for this p degree, cls unbuounded
         if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
             u_cand_p = p**0.5 * u_cand
-            u_test_p = p**0.5 * u_test
         else:
             u_cand_p = u_cand
-            u_test_p = u_test
 
         ### ============ Get training points ============
         nsamples = n_new if i_iteration else n_eval_init
@@ -229,8 +229,6 @@ def main():
             print(len(np.unique(sample_selected)))
             raise ValueError('Duplciate samples')
 
-        ### ============ Testing ============
-        y_test      = get_test_data(simparams, u_test_p, pce_model, solver, doe_method) 
 
         if i_iteration == 0:
             ### 0 iteration only initialize the samples, no fitting is need to be done 
@@ -249,14 +247,14 @@ def main():
         pce_model.fit_lassolars(u_train, y_train, w=w)
         y_train_hat = pce_model.predict(u_train, w=w)
 
-        U_test = pce_model.basis.vandermonde(u_test_p)
+        U_test = pce_model.basis.vandermonde(u_test)
         if doe_method.lower().startswith('cls'):
             ### reproducing kernel
             Kp = np.sum(U_test * U_test, axis=1)
             w =  np.sqrt(pce_model.num_basis / Kp)
         else:
             w = None
-        y_test_hat  = pce_model.predict(u_test_p, w=w)
+        y_test_hat  = pce_model.predict(u_test, w=w)
 
 
         ### ============ calculating & updating metrics ============
@@ -318,8 +316,8 @@ def main():
     # print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
     print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI)), 2)))
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
-    print(pce_model.coef)
-    print(solver.coef)
+    print(pce_model.coef[pce_model.coef!=0])
+    print(solver.coef[solver.coef!=0])
 
     # print(np.array(QoI).shape)
     # print(np.array(adj_r2).shape)
