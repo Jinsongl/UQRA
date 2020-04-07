@@ -185,6 +185,8 @@ class simParameters(object):
                 print(r'     - {:<23s} : {} '.format('Relative QoI', self.rel_qoi))
             if self.abs_qoi:
                 print(r'     - {:<23s} : {} '.format('QoI decimal accuracy', self.abs_qoi))
+            if self.qoi_val:
+                print(r'     - {:<23s} : {} '.format('QoI=0, decimal accuracy', self.abs_qoi))
 
     def _make_output_dir(self):
         """
@@ -253,7 +255,6 @@ class simParameters(object):
         command = 'gdrive list --order folder |grep ' +  folder_name
         folder_id = os.popen(command).read()
         return folder_id[:33]
-
 
     def check_overfitting(self, cv_error):
         """
