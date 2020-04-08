@@ -106,7 +106,7 @@ def get_test_data(simparams, u_test, solver, pce_model, sampling_method):
             y_test   = data_set[-1,:]
         except FileNotFoundError:
             print('   > Running solver to get test data ')
-            x_test = solver.map_domain(u_test, pce_model.basis.dist_u)
+            x_test = solver.map_domain(u_test, np.arcsin(u_test)/np.pi + 0.5)
             y_test = solver.run(x_test)
             data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
             np.save(os.path.join(simparams.data_dir_result, 'Pluripotential', filename), data)
@@ -131,8 +131,8 @@ def main():
     n_budget    = 200000 
     n_cand      = int(1e5)
     n_test      = -1 
-    doe_method  = 'CLS'
-    optimality  = 'S'#'D', 'S', None
+    doe_method  = 'MCS'
+    optimality  = None #'D', 'S', None
     fit_method  = 'LASSOLARS'
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.01)
     simparams.info()
@@ -180,7 +180,9 @@ def main():
 
     ### update candidate data set for this p degree, cls unbuounded
     y_test = get_test_data(simparams, u_test, solver, pce_model, doe_method) 
+    qoi = museuq.metrics.mquantiles(y_test, 1-pf)
     print('max y_test :{}'.format(max(y_test)))
+    print('QoI (y_test) :{}'.format(qoi))
 
     ### ============ Start adaptive iteration ============
     print(' > Starting iteration ...')
@@ -209,7 +211,13 @@ def main():
             print(len(np.unique(sample_selected)))
             raise ValueError('Duplciate samples')
 
-        x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
+        if doe_method.lower().startswith('mcs'):
+            x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
+        elif doe_method.lower().startswith('cls'):
+            x_test = solver.map_domain(u_test, np.arcsin(u_test)/np.pi + 0.5)
+        else:
+            raise ValueError
+
         y_train_new = solver.run(x_train_new)
 
         u_train = np.hstack((u_train, u_train_new)) if u_train.any() else u_train_new
