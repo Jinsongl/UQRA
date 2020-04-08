@@ -205,7 +205,7 @@ def main():
         ### ============ Get training points ============
         print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
         u_train_new = get_train_data(doe_method, optimality, sample_selected, pce_model, active_basis, n_new, u_cand_p)
-        print('   New samples: {}, total samples now: {:d}'.format(u_train_new.shape, len(sample_selected)))
+        print('   New samples shape: {}, total iteration samples now: {:d}'.format(u_train_new.shape, len(sample_selected)))
         ## need to check if sample_selected will be updated by reference
         if len(sample_selected) != len(np.unique(sample_selected)):
             print(len(sample_selected))
