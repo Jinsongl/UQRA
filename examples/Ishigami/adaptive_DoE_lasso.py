@@ -131,8 +131,8 @@ def main():
     n_budget    = 200000 
     n_cand      = int(1e5)
     n_test      = -1 
-    doe_method  = 'CLS'
-    optimality  = 'S'#'D', 'S', None
+    doe_method  = 'MCS'
+    optimality  = 'D'#'D', 'S', None
     fit_method  = 'LASSOLARS'
     k_sparsity  = 15 # guess. K sparsity to meet RIP condition 
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.01)
@@ -151,13 +151,15 @@ def main():
     ### ============ Initial Values ============
     p_iter_0    = 10
     n_new       = 5
-    n_eval_init = 50
+    n_eval_init = 64
     n_eval_init = max(n_eval_init, 2 * k_sparsity) ## for ols, oversampling rate at least 2
-    i_iteration = -1
+    ### Initial DoE from LHS
+    doe = museuq.LHS([stats.uniform(-np.pi,2*np.pi),]*solver.ndim)
+    u_train, x_train= doe.samples(n_eval_init)
+    y_train = solver.run(x_train)
+
+    max_iter = 1000
     sample_selected = []
-    u_train = np.array([])
-    x_train = np.array([])
-    y_train = np.array([])
 
     ### ============ Stopping Criteria ============
     ## path values recording all the values calcualted in the adaptive process, including those removed bc overfitting
@@ -185,11 +187,11 @@ def main():
     print('max y_test :{}'.format(max(y_test)))
 
     ### ============ Start adaptive iteration ============
+    i_iteration = 0
+    p = plim[0]
     print(' > Starting iteration ...')
-    while True:
-        i_iteration += 1
+    while i_iteration < max_iter:
         print(' >>> Iteration No: {:d}'.format(i_iteration))
-        p = p_iter_0 if i_iteration == 0 else p
         ### ============ Redefine PCE model ============
         orth_poly.set_degree(p)
         pce_model = museuq.PCE(orth_poly)
@@ -201,10 +203,9 @@ def main():
             u_cand_p = u_cand
 
         ### ============ Get training points ============
-        nsamples = n_new if i_iteration else n_eval_init
-        print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality),end='')
-        u_train_new = get_train_data(doe_method, optimality, sample_selected, pce_model, active_basis, nsamples, u_cand_p)
-        print('    --> #{:d}'.format(nsamples))
+        print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
+        u_train_new = get_train_data(doe_method, optimality, sample_selected, pce_model, active_basis, n_new, u_cand_p)
+        print('   New samples: {}, total samples now: {:d}'.format(u_train_new.shape, len(sample_selected)))
         ## need to check if sample_selected will be updated by reference
         if len(sample_selected) != len(np.unique(sample_selected)):
             print(len(sample_selected))
@@ -214,16 +215,10 @@ def main():
         x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
         y_train_new = solver.run(x_train_new)
 
-        u_train = np.hstack((u_train, u_train_new)) if u_train.any() else u_train_new
-        x_train = np.hstack((x_train, x_train_new)) if x_train.any() else x_train_new
-        y_train = np.hstack((y_train, y_train_new)) if y_train.any() else y_train_new
+        u_train = np.hstack((u_train, u_train_new)) 
+        x_train = np.hstack((x_train, x_train_new))
+        y_train = np.hstack((y_train, y_train_new)) 
 
-
-
-        if i_iteration == 0:
-            ### 0 iteration only initialize the samples, no fitting is need to be done 
-            p = plim[0]
-            continue
         ### ============ Build Surrogate Model ============
 
         U_train = pce_model.basis.vandermonde(u_train)
@@ -257,10 +252,7 @@ def main():
         # print('y test max: {}'.format(np.max(y_test)))
         # print('y_test_hat max: {}'.format(max(y_test_hat)))
 
-
-
         ### ============ calculating & updating metrics ============
-       
         n_eval_path.append(u_train.shape[1])
         poly_order_path.append(p)
         
@@ -295,27 +287,22 @@ def main():
         print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
         print(' - {:<25s} : {}'.format('Evaluations done ', n_eval_path[-1]))
         if pce_model:
-            print(' - {:<25s} : {} -> #{:d}'.format('Active basis', pce_model.active_, len(pce_model.active_)))
+            # print(' - {:<25s} : {} -> #{:d}'.format('Active basis', pce_model.active_, len(pce_model.active_)))
             beta = pce_model.coef
             beta = beta[abs(beta) > 1e-6]
             print(' - {:<25s} : #{:d}'.format('Active basis', len(beta)))
         # print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
-        print(' - {:<25s} : {}'.format('cv error ', np.squeeze(np.array(cv_error[plim[0]:p+1]))))
-        print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p+1])), 2)))
-        print(' - {:<25s} : {}'.format('test error', np.squeeze(np.array(test_error[plim[0]:p+1]))))
+        print(' - {:<25s} : {}'.format('cv error ', np.squeeze(np.array(cv_error[plim[0]:p+1], dtype=np.float))))
+        print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p+1], dtype=np.float)), 2)))
+        print(' - {:<25s} : {}'.format('test error', np.squeeze(np.array(test_error[plim[0]:p+1], dtype=np.float))))
         print('     ------------------------------------------------------------')
 
         ### ============ updating parameters ============
         p +=1
+        i_iteration += 1
         if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p]):
             break
 
-    if optimality:
-        filename = 'Adaptive_{:s}_{:s}{:s}_{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), optimality, fit_method.capitalize())
-    else:
-        filename = 'Adaptive_{:s}_{:s}_{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), fit_method.capitalize())
-    data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
-    np.save(os.path.join(simparams.data_dir_result, filename), data)
 
     print('------------------------------------------------------------')
     print('>>>>>>>>>>>>>>> Adaptive simulation done <<<<<<<<<<<<<<<<<<<')
@@ -334,6 +321,12 @@ def main():
     # print(np.array(cv_error).shape)
     # print(np.array(n_eval_path).shape)
 
+    if optimality:
+        filename = 'Adaptive_{:s}_{:s}{:s}_{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), optimality, fit_method.capitalize())
+    else:
+        filename = 'Adaptive_{:s}_{:s}_{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), fit_method.capitalize())
+    data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
+    np.save(os.path.join(simparams.data_dir_result, filename), data)
 
 
     # filename = 'mquantile_DoE_q15_OptD2040_PCE{:d}_{:s}_path.npy'.format(p, fit_method)
