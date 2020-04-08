@@ -85,7 +85,7 @@ def get_train_data(sampling_method, optimality, sample_selected, pce_model, acti
         u_train_new = u_cand_p[:,samples_new]
         return u_train_new
 
-def get_test_data(simparams, u_test, solver, sampling_method):
+def get_test_data(simparams, u_test, solver, pce_model, sampling_method):
 
     if sampling_method.lower().startswith('mcs'):
         filename= r'DoE_McsE6R0.npy'
@@ -134,7 +134,6 @@ def main():
     doe_method  = 'CLS'
     optimality  = 'S'#'D', 'S', None
     fit_method  = 'LASSOLARS'
-    k_sparsity  = 15 # guess. K sparsity to meet RIP condition 
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.01)
     simparams.info()
 
@@ -151,8 +150,7 @@ def main():
     ### ============ Initial Values ============
     p_iter_0    = 10
     n_new       = 5
-    n_eval_init = 50
-    n_eval_init = max(n_eval_init, 2 * k_sparsity) ## for ols, oversampling rate at least 2
+    n_eval_init = 15
     i_iteration = -1
     sample_selected = []
     u_train = np.array([])
@@ -181,7 +179,7 @@ def main():
     u_cand, u_test = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
 
     ### update candidate data set for this p degree, cls unbuounded
-    y_test = get_test_data(simparams, u_test, solver, doe_method) 
+    y_test = get_test_data(simparams, u_test, solver, pce_model, doe_method) 
     print('max y_test :{}'.format(max(y_test)))
 
     ### ============ Start adaptive iteration ============
@@ -293,7 +291,7 @@ def main():
             continue
 
         print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
-        print(' - {:<25s} : {}'.format('Evaluations done ', n_eval_path[-1]))
+        print(' - {:<25s} : {}'.format('# samples ', n_eval_path[-1]))
         if pce_model:
             print(' - {:<25s} : {} -> #{:d}'.format('Active basis', pce_model.active_, len(pce_model.active_)))
             beta = pce_model.coef
@@ -322,9 +320,9 @@ def main():
     print('------------------------------------------------------------')
     print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
     print(' - {:<25s} : {} -> #{:d}'.format('Active basis', pce_model.active_, len(pce_model.active_)))
-    print(' - {:<25s} : {}'.format('# Evaluations ', n_eval_path[-1]))
+    print(' - {:<25s} : {}'.format('# samples', n_eval_path[-1]))
     # print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
-    print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI, dtype=np.float)), 2)))
+    print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p+1], dtype=np.float)), 2)))
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
     print(pce_model.coef[pce_model.coef!=0])
     # print(solver.coef[solver.coef!=0])
