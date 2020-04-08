@@ -19,9 +19,6 @@ from tqdm import tqdm
 import time, math
 import multiprocessing as mp
 
-def cal_alpha2(x):
-    return x[0].dot(x[1]).dot(x[2]).item()
-
 class OptimalDesign(ExperimentBase):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
 
@@ -90,7 +87,7 @@ class OptimalDesign(ExperimentBase):
         # print('intersection: \n{}'.format(set(row_adding) & set(curr_set)))
         return row_adding 
 
-    def _get_rrqr_optimal(self, m, X, row_selected=[]):
+    def _get_rrqr_optimal(self, m, X, row_selected):
         """
         Return selected rows from design matrix X based on D-optimality implemented by RRQR 
 
@@ -125,6 +122,9 @@ class OptimalDesign(ExperimentBase):
                     raise ValueError('Duplicate samples returned')
                 row_adding = row_adding + new_set_ 
         row_adding = row_adding[:m] if len(row_adding) > m else row_adding ## break case
+        if set(row_adding) & set(row_selected):
+            raise ValueError('Duplicate samples returned')
+        row_selected += row_adding
         return row_adding 
         
     def _get_quasi_optimal(self,m,X,row_selected=[],orth_basis=False):
