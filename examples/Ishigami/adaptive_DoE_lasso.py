@@ -85,7 +85,7 @@ def get_train_data(sampling_method, optimality, sample_selected, pce_model, acti
         u_train_new = u_cand_p[:,samples_new]
         return u_train_new
 
-def get_test_data(simparams, u_test, solver, pce_model, sampling_method):
+def get_test_data(simparams, u_test, solver, sampling_method):
 
     if sampling_method.lower().startswith('mcs'):
         filename= r'DoE_McsE6R0.npy'
@@ -183,7 +183,7 @@ def main():
     u_cand, u_test = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
 
     ### update candidate data set for this p degree, cls unbuounded
-    y_test = get_test_data(simparams, u_test, solver, pce_model, doe_method) 
+    y_test = get_test_data(simparams, u_test, solver, doe_method) 
     print('max y_test :{}'.format(max(y_test)))
 
     ### ============ Start adaptive iteration ============
