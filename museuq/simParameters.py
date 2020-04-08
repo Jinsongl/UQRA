@@ -273,6 +273,8 @@ class simParameters(object):
             cv_error = np.array(cv_error)
             if ((cv_error[-2]- cv_error[-3])/cv_error[-3] > self.rel_cv ) and (cv_error[-2] < cv_error[-1]):
                 return True
+            else:
+                return False
 
     def is_adaptive_continue(self, nsim_completed, poly_order, **kwargs):
         """
