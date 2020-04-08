@@ -214,7 +214,7 @@ def main():
         if doe_method.lower().startswith('mcs'):
             x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
         elif doe_method.lower().startswith('cls'):
-            x_test = solver.map_domain(u_test, np.arcsin(u_test)/np.pi + 0.5)
+            x_train_new = solver.map_domain(u_test, np.arcsin(u_test)/np.pi + 0.5)
         else:
             raise ValueError
 
