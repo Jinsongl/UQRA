@@ -81,7 +81,6 @@ def get_train_data(sampling_method, optimality, sample_selected, pce_model, acti
             else:
                 X = X
             samples_new = doe.samples(X, n_samples=nsamples, orth_basis=True)
-
         u_train_new = u_cand_p[:,samples_new]
         return u_train_new
 
@@ -214,7 +213,7 @@ def main():
         if doe_method.lower().startswith('mcs'):
             x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
         elif doe_method.lower().startswith('cls'):
-            x_train_new = solver.map_domain(u_test, np.arcsin(u_test)/np.pi + 0.5)
+            x_train_new = solver.map_domain(u_train_new, np.arcsin(u_train_new)/np.pi + 0.5)
         else:
             raise ValueError
 
