@@ -15,7 +15,7 @@ import multiprocessing as mp
 from sklearn import linear_model
 from sklearn import model_selection
 from ._surrogatebase import SurrogateBase
-import museuq
+import museuq, math
 class PolynomialChaosExpansion(SurrogateBase):
     """
     Class to build polynomial chaos expansion (PCE) model
