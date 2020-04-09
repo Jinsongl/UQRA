@@ -41,6 +41,7 @@ class BasicTestSuite(unittest.TestCase):
             y0=np.polynomial.hermite_e.hermeval(x,coef)
             poly.set_coef(coef)
             y1=poly(x)
+            print(y1.shape)
             # print(poly)
             if not np.array_equal(y0, y1):
                 print('     - max abs error: {:.2e}'.format(np.around(max(abs(y0-y1)), 2)))
@@ -171,7 +172,12 @@ class BasicTestSuite(unittest.TestCase):
         # else:
             # raise ValueError
 
-
+        print('--------------------Testing large size vandermonde --------------------')
+        x = sp.random.normal(size=(3,1000000))
+        d, p = 3, 10
+        print('     > ndim={:d}, p = {:d}'.format(d, p))
+        poly = museuq.Hermite(d,p)
+        y = poly(x)
 
 
 
