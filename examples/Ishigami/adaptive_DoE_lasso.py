@@ -16,34 +16,6 @@ import scipy.stats as stats
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
 
-def sparse_poly_coef_error(solver, model, normord=np.inf):
-    beta    = np.array(solver.coef, copy=True)
-    beta_hat= np.array(model.coef, copy=True)
-
-    solver_basis_degree = solver.basis.basis_degree
-    model_basis_degree  = model.basis.basis_degree
-
-    if len(solver_basis_degree) > len(model_basis_degree):
-        large_basis_degree = solver_basis_degree 
-        small_basis_degree = model_basis_degree
-        large_beta = beta
-        small_beta = beta_hat
-    else:
-        small_basis_degree = solver_basis_degree 
-        large_basis_degree = model_basis_degree
-        large_beta = beta_hat
-        small_beta = beta
-
-    basis_common = np.where([ibasis_degree in small_basis_degree  for ibasis_degree in large_basis_degree ])[0]
-    if normord == np.inf:
-        error_common = np.linalg.norm(large_beta[basis_common]-small_beta, normord)
-        large_beta[basis_common] = 0
-        error_left   =  max(abs(large_beta))
-        error = max( error_common, error_left )
-    elif normord == 1 or normord == 2 :
-        error = np.linalg.norm(large_beta[basis_common]-small_beta, normord)/ np.linalg.norm(beta, normord)
-    return  error
-
 def get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test):
     """
     Return canndidate samples in u space
@@ -93,8 +65,10 @@ def get_train_data(n, u_cand, doe_method, optimality=None, sample_selected=[], b
         if doe_method.lower().startswith('cls'):
             X  = basis.num_basis**0.5*(X.T / np.linalg.norm(X, axis=1)).T
         if active_basis == 0 or active_basis is None:
+            print('     - {:<23s} : {}/{}'.format('Optimal design based on ', 0, basis.num_basis))
             X = X
         else:
+            print('     - {:<23s} : {}/{}'.format('Optimal design based on ', len(active_basis), basis.num_basis))
             X = X[:, active_basis]
         samples_new = doe.samples(X, n_samples=n, orth_basis=True)
 
@@ -128,51 +102,42 @@ def map_domain(u_data, solver, doe_method, dist_name):
     return x_data
 
 def get_test_data(simparams, u_test, solver, doe_method, dist_name):
+    """
+    return test data
+    If already exist in simparams.data_dir_result, then load and return
+    else, run solver
 
+
+    """
+    filename = r'DoE_McsE6R0.npy'
     if doe_method.lower().startswith('mcs'):
-        filename= r'DoE_McsE6R0.npy'
-        try:
-            data_set = np.load(os.path.join(simparams.data_dir_result, 'MCS', filename))
-            y_test   = data_set[-1,:]
-        except FileNotFoundError:
-            print('   > Running solver to get test data ')
-            if dist_name.lower() == 'uniform':
-                dist_u = [stats.uniform(-1,2),] * solver.ndim
-            elif dist_name.lower() == 'normal':
-                dist_u = [stats.norm(0,1), ] *solver.ndim
-            else:
-                raise ValueError('{:s} not defined'.format(dist_name))
-            x_test = solver.map_domain(u_test, dist_u)
-            y_test = solver.run(x_test)
-            data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
-            np.save(os.path.join(simparams.data_dir_result, 'MCS', filename), data)
-
+        data_dir = os.path.join(simparams.data_dir_result, 'MCS')
     elif doe_method.lower().startswith('cls'):
-        filename= r'DoE_McsE6R0.npy'
-        try:
-            data_set = np.load(os.path.join(simparams.data_dir_result, 'Pluripotential', filename))
-            y_test   = data_set[-1,:]
-        except FileNotFoundError:
-            print('   > Running solver to get test data ')
-            if dist_name.lower() == 'uniform':
-                x_test = solver.map_domain(u_test, np.arcsin(u_test)/np.pi + 0.5)
-            elif dist_name.lower() == 'normal':
-                raise NotImplementedError
-            else:
-                raise ValueError('{:s} not defined'.format(dist_name))
-            y_test = solver.run(x_test)
-            data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
-            np.save(os.path.join(simparams.data_dir_result, 'Pluripotential', filename), data)
+        data_dir = os.path.join(simparams.data_dir_result, 'Pluripotential')
     else:
         raise ValueError
+
+    try:
+        data_set = np.load(os.path.join(data_dir, filename))
+        y_test   = data_set[-1,:]
+    except FileNotFoundError:
+        print('   > Running solver to get test data ')
+        x_test = map_domain(u_test, solver, doe_method, dist_name)
+        y_test = solver.run(x_test)
+        data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
+        np.save(os.path.join(data_dir, filename), data)
+ 
     return y_test
 
 def cal_weight(doe_method, u_data, pce_model):
+    """
+    Calculate weight for CLS based on Christoffel function evaluated in U-space
+    """
     X = pce_model.basis.vandermonde(u_data)
     if doe_method.lower().startswith('cls'):
         ### reproducing kernel
         Kp = np.sum(X* X, axis=1)
-        w =  np.sqrt(pce_model.num_basis / Kp)
+        w  = np.sqrt(pce_model.num_basis / Kp)
     else:
         w = None
     return w
@@ -198,7 +163,7 @@ def main():
     n_cand      = int(1e5)
     n_test      = -1 
     doe_method  = 'MCS'
-    optimality  = None #'D', 'S', None
+    optimality  = 'D' #'D', 'S', None
     fit_method  = 'LASSOLARS'
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.01)
     simparams.info()
@@ -232,6 +197,7 @@ def main():
     init_optimality = None
     orth_poly.set_degree(init_basis_deg)
 
+    ### update candidate data set for this p degree, cls unbuounded
     if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
         u_cand_p = init_basis_deg **0.5 * u_cand
     else:
@@ -249,9 +215,9 @@ def main():
     print('   * {:<25s} : [{:.2f},{:.2f}]'.format(' x Domain ', np.amin(x_train), np.amax(x_train)))
     # print('   * {:<25s} : {}'.format('Target QoI',qoi))
 
-    ### ============ Stopping Criteria ============
-    ## path values recording all the values calcualted in the adaptive process, including those removed bc overfitting
-
+    ### ============ Initial Values ============
+    p               = plim[0] 
+    i_iteration     = 0
     n_eval_path     = []
     poly_order_path = []
     cv_error        = [0,] * (plim[1]+1)
@@ -265,13 +231,6 @@ def main():
     active_basis    = [0,] * (plim[1]+1)
     active_basis_path= [] 
 
-
-
-    ### update candidate data set for this p degree, cls unbuounded
-    ### ============ Initial Values ============
-    i_iteration = 0
-    p           = plim[0] 
-
     ### ============ Start adaptive iteration ============
     print(' > Starting iteration ...')
     while i_iteration < iter_max:
@@ -281,6 +240,7 @@ def main():
         orth_poly.set_degree(p)
         pce_model = museuq.PCE(orth_poly)
 
+        ### update candidate data set for this p degree, cls unbuounded
         if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
             u_cand_p = p**0.5 * u_cand
         else:
@@ -288,7 +248,7 @@ def main():
 
         ### ============ Get training points ============
         print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
-        u_train_new = get_train_data(n_new,  u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
+        u_train_new = get_train_data(n_new, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p-1])
         x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
         y_train_new = solver.run(x_train_new)
         u_train = np.hstack((u_train, u_train_new)) 
