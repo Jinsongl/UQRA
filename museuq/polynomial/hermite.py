@@ -214,14 +214,30 @@ class Hermite(PolyBase):
         """
         self._update_basis()
         x = np.array(x, copy=False, ndmin=2)
-        vander = self.vandermonde(x)
-        # vander = self.vandermonde(x, normed=False)
         d, n = x.shape ## (ndim, samples)
         if d != self.ndim:
             raise TypeError('Expected x has dimension {}, but {} is given'.format(self.ndim, d))
         if self.coef is None:
             self.coef = np.ones((self.num_basis,))
-        y = np.sum(vander * self.coef, -1)
+
+
+        size_of_array_4gb = 1e8/2.0
+        ## size of largest array is of shape (n-k, k, k)
+        if x.shape[1] * self.num_basis < size_of_array_4gb:
+            # vander  = self.vandermonde(x)
+            vander  = self.vandermonde(x, normed=False)
+            y       = np.sum(vander * self.coef, -1)
+        else:
+            batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
+            y = []
+            for i in range(math.ceil(x.shape[1]/batch_size)):
+                idx_beg = i*batch_size
+                idx_end = min((i+1) * batch_size, x.shape[1])
+                x_      = x[:,idx_beg:idx_end]
+                # vander_ = self.vandermonde(x_)
+                vander_ = self.vandermonde(x_, normed=False)
+                y      += list(np.sum(vander_ * self.coef, -1))
+            y = np.array(y) 
         return y
 
     def __str__(self):
