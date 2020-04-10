@@ -78,6 +78,7 @@ def get_train_data(n, u_cand, doe_method, optimality=None, sample_selected=[], b
     if len(sample_selected) == 0:
         raise ValueError('get_train_data: No samples are selected')
     u_train_new = u_cand[:,samples_new]
+
     return u_train_new
 
 def map_domain(u_data, solver, doe_method, dist_name):
@@ -192,9 +193,12 @@ def main():
 
     ## Here selecte the initial samples
     print(' > Getting initial sample set...')
+
+
+
     init_basis_deg  = 10
     sample_selected = []
-    init_doe_method = doe_method
+    init_doe_method = 'LHS' 
     init_optimality = optimality 
     orth_poly.set_degree(init_basis_deg)
 
@@ -203,15 +207,24 @@ def main():
         u_cand_p = init_basis_deg **0.5 * u_cand
     else:
         u_cand_p = u_cand
+    if init_doe_method.lower() == 'lhs':
+        if orth_poly.dist_name.lower() == 'uniform':
+            doe = museuq.LHS([stats.uniform(-1,2),]*solver.ndim)
+        elif orth_poly.dist_name.lower() == 'normal':
+            doe = museuq.LHS([stats.norm(0,1),]*solver.ndim)
+        _, u_train = doe.samples(n_eval_init)
 
-    u_train = get_train_data(n_eval_init, u_cand_p, init_doe_method, optimality=init_optimality, sample_selected=sample_selected, basis=orth_poly)
+        print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
+        print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))
+    else:
+        u_train = get_train_data(n_eval_init, u_cand_p, init_doe_method, optimality=init_optimality, sample_selected=sample_selected, basis=orth_poly)
+        print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
+        print('   * {:<25s} : {}'.format(' Optimality ', init_optimality))
+        print('   * {:<25s} : {}'.format(' Basis deg', init_basis_deg))
+        print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))
 
     x_train = map_domain(u_train, solver, doe_method, orth_poly.dist_name)
     y_train = solver.run(x_train)
-    print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
-    print('   * {:<25s} : {}'.format(' Optimality ', init_optimality))
-    print('   * {:<25s} : {}'.format(' Basis deg', init_basis_deg))
-    print('   * {:<25s} : {}'.format(' # samples ', u_train.shape[1]))
     print('   * {:<25s} : [{:.2f},{:.2f}]'.format(' u Domain ', np.amin(u_train), np.amax(u_train)))
     print('   * {:<25s} : [{:.2f},{:.2f}]'.format(' x Domain ', np.amin(x_train), np.amax(x_train)))
     # print('   * {:<25s} : {}'.format('Target QoI',qoi))
