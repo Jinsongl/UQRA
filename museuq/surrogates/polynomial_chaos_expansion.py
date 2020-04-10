@@ -31,16 +31,15 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.ndim       = None 
             self.num_basis  = None 
             self.deg        = None
-            self.active_    = None
             self.cv_error   = np.inf
+            self.active_index = None
+            self.active_basis = None
         else:
-            # if isinstance(self.basis, (list, tuple))
-            # if hasattr(stats, self.basis.name):
-                # self.basis = [self.basis,]
             self.ndim       = basis.ndim 
             self.num_basis  = self.basis.num_basis
             self.deg        = self.basis.deg
-            self.active_    = range(self.num_basis) if self.num_basis is not None else None
+            self.active_index = None if self.num_basis is None else range(self.num_basis)
+            self.active_basis = None if self.basis.basis_degree is None else self.basis.basis_degree 
             self.cv_error   = np.inf
             # ### Now assuming same marginal basis
             # try:
@@ -61,7 +60,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             print(r'     - {:<23s} : {}'.format('Askey-Wiener basis'   , self.basis.name))
             print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.deg ))
             print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)', self.basis.num_basis))
-            print(r'     - {:<23s} : {:d}'.format('No. active basis (P)', len(self.active_)))
+            print(r'     - {:<23s} : {:d}'.format('No. active basis (s)', len(self.active_index)))
 
     def fit_quadrature(self, x, w, y):
         """
@@ -83,11 +82,12 @@ class PolynomialChaosExpansion(SurrogateBase):
         # print(r'   * {:<25s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
 
         # norms = np.sum(X.T**2 * w, -1)
-        norms = self.basis.basis_norms *self.basis.basis_norms_const**self.basis.ndim
-        coef = np.sum(X.T * y * w, -1) / norms 
+        norms       = self.basis.basis_norms *self.basis.basis_norms_const**self.basis.ndim
+        coef        = np.sum(X.T * y * w, -1) / norms 
         self.model  = self.basis.set_coef(coef) 
-        self.active_= range(self.num_basis)
         self.coef   = coef
+        self.active_index = range(self.num_basis)
+        self.active_basis = self.basis.basis_degree
 
     def fit_ols(self,x,y,w=None, *args, **kwargs):
         """
@@ -125,8 +125,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         model.fit(X, y, sample_weight=w)
         self.cv_error= -np.mean(neg_mse)
         self.model   = model 
-        self.active_ = range(self.num_basis)
         self.coef    = model.coef_
+        self.active_index = range(self.num_basis)
+        self.active_basis = self.basis.basis_degree
 
     def fit_olslars(self,x,y,w=None, *args, **kwargs):
         """
@@ -157,7 +158,6 @@ class PolynomialChaosExpansion(SurrogateBase):
         # print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
         ### 1. Perform variable selection first
         model_lars       = linear_model.Lars(fit_intercept=False).fit(X,y)
-        self.active_lars = model_lars.active_ ## Indices of active basis at the end of the path.
         ### 2. Perform linear regression on every set of first i basis 
         n_active_basis = min(len(model_lars.active_), X.shape[0]-1)
         for i in range(n_active_basis):
@@ -173,10 +173,11 @@ class PolynomialChaosExpansion(SurrogateBase):
 
             if error_loo < self.cv_error:
                 self.model    = model 
-                self.active_  = active_indices
                 self.cv_error = error_loo
                 self.coef     = model.coef_
-        # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
+                self.active_index = active_indices
+                self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
+        # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_index, len(self.active_index)))
 
     def fit_lassolars(self,x,y,w=None, *args, **kwargs):
         """
@@ -211,11 +212,12 @@ class PolynomialChaosExpansion(SurrogateBase):
         # print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
 
         model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count(),fit_intercept=False).fit(X,y)
-        self.active_  = list(*np.nonzero(model.coef_))
         self.model    = model 
         self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
         self.coef     = model.coef_
-        # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_, len(self.active_)))
+        self.active_index = list(*np.nonzero(model.coef_))
+        self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
+        # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_index, len(self.active_index)))
 
     def predict(self,x, **kwargs):
         """
