@@ -52,7 +52,9 @@ def get_train_data(n, u_cand, doe_method, optimality=None, sample_selected=[], b
     """
 
     if optimality is None:
-        idx = list(set(np.random.randint(0, u_cand.shape[1], size=n*10)).difference(set(sample_selected)))
+        idx = []
+        while len(idx) < n:
+            idx += list(set(np.random.randint(0, u_cand.shape[1], size=n*10)).difference(set(sample_selected)).difference(set(idx)))
         samples_new = idx[:n]
         sample_selected += samples_new
 
@@ -160,12 +162,12 @@ def main():
     simparams   = museuq.simParameters(solver.nickname)
     # print(simparams.data_dir_result)
     ## ------------------------ Adaptive parameters ----------------- ###
-    plim        = (2,4)
-    n_budget    = 200
+    plim        = (2,100)
+    n_budget    = 20000
     n_cand      = int(1e5)
     n_test      = -1 
-    doe_method  = 'MCS'
-    optimality  = 'D' #'D', 'S', None
+    doe_method  = 'CLS'
+    optimality  = None #'D', 'S', None
     fit_method  = 'LASSOLARS'
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.01)
     simparams.info()
@@ -198,7 +200,7 @@ def main():
 
     init_basis_deg  = 10
     sample_selected = []
-    init_doe_method = 'LHS' 
+    init_doe_method = doe_method 
     init_optimality = optimality 
     orth_poly.set_degree(init_basis_deg)
 
@@ -273,17 +275,18 @@ def main():
         y_train = np.hstack((y_train, y_train_new)) 
         print('   New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
 
-        ### ============ Build Surrogate Model ============
         # print('u train min: {}'.format(np.min(u_train, axis=1)))
         # print('u train max: {}'.format(np.max(u_train, axis=1)))
         # print('x train min: {}'.format(np.min(x_train, axis=1)))
         # print('x train max: {}'.format(np.max(x_train, axis=1)))
+        # print('u train: {}'.format(u_train))
+        # print('x train: {}'.format(x_train))
         # print('y train: {}'.format(y_train))
-        # print('w train: {}'.format(w))
-
+        ### ============ Build Surrogate Model ============
         w_train = cal_weight(doe_method, u_train, pce_model)
         pce_model.fit_lassolars(u_train, y_train, w=w_train)
         y_train_hat = pce_model.predict(u_train, w=w_train)
+
 
         w_test = cal_weight(doe_method, u_test_p, pce_model)
         y_test_hat  = pce_model.predict(u_test_p, w=w_test)
