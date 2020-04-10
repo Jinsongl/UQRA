@@ -153,7 +153,7 @@ def main():
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
     n_new       = 5
-    n_eval_init = 15
+    n_eval_init = 5
     iter_max    = 100
 
     ## ------------------------ Define solver ----------------------- ###
@@ -332,6 +332,7 @@ def main():
             orth_poly.set_degree(p)
             pce_model = museuq.PCE(orth_poly)
             print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
+            n_new = len(active_basis[p])
             u_train_new = get_train_data(n_new, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
             x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
             y_train_new = solver.run(x_train_new)
