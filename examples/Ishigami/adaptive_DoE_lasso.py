@@ -159,7 +159,7 @@ def main():
     simparams   = museuq.simParameters(solver.nickname)
     # print(simparams.data_dir_result)
     ## ------------------------ Adaptive parameters ----------------- ###
-    plim        = (2,100)
+    plim        = (2,4)
     n_budget    = 200
     n_cand      = int(1e5)
     n_test      = -1 
@@ -187,15 +187,15 @@ def main():
     print('   * {:<25s} : {}'.format('Test'     , u_test.shape))
     print('   * {:<25s} : {}'.format('Target QoI',qoi))
 
-    print('utest: \n{}'.format(u_test[:,:3]))
-    print('max y_test :{}'.format(max(y_test)))
+    # print('utest: \n{}'.format(u_test[:,:3]))
+    # print('max y_test :{}'.format(max(y_test)))
 
     ## Here selecte the initial samples
     print(' > Getting initial sample set...')
     init_basis_deg  = 10
     sample_selected = []
     init_doe_method = doe_method
-    init_optimality = None
+    init_optimality = optimality 
     orth_poly.set_degree(init_basis_deg)
 
     ### update candidate data set for this p degree, cls unbuounded
@@ -244,10 +244,13 @@ def main():
         ### update candidate data set for this p degree, cls unbuounded
         if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
             u_cand_p = p**0.5 * u_cand
+            u_test_p = p**0.5 * u_test
         else:
             u_cand_p = u_cand
+            u_test_p = u_test
 
         ### ============ Get training points ============
+        print(sample_selected)
         print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
         u_train_new = get_train_data(n_new, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p-1])
         x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
@@ -255,7 +258,6 @@ def main():
         u_train = np.hstack((u_train, u_train_new)) 
         x_train = np.hstack((x_train, x_train_new)) 
         y_train = np.hstack((y_train, y_train_new)) 
-        w       = cal_weight(doe_method, u_train, pce_model)
         print('   New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
 
         ### ============ Build Surrogate Model ============
@@ -266,18 +268,19 @@ def main():
         # print('y train: {}'.format(y_train))
         # print('w train: {}'.format(w))
 
-        pce_model.fit_lassolars(u_train, y_train, w=w)
-        y_train_hat = pce_model.predict(u_train, w=w)
+        w_train = cal_weight(doe_method, u_train, pce_model)
+        pce_model.fit_lassolars(u_train, y_train, w=w_train)
+        y_train_hat = pce_model.predict(u_train, w=w_train)
 
-        w = cal_weight(doe_method, u_test, pce_model)
-        y_test_hat  = pce_model.predict(u_test, w=w)
+        w_test = cal_weight(doe_method, u_test_p, pce_model)
+        y_test_hat  = pce_model.predict(u_test_p, w=w_test)
         qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
-        print('utest: {}'.format(u_test[:,:3]))
-        print('u test min: {}'.format(np.min(u_test, axis=1)))
-        print('u test max: {}'.format(np.max(u_test, axis=1)))
-        print('y test max: {}'.format(np.max(y_test)))
-        print('pf, y_test_hat: {}'.format(qoi))
-        print('y_test_hat max: {}'.format(max(y_test_hat)))
+        # print('utest: {}'.format(u_test_p[:,:3]))
+        # print('u test min: {}'.format(np.min(u_test_p, axis=1)))
+        # print('u test max: {}'.format(np.max(u_test_p, axis=1)))
+        # print('y test max: {}'.format(np.max(y_test)))
+        # print('pf, y_test_hat: {}'.format(qoi))
+        # print('y_test_hat max: {}'.format(max(y_test_hat)))
 
         ### ============ calculating & updating metrics ============
        
@@ -336,7 +339,7 @@ def main():
     print('>>>>>>>>>>>>>>> Adaptive simulation done <<<<<<<<<<<<<<<<<<<')
     print('------------------------------------------------------------')
     print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
-    print(' - {:<25s} : {} -> #{:d}'.format('Active basis', pce_model.active_, len(pce_model.active_)))
+    # print(' - {:<25s} : {} -> #{:d}'.format(' # Active basis', pce_model.active_basis, len(pce_model.active_index)))
     print(' - {:<25s} : {}'.format('# samples', n_eval_path[-1]))
     # print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
     print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p+1], dtype=np.float)), 2)))
@@ -350,6 +353,7 @@ def main():
         filename = 'Adaptive_{:s}_{:s}_{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), fit_method.capitalize())
     data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
     np.save(os.path.join(simparams.data_dir_result, filename), data)
+    np.save(os.path.join(simparams.data_dir_result, filename[:-4]+'_samples'), np.array(sample_selected))
 
 if __name__ == '__main__':
     main()
