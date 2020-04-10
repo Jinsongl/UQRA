@@ -237,8 +237,8 @@ class PolynomialChaosExpansion(SurrogateBase):
             y = self.basis(x)
         elif self.fit_method in ['OLS','OLSLARS','LASSOLARS']:
             w = kwargs.get('w', None)
-            size_of_array_4gb = 1e8/2.0
 
+            size_of_array_4gb = 1e8/2.0
             # X = self.basis.vandermonde(x)
             # X = (X.T * w).T if w is not None else X
             # y = self.model.predict(X)

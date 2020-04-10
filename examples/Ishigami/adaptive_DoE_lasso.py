@@ -256,6 +256,13 @@ def main():
         orth_poly.set_degree(p)
         pce_model = museuq.PCE(orth_poly)
 
+        # print('u train min: {}'.format(np.min(u_train, axis=1)))
+        # print('u train max: {}'.format(np.max(u_train, axis=1)))
+        # print('x train min: {}'.format(np.min(x_train, axis=1)))
+        # print('x train max: {}'.format(np.max(x_train, axis=1)))
+        # print('u train: {}'.format(u_train))
+        # print('x train: {}'.format(x_train))
+        # print('y train: {}'.format(y_train))
         ### update candidate data set for this p degree, cls unbuounded
         if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
             u_cand_p = p**0.5 * u_cand
@@ -264,24 +271,6 @@ def main():
             u_cand_p = u_cand
             u_test_p = u_test
 
-        ### ============ Get training points ============
-        print(sample_selected)
-        print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
-        u_train_new = get_train_data(n_new, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p-1])
-        x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
-        y_train_new = solver.run(x_train_new)
-        u_train = np.hstack((u_train, u_train_new)) 
-        x_train = np.hstack((x_train, x_train_new)) 
-        y_train = np.hstack((y_train, y_train_new)) 
-        print('   New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
-
-        # print('u train min: {}'.format(np.min(u_train, axis=1)))
-        # print('u train max: {}'.format(np.max(u_train, axis=1)))
-        # print('x train min: {}'.format(np.min(x_train, axis=1)))
-        # print('x train max: {}'.format(np.max(x_train, axis=1)))
-        # print('u train: {}'.format(u_train))
-        # print('x train: {}'.format(x_train))
-        # print('y train: {}'.format(y_train))
         ### ============ Build Surrogate Model ============
         w_train = cal_weight(doe_method, u_train, pce_model)
         pce_model.fit_lassolars(u_train, y_train, w=w_train)
@@ -329,6 +318,28 @@ def main():
                 cv_error[i]     = 0
                 test_error[i]   = 0
                 active_basis[i] = 0
+
+            ### update candidate data set for this p degree, cls unbuounded
+            if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
+                u_cand_p = p**0.5 * u_cand
+                u_test_p = p**0.5 * u_test
+            else:
+                u_cand_p = u_cand
+                u_test_p = u_test
+
+            ### ============ Get training points ============
+            # print(sample_selected)
+            orth_poly.set_degree(p)
+            pce_model = museuq.PCE(orth_poly)
+            print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
+            u_train_new = get_train_data(n_new, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
+            x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
+            y_train_new = solver.run(x_train_new)
+            u_train = np.hstack((u_train, u_train_new)) 
+            x_train = np.hstack((x_train, x_train_new)) 
+            y_train = np.hstack((y_train, y_train_new)) 
+            print('   New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
+
             continue
 
         print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
