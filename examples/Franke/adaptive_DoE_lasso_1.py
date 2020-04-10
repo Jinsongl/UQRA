@@ -152,7 +152,8 @@ def main():
     np.set_printoptions(precision=4)
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
-    n_new       = 10
+    sparsity    = 10
+    n_new       = 1
     n_eval_init = 16
     iter_max    = 100
     n_splits    = 10
@@ -272,6 +273,18 @@ def main():
             u_cand_p = u_cand
             u_test_p = u_test
 
+        ### ============ Get training points ============
+        # print(sample_selected)
+        orth_poly.set_degree(p)
+        pce_model = museuq.PCE(orth_poly)
+        print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
+        u_train_new = get_train_data(n_new, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p-1])
+        x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
+        y_train_new = solver.run(x_train_new)
+        u_train = np.hstack((u_train, u_train_new)) 
+        x_train = np.hstack((x_train, x_train_new)) 
+        y_train = np.hstack((y_train, y_train_new)) 
+        print('   New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
         ### ============ Build Surrogate Model ============
         w_train = cal_weight(doe_method, u_train, pce_model)
         pce_model.fit_lassolars(u_train, y_train, w=w_train, n_splits=n_splits)
@@ -333,7 +346,7 @@ def main():
             orth_poly.set_degree(p)
             pce_model = museuq.PCE(orth_poly)
             print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
-            n = min(len(active_basis[p]), n_new)
+            n = min(len(active_basis[p]), sparsity)
             u_train_new = get_train_data(n, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
             x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
             y_train_new = solver.run(x_train_new)
