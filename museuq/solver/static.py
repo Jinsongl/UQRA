@@ -446,13 +446,13 @@ class papaioannou2016sequential(SolverBase):
         g  = np.minimum(g1,g2)
         return g
 
-class franke(SolverBase):
+class Franke(SolverBase):
     """
     Franke Function
 
     """
     def __init__(self):
-        super(franke, self).__init__()
+        super(Franke, self).__init__()
         self.name       = 'Franke'
         self.nickname   = 'Franke'
         self.ndim       = int(2)
@@ -471,7 +471,7 @@ class franke(SolverBase):
         y  =  f1 + f2 + f3 - f4
         if np.isnan(y).any():
             raise ValueError('nan in solver.run() result')
-        return f
+        return y
 
     def map_domain(self, u, u_cdf):
         """
