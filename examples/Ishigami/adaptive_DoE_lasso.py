@@ -65,11 +65,12 @@ def get_train_data(n, u_cand, doe_method, optimality=None, sample_selected=[], b
         if doe_method.lower().startswith('cls'):
             X  = basis.num_basis**0.5*(X.T / np.linalg.norm(X, axis=1)).T
         if active_basis == 0 or active_basis is None:
-            print('     - {:<23s} : {}/{}'.format('Optimal design based on ', 0, basis.num_basis))
+            print('     - {:<23s} : {}/{}'.format('Optimal design based on ', basis.num_basis, basis.num_basis))
             X = X
         else:
             print('     - {:<23s} : {}/{}'.format('Optimal design based on ', len(active_basis), basis.num_basis))
-            X = X[:, active_basis]
+            active_index = np.array([i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis])
+            X = X[:, active_index]
         samples_new = doe.samples(X, n_samples=n, orth_basis=True)
 
     if len(sample_selected) != len(np.unique(sample_selected)):
@@ -285,8 +286,8 @@ def main():
         
         cv_error[p] = pce_model.cv_error        
         cv_error_path.append(pce_model.cv_error)
-        active_basis[p] = pce_model.active_        
-        active_basis_path.append(pce_model.active_)
+        active_basis[p] = pce_model.active_basis
+        active_basis_path.append(pce_model.active_basis)
         adj_r2[p] = museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis)        
         adj_r2_path.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))
         qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
