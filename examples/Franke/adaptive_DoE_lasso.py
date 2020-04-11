@@ -95,14 +95,15 @@ def map_domain(u_data, solver, doe_method, dist_name):
             dist_u = [stats.norm(0,1), ] *solver.ndim
         else:
             raise ValueError('{:s} not defined'.format(dist_name))
-        x_data = solver.map_domain(u_data, dist_u)
     elif doe_method.lower().startswith('cls'):
         if dist_name.lower() == 'uniform':
-            x_data= solver.map_domain(u_data, np.arcsin(u_data)/np.pi + 0.5)
+            dist_u = [stats.uniform(-1,2),] * solver.ndim
+            # x_data= solver.map_domain(u_data, np.arcsin(u_data)/np.pi + 0.5)
         elif dist_name.lower() == 'normal':
-            raise NotImplementedError
+            dist_u = [stats.norm(0, np.sqrt(0.5)), ] *solver.ndim
         else:
             raise ValueError('{:s} not defined'.format(dist_name))
+    x_data = solver.map_domain(u_data, dist_u)
     return x_data
 
 def get_test_data(simparams, u_test, solver, doe_method, dist_name):
