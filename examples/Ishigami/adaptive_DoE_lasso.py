@@ -24,17 +24,17 @@ def get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test):
         filename= r'DoE_McsE6R0.npy'
         mcs_data_set  = np.load(os.path.join(simparams.data_dir_sample, 'MCS', orth_poly.dist_name, filename))
         u_cand = mcs_data_set[:orth_poly.ndim,:n_cand].reshape(orth_poly.ndim, -1)
-        u_test = mcs_data_set[:orth_poly.ndim,:n_test] if n_test > 1 else mcs_data_set[:orth_poly.ndim,:]
+        # u_test = mcs_data_set[:orth_poly.ndim,:n_test] if n_test > 1 else mcs_data_set[:orth_poly.ndim,:]
 
     elif doe_method.lower().startswith('cls') or doe_method.lower() == 'reference':
         filename= r'DoE_McsE6d{:d}R0.npy'.format(orth_poly.ndim) if orth_poly.dist_name.lower() == 'normal' else r'DoE_McsE6R0.npy'
         cls_data_set  = np.load(os.path.join(simparams.data_dir_sample, 'Pluripotential', orth_poly.dist_name, filename))
         u_cand = cls_data_set[:orth_poly.ndim,:n_cand].reshape(orth_poly.ndim, -1)
-        u_test = cls_data_set[:orth_poly.ndim,:n_test] if n_test > 1 else cls_data_set[:orth_poly.ndim,:]
+        # u_test = cls_data_set[:orth_poly.ndim,:n_test] if n_test > 1 else cls_data_set[:orth_poly.ndim,:]
     else:
         raise ValueError
 
-    return u_cand, u_test
+    return u_cand
 
 def get_train_data(n, u_cand, doe_method, optimality=None, sample_selected=[], basis=None, active_basis=None):
     """
@@ -106,7 +106,7 @@ def map_domain(u_data, solver, doe_method, dist_name):
     x_data = solver.map_domain(u_data, dist_u)
     return x_data
 
-def get_test_data(simparams, u_test, solver, doe_method, dist_name):
+def get_test_data(simparams, solver, doe_method, dist_name, filename = r'DoE_McsE6R0.npy'):
     """
     return test data
     If already exist in simparams.data_dir_result, then load and return
@@ -114,25 +114,30 @@ def get_test_data(simparams, u_test, solver, doe_method, dist_name):
 
 
     """
-    filename = r'DoE_McsE6R0.npy'
-    if doe_method.lower().startswith('mcs'):
-        data_dir = os.path.join(simparams.data_dir_result, 'MCS')
-    elif doe_method.lower().startswith('cls'):
-        data_dir = os.path.join(simparams.data_dir_result, 'Pluripotential')
-    else:
-        raise ValueError
+    
+    # if doe_method.lower().startswith('mcs'):
+        # data_dir = os.path.join(simparams.data_dir_result, 'MCS')
+    # elif doe_method.lower().startswith('cls'):
+        # data_dir = os.path.join(simparams.data_dir_result, 'Pluripotential')
+    # else:
+        # raise ValueError
 
     try:
-        data_set = np.load(os.path.join(data_dir, filename))
-        y_test   = data_set[-1,:]
+        data_set = np.load(os.path.join(simparams.data_dir_result, 'MCS', filename))
+        assert data_set.shape[0] == 2*solver.ndim+1
+        u_test = data_set[:solver.ndim,:]
+        x_test = data_set[solver.ndim:2*solver.ndim,:]
+        y_test = data_set[-1,:]
     except FileNotFoundError:
         print('   > Running solver to get test data ')
+        data_set = np.load(os.path.join(simparams.data_dir_sample, 'MCS', dist_name.capitalize(), filename))
+        u_test = data_set[:solver.ndim,:] 
         x_test = map_domain(u_test, solver, doe_method, dist_name)
         y_test = solver.run(x_test)
         data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
         np.save(os.path.join(data_dir, filename), data)
  
-    return y_test
+    return u_test, x_test, y_test
 
 def cal_weight(doe_method, u_data, pce_model):
     """
@@ -185,9 +190,9 @@ def main():
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
-    u_cand, u_test  = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
-    y_test          = get_test_data(simparams, u_test, solver, doe_method, orth_poly.dist_name) 
-    qoi             = museuq.metrics.mquantiles(y_test, 1-pf)
+    u_cand = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
+    u_test, x_test, y_test = get_test_data(simparams, solver, doe_method, orth_poly.dist_name) 
+    qoi = museuq.metrics.mquantiles(y_test, 1-pf)
     print('   * {:<25s} : {}'.format('Candidate', u_cand.shape))
     print('   * {:<25s} : {}'.format('Test'     , u_test.shape))
     print('   * {:<25s} : {}'.format('Target QoI',qoi))
@@ -264,10 +269,8 @@ def main():
         ### update candidate data set for this p degree, cls unbuounded
         if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
             u_cand_p = p**0.5 * u_cand
-            u_test_p = p**0.5 * u_test
         else:
             u_cand_p = u_cand
-            u_test_p = u_test
         # print('u train min: {}'.format(np.min(u_train, axis=1)))
         # print('u train max: {}'.format(np.max(u_train, axis=1)))
         # print('x train min: {}'.format(np.min(x_train, axis=1)))
@@ -281,8 +284,8 @@ def main():
         y_train_hat = pce_model.predict(u_train, w=w_train)
 
 
-        w_test = cal_weight(doe_method, u_test_p, pce_model)
-        y_test_hat  = pce_model.predict(u_test_p, w=w_test)
+        w_test = cal_weight(doe_method, u_test, pce_model)
+        y_test_hat  = pce_model.predict(u_test, w=w_test)
         qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
         # print('utest: {}'.format(u_test_p[:,:3]))
         # print('u test min: {}'.format(np.min(u_test_p, axis=1)))
@@ -326,10 +329,8 @@ def main():
             ### update candidate data set for this p degree, cls unbuounded
             if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
                 u_cand_p = p**0.5 * u_cand
-                u_test_p = p**0.5 * u_test
             else:
                 u_cand_p = u_cand
-                u_test_p = u_test
             # p = max(plim[0], p -3)
             print('         - Reseting results for PCE order higher than p = {:d} '.format(p))
             for i in range(p+1, len(active_basis)):
@@ -343,10 +344,8 @@ def main():
             # ### update candidate data set for this p degree, cls unbuounded
             # if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
                 # u_cand_p = p**0.5 * u_cand
-                # u_test_p = p**0.5 * u_test
             # else:
                 # u_cand_p = u_cand
-                # u_test_p = u_test
 
             # ### ============ Get training points ============
             # # print(sample_selected)
