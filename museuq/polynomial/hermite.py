@@ -35,7 +35,7 @@ class Hermite(PolyBase):
         elif hem_type.lower() == 'probabilists':
             self.dist_u = [stats.norm(0,1),] * self.ndim
         elif hem_type.lower() == 'physicists':
-            self.dist_u = [stats.norm(0,0.25),] * self.ndim 
+            self.dist_u = [stats.norm(0,np.sqrt(0.5)),] * self.ndim 
         else:
             raise ValueError
         self._update_basis()
