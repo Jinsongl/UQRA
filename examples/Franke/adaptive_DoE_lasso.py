@@ -152,8 +152,9 @@ def main():
     np.set_printoptions(precision=4)
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
-    n_new       = 5
-    n_eval_init = 15
+    sparsity    = 10
+    n_new       = 1
+    n_eval_init = 16
     iter_max    = 100
     n_splits    = 10
 
@@ -167,10 +168,10 @@ def main():
     n_budget    = 20000
     n_cand      = int(1e5)
     n_test      = -1 
-    doe_method  = 'MCS'
-    optimality  = None #'D', 'S', None
+    doe_method  = 'CLS'
+    optimality  = 'S'#'D', 'S', None
     fit_method  = 'LASSOLARS'
-    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.01)
+    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.02, min_r2=0.95)
     simparams.info()
     print('   * Sampling and Fitting:')
     print('     - {:<23s} : {}'.format('Sampling method'  , doe_method  ))
@@ -199,9 +200,10 @@ def main():
 
 
 
+    np.random.seed(100)
     init_basis_deg  = 10
     sample_selected = []
-    init_doe_method = doe_method 
+    init_doe_method = 'lhs' 
     init_optimality = optimality 
     orth_poly.set_degree(init_basis_deg)
 
@@ -257,6 +259,13 @@ def main():
         orth_poly.set_degree(p)
         pce_model = museuq.PCE(orth_poly)
 
+        # print('u train min: {}'.format(np.min(u_train, axis=1)))
+        # print('u train max: {}'.format(np.max(u_train, axis=1)))
+        # print('x train min: {}'.format(np.min(x_train, axis=1)))
+        # print('x train max: {}'.format(np.max(x_train, axis=1)))
+        # print('u train: {}'.format(u_train))
+        # print('x train: {}'.format(x_train))
+        # print('y train: {}'.format(y_train))
         ### update candidate data set for this p degree, cls unbuounded
         if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
             u_cand_p = p**0.5 * u_cand
@@ -266,7 +275,9 @@ def main():
             u_test_p = u_test
 
         ### ============ Get training points ============
-        print(sample_selected)
+        # print(sample_selected)
+        orth_poly.set_degree(p)
+        pce_model = museuq.PCE(orth_poly)
         print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
         u_train_new = get_train_data(n_new, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p-1])
         x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
@@ -275,21 +286,12 @@ def main():
         x_train = np.hstack((x_train, x_train_new)) 
         y_train = np.hstack((y_train, y_train_new)) 
         print('   New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
-
-        # print('u train min: {}'.format(np.min(u_train, axis=1)))
-        # print('u train max: {}'.format(np.max(u_train, axis=1)))
-        # print('x train min: {}'.format(np.min(x_train, axis=1)))
-        # print('x train max: {}'.format(np.max(x_train, axis=1)))
-        # print('u train: {}'.format(u_train))
-        # print('x train: {}'.format(x_train))
-        # print('y train: {}'.format(y_train))
         ### ============ Build Surrogate Model ============
         w_train = cal_weight(doe_method, u_train, pce_model)
         pce_model.fit_lassolars(u_train, y_train, w=w_train, n_splits=n_splits)
         y_train_hat = pce_model.predict(u_train, w=w_train)
 
 
-        assert np.array_equal(u_test_p, u_test)
         w_test = cal_weight(doe_method, u_test_p, pce_model)
         y_test_hat  = pce_model.predict(u_test_p, w=w_test)
         qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
@@ -299,8 +301,6 @@ def main():
         # print('y test max: {}'.format(np.max(y_test)))
         # print('pf, y_test_hat: {}'.format(qoi))
         # print('y_test_hat max: {}'.format(max(y_test_hat)))
-        np.save('y_test_hat{:d}'.format(p), y_test_hat)
-        np.save('y_test_{:d}'.format(p), y_test)
 
         ### ============ calculating & updating metrics ============
        
@@ -333,6 +333,29 @@ def main():
                 cv_error[i]     = 0
                 test_error[i]   = 0
                 active_basis[i] = 0
+
+            ### update candidate data set for this p degree, cls unbuounded
+            if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
+                u_cand_p = p**0.5 * u_cand
+                u_test_p = p**0.5 * u_test
+            else:
+                u_cand_p = u_cand
+                u_test_p = u_test
+
+            ### ============ Get training points ============
+            # print(sample_selected)
+            orth_poly.set_degree(p)
+            pce_model = museuq.PCE(orth_poly)
+            print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
+            n = min(len(active_basis[p]), sparsity)
+            u_train_new = get_train_data(n, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
+            x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
+            y_train_new = solver.run(x_train_new)
+            u_train = np.hstack((u_train, u_train_new)) 
+            x_train = np.hstack((x_train, x_train_new)) 
+            y_train = np.hstack((y_train, y_train_new)) 
+            print('   New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
+
             continue
 
         print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
@@ -342,18 +365,16 @@ def main():
             beta = pce_model.coef
             beta = beta[abs(beta) > 1e-6]
             print(' - {:<25s} : #{:d}'.format('Active basis', len(beta)))
-        # print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
+        print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2[plim[0]:p+1], 2)))
         print(' - {:<25s} : {}'.format('cv error ', np.squeeze(np.array(cv_error[plim[0]:p+1]))))
         print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p+1])), 2)))
         print(' - {:<25s} : {}'.format('test error', np.squeeze(np.array(test_error[plim[0]:p+1]))))
-        print(' - {:<25s} : {}'.format('max test error', np.linalg.norm(y_test-y_test_hat, np.inf)))
-        print(' - {:<25s} : {}'.format('max train error', np.linalg.norm(y_train-y_train_hat, np.inf)))
         print('     ------------------------------------------------------------')
 
         ### ============ updating parameters ============
         p +=1
         i_iteration += 1
-        if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p]):
+        if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p], adj_r2=adj_r2[plim[0]:p]):
             break
 
 
@@ -363,19 +384,20 @@ def main():
     print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
     # print(' - {:<25s} : {} -> #{:d}'.format(' # Active basis', pce_model.active_basis, len(pce_model.active_index)))
     print(' - {:<25s} : {}'.format('# samples', n_eval_path[-1]))
-    # print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
-    print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p], dtype=np.float)), 2)))
+    print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(np.squeeze(np.array(adj_r2[plim[0]:p+1], dtype=np.float)), 2)))
+    print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p+1], dtype=np.float)), 2)))
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
-    print(pce_model.coef[abs(pce_model.coef)>1e-6])
+    print(pce_model.coef[pce_model.coef!=0])
     # print(solver.coef[solver.coef!=0])
 
     if optimality:
-        filename = 'Adaptive_{:s}_{:s}{:s}_{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), optimality, fit_method.capitalize())
+        filename = 'Adaptive_{:s}_{:s}{:s}_{:s}'.format(solver.nickname.capitalize(), doe_method.capitalize(), optimality, fit_method.capitalize())
     else:
-        filename = 'Adaptive_{:s}_{:s}_{:s}.npy'.format(solver.nickname.capitalize(), doe_method.capitalize(), fit_method.capitalize())
-    data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
+        filename = 'Adaptive_{:s}_{:s}_{:s}'.format(solver.nickname.capitalize(), doe_method.capitalize(), fit_method.capitalize())
+    path_data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
+    np.save(os.path.join(simparams.data_dir_result, filename+'_path'), path_data)
+    data  = np.array([n_eval_path, poly_order_path, cv_error, active_basis, adj_r2, QoI, test_error]) 
     np.save(os.path.join(simparams.data_dir_result, filename), data)
-    np.save(os.path.join(simparams.data_dir_result, filename[:-4]+'_samples'), np.array(sample_selected))
 
 if __name__ == '__main__':
     main()
