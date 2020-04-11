@@ -296,11 +296,15 @@ def main():
         
         cv_error[p] = pce_model.cv_error        
         cv_error_path.append(pce_model.cv_error)
-        active_basis[p] = pce_model.active_basis
-        active_basis_path.append(pce_model.active_basis)
-        cum_var = -np.cumsum(np.sort(-pce_model.coef[1:] **2))
-        y_hat_var_pct = cum_var / cum_var[-1] 
-        sparsity[p] = np.argwhere(y_hat_var_pct > 0.9)[0][-1]
+
+        cum_var         = -np.cumsum(np.sort(-pce_model.coef[1:] **2))
+        y_hat_var_pct   = cum_var / cum_var[-1] 
+        sparsity_p      = np.argwhere(y_hat_var_pct > 0.95)[0][-1] + 1 ## return index
+        sparsity[p]     = sparsity_p + 1 ## phi_0
+        acitve_index    = [0,] + list(np.argsort(-pce_model.coef[1:])[:sparsity_p]+1)
+        active_basis[p] = [pce_model.basis.basis_degree[i] for i in acitve_index ]
+        active_basis_path.append(pce_model.active_basis[p])
+
         adj_r2[p] = museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis)        
         adj_r2_path.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))
         qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
