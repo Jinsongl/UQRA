@@ -215,7 +215,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.model    = model 
         self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
         self.coef     = model.coef_
-        self.active_index = [i for i, icoef in enumerate(model.coef_) if abs(icoef) > 1e-6]
+        self.active_index = [i for i, icoef in enumerate(model.coef_) if abs(icoef) > 1e-4]
         self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
         # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_index, len(self.active_index)))
 
