@@ -169,9 +169,9 @@ def main():
     n_cand      = int(1e5)
     n_test      = -1 
     doe_method  = 'CLS'
-    optimality  = 'S'#'D', 'S', None
+    optimality  = 'D'#'D', 'S', None
     fit_method  = 'LASSOLARS'
-    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.01)
+    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.02, min_r2=0.95)
     simparams.info()
     print('   * Sampling and Fitting:')
     print('     - {:<23s} : {}'.format('Sampling method'  , doe_method  ))
@@ -364,7 +364,7 @@ def main():
             beta = pce_model.coef
             beta = beta[abs(beta) > 1e-6]
             print(' - {:<25s} : #{:d}'.format('Active basis', len(beta)))
-        # print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
+        print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2[plim[0]:p+1], 2)))
         print(' - {:<25s} : {}'.format('cv error ', np.squeeze(np.array(cv_error[plim[0]:p+1]))))
         print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p+1])), 2)))
         print(' - {:<25s} : {}'.format('test error', np.squeeze(np.array(test_error[plim[0]:p+1]))))
@@ -373,7 +373,7 @@ def main():
         ### ============ updating parameters ============
         p +=1
         i_iteration += 1
-        if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p]):
+        if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p], adj_r2=adj_r2[plim[0]:p]):
             break
 
 
@@ -383,7 +383,7 @@ def main():
     print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
     # print(' - {:<25s} : {} -> #{:d}'.format(' # Active basis', pce_model.active_basis, len(pce_model.active_index)))
     print(' - {:<25s} : {}'.format('# samples', n_eval_path[-1]))
-    # print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2, 2)))
+    print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(np.squeeze(np.array(adj_r2[plim[0]:p+1], dtype=np.float)), 2)))
     print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p+1], dtype=np.float)), 2)))
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
     print(pce_model.coef[pce_model.coef!=0])
