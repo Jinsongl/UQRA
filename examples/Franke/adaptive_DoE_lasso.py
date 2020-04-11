@@ -152,8 +152,7 @@ def main():
     np.set_printoptions(precision=4)
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
-    sparsity    = 10
-    n_new       = 1
+    n_new       = 5
     n_eval_init = 16
     iter_max    = 100
     n_splits    = 10
@@ -238,6 +237,7 @@ def main():
     p               = plim[0] 
     i_iteration     = 0
     n_eval_path     = []
+    sparsity        = [0,] * (plim[1]+1)
     poly_order_path = []
     cv_error        = [0,] * (plim[1]+1)
     cv_error_path   = []
@@ -311,6 +311,12 @@ def main():
         cv_error_path.append(pce_model.cv_error)
         active_basis[p] = pce_model.active_basis
         active_basis_path.append(pce_model.active_basis)
+        cum_var = -np.cumsum(np.sort(-pce_model.coef[1:] **2))
+        y_hat_var_pct = cum_var / cum_var[-1] 
+        sparsity[p] = np.argwhere(y_hat_var_pct > 0.9)[0][-1]
+        print('cum_var: \n{}'.format(cum_var))
+        print('y_hat_var_pct: \n{}'.format(y_hat_var_pct))
+        print('sparsity : {}'.format(sparsity))
         adj_r2[p] = museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis)        
         adj_r2_path.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))
         qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
@@ -331,6 +337,7 @@ def main():
                 QoI[i]          = 0
                 adj_r2[i]       = 0
                 cv_error[i]     = 0
+                sparsity[i]     = 0
                 test_error[i]   = 0
                 active_basis[i] = 0
 
@@ -347,7 +354,7 @@ def main():
             orth_poly.set_degree(p)
             pce_model = museuq.PCE(orth_poly)
             print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
-            n = min(len(active_basis[p]), sparsity)
+            n = sparsity[p]
             u_train_new = get_train_data(n, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
             x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
             y_train_new = solver.run(x_train_new)
