@@ -253,19 +253,12 @@ def main():
     ### ============ Start adaptive iteration ============
     print(' > Starting iteration ...')
     while i_iteration < iter_max:
-        print(' >>> Iteration No: {:d}'.format(i_iteration))
+        print(' >>> Iteration No. {:d}'.format(i_iteration))
 
         ### ============ Update PCE model ============
         orth_poly.set_degree(p)
         pce_model = museuq.PCE(orth_poly)
 
-        # print('u train min: {}'.format(np.min(u_train, axis=1)))
-        # print('u train max: {}'.format(np.max(u_train, axis=1)))
-        # print('x train min: {}'.format(np.min(x_train, axis=1)))
-        # print('x train max: {}'.format(np.max(x_train, axis=1)))
-        # print('u train: {}'.format(u_train))
-        # print('x train: {}'.format(x_train))
-        # print('y train: {}'.format(y_train))
         ### update candidate data set for this p degree, cls unbuounded
         if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
             u_cand_p = p**0.5 * u_cand
@@ -273,19 +266,13 @@ def main():
         else:
             u_cand_p = u_cand
             u_test_p = u_test
-
-        ### ============ Get training points ============
-        # print(sample_selected)
-        orth_poly.set_degree(p)
-        pce_model = museuq.PCE(orth_poly)
-        print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
-        u_train_new = get_train_data(n_new, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p-1])
-        x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
-        y_train_new = solver.run(x_train_new)
-        u_train = np.hstack((u_train, u_train_new)) 
-        x_train = np.hstack((x_train, x_train_new)) 
-        y_train = np.hstack((y_train, y_train_new)) 
-        print('   New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
+        # print('u train min: {}'.format(np.min(u_train, axis=1)))
+        # print('u train max: {}'.format(np.max(u_train, axis=1)))
+        # print('x train min: {}'.format(np.min(x_train, axis=1)))
+        # print('x train max: {}'.format(np.max(x_train, axis=1)))
+        # print('u train: {}'.format(u_train))
+        # print('x train: {}'.format(x_train))
+        # print('y train: {}'.format(y_train))
         ### ============ Build Surrogate Model ============
         w_train = cal_weight(doe_method, u_train, pce_model)
         pce_model.fit_lassolars(u_train, y_train, w=w_train, n_splits=n_splits)
@@ -314,9 +301,6 @@ def main():
         cum_var = -np.cumsum(np.sort(-pce_model.coef[1:] **2))
         y_hat_var_pct = cum_var / cum_var[-1] 
         sparsity[p] = np.argwhere(y_hat_var_pct > 0.9)[0][-1]
-        print('cum_var: \n{}'.format(cum_var))
-        print('y_hat_var_pct: \n{}'.format(y_hat_var_pct))
-        print('sparsity : {}'.format(sparsity))
         adj_r2[p] = museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis)        
         adj_r2_path.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))
         qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
@@ -329,10 +313,19 @@ def main():
         ### ============ Cheking Overfitting ============
         if simparams.check_overfitting(cv_error[plim[0]:p+1]):
             print('     >>> Possible overfitting detected')
-            print('         cv error: {}'.format(cv_error[plim[0]:p+1]))
+            print('         - cv error: {}'.format(np.around(cv_error[p-2:p+1], 4)))
             p = plim[0] + np.argmin(cv_error[plim[0]:p+1])
+            orth_poly.set_degree(p)
+            pce_model = museuq.PCE(orth_poly)
+            ### update candidate data set for this p degree, cls unbuounded
+            if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
+                u_cand_p = p**0.5 * u_cand
+                u_test_p = p**0.5 * u_test
+            else:
+                u_cand_p = u_cand
+                u_test_p = u_test
             # p = max(plim[0], p -3)
-            print('         Reseting results for PCE order higher than p = {:d} '.format(p))
+            print('         - Reseting results for PCE order higher than p = {:d} '.format(p))
             for i in range(p+1, len(active_basis)):
                 QoI[i]          = 0
                 adj_r2[i]       = 0
@@ -341,37 +334,52 @@ def main():
                 test_error[i]   = 0
                 active_basis[i] = 0
 
-            ### update candidate data set for this p degree, cls unbuounded
-            if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
-                u_cand_p = p**0.5 * u_cand
-                u_test_p = p**0.5 * u_test
-            else:
-                u_cand_p = u_cand
-                u_test_p = u_test
+            # ### update candidate data set for this p degree, cls unbuounded
+            # if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
+                # u_cand_p = p**0.5 * u_cand
+                # u_test_p = p**0.5 * u_test
+            # else:
+                # u_cand_p = u_cand
+                # u_test_p = u_test
 
-            ### ============ Get training points ============
-            # print(sample_selected)
-            orth_poly.set_degree(p)
-            pce_model = museuq.PCE(orth_poly)
-            print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
-            n = sparsity[p]
-            u_train_new = get_train_data(n, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
-            x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
-            y_train_new = solver.run(x_train_new)
-            u_train = np.hstack((u_train, u_train_new)) 
-            x_train = np.hstack((x_train, x_train_new)) 
-            y_train = np.hstack((y_train, y_train_new)) 
-            print('   New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
+            # ### ============ Get training points ============
+            # # print(sample_selected)
+            # orth_poly.set_degree(p)
+            # pce_model = museuq.PCE(orth_poly)
+            # print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
+            # n = sparsity[p]
+            # u_train_new = get_train_data(n, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
+            # x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
+            # y_train_new = solver.run(x_train_new)
+            # u_train = np.hstack((u_train, u_train_new)) 
+            # x_train = np.hstack((x_train, x_train_new)) 
+            # y_train = np.hstack((y_train, y_train_new)) 
+            # print('   New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
 
-            continue
+            # continue
 
+
+        ### ============ Get training points ============
+        # print(sample_selected)
+        print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
+        u_train_new = get_train_data(sparsity[p], u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
+        x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
+        y_train_new = solver.run(x_train_new)
+        u_train = np.hstack((u_train, u_train_new)) 
+        x_train = np.hstack((x_train, x_train_new)) 
+        y_train = np.hstack((y_train, y_train_new)) 
+        print('   -> New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
+
+        print(' --------- Iteration No. {:d} Summary ---------- '.format(i_iteration))
         print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
         print(' - {:<25s} : {}'.format('# samples ', n_eval_path[-1]))
-        if pce_model:
+        try:
             # print(' - {:<25s} : {} -> #{:d}'.format('Active basis', pce_model.active_, len(pce_model.active_)))
             beta = pce_model.coef
             beta = beta[abs(beta) > 1e-6]
             print(' - {:<25s} : #{:d}'.format('Active basis', len(beta)))
+        except:
+            pass
         print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2[plim[0]:p+1], 2)))
         print(' - {:<25s} : {}'.format('cv error ', np.squeeze(np.array(cv_error[plim[0]:p+1]))))
         print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p+1])), 2)))
