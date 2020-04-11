@@ -200,7 +200,7 @@ def main():
 
 
 
-    random.seed(100)
+    # np.random.seed(100)
     init_basis_deg  = 10
     sample_selected = []
     init_doe_method = 'lhs' 
@@ -217,7 +217,8 @@ def main():
             doe = museuq.LHS([stats.uniform(-1,2),]*solver.ndim)
         elif orth_poly.dist_name.lower() == 'normal':
             doe = museuq.LHS([stats.norm(0,1),]*solver.ndim)
-        _, u_train = doe.samples(n_eval_init)
+        _, u_train = doe.samples(n_eval_init, random_state=100)
+        print(u_train)
 
         print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
         print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))

@@ -52,7 +52,7 @@ class LatinHyperCube(ExperimentBase):
         message = 'LHS Design with criterion: {:s}, distributions: {}'.format(self.criterion, dist_names)
         return message
 
-    def samples(self, n_samples, theta=[0,1]):
+    def samples(self, n_samples, theta=[0,1], random_state=None):
         """
         LHS sampling from distributions 
         Arguments:
@@ -64,7 +64,7 @@ class LatinHyperCube(ExperimentBase):
         """
 
         super().samples(n_samples, theta)
-        lhs_u   = pyDOE2.lhs(self.ndim, samples=self.n_samples, criterion=self.criterion, iterations=self.iterations)
+        lhs_u   = pyDOE2.lhs(self.ndim, samples=self.n_samples, criterion=self.criterion, iterations=self.iterations,random_state=random_state)
         lhs_u   = lhs_u.reshape(self.ndim, n_samples)
         lhs_x   = np.array([idist.ppf(ilhs_u) for idist, ilhs_u in zip(self.distributions, lhs_u)])
         return lhs_u, lhs_x
