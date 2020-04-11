@@ -13,7 +13,6 @@ import inspect
 import numpy as np
 import scipy
 import pyDOE2
-from museuq.utilities.decorators import random_state
 from museuq.experiment._experimentbase import ExperimentBase
 from museuq.utilities.helpers import num2print
 
@@ -23,7 +22,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 class LatinHyperCube(ExperimentBase):
     """ Experimental Design with Lazin Hyper Cube"""
 
-    def __init__(self, distributions, random_seed=None, **kwargs):
+    def __init__(self, distributions, **kwargs):
         """
         ndim: dimension of random variables
 
@@ -37,7 +36,7 @@ class LatinHyperCube(ExperimentBase):
                - “centermaximin” or “cm”: same as “maximin”, but centered within the intervals
                - “correlation” or “corr”: minimize the maximum correlation coefficient
         """
-        super().__init__(samplingfrom=distributions, random_seed=random_seed)
+        super().__init__(samplingfrom=distributions)
         self.criterion = kwargs.get('criterion', 'maximin')
         self.iterations= kwargs.get('iterations', 5)
         self.filename = '_'.join(['DoE', 'Lhs'])
@@ -53,7 +52,6 @@ class LatinHyperCube(ExperimentBase):
         message = 'LHS Design with criterion: {:s}, distributions: {}'.format(self.criterion, dist_names)
         return message
 
-    @random_state
     def samples(self, n_samples, theta=[0,1]):
         """
         LHS sampling from distributions 

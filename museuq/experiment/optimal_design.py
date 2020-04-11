@@ -10,7 +10,6 @@
 
 """
 from museuq.experiment._experimentbase import ExperimentBase
-from museuq.utilities.decorators import random_state
 import museuq.utilities.helpers as helpers 
 import numpy as np, scipy as sp
 import copy
@@ -22,14 +21,14 @@ import multiprocessing as mp
 class OptimalDesign(ExperimentBase):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
 
-    def __init__(self, optimality, curr_set=[], random_seed=None):
+    def __init__(self, optimality, curr_set=[]):
         """
         Optimal/Quasi Optimal Experimental design:
         Arguments:
         n: int, number of samples 
         optimality: optimal design optimality
         """
-        super().__init__(random_seed=random_seed)
+        super().__init__()
         self.optimality = optimality 
         self.filename   = '_'.join(['DoE', self.optimality.capitalize()])
         self.curr_set   = curr_set
@@ -37,7 +36,6 @@ class OptimalDesign(ExperimentBase):
     def __str__(self):
         return('Optimal Criteria: {:<15s}, num. samples: {:d} '.format(self.optimality, self.n_samples))
 
-    @random_state
     def samples(self,X,n_samples, *args, **kwargs):
         """
         Xb = Y

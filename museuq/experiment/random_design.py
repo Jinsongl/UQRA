@@ -10,7 +10,6 @@
 
 """
 from museuq.experiment._experimentbase import ExperimentBase
-from museuq.utilities.decorators import random_state
 import numpy as np
 import scipy
 import itertools
@@ -19,7 +18,7 @@ import scipy.stats as stats
 class RandomDesign(ExperimentBase):
     """ Experimental Design with random sampling methods"""
 
-    def __init__(self, distributions, method, random_seed=None):
+    def __init__(self, distributions, method):
         """
         "Random"/Quasi random sampling design, dist_names are independent 
         Arguments:
@@ -32,7 +31,7 @@ class RandomDesign(ExperimentBase):
         dist_names: str or list of str
         params: list of params set for each distributions, set is given in tuple
         """
-        super().__init__(samplingfrom=distributions, random_seed=random_seed)
+        super().__init__(samplingfrom=distributions)
         self.method   = method 
         self.filename = '_'.join(['DoE', self.method.capitalize() ])
 
@@ -41,7 +40,7 @@ class RandomDesign(ExperimentBase):
         message = 'Random Design with method: {:s}, Distributions: {}'.format(self.method, dist_names)
         return message
 
-    @random_state
+    # @random_state
     def samples(self, n_samples, theta=[0,1]):
         """
         Random sampling from distributions with specified method

@@ -20,17 +20,15 @@ class ExperimentBase(object):
     Abstract class for experimental design
     """
 
-    def __init__(self, samplingfrom=None, random_seed=None):
+    def __init__(self, samplingfrom=None):
         """
         Initialization of ExperimentBase:
         Arguments:
             samplingfrom: 
                 distributions to generate random samples
                 or polynomial to generate quadrature samples 
-            random_seed: 
         """
         self.samplingfrom= samplingfrom
-        self.random_seed = random_seed
         if self.samplingfrom is None:
             self.ndim = None
         ### sampling from distributions froms scipy.stats 
