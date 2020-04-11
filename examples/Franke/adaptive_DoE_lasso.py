@@ -9,7 +9,7 @@
 """
 
 """
-import museuq, warnings
+import museuq, warnings, random
 import numpy as np, os, sys
 import collections
 import scipy.stats as stats
@@ -199,7 +199,7 @@ def main():
 
 
 
-    np.random.seed(100)
+    random.seed(100)
     init_basis_deg  = 10
     sample_selected = []
     init_doe_method = 'lhs' 
