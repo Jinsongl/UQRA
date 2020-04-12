@@ -93,9 +93,9 @@ class Ishigami(SolverBase):
             x = []
             for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
                 assert idist_u.dist.name == idist_x.dist.name
-                ua, ub = idist_u.interval()
+                ua, ub = idist_u.support()
                 loc_u, scl_u = ua, ub-ua
-                xa, xb = idist_x.interval()
+                xa, xb = idist_x.support()
                 loc_x, scl_x = xa, xb-xa 
                 x.append((iu-loc_u)/scl_u * scl_x + loc_x)
             x = np.vstack(x)
@@ -138,9 +138,9 @@ class xsinx(SolverBase):
             x = []
             for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
                 assert idist_u.dist.name == idist_x.dist.name
-                ua, ub = idist_u.interval()
+                ua, ub = idist_u.support()
                 loc_u, scl_u = ua, ub-ua
-                xa, xb = idist_x.interval()
+                xa, xb = idist_x.support()
                 loc_x, scl_x = xa, xb-xa 
                 x.append((iu-loc_u)/scl_u * scl_x + loc_x)
             x = np.vstack(x)
@@ -213,9 +213,9 @@ class sparse_poly(SolverBase):
             for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
                 assert idist_u.dist.name == idist_x.dist.name
                 if idist_u.dist.name == 'uniform':
-                    ua, ub = idist_u.interval()
+                    ua, ub = idist_u.support()
                     loc_u, scl_u = ua, ub-ua
-                    xa, xb = idist_x.interval()
+                    xa, xb = idist_x.support()
                     loc_x, scl_x = xa, xb-xa 
                     x.append((iu-loc_u)/scl_u * scl_x + loc_x)
 
@@ -573,9 +573,9 @@ class Franke(SolverBase):
             x = []
             for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
                 assert idist_u.dist.name == idist_x.dist.name
-                ua, ub = idist_u.interval()
+                ua, ub = idist_u.support()
                 loc_u, scl_u = ua, ub-ua
-                xa, xb = idist_x.interval()
+                xa, xb = idist_x.support()
                 loc_x, scl_x = xa, xb-xa 
                 x.append((iu-loc_u)/scl_u * scl_x + loc_x)
             x = np.vstack(x)
