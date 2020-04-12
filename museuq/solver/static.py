@@ -155,7 +155,7 @@ class sparse_poly(SolverBase):
         if isinstance(sparsity, str) and sparsity.lower() =='full':
             self.nickname = 'poly'
         else:
-            self.nickname = 'sparse_poly'
+            self.nickname = 'sparsePoly'
 
         self.basis = basis
         self.ndim = basis.ndim
