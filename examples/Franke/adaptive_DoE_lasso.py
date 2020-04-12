@@ -252,7 +252,6 @@ def main():
     print(' > Starting iteration ...')
     while i_iteration < iter_max:
         print(' >>> Iteration No. {:d}'.format(i_iteration))
-
         ### ============ Update PCE model ============
         orth_poly.set_degree(p)
         pce_model = museuq.PCE(orth_poly)
