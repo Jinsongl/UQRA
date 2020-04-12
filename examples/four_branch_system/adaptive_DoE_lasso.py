@@ -24,13 +24,11 @@ def get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test):
         filename= r'DoE_McsE6R0.npy'
         mcs_data_set  = np.load(os.path.join(simparams.data_dir_sample, 'MCS', orth_poly.dist_name, filename))
         u_cand = mcs_data_set[:orth_poly.ndim,:n_cand].reshape(orth_poly.ndim, -1)
-        # u_test = mcs_data_set[:orth_poly.ndim,:n_test] if n_test > 1 else mcs_data_set[:orth_poly.ndim,:]
 
     elif doe_method.lower().startswith('cls') or doe_method.lower() == 'reference':
         filename= r'DoE_McsE6d{:d}R0.npy'.format(orth_poly.ndim) if orth_poly.dist_name.lower() == 'normal' else r'DoE_McsE6R0.npy'
         cls_data_set  = np.load(os.path.join(simparams.data_dir_sample, 'Pluripotential', orth_poly.dist_name, filename))
         u_cand = cls_data_set[:orth_poly.ndim,:n_cand].reshape(orth_poly.ndim, -1)
-        # u_test = cls_data_set[:orth_poly.ndim,:n_test] if n_test > 1 else cls_data_set[:orth_poly.ndim,:]
     else:
         raise ValueError
 
@@ -124,12 +122,13 @@ def get_test_data(simparams, solver, doe_method, dist_name, filename = r'DoE_Mcs
 
     try:
         data_set = np.load(os.path.join(simparams.data_dir_result, 'MCS', filename))
+        print('   > Retrieving test data from {}'.format(os.path.join(simparams.data_dir_result, 'MCS', filename)))
         assert data_set.shape[0] == 2*solver.ndim+1
         u_test = data_set[:solver.ndim,:]
         x_test = data_set[solver.ndim:2*solver.ndim,:]
         y_test = data_set[-1,:]
     except FileNotFoundError:
-        print('   > Running solver to get test data ')
+        print('   > Solving test data from {} '.format(os.path.join(simparams.data_dir_sample, 'MCS', dist_name.capitalize(), filename)))
         data_set = np.load(os.path.join(simparams.data_dir_sample, 'MCS', dist_name.capitalize(), filename))
         u_test = data_set[:solver.ndim,:] 
         x_test = map_domain(u_test, solver, doe_method, dist_name)
@@ -170,7 +169,7 @@ def main():
     # print(simparams.data_dir_result)
     ## ------------------------ Adaptive parameters ----------------- ###
     plim        = (2,100)
-    n_budget    = 20000
+    n_budget    = 2000
     n_cand      = int(1e5)
     n_test      = -1 
     doe_method  = 'CLS'
@@ -198,15 +197,8 @@ def main():
     print('   * {:<25s} : {}'.format('Test'     , u_test.shape))
     print('   * {:<25s} : {}'.format('Target QoI',qoi))
 
-    # print('utest: \n{}'.format(u_test[:,:3]))
-    # print('max y_test :{}'.format(max(y_test)))
-
     ## Here selecte the initial samples
     print(' > Getting initial sample set...')
-
-
-
-    # np.random.seed(100)
     init_basis_deg  = 10
     sample_selected = []
     init_doe_method = 'lhs' 
@@ -239,7 +231,6 @@ def main():
     y_train = solver.run(x_train)
     print('   * {:<25s} : [{:.2f},{:.2f}]'.format(' u Domain ', np.amin(u_train), np.amax(u_train)))
     print('   * {:<25s} : [{:.2f},{:.2f}]'.format(' x Domain ', np.amin(x_train), np.amax(x_train)))
-    # print('   * {:<25s} : {}'.format('Target QoI',qoi))
 
     ### ============ Initial Values ============
     p               = plim[0] 
@@ -287,7 +278,6 @@ def main():
 
         w_test = cal_weight(doe_method, u_test, pce_model)
         y_test_hat  = pce_model.predict(u_test, w=w_test)
-        qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
         # print('utest: {}'.format(u_test_p[:,:3]))
         # print('u test min: {}'.format(np.min(u_test_p, axis=1)))
         # print('u test max: {}'.format(np.max(u_test_p, axis=1)))
@@ -342,34 +332,10 @@ def main():
                 test_error[i]   = 0
                 active_basis[i] = 0
 
-            # ### update candidate data set for this p degree, cls unbuounded
-            # if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
-                # u_cand_p = p**0.5 * u_cand
-            # else:
-                # u_cand_p = u_cand
-
-            # ### ============ Get training points ============
-            # # print(sample_selected)
-            # orth_poly.set_degree(p)
-            # pce_model = museuq.PCE(orth_poly)
-            # print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
-            # n = sparsity[p]
-            # u_train_new = get_train_data(n, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
-            # x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
-            # y_train_new = solver.run(x_train_new)
-            # u_train = np.hstack((u_train, u_train_new)) 
-            # x_train = np.hstack((x_train, x_train_new)) 
-            # y_train = np.hstack((y_train, y_train_new)) 
-            # print('   New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
-
-            # continue
-
-
         ### ============ Get training points ============
         # print(sample_selected)
         print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
         u_train_new = get_train_data(sparsity[p], u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
-        np.save('u_train_new{:d}.np'.format(p), u_train_new)
         x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
         y_train_new = solver.run(x_train_new)
         u_train = np.hstack((u_train, u_train_new)) 
