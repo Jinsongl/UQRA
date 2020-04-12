@@ -51,8 +51,13 @@ class SolverBase(object):
         else:
             assert isfromstats(dist_u)
             dist_u = [dist_u,] * self.ndim
-        u_cdf = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
-        return u_cdf
+        # u_cdf = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+        # if (abs(u_cdf) > 1).any():
+            # print('Warning: map_domain found cdf values greater than 1\n {}'.format(u_cdf[abs(u_cdf)>1]))
+            # u_cdf[u_cdf>1] = 1
+            # u_cdf[u_cdf<-1] = -1
+
+        return u, dist_u
 
 
 

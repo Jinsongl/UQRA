@@ -85,9 +85,20 @@ class Ishigami(SolverBase):
             1. cdf(u)
             2. u and u_cdf
         """
-        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
-        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
-        x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                assert idist_u.dist.name == idist_x.dist.name
+                ua, ub = idist_u.interval()
+                loc_u, scl_u = ua, ub-ua
+                xa, xb = idist_x.interval()
+                loc_x, scl_x = xa, xb-xa 
+                x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+            x = np.vstack(x)
         return x
 
 class xsinx(SolverBase):
@@ -119,9 +130,20 @@ class xsinx(SolverBase):
             1. cdf(u)
             2. u and u_cdf
         """
-        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
-        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
-        x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                assert idist_u.dist.name == idist_x.dist.name
+                ua, ub = idist_u.interval()
+                loc_u, scl_u = ua, ub-ua
+                xa, xb = idist_x.interval()
+                loc_x, scl_x = xa, xb-xa 
+                x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+            x = np.vstack(x)
         return x
 
 class sparse_poly(SolverBase):
@@ -182,10 +204,30 @@ class sparse_poly(SolverBase):
             u: np.ndarray of shape(ndim, nsamples)
             u_cdf: list of distributions from scipy.stats
         """
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                assert idist_u.dist.name == idist_x.dist.name
+                if idist_u.dist.name == 'uniform':
+                    ua, ub = idist_u.interval()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.interval()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
 
-        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
-        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
-        x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+                elif idist_u.dist.name == 'norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+            x = np.vstack(x)
+        return x
+
         return x
 
 class poly4th(SolverBase):
@@ -219,9 +261,20 @@ class poly4th(SolverBase):
             2. u and u_cdf
         """
 
-        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
-        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
-        x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                assert idist_u.dist.name == idist_x.dist.name
+                mean_u = idist_u.mean()
+                mean_x = idist_x.mean()
+                std_u  = idist_u.std()
+                std_x  = idist_x.std()
+                x.append((iu-mean_u)/std_u * std_x + mean_x)
+            x = np.vstack(x)
         return x
 
 class polynomial_square_root_function(SolverBase):
@@ -250,7 +303,6 @@ class polynomial_square_root_function(SolverBase):
         y = -((-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2)**0.5 + 14 
         return y
 
-
     def map_domain(self,u, u_cdf):
         """
         mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
@@ -259,10 +311,20 @@ class polynomial_square_root_function(SolverBase):
             1. cdf(u)
             2. u and u_cdf
         """
-
-        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
-        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
-        x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                assert idist_u.dist.name == idist_x.dist.name
+                mean_u = idist_u.mean()
+                mean_x = idist_x.mean()
+                std_u  = idist_u.std()
+                std_x  = idist_x.std()
+                x.append((iu-mean_u)/std_u * std_x + mean_x)
+            x = np.vstack(x)
         return x
 
 class four_branch_system(SolverBase):
@@ -286,7 +348,7 @@ class four_branch_system(SolverBase):
         self.name       = 'four branch system'
         self.nickname   = 'Branches'
         self.ndim       = int(2)
-        self.distributions = [stats.norm(),] * self.ndim
+        self.distributions = [stats.norm(0,1),] * self.ndim
 
     def __str__(self):
         return 'Solver: four branch system'
@@ -304,6 +366,8 @@ class four_branch_system(SolverBase):
         y = np.array([y1, y2, y3, y4]).min(axis=0)
         y = 10 - y 
         if np.isnan(y).any():
+            np.set_printoptions(threshold=1000)
+            print(x)
             raise ValueError('nan in solver.run() result')
         return y
 
@@ -313,9 +377,20 @@ class four_branch_system(SolverBase):
         Argument:
             u and u_cdf
         """
-        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
-        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
-        x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                assert idist_u.dist.name == idist_x.dist.name
+                mean_u = idist_u.mean()
+                mean_x = idist_x.mean()
+                std_u  = idist_u.std()
+                std_x  = idist_x.std()
+                x.append((iu-mean_u)/std_u * std_x + mean_x)
+            x = np.vstack(x)
         return x
     
 class polynomial_product_function(SolverBase):
@@ -362,9 +437,20 @@ class polynomial_product_function(SolverBase):
             1. cdf(u)
             2. u and u_cdf
         """
-        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
-        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
-        x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                assert idist_u.dist.name == idist_x.dist.name
+                mean_u = idist_u.mean()
+                mean_x = idist_x.mean()
+                std_u  = idist_u.std()
+                std_x  = idist_x.std()
+                x.append((iu-mean_u)/std_u * std_x + mean_x)
+            x = np.vstack(x)
         return x
 
 class papaioannou2016sequential(SolverBase):
@@ -479,9 +565,20 @@ class Franke(SolverBase):
         Argument:
             u and u_cdf
         """
-        u_cdf = super().map_domain(u, u_cdf) if not isinstance(u_cdf, np.ndarray) else u_cdf
-        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
-        x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                assert idist_u.dist.name == idist_x.dist.name
+                ua, ub = idist_u.interval()
+                loc_u, scl_u = ua, ub-ua
+                xa, xb = idist_x.interval()
+                loc_x, scl_x = xa, xb-xa 
+                x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+            x = np.vstack(x)
         return x
 
 
