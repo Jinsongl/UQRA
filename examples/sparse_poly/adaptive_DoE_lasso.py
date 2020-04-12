@@ -319,7 +319,7 @@ def main():
         sparsity[p]     = sparsity_p + 1 ## phi_0
         acitve_index    = [0,] + list(np.argsort(-pce_model.coef[1:])[:sparsity_p]+1)
         active_basis[p] = [pce_model.basis.basis_degree[i] for i in acitve_index ]
-        active_basis_path.append(pce_model.active_basis[p])
+        active_basis_path.append(active_basis[p])
 
         adj_r2[p] = museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis)        
         adj_r2_path.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))
