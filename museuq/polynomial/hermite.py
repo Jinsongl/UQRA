@@ -225,7 +225,7 @@ class Hermite(PolyBase):
         ## size of largest array is of shape (n-k, k, k)
         if x.shape[1] * self.num_basis < size_of_array_4gb:
             # vander  = self.vandermonde(x)
-            vander  = self.vandermonde(x, normed=False)
+            vander  = self.vandermonde(x)
             y       = np.sum(vander * self.coef, -1)
         else:
             batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
@@ -235,7 +235,7 @@ class Hermite(PolyBase):
                 idx_end = min((i+1) * batch_size, x.shape[1])
                 x_      = x[:,idx_beg:idx_end]
                 # vander_ = self.vandermonde(x_)
-                vander_ = self.vandermonde(x_, normed=False)
+                vander_ = self.vandermonde(x_)
                 y      += list(np.sum(vander_ * self.coef, -1))
             y = np.array(y) 
         return y
