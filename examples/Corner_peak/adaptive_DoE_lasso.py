@@ -89,7 +89,7 @@ def map_domain(u_data, solver, doe_method, dist_name):
     if doe_method.lower().startswith('mcs'):
         if dist_name.lower() == 'uniform':
             dist_u = [stats.uniform(-1,2),] * solver.ndim
-        elif dist_name.lower() == 'normal':
+        elif dist_name.lower().startswith('norm'):
             dist_u = [stats.norm(0,1), ] *solver.ndim
         else:
             raise ValueError('{:s} not defined'.format(dist_name))
@@ -97,52 +97,78 @@ def map_domain(u_data, solver, doe_method, dist_name):
         if dist_name.lower() == 'uniform':
             dist_u = [stats.uniform(-1,2),] * solver.ndim
             # x_data= solver.map_domain(u_data, np.arcsin(u_data)/np.pi + 0.5)
-        elif dist_name.lower() == 'normal':
+        elif dist_name.lower().startswith('norm'):
             dist_u = [stats.norm(0, np.sqrt(0.5)), ] *solver.ndim
         else:
             raise ValueError('{:s} not defined'.format(dist_name))
     x_data = solver.map_domain(u_data, dist_u)
     return x_data
 
-def get_test_data(simparams, solver, doe_method, dist_name, n_test, filename = r'DoE_McsE6R0.npy'):
+def get_test_data(simparams, solver, doe_method, n_test, filename = r'DoE_McsE6R0.npy'):
     """
-    return test data
+    Return test data. 
+
+    Test data should always be in X-space. The correct sequence is X->y->u
+
+    To be able to generate MCS samples for X, we use MCS samples in Samples/MCS, noted as z here
+
     If already exist in simparams.data_dir_result, then load and return
     else, run solver
 
     """
     
-    # if doe_method.lower().startswith('mcs'):
-        # data_dir = os.path.join(simparams.data_dir_result, 'MCS')
-    # elif doe_method.lower().startswith('cls'):
-        # data_dir = os.path.join(simparams.data_dir_result, 'Pluripotential')
-    # else:
-        # raise ValueError
     if solver.nickname.lower().startswith('poly') or solver.nickname.lower().startswith('sparsepoly'):
         filename_result = filename[:-4]+'_{:s}{:d}_p{:d}.npy'.format(solver.basis.nickname, solver.ndim,solver.basis.deg)
     else:
         filename_result = filename
 
+    if doe_method.lower().startswith('mcs'):
+        data_dir_result = os.path.join(simparams.data_dir_result, 'MCS')
+    elif doe_method.lower().startswith('cls'):
+        data_dir_result = os.path.join(simparams.data_dir_result, 'Pluripotential')
+    else:
+        raise ValueError
+
     try:
-        data_set = np.load(os.path.join(simparams.data_dir_result, 'MCS', filename_result))
-        print('   > Retrieving test data from {}'.format(os.path.join(simparams.data_dir_result, 'MCS', filename_result)))
+        data_set = np.load(os.path.join(data_dir_result, filename_result))
+        print('   > Retrieving test data from {}'.format(os.path.join(data_dir_result, filename_result)))
         assert data_set.shape[0] == 2*solver.ndim+1
         u_test = data_set[:solver.ndim,-n_test:] if n_test > 0 else data_set[:solver.ndim,:]
         x_test = data_set[solver.ndim:2*solver.ndim,-n_test:] if n_test > 0 else data_set[solver.ndim:2*solver.ndim,:]
         y_test = data_set[-1,-n_test:] if n_test > 0 else data_set[-1,:]
+
     except FileNotFoundError:
-        print('   > Solving test data from {} '.format(os.path.join(simparams.data_dir_sample, 'MCS', dist_name.capitalize(), filename)))
-        data_set = np.load(os.path.join(simparams.data_dir_sample, 'MCS', dist_name.capitalize(), filename))
-        u_test = data_set[:solver.ndim,:] 
-        x_test = map_domain(u_test, solver, doe_method, dist_name)
+        if solver.dist_name.lower() == 'uniform':
+            print('   > Solving test data from {} '.format(os.path.join(simparams.data_dir_sample, 'MCS','Uniform', filename)))
+            data_set = np.load(os.path.join(simparams.data_dir_sample, 'MCS','Uniform', filename))
+            z_test = data_set[:solver.ndim,:] 
+            x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * solver.ndim)
+        elif solver.dist_name.lower().startswith('norm'):
+            print('   > Solving test data from {} '.format(os.path.join(simparams.data_dir_sample, 'MCS','Normal', filename)))
+            data_set = np.load(os.path.join(simparams.data_dir_sample, 'MCS','Normal', filename))
+            z_test = data_set[:solver.ndim,:] 
+            x_test = solver.map_domain(z_test, [stats.norm(0,1),] * solver.ndim)
         y_test = solver.run(x_test)
+
+        ### Bounded domain maps to [-1,1] for both mcs and cls methods. so u = z
+        ### Unbounded domain, mcs maps to N(0,1), cls maps to N(0,sqrt(0.5))
+        if doe_method.lower().startswith('cls') and solver.dist_name.lower().startswith('norm'):
+            u_test = z_test * np.sqrt(0.5) ## mu + sigma * x
+        else:
+            u_test = z_test
         data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
-        np.save(os.path.join(simparams.data_dir_result, 'MCS', filename_result), data)
+        if doe_method.lower().startswith('cls'):
+            np.save(os.path.join(data_dir_result, filename_result), data)
+        elif doe_method.lower().startswith('mcs'):
+            np.save(os.path.join(data_dir_result, filename_result), data)
+        else:
+            raise ValueError
+
         u_test = u_test[:,-n_test:] if n_test > 0 else u_test
         x_test = x_test[:,-n_test:] if n_test > 0 else x_test
         y_test = y_test[:,-n_test:] if n_test > 0 else y_test
-    return u_test, x_test, y_test
 
+    return u_test, x_test, y_test
 def cal_weight(doe_method, u_data, pce_model):
     """
     Calculate weight for CLS based on Christoffel function evaluated in U-space
@@ -196,7 +222,7 @@ def main():
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     u_cand = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
-    u_test, x_test, y_test = get_test_data(simparams, solver, doe_method, orth_poly.dist_name, n_test) 
+    u_test, x_test, y_test = get_test_data(simparams, solver, doe_method, n_test) 
     qoi = museuq.metrics.mquantiles(y_test, 1-pf)
     print('   * {:<25s} : {}'.format('Candidate', u_cand.shape))
     print('   * {:<25s} : {}'.format('Test'     , u_test.shape))
@@ -256,7 +282,7 @@ def main():
     ### ============ Start adaptive iteration ============
     print(' > Starting iteration ...')
     while i_iteration < iter_max:
-        print(' >>> Iteration No. {:d}'.format(i_iteration))
+        print(' >>> Iteration No. {:d}: '.format(i_iteration))
         ### ============ Update PCE model ============
         orth_poly.set_degree(p)
         pce_model = museuq.PCE(orth_poly)
@@ -338,9 +364,8 @@ def main():
             continue
 
         ### ============ Get training points ============
-        print(' - Getting new samples ({:s} {}) for p={:d} '.format(doe_method, optimality, p))
         n = math.ceil(sparsity[p] * new_samples_pct[p])
-        print(' new samples at p={:d}: {:d}/{:d}, pct:{:.2f}'.format(p,n,sparsity[p], new_samples_pct[p]))
+        print('   -- New samples ({:s} {}): p={:d}, {:d}/{:d}, pct:{:.2f} '.format(doe_method, optimality, p,n,sparsity[p], new_samples_pct[p]))
         u_train_new = get_train_data(n, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
         x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
         y_train_new = solver.run(x_train_new)
@@ -349,7 +374,7 @@ def main():
         y_train = np.hstack((y_train, y_train_new)) 
         print('   -> New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
 
-        print(' --------- Iteration No. {:d} Summary ---------- '.format(i_iteration))
+        print('         --------- Iteration No. {:d} Summary ---------- '.format(i_iteration))
         print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
         print(' - {:<25s} : {}'.format('# samples ', n_eval_path[-1]))
         try:
