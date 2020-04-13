@@ -204,7 +204,7 @@ def main():
     n_cand      = int(1e5)
     n_test      = -1 
     doe_method  = 'CLS'
-    optimality  = 'S'#'D', 'S', None
+    optimality  = None#'D', 'S', None
     fit_method  = 'LASSOLARS'
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.02, min_r2=0.95)
     simparams.info()
@@ -214,8 +214,8 @@ def main():
     print('     - {:<23s} : {}'.format('Fitting method'   , fit_method))
 
     ## ------------------------ Define PCE model --------------------- ###
-    orth_poly   = museuq.Hermite(d=solver.ndim, hem_type='probabilists')
-    # orth_poly   = museuq.Hermite(d=ndim, hem_type='physicists')
+    # orth_poly   = museuq.Hermite(d=solver.ndim, hem_type='probabilists')
+    orth_poly   = museuq.Hermite(d=solver.ndim, hem_type='physicists')
     pce_model   = museuq.PCE(orth_poly)
     pce_model.info()
 
@@ -393,7 +393,7 @@ def main():
         ### ============ updating parameters ============
         p +=1
         i_iteration += 1
-        if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p], adj_r2=adj_r2[plim[0]:p]):
+        if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p]):
             break
 
 
