@@ -84,7 +84,7 @@ def mquantiles(a, prob=[0.25, 0.5, 0.75],axis=0,limit=(),multioutput='uniform_av
 
     """
     ### output format (nprob, noutputs)
-    res =  sp.stats.mstats.mquantiles(a, prob=prob,axis=axis,limit=limit)
+    res =  np.array(sp.stats.mstats.mquantiles(a, prob=prob,axis=axis,limit=limit))
 
     if multioutput.lower() == 'uniform_average':
         if res.ndim == 1:
