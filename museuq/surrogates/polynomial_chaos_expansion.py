@@ -236,7 +236,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         if self.fit_method == 'GLK':
             y = self.basis(x)
         elif self.fit_method in ['OLS','OLSLARS','LASSOLARS']:
-            w = kwargs.get('w', None)
+            # w = kwargs.get('w', None)
 
             size_of_array_4gb = 1e8/2.0
             # X = self.basis.vandermonde(x)
@@ -247,9 +247,9 @@ class PolynomialChaosExpansion(SurrogateBase):
             ## size of largest array is of shape ()
             if x.shape[1] * self.num_basis < size_of_array_4gb:
                 X = self.basis.vandermonde(x)
-                X = (X.T * w).T if w is not None else X
+                # X = (X.T * w).T if w is not None else X
                 y = self.model.predict(X)
-                y = y/w if w is not None else y
+                # y = y/w if w is not None else y
 
             else:
                 batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
@@ -258,11 +258,11 @@ class PolynomialChaosExpansion(SurrogateBase):
                     idx_beg = i*batch_size
                     idx_end = min((i+1) * batch_size, x.shape[1])
                     x_      = x[:,idx_beg:idx_end]
-                    w_      = w[idx_beg:idx_end] if w is not None else w
+                    # w_      = w[idx_beg:idx_end] if w is not None else w
                     X_      = self.basis.vandermonde(x_)
-                    X_      = (X_.T * w_).T if w_ is not None else X_
+                    # X_      = (X_.T * w_).T if w_ is not None else X_
                     y_      = self.model.predict(X_)
-                    y_      = y_/w_ if w_ is not None else y_
+                    # y_      = y_/w_ if w_ is not None else y_
                     y      += list(y_)
                 y = np.array(y) 
 
