@@ -59,6 +59,7 @@ class Ishigami(SolverBase):
         self.ndim = int(3)
         self.p    = p
         self.distributions = [stats.uniform(-np.pi, 2*np.pi),] * self.ndim
+        self.dist_name = 'uniform'
      
     def __str__(self):
         return 'solver: Ishigami function (p={})'.format(self.p)
@@ -111,6 +112,7 @@ class xsinx(SolverBase):
         self.nickname = 'xsinx'
         self.ndim = int(1)
         self.distributions = [stats.uniform(-np.pi, np.pi),] * self.ndim
+        self.dist_name = 'uniform'
 
     def __str__(self):
         return 'solver: x*sin(x)'
@@ -162,6 +164,7 @@ class sparse_poly(SolverBase):
         self.deg  = basis.deg
         self.num_basis = basis.num_basis
         self.distributions = basis.dist_u
+        self.dist_name = basis.dist_name
 
         # if self.basis.name == 'Legendre':
         # elif self.basis.name == 'Hermite':
@@ -241,6 +244,7 @@ class poly4th(SolverBase):
         self.nickname = 'Poly4'
         self.ndim = int(1)
         self.distributions = [stats.norm(2, 4),] * self.ndim
+        self.dist_name = 'norm'
 
     def __str__(self):
         return 'solver: 4th-order polynomial function'
@@ -292,6 +296,7 @@ class polynomial_square_root_function(SolverBase):
         self.nickname = 'PolySqrt'
         self.ndim = int(2)
         self.distributions = [stats.norm(),] * self.ndim
+        self.dist_name = 'norm'
 
     def __str__(self):
         return 'solver: Polynomial square root function'
@@ -349,6 +354,7 @@ class four_branch_system(SolverBase):
         self.nickname   = 'Branches'
         self.ndim       = int(2)
         self.distributions = [stats.norm(0,1),] * self.ndim
+        self.dist_name = 'norm'
 
     def __str__(self):
         return 'Solver: four branch system'
@@ -416,6 +422,7 @@ class polynomial_product_function(SolverBase):
         self.nickname = 'PolyProd'
         self.ndim = int(d)
         self.distributions = [stats.norm(),] * self.ndim
+        self.dist_name = 'norm'
 
     def __str__(self):
         return 'Solver: polynomial product function'
@@ -543,6 +550,7 @@ class Franke(SolverBase):
         self.nickname   = 'Franke'
         self.ndim       = int(2)
         self.distributions = [stats.uniform(-1,2),] * self.ndim
+        self.dist_name = 'uniform'
 
     def __str__(self):
         return 'solver: franke function'
@@ -590,6 +598,7 @@ class corner_peak(SolverBase):
         self.nickname = 'CornerPeak'
         self.ndim = int(d)
         self.distributions = [stats.norm(),] * self.ndim
+        self.dist_name = 'norm'
 
     def __str__(self):
         return 'Solver: Corner peak function'
