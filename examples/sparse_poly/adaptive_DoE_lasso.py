@@ -104,12 +104,11 @@ def map_domain(u_data, solver, doe_method, dist_name):
     x_data = solver.map_domain(u_data, dist_u)
     return x_data
 
-def get_test_data(simparams, solver, doe_method, dist_name, filename = r'DoE_McsE6R0.npy'):
+def get_test_data(simparams, solver, doe_method, dist_name, n_test, filename = r'DoE_McsE6R0.npy'):
     """
     return test data
     If already exist in simparams.data_dir_result, then load and return
     else, run solver
-
 
     """
     
@@ -119,7 +118,7 @@ def get_test_data(simparams, solver, doe_method, dist_name, filename = r'DoE_Mcs
         # data_dir = os.path.join(simparams.data_dir_result, 'Pluripotential')
     # else:
         # raise ValueError
-    if solver.nickname in ['poly', 'sparsePoly']:
+    if solver.nickname.lower().startswith('poly') or solver.nickname.lower().startswith('sparsepoly'):
         filename_result = filename[:-4]+'_{:s}{:d}_p{:d}.npy'.format(solver.basis.nickname, solver.ndim,solver.basis.deg)
     else:
         filename_result = filename
@@ -128,9 +127,9 @@ def get_test_data(simparams, solver, doe_method, dist_name, filename = r'DoE_Mcs
         data_set = np.load(os.path.join(simparams.data_dir_result, 'MCS', filename_result))
         print('   > Retrieving test data from {}'.format(os.path.join(simparams.data_dir_result, 'MCS', filename_result)))
         assert data_set.shape[0] == 2*solver.ndim+1
-        u_test = data_set[:solver.ndim,:]
-        x_test = data_set[solver.ndim:2*solver.ndim,:]
-        y_test = data_set[-1,:]
+        u_test = data_set[:solver.ndim,-n_test:] if n_test > 0 else data_set[:solver.ndim,:]
+        x_test = data_set[solver.ndim:2*solver.ndim,-n_test:] if n_test > 0 else data_set[solver.ndim:2*solver.ndim,:]
+        y_test = data_set[-1,-n_test:] if n_test > 0 else data_set[-1,:]
     except FileNotFoundError:
         print('   > Solving test data from {} '.format(os.path.join(simparams.data_dir_sample, 'MCS', dist_name.capitalize(), filename)))
         data_set = np.load(os.path.join(simparams.data_dir_sample, 'MCS', dist_name.capitalize(), filename))
@@ -139,6 +138,9 @@ def get_test_data(simparams, solver, doe_method, dist_name, filename = r'DoE_Mcs
         y_test = solver.run(x_test)
         data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
         np.save(os.path.join(simparams.data_dir_result, 'MCS', filename_result), data)
+        u_test = u_test[:,-n_test:] if n_test > 0 else u_test
+        x_test = x_test[:,-n_test:] if n_test > 0 else x_test
+        y_test = y_test[:,-n_test:] if n_test > 0 else y_test
     return u_test, x_test, y_test
 
 def cal_weight(doe_method, u_data, pce_model):
@@ -195,9 +197,9 @@ def main():
 
     ## ------------------------ Define solver ----------------------- ###
     ndim        = 2
-    orth_poly   = museuq.Legendre(d=ndim, deg=30)
-    # orth_poly   = museuq.Hermite(d=ndim, deg=30, hem_type='physicists')
-    # orth_poly   = museuq.Hermite(d=ndim, deg=30, hem_type='probabilists')
+    # orth_poly   = museuq.Legendre(d=ndim, deg=10)
+    orth_poly   = museuq.Hermite(d=ndim, deg=10, hem_type='physicists')
+    # orth_poly   = museuq.Hermite(d=ndim, deg=10, hem_type='probabilists')
     solver      = museuq.sparse_poly(orth_poly, sparsity=10, seed=100)
     simparams   = museuq.simParameters(solver.nickname)
     print(solver.coef)
@@ -207,7 +209,7 @@ def main():
     n_budget    = 2000
     n_cand      = int(1e5)
     n_test      = -1 
-    doe_method  = 'MCS'
+    doe_method  = 'CLS'
     optimality  = None #'D', 'S', None
     fit_method  = 'LASSOLARS'
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, qoi_val=0.0001, min_r2=0.95)
@@ -218,8 +220,8 @@ def main():
     print('     - {:<23s} : {}'.format('Fitting method'   , fit_method))
 
     ## ------------------------ Define PCE model --------------------- ###
-    orth_poly   = museuq.Legendre(d=solver.ndim)
-    # orth_poly   = museuq.Hermite(d=ndim, hem_type='physicists')
+    # orth_poly   = museuq.Legendre(d=solver.ndim)
+    orth_poly   = museuq.Hermite(d=ndim, hem_type='physicists')
     # orth_poly   = museuq.Hermite(d=ndim, hem_type='probabilists')
     pce_model   = museuq.PCE(orth_poly)
     pce_model.info()
@@ -227,7 +229,7 @@ def main():
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     u_cand = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
-    u_test, x_test, y_test = get_test_data(simparams, solver, doe_method, orth_poly.dist_name) 
+    u_test, x_test, y_test = get_test_data(simparams, solver, doe_method, orth_poly.dist_name, n_test) 
     print('   * {:<25s} : {}'.format('Candidate', u_cand.shape))
     print('   * {:<25s} : {}'.format('Test'     , u_test.shape))
     print('   * {:<25s} : {}'.format('Target QoI',0))
@@ -299,11 +301,10 @@ def main():
         ### ============ Build Surrogate Model ============
         w_train = cal_weight(doe_method, u_train, pce_model)
         pce_model.fit_lassolars(u_train, y_train, w=w_train, n_splits=n_splits)
-        y_train_hat = pce_model.predict(u_train, w=w_train)
+        y_train_hat = pce_model.predict(u_train)
 
 
-        w_test = cal_weight(doe_method, u_test, pce_model)
-        y_test_hat  = pce_model.predict(u_test, w=w_test)
+        y_test_hat  = pce_model.predict(u_test)
 
         ### ============ calculating & updating metrics ============
        
@@ -352,13 +353,11 @@ def main():
                 test_error[i]   = 0
                 active_basis[i] = 0
 
-
         ### ============ Get training points ============
         # print(sample_selected)
         print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
         u_train_new = get_train_data(sparsity[p], u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
         x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
-        assert np.array_equal(x_train_new, u_train_new)
         y_train_new = solver.run(x_train_new)
         u_train = np.hstack((u_train, u_train_new)) 
         x_train = np.hstack((x_train, x_train_new)) 
@@ -388,7 +387,6 @@ def main():
             break
 
 
-
     print('------------------------------------------------------------')
     print('>>>>>>>>>>>>>>> Adaptive simulation done <<<<<<<<<<<<<<<<<<<')
     print('------------------------------------------------------------')
@@ -407,14 +405,13 @@ def main():
     # print(np.array(n_eval_path).shape)
 
     if optimality:
-        filename = 'Adaptive_{:s}_{:s}_{:s}{:s}_{:s}'.format(solver.nickname.capitalize(), orth_poly.dist_name.capitalize(), doe_method.capitalize(), optimality, fit_method.capitalize())
+        filename = 'Adaptive_{:s}_{:s}{:s}_{:s}'.format(solver.nickname, doe_method.capitalize(), optimality, fit_method.capitalize())
     else:
-        filename = 'Adaptive_{:s}_{:s}_{:s}_{:s}'.format(solver.nickname.capitalize(), orth_poly.dist_name.capitalize(), doe_method.capitalize(), fit_method.capitalize())
+        filename = 'Adaptive_{:s}_{:s}_{:s}'.format(solver.nickname, doe_method.capitalize(), fit_method.capitalize())
     path_data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
     np.save(os.path.join(simparams.data_dir_result, filename+'_path'), path_data)
     data  = np.array([n_eval_path, poly_order_path, cv_error, active_basis, adj_r2, QoI, test_error]) 
     np.save(os.path.join(simparams.data_dir_result, filename), data)
-
 
 if __name__ == '__main__':
     main()

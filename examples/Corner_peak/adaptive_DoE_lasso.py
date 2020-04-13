@@ -104,12 +104,11 @@ def map_domain(u_data, solver, doe_method, dist_name):
     x_data = solver.map_domain(u_data, dist_u)
     return x_data
 
-def get_test_data(simparams, solver, doe_method, dist_name, filename = r'DoE_McsE6R0.npy'):
+def get_test_data(simparams, solver, doe_method, dist_name, n_test, filename = r'DoE_McsE6R0.npy'):
     """
     return test data
     If already exist in simparams.data_dir_result, then load and return
     else, run solver
-
 
     """
     
@@ -119,14 +118,18 @@ def get_test_data(simparams, solver, doe_method, dist_name, filename = r'DoE_Mcs
         # data_dir = os.path.join(simparams.data_dir_result, 'Pluripotential')
     # else:
         # raise ValueError
+    if solver.nickname.lower().startswith('poly') or solver.nickname.lower().startswith('sparsepoly'):
+        filename_result = filename[:-4]+'_{:s}{:d}_p{:d}.npy'.format(solver.basis.nickname, solver.ndim,solver.basis.deg)
+    else:
+        filename_result = filename
 
     try:
-        data_set = np.load(os.path.join(simparams.data_dir_result, 'MCS', filename))
-        print('   > Retrieving test data from {}'.format(os.path.join(simparams.data_dir_result, 'MCS', filename)))
+        data_set = np.load(os.path.join(simparams.data_dir_result, 'MCS', filename_result))
+        print('   > Retrieving test data from {}'.format(os.path.join(simparams.data_dir_result, 'MCS', filename_result)))
         assert data_set.shape[0] == 2*solver.ndim+1
-        u_test = data_set[:solver.ndim,:]
-        x_test = data_set[solver.ndim:2*solver.ndim,:]
-        y_test = data_set[-1,:]
+        u_test = data_set[:solver.ndim,-n_test:] if n_test > 0 else data_set[:solver.ndim,:]
+        x_test = data_set[solver.ndim:2*solver.ndim,-n_test:] if n_test > 0 else data_set[solver.ndim:2*solver.ndim,:]
+        y_test = data_set[-1,-n_test:] if n_test > 0 else data_set[-1,:]
     except FileNotFoundError:
         print('   > Solving test data from {} '.format(os.path.join(simparams.data_dir_sample, 'MCS', dist_name.capitalize(), filename)))
         data_set = np.load(os.path.join(simparams.data_dir_sample, 'MCS', dist_name.capitalize(), filename))
@@ -134,8 +137,10 @@ def get_test_data(simparams, solver, doe_method, dist_name, filename = r'DoE_Mcs
         x_test = map_domain(u_test, solver, doe_method, dist_name)
         y_test = solver.run(x_test)
         data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
-        np.save(os.path.join(simparams.data_dir_result, 'MCS', filename), data)
- 
+        np.save(os.path.join(simparams.data_dir_result, 'MCS', filename_result), data)
+        u_test = u_test[:,-n_test:] if n_test > 0 else u_test
+        x_test = x_test[:,-n_test:] if n_test > 0 else x_test
+        y_test = y_test[:,-n_test:] if n_test > 0 else y_test
     return u_test, x_test, y_test
 
 def cal_weight(doe_method, u_data, pce_model):
@@ -163,7 +168,7 @@ def main():
     n_splits    = 10
 
     ## ------------------------ Define solver ----------------------- ###
-    pf          = 1e-4
+    pf          = 1e-3
     solver      = museuq.corner_peak(2)
     simparams   = museuq.simParameters(solver.nickname)
     # print(simparams.data_dir_result)
@@ -171,8 +176,8 @@ def main():
     plim        = (2,100)
     n_budget    = 2000
     n_cand      = int(1e5)
-    n_test      = -1 
-    doe_method  = 'MCS'
+    n_test      = 40000
+    doe_method  = 'CLS'
     optimality  = None #'D', 'S', None
     fit_method  = 'LASSOLARS'
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.02, min_r2=0.95)
@@ -191,7 +196,7 @@ def main():
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     u_cand = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
-    u_test, x_test, y_test = get_test_data(simparams, solver, doe_method, orth_poly.dist_name) 
+    u_test, x_test, y_test = get_test_data(simparams, solver, doe_method, orth_poly.dist_name, n_test) 
     qoi = museuq.metrics.mquantiles(y_test, 1-pf)
     print('   * {:<25s} : {}'.format('Candidate', u_cand.shape))
     print('   * {:<25s} : {}'.format('Test'     , u_test.shape))
@@ -216,8 +221,6 @@ def main():
         elif orth_poly.dist_name.lower() == 'normal':
             doe = museuq.LHS([stats.norm(0,1),]*solver.ndim)
         _, u_train = doe.samples(n_eval_init, random_state=100)
-        print(u_train)
-
         print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
         print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))
     else:
@@ -253,7 +256,6 @@ def main():
     print(' > Starting iteration ...')
     while i_iteration < iter_max:
         print(' >>> Iteration No. {:d}'.format(i_iteration))
-
         ### ============ Update PCE model ============
         orth_poly.set_degree(p)
         pce_model = museuq.PCE(orth_poly)
@@ -273,14 +275,13 @@ def main():
         ### ============ Build Surrogate Model ============
         w_train = cal_weight(doe_method, u_train, pce_model)
         pce_model.fit_lassolars(u_train, y_train, w=w_train, n_splits=n_splits)
-        y_train_hat = pce_model.predict(u_train, w=w_train)
+        y_train_hat = pce_model.predict(u_train)
 
 
-        w_test = cal_weight(doe_method, u_test, pce_model)
-        y_test_hat  = pce_model.predict(u_test, w=w_test)
-        # print('utest: {}'.format(u_test_p[:,:3]))
-        # print('u test min: {}'.format(np.min(u_test_p, axis=1)))
-        # print('u test max: {}'.format(np.max(u_test_p, axis=1)))
+        y_test_hat  = pce_model.predict(u_test)
+        # print('utest: {}'.format(u_test[:,:3]))
+        # print('u test min: {}'.format(np.min(u_test, axis=1)))
+        # print('u test max: {}'.format(np.max(u_test, axis=1)))
         # print('y test max: {}'.format(np.max(y_test)))
         # print('pf, y_test_hat: {}'.format(qoi))
         # print('y_test_hat max: {}'.format(max(y_test_hat)))
