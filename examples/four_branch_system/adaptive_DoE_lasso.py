@@ -192,7 +192,7 @@ def main():
     n_new       = 5
     n_eval_init = 16
     iter_max    = 100
-    n_splits    = 10
+    # n_splits    = 10
 
     ## ------------------------ Define solver ----------------------- ###
     pf          = 1e-4
@@ -295,7 +295,7 @@ def main():
 
         ### ============ Build Surrogate Model ============
         w_train = cal_weight(doe_method, u_train, pce_model)
-        pce_model.fit_lassolars(u_train, y_train, w=w_train, n_splits=n_splits)
+        pce_model.fit_lassolars(u_train, y_train, w=w_train)
         y_train_hat = pce_model.predict(u_train)
         y_test_hat  = pce_model.predict(u_test)
         # print(w_train)
@@ -340,8 +340,8 @@ def main():
         active_basis[p] = [pce_model.basis.basis_degree[i] for i in acitve_index ]
         active_basis_path.append(active_basis[p])
 
-        adj_r2[p] = museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis)        
-        adj_r2_path.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, pce_model.num_basis))
+        adj_r2[p] = museuq.metrics.r2_score(y_train, y_train_hat)        
+        adj_r2_path.append(museuq.metrics.r2_score(y_train, y_train_hat))
         qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
         QoI[p] = qoi
         QoI_path.append(qoi)
