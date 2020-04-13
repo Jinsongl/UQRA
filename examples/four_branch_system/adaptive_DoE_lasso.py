@@ -205,7 +205,7 @@ def main():
     n_cand      = int(1e5)
     n_test      = -1 
     doe_method  = 'CLS'
-    optimality  = 'D'#'D', 'S', None
+    optimality  = None #'D', 'S', None
     fit_method  = 'LASSOLARS'
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.02, min_r2=0.95)
     simparams.info()
@@ -215,8 +215,8 @@ def main():
     print('     - {:<23s} : {}'.format('Fitting method'   , fit_method))
 
     ## ------------------------ Define PCE model --------------------- ###
-    # orth_poly   = museuq.Hermite(d=solver.ndim, hem_type='probabilists')
-    orth_poly   = museuq.Hermite(d=solver.ndim, hem_type='physicists')
+    orth_poly   = museuq.Hermite(d=solver.ndim, hem_type='probabilists')
+    # orth_poly   = museuq.Hermite(d=solver.ndim, hem_type='physicists')
     pce_model   = museuq.PCE(orth_poly)
     pce_model.info()
 
@@ -303,14 +303,14 @@ def main():
         # print('u train max: {}'.format(np.max(u_train, axis=1)))
         # print('x train min: {}'.format(np.min(x_train, axis=1)))
         # print('x train max: {}'.format(np.max(x_train, axis=1)))
-        res = museuq.metrics.mean_squared_error(y_train, y_train_hat)
-        tot = np.var(y_train)
-        print('MSE y train (res): {}'.format(res))
-        print('var y train (tot): {}'.format(tot))
-        if res > tot:
-            np.set_printoptions(threshold=1000)
-            print('y train: {:d}\n {}'.format(len(y_train), y_train))
-            print('y train hat: {:d} \n {}'.format(len(y_train),y_train_hat))
+        # res = museuq.metrics.mean_squared_error(y_train, y_train_hat)
+        # tot = np.var(y_train)
+        # print('MSE y train (res): {}'.format(res))
+        # print('var y train (tot): {}'.format(tot))
+        # if res > tot:
+        #     np.set_printoptions(threshold=1000)
+        #     print('y train: {:d}\n {}'.format(len(y_train), y_train))
+        #     print('y train hat: {:d} \n {}'.format(len(y_train),y_train_hat))
         # print('u train: {}'.format(u_train))
         # print('x train: {}'.format(x_train))
         # print('y train: {}'.format(y_train))
@@ -340,8 +340,13 @@ def main():
         active_basis[p] = [pce_model.basis.basis_degree[i] for i in acitve_index ]
         active_basis_path.append(active_basis[p])
 
+<<<<<<< HEAD
         adj_r2[p] = museuq.metrics.r2_score(y_train, y_train_hat)        
         adj_r2_path.append(museuq.metrics.r2_score(y_train, y_train_hat))
+=======
+        adj_r2[p] = museuq.metrics.r2_score(y_train, y_train_hat, pce_model.num_basis)        
+        adj_r2_path.append(museuq.metrics.r2_score(y_train, y_train_hat, pce_model.num_basis))
+>>>>>>> 1dd16d5efb43aa3657affb625671c3d4299b77a6
         qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
         QoI[p] = qoi
         QoI_path.append(qoi)
