@@ -9,7 +9,7 @@
 """
 
 """
-import museuq, warnings, random
+import museuq, warnings, random, math
 import numpy as np, os, sys
 import collections
 import scipy.stats as stats
@@ -198,8 +198,8 @@ def main():
     ## ------------------------ Define solver ----------------------- ###
     ndim        = 2
     # orth_poly   = museuq.Legendre(d=ndim, deg=10)
-    orth_poly   = museuq.Hermite(d=ndim, deg=30, hem_type='physicists')
-    # orth_poly   = museuq.Hermite(d=ndim, deg=30, hem_type='probabilists')
+    # orth_poly   = museuq.Hermite(d=ndim, deg=30, hem_type='physicists')
+    orth_poly   = museuq.Hermite(d=ndim, deg=30, hem_type='probabilists')
     solver      = museuq.sparse_poly(orth_poly, sparsity=10, seed=100)
     simparams   = museuq.simParameters(solver.nickname)
     print(solver.coef)
@@ -209,7 +209,7 @@ def main():
     n_budget    = 10000
     n_cand      = int(1e5)
     n_test      = -1 
-    doe_method  = 'CLS'
+    doe_method  = 'MCS'
     optimality  = None #'D', 'S', None
     fit_method  = 'LASSOLARS'
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, qoi_val=0.0001, min_r2=0.95)
@@ -221,8 +221,8 @@ def main():
 
     ## ------------------------ Define PCE model --------------------- ###
     # orth_poly   = museuq.Legendre(d=solver.ndim)
-    orth_poly   = museuq.Hermite(d=ndim, hem_type='physicists')
-    # orth_poly   = museuq.Hermite(d=ndim, hem_type='probabilists')
+    # orth_poly   = museuq.Hermite(d=ndim, hem_type='physicists')
+    orth_poly   = museuq.Hermite(d=ndim, hem_type='probabilists')
     pce_model   = museuq.PCE(orth_poly)
     pce_model.info()
 
@@ -283,7 +283,7 @@ def main():
     QoI_path        = []
     active_basis    = [0,] * (plim[1]+1)
     active_basis_path= [] 
-    is_porder_samples= [0,]* (plim[1]+1)
+    new_samples_pct = [1,]* (plim[1]+1)
 
     ### ============ Start adaptive iteration ============
     print(' > Starting iteration ...')
@@ -317,7 +317,7 @@ def main():
 
         cum_var         = -np.cumsum(np.sort(-pce_model.coef[1:] **2))
         y_hat_var_pct   = cum_var / cum_var[-1] 
-        sparsity_p      = np.argwhere(y_hat_var_pct > 0.95)[0][-1] + 1 ## return index
+        sparsity_p      = np.argwhere(y_hat_var_pct > 0.80)[0][-1] + 1 ## return index
         sparsity[p]     = sparsity_p + 1 ## phi_0
         acitve_index    = [0,] + list(np.argsort(-pce_model.coef[1:])[:sparsity_p]+1)
         active_basis[p] = [pce_model.basis.basis_degree[i] for i in acitve_index ]
@@ -336,8 +336,10 @@ def main():
         if simparams.check_overfitting(cv_error[plim[0]:p+1]):
             print('     >>> Possible overfitting detected')
             print('         - cv error: {}'.format(np.around(cv_error[p-2:p+1], 4)))
-            p = p-2 #plim[0] + np.argmin(cv_error[plim[0]:p+1])
-            is_porder_samples[p] = 0
+            new_samples_pct[p]  = new_samples_pct[p] *0.5
+            p = max(plim[0], p-2)
+            new_samples_pct[p]= new_samples_pct[p] *0.1
+            # plim[0] + np.argmin(cv_error[plim[0]:p+1])
             orth_poly.set_degree(p)
             pce_model = museuq.PCE(orth_poly)
             ### update candidate data set for this p degree, cls unbuounded
@@ -345,7 +347,6 @@ def main():
                 u_cand_p = p**0.5 * u_cand
             else:
                 u_cand_p = u_cand
-            # p = max(plim[0], p -3)
             print('         - Reseting results for PCE order higher than p = {:d} '.format(p))
             for i in range(p+1, len(active_basis)):
                 QoI[i]          = 0
@@ -357,17 +358,16 @@ def main():
             continue
 
         ### ============ Get training points ============
-        # print(sample_selected)
-        if not is_porder_samples[p]:
-            print(' - Getting new samples ({:s} {}) '.format(doe_method, optimality))
-            u_train_new = get_train_data(sparsity[p], u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
-            x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
-            y_train_new = solver.run(x_train_new)
-            u_train = np.hstack((u_train, u_train_new)) 
-            x_train = np.hstack((x_train, x_train_new)) 
-            y_train = np.hstack((y_train, y_train_new)) 
-            is_porder_samples[p] = 1
-            print('   -> New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
+        print(' - Getting new samples ({:s} {}) for p={:d} '.format(doe_method, optimality, p))
+        n = math.ceil(sparsity[p] * new_samples_pct[p])
+        print(' new samples at p={:d}: {:d}/{:d}, pct:{:.2f}'.format(p,n,sparsity[p], new_samples_pct[p]))
+        u_train_new = get_train_data(n, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
+        x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
+        y_train_new = solver.run(x_train_new)
+        u_train = np.hstack((u_train, u_train_new)) 
+        x_train = np.hstack((x_train, x_train_new)) 
+        y_train = np.hstack((y_train, y_train_new)) 
+        print('   -> New samples shape: {}, total iteration samples: {:d}'.format(u_train_new.shape, len(sample_selected)))
 
         print(' --------- Iteration No. {:d} Summary ---------- '.format(i_iteration))
         print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
