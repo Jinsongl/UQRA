@@ -169,6 +169,7 @@ def get_test_data(simparams, solver, doe_method, n_test, filename = r'DoE_McsE6R
         y_test = y_test[:,-n_test:] if n_test > 0 else y_test
 
     return u_test, x_test, y_test
+
 def cal_weight(doe_method, u_data, pce_model):
     """
     Calculate weight for CLS based on Christoffel function evaluated in U-space
@@ -204,7 +205,7 @@ def main():
     n_cand      = int(1e5)
     n_test      = -1 
     doe_method  = 'CLS'
-    optimality  = None#'D', 'S', None
+    optimality  = 'D'#'D', 'S', None
     fit_method  = 'LASSOLARS'
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.02, min_r2=0.95)
     simparams.info()
@@ -221,12 +222,12 @@ def main():
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
-    u_cand = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
+    u_cand  = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
     u_test, x_test, y_test = get_test_data(simparams, solver, doe_method, n_test) 
-    qoi = museuq.metrics.mquantiles(y_test, 1-pf)
+    qoi_test= museuq.metrics.mquantiles(y_test, 1-pf)[0]
     print('   * {:<25s} : {}'.format('Candidate', u_cand.shape))
     print('   * {:<25s} : {}'.format('Test'     , u_test.shape))
-    print('   * {:<25s} : {}'.format('Target QoI',qoi))
+    print('   * {:<25s} : {}'.format('Target QoI',qoi_test))
 
     ## Here selecte the initial samples
     print(' > Getting initial sample set...')
@@ -244,11 +245,16 @@ def main():
     if init_doe_method.lower() == 'lhs':
         if orth_poly.dist_name.lower() == 'uniform':
             doe = museuq.LHS([stats.uniform(-1,2),]*solver.ndim)
-        elif orth_poly.dist_name.lower() == 'normal':
-            doe = museuq.LHS([stats.norm(0,1),]*solver.ndim)
-        _, u_train = doe.samples(n_eval_init, random_state=100)
+        elif orth_poly.dist_name.lower().startswith('norm'):
+            if doe_method.lower().startswith('cls'):
+                doe = museuq.LHS([stats.norm(0,np.sqrt(0.5)),]*solver.ndim)
+            else:
+                doe = museuq.LHS([stats.norm(0,1),]*solver.ndim)
+
+        z_train, u_train = doe.samples(n_eval_init, random_state=100)
         print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
         print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))
+        print('   * {:<25s} : [{:.2f},{:.2f}]'.format(' z Domain ', np.amin(z_train), np.amax(z_train)))
     else:
         u_train = get_train_data(n_eval_init, u_cand_p, init_doe_method, optimality=init_optimality, sample_selected=sample_selected, basis=orth_poly)
         print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
@@ -287,29 +293,34 @@ def main():
         orth_poly.set_degree(p)
         pce_model = museuq.PCE(orth_poly)
 
-        ### update candidate data set for this p degree, cls unbuounded
-        if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
-            u_cand_p = p**0.5 * u_cand
-        else:
-            u_cand_p = u_cand
-        # print('u train min: {}'.format(np.min(u_train, axis=1)))
-        # print('u train max: {}'.format(np.max(u_train, axis=1)))
-        # print('x train min: {}'.format(np.min(x_train, axis=1)))
-        # print('x train max: {}'.format(np.max(x_train, axis=1)))
-        # print('u train: {}'.format(u_train))
-        # print('x train: {}'.format(x_train))
-        # print('y train: {}'.format(y_train))
         ### ============ Build Surrogate Model ============
         w_train = cal_weight(doe_method, u_train, pce_model)
         pce_model.fit_lassolars(u_train, y_train, w=w_train, n_splits=n_splits)
         y_train_hat = pce_model.predict(u_train)
-
-
         y_test_hat  = pce_model.predict(u_test)
-        # print('utest: {}'.format(u_test[:,:3]))
+        # print(w_train)
+        # print('u train min: {}'.format(np.min(u_train, axis=1)))
+        # print('u train max: {}'.format(np.max(u_train, axis=1)))
+        # print('x train min: {}'.format(np.min(x_train, axis=1)))
+        # print('x train max: {}'.format(np.max(x_train, axis=1)))
+        res = museuq.metrics.mean_squared_error(y_train, y_train_hat)
+        tot = np.var(y_train)
+        print('MSE y train (res): {}'.format(res))
+        print('var y train (tot): {}'.format(tot))
+        if res > tot:
+            np.set_printoptions(threshold=1000)
+            print('y train: {:d}\n {}'.format(len(y_train), y_train))
+            print('y train hat: {:d} \n {}'.format(len(y_train),y_train_hat))
+        # print('u train: {}'.format(u_train))
+        # print('x train: {}'.format(x_train))
+        # print('y train: {}'.format(y_train))
+        # print('u_test: {}'.format(u_test[:,:3]))
         # print('u test min: {}'.format(np.min(u_test, axis=1)))
         # print('u test max: {}'.format(np.max(u_test, axis=1)))
+        # print('u test mean: {}'.format(np.mean(u_test, axis=1)))
+        # print('u test std: {}'.format(np.std(u_test, axis=1)))
         # print('y test max: {}'.format(np.max(y_test)))
+        # qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
         # print('pf, y_test_hat: {}'.format(qoi))
         # print('y_test_hat max: {}'.format(max(y_test_hat)))
 
@@ -346,13 +357,7 @@ def main():
             p = max(plim[0], p-2)
             new_samples_pct[p]= new_samples_pct[p] *0.1
             # plim[0] + np.argmin(cv_error[plim[0]:p+1])
-            orth_poly.set_degree(p)
-            pce_model = museuq.PCE(orth_poly)
             ### update candidate data set for this p degree, cls unbuounded
-            if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
-                u_cand_p = p**0.5 * u_cand
-            else:
-                u_cand_p = u_cand
             print('         - Reseting results for PCE order higher than p = {:d} '.format(p))
             for i in range(p+1, len(active_basis)):
                 QoI[i]          = 0
@@ -363,6 +368,13 @@ def main():
                 active_basis[i] = 0
             continue
 
+        ### update candidate data set for this p degree, cls unbuounded
+        if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
+            u_cand_p = p**0.5 * u_cand
+        else:
+            u_cand_p = u_cand
+        orth_poly.set_degree(p)
+        pce_model = museuq.PCE(orth_poly)
         ### ============ Get training points ============
         n = math.ceil(sparsity[p] * new_samples_pct[p])
         print('   -- New samples ({:s} {}): p={:d}, {:d}/{:d}, pct:{:.2f} '.format(doe_method, optimality, p,n,sparsity[p], new_samples_pct[p]))
@@ -378,7 +390,6 @@ def main():
         print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
         print(' - {:<25s} : {}'.format('# samples ', n_eval_path[-1]))
         try:
-            # print(' - {:<25s} : {} -> #{:d}'.format('Active basis', pce_model.active_, len(pce_model.active_)))
             beta = pce_model.coef
             beta = beta[abs(beta) > 1e-6]
             print(' - {:<25s} : #{:d}'.format('Active basis', len(beta)))
@@ -386,12 +397,12 @@ def main():
             pass
         print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2[plim[0]:p+1], 2)))
         print(' - {:<25s} : {}'.format('cv error ', np.squeeze(np.array(cv_error[plim[0]:p+1]))))
-        print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p+1])), 2)))
+        print(' - {:<25s} : {}'.format('QoI [{:.2f}]'.format(qoi_test), np.around(np.squeeze(np.array(QoI[plim[0]:p+1])), 2)))
         print(' - {:<25s} : {}'.format('test error', np.squeeze(np.array(test_error[plim[0]:p+1]))))
         print('     ------------------------------------------------------------')
 
         ### ============ updating parameters ============
-        p +=1
+        p           += 1
         i_iteration += 1
         if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p]):
             break
@@ -404,7 +415,7 @@ def main():
     # print(' - {:<25s} : {} -> #{:d}'.format(' # Active basis', pce_model.active_basis, len(pce_model.active_index)))
     print(' - {:<25s} : {}'.format('# samples', n_eval_path[-1]))
     print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(np.squeeze(np.array(adj_r2[plim[0]:p], dtype=np.float)), 2)))
-    print(' - {:<25s} : {}'.format('QoI', np.around(np.squeeze(np.array(QoI[plim[0]:p], dtype=np.float)), 2)))
+    print(' - {:<25s} : {}'.format('QoI [{:.2f}]'.format(qoi_test), np.around(np.squeeze(np.array(QoI[plim[0]:p], dtype=np.float)), 2)))
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
     # print(pce_model.coef[pce_model.coef!=0])
     # print(solver.coef[solver.coef!=0])
