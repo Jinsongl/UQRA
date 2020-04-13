@@ -153,9 +153,9 @@ class sparse_poly(SolverBase):
     def __init__(self, basis, coef= stats.norm, sparsity='full', seed=None):
         self.name = 'sparse polynomial'
         if isinstance(sparsity, str) and sparsity.lower() =='full':
-            self.nickname = 'poly'
+            self.nickname = 'Poly_{:d}{:s}{:d}'.format(basis.ndim, basis.nickname, basis.deg)
         else:
-            self.nickname = 'sparsePoly'
+            self.nickname = 'SparsePoly_{:d}{:s}{:d}'.format(basis.ndim, basis.nickname, basis.deg)
 
         self.basis = basis
         self.ndim = basis.ndim
