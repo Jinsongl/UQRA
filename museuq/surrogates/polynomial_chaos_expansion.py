@@ -215,7 +215,6 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
         self.score    = model.score(X, y)
 
-
     def predict(self,x, **kwargs):
         """
         Predict using surrogate models 
@@ -273,8 +272,6 @@ class PolynomialChaosExpansion(SurrogateBase):
 
         """
         raise NotImplementedError
-
-
 
     def _rescale_data(self, X, y, sample_weight):
         """Rescale data so as to support sample_weight"""
