@@ -176,14 +176,14 @@ def cal_weight(doe_method, u_data, pce_model):
         Kp = np.sum(X* X, axis=1)
         w  = pce_model.num_basis / Kp
     else:
-        w = None 
+        w = None
     return w
 
 def main():
 
     ## ------------------------ Displaying set up ------------------- ###
     np.set_printoptions(precision=4)
-    np.set_printoptions(threshold=1000)
+    np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
     n_new       = 5
     iter_max    = 100
@@ -218,7 +218,7 @@ def main():
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
-    u_cand  = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
+    u_cand = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
     u_test, x_test, y_test = get_test_data(simparams, solver, pce_model, n_test) 
     qoi_test= museuq.metrics.mquantiles(y_test, 1-pf)[0]
     print('   * {:<25s} : {}'.format('Candidate', u_cand.shape))
@@ -247,8 +247,8 @@ def main():
     poly_order_path = []
     cv_error        = [0,] * (plim[1]+1)
     cv_error_path   = []
-    adj_r2          = [0,] * (plim[1]+1)
-    adj_r2_path     = []
+    score          = [0,] * (plim[1]+1)
+    score_path     = []
     test_error      = [0,] * (plim[1]+1)
     test_error_path = []
     QoI             = [0,] * (plim[1]+1)
@@ -256,7 +256,6 @@ def main():
     active_basis    = [0,] * (plim[1]+1)
     active_basis_path= [] 
     new_samples_pct = [1,]* (plim[1]+1)
-    score = [0,] * (plim[1]+1)
 
     ### ============ Start adaptive iteration ============
     print(' > Starting iteration ...')
@@ -315,9 +314,8 @@ def main():
         active_basis[p] = [pce_model.basis.basis_degree[i] for i in acitve_index ]
         active_basis_path.append(active_basis[p])
 
-        adj_r2[p] = museuq.metrics.r2_score(y_train, y_train_hat)        
-        adj_r2_path.append(museuq.metrics.r2_score(y_train, y_train_hat))
         score[p] = pce_model.score
+        score_path.append(pce_model.score)
         qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
         QoI[p] = qoi
         QoI_path.append(qoi)
@@ -337,7 +335,7 @@ def main():
             print('         - Reseting results for PCE order higher than p = {:d} '.format(p))
             for i in range(p+1, len(active_basis)):
                 QoI[i]          = 0
-                adj_r2[i]       = 0
+                score[i]       = 0
                 cv_error[i]     = 0
                 sparsity[i]     = 0
                 test_error[i]   = 0
@@ -372,7 +370,6 @@ def main():
             print(' - {:<25s} : #{:d}'.format('Active basis', len(beta)))
         except:
             pass
-        print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(adj_r2[plim[0]:p+1], 2)))
         print(' - {:<25s} : {}'.format('Score  ', np.around(score[plim[0]:p+1], 2)))
         print(' - {:<25s} : {}'.format('cv error ', np.squeeze(np.array(cv_error[plim[0]:p+1]))))
         print(' - {:<25s} : {}'.format('QoI [{:.2f}]'.format(qoi_test), np.around(np.squeeze(np.array(QoI[plim[0]:p+1])), 2)))
@@ -392,8 +389,7 @@ def main():
     print(' - {:<25s} : {}'.format('Polynomial order (p)', p))
     # print(' - {:<25s} : {} -> #{:d}'.format(' # Active basis', pce_model.active_basis, len(pce_model.active_index)))
     print(' - {:<25s} : {}'.format('# samples', n_eval_path[-1]))
-    print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(np.squeeze(np.array(adj_r2[plim[0]:p], dtype=np.float)), 2)))
-    print(' - {:<25s} : {}'.format('score ', np.around(np.squeeze(np.array(score[plim[0]:p], dtype=np.float)), 2)))
+    print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(np.squeeze(np.array(score[plim[0]:p], dtype=np.float)), 2)))
     print(' - {:<25s} : {}'.format('QoI [{:.2f}]'.format(qoi_test), np.around(np.squeeze(np.array(QoI[plim[0]:p], dtype=np.float)), 2)))
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
     # print(pce_model.coef[pce_model.coef!=0])
@@ -403,9 +399,9 @@ def main():
         filename = 'Adaptive_{:s}_{:s}{:s}_{:s}'.format(solver.nickname.capitalize(), doe_method.capitalize(), optimality, fit_method.capitalize())
     else:
         filename = 'Adaptive_{:s}_{:s}_{:s}'.format(solver.nickname.capitalize(), doe_method.capitalize(), fit_method.capitalize())
-    path_data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, adj_r2_path, QoI_path, test_error_path]) 
+    path_data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, score_path, QoI_path, test_error_path]) 
     np.save(os.path.join(simparams.data_dir_result, filename+'_path'), path_data)
-    data  = np.array([n_eval_path, poly_order_path, cv_error, active_basis, adj_r2, QoI, test_error]) 
+    data  = np.array([n_eval_path, poly_order_path, cv_error, active_basis, score, QoI, test_error]) 
     np.save(os.path.join(simparams.data_dir_result, filename), data)
 
 if __name__ == '__main__':
