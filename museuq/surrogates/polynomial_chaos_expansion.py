@@ -63,6 +63,16 @@ class PolynomialChaosExpansion(SurrogateBase):
             print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)', self.basis.num_basis))
             print(r'     - {:<23s} : {:d}'.format('No. active basis (s)', len(self.active_index)))
 
+    def set_degree(self, p):
+        if self.basis is None:
+            raise ValueError('Basis is not defined')
+        else:
+            self.basis.set_degree(p)
+            self.num_basis = self.basis.num_basis
+            self.deg       = self.basis.deg
+            self.active_index = None if self.num_basis is None else range(self.num_basis)
+            self.active_basis = None if self.basis.basis_degree is None else self.basis.basis_degree 
+    
     def fit_quadrature(self, x, w, y):
         """
         fit with quadrature points
