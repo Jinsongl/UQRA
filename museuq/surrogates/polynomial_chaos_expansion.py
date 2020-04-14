@@ -16,6 +16,7 @@ from sklearn import linear_model
 from sklearn import model_selection
 from ._surrogatebase import SurrogateBase
 import museuq, math
+from scipy import sparse
 class PolynomialChaosExpansion(SurrogateBase):
     """
     Class to build polynomial chaos expansion (PCE) model
@@ -179,7 +180,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                 self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
         # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_index, len(self.active_index)))
 
-    def fit_lassolars(self,x,y,w=None, *args, **kwargs):
+    def fit_lassolars(self,x,y,sample_weight=None, *args, **kwargs):
         """
         (weighted) Ordinary Least Error on selected basis (LARs)
         Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
@@ -196,20 +197,15 @@ class PolynomialChaosExpansion(SurrogateBase):
         """
         self.fit_method = 'LASSOLARS' 
         x = np.array(x, copy=False, ndmin=2)
-        y = np.array(y, copy=False, ndmin=2)
+        y = np.array(y, copy=False, ndmin=1)
         X = self.basis.vandermonde(x)
-        y = np.squeeze(y)
-        if w is not None:
-            X = (X.T * w).T
-            y = y *w
+        if sample_weight is not None:
+            # Sample weight can be implemented via a simple rescaling.
+            X, y = self._rescale_data(X, y, sample_weight)
         ## parameters for LassoLars 
         n_splits= kwargs.get('n_splits', X.shape[0])
         max_iter= kwargs.get('max_iter', 500)
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
-
-        # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.deg))
-        # print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
 
         model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count(),fit_intercept=False).fit(X,y)
         self.model    = model 
@@ -217,7 +213,8 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.coef     = model.coef_
         self.active_index = [i for i, icoef in enumerate(model.coef_) if abs(icoef) > 1e-4]
         self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
-        # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_index, len(self.active_index)))
+        self.score    = model.score(X, y)
+
 
     def predict(self,x, **kwargs):
         """
@@ -236,20 +233,11 @@ class PolynomialChaosExpansion(SurrogateBase):
         if self.fit_method == 'GLK':
             y = self.basis(x)
         elif self.fit_method in ['OLS','OLSLARS','LASSOLARS']:
-            # w = kwargs.get('w', None)
 
             size_of_array_4gb = 1e8/2.0
-            # X = self.basis.vandermonde(x)
-            # X = (X.T * w).T if w is not None else X
-            # y = self.model.predict(X)
-            # y = y/w if w is not None else y
-
-            ## size of largest array is of shape ()
             if x.shape[1] * self.num_basis < size_of_array_4gb:
                 X = self.basis.vandermonde(x)
-                # X = (X.T * w).T if w is not None else X
                 y = self.model.predict(X)
-                # y = y/w if w is not None else y
 
             else:
                 batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
@@ -258,15 +246,11 @@ class PolynomialChaosExpansion(SurrogateBase):
                     idx_beg = i*batch_size
                     idx_end = min((i+1) * batch_size, x.shape[1])
                     x_      = x[:,idx_beg:idx_end]
-                    # w_      = w[idx_beg:idx_end] if w is not None else w
                     X_      = self.basis.vandermonde(x_)
-                    # X_      = (X_.T * w_).T if w_ is not None else X_
                     y_      = self.model.predict(X_)
-                    # y_      = y_/w_ if w_ is not None else y_
                     y      += list(y_)
                 y = np.array(y) 
 
-        # print(r'   * {:<25s} : {}'.format('Prediction output', y.shape))
         return y
 
     def sample_y(self,X, nsamples=1, random_state=0):
@@ -292,3 +276,16 @@ class PolynomialChaosExpansion(SurrogateBase):
 
 
 
+    def _rescale_data(self, X, y, sample_weight):
+        """Rescale data so as to support sample_weight"""
+        n_samples = X.shape[0]
+        sample_weight = np.asarray(sample_weight)
+        if sample_weight.ndim == 0:
+            sample_weight = np.full(n_samples, sample_weight,
+                                    dtype=sample_weight.dtype)
+        sample_weight = np.sqrt(sample_weight)
+        sw_matrix = sparse.dia_matrix((sample_weight, 0),
+                                      shape=(n_samples, n_samples))
+        X = sw_matrix @ X
+        y = sw_matrix @ y
+        return X, y
