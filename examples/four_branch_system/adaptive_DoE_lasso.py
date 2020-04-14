@@ -20,14 +20,20 @@ def get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test):
     """
     Return canndidate samples in u space
     """
+    if orth_poly.dist_name == 'norm':
+        dist_name = 'Normal' 
+    elif orth_poly.dist_name == 'uniform':
+        dist_name = 'Uniform' 
+    else:
+        raise ValueError
     if doe_method.lower().startswith('mcs'):
         filename= r'DoE_McsE6R0.npy'
-        mcs_data_set  = np.load(os.path.join(simparams.data_dir_sample, 'MCS', orth_poly.dist_name, filename))
+        mcs_data_set  = np.load(os.path.join(simparams.data_dir_sample, 'MCS', dist_name, filename))
         u_cand = mcs_data_set[:orth_poly.ndim,:n_cand].reshape(orth_poly.ndim, -1)
 
     elif doe_method.lower().startswith('cls') or doe_method.lower() == 'reference':
-        filename= r'DoE_McsE6d{:d}R0.npy'.format(orth_poly.ndim) if orth_poly.dist_name.lower() == 'normal' else r'DoE_McsE6R0.npy'
-        cls_data_set  = np.load(os.path.join(simparams.data_dir_sample, 'Pluripotential', orth_poly.dist_name, filename))
+        filename= r'DoE_McsE6d{:d}R0.npy'.format(orth_poly.ndim) if dist_name == 'Normal' else r'DoE_McsE6R0.npy'
+        cls_data_set  = np.load(os.path.join(simparams.data_dir_sample, 'Pluripotential', dist_name, filename))
         u_cand = cls_data_set[:orth_poly.ndim,:n_cand].reshape(orth_poly.ndim, -1)
     else:
         raise ValueError
@@ -62,15 +68,15 @@ def get_train_data(n, u_cand, doe_method, optimality=None, sample_selected=[], b
             raise ValueError('For optimality design, basis function are needed')
         else:
             X  = basis.vandermonde(u_cand)
-        if doe_method.lower().startswith('cls'):
-            X  = basis.num_basis**0.5*(X.T / np.linalg.norm(X, axis=1)).T
         if active_basis == 0 or active_basis is None:
             print('     - {:<23s} : {}/{}'.format('Optimal design based on ', basis.num_basis, basis.num_basis))
             X = X
         else:
-            print('     - {:<23s} : {}/{}'.format('Optimal design based on ', len(active_basis), basis.num_basis))
             active_index = np.array([i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis])
+            print('     - {:<23s} : {}/{}'.format('Optimal design based on ', len(active_index), basis.num_basis))
             X = X[:, active_index]
+        if doe_method.lower().startswith('cls'):
+            X  = basis.num_basis**0.5*(X.T / np.linalg.norm(X, axis=1)).T
         samples_new = doe.samples(X, n_samples=n, orth_basis=True)
 
     if len(sample_selected) != len(np.unique(sample_selected)):
@@ -81,30 +87,7 @@ def get_train_data(n, u_cand, doe_method, optimality=None, sample_selected=[], b
 
     return u_train_new
 
-def map_domain(u_data, solver, doe_method, dist_name):
-    """
-    Map variables from U-space to X-space
-
-    """
-    if doe_method.lower().startswith('mcs'):
-        if dist_name.lower() == 'uniform':
-            dist_u = [stats.uniform(-1,2),] * solver.ndim
-        elif dist_name.lower().startswith('norm'):
-            dist_u = [stats.norm(0,1), ] *solver.ndim
-        else:
-            raise ValueError('{:s} not defined'.format(dist_name))
-    elif doe_method.lower().startswith('cls'):
-        if dist_name.lower() == 'uniform':
-            dist_u = [stats.uniform(-1,2),] * solver.ndim
-            # x_data= solver.map_domain(u_data, np.arcsin(u_data)/np.pi + 0.5)
-        elif dist_name.lower().startswith('norm'):
-            dist_u = [stats.norm(0, np.sqrt(0.5)), ] *solver.ndim
-        else:
-            raise ValueError('{:s} not defined'.format(dist_name))
-    x_data = solver.map_domain(u_data, dist_u)
-    return x_data
-
-def get_test_data(simparams, solver, doe_method, n_test, filename = r'DoE_McsE6R0.npy'):
+def get_test_data(simparams, solver, pce_model, n_test, filename = r'DoE_McsE6R0.npy'):
     """
     Return test data. 
 
@@ -122,12 +105,14 @@ def get_test_data(simparams, solver, doe_method, n_test, filename = r'DoE_McsE6R
     else:
         filename_result = filename
 
-    if doe_method.lower().startswith('mcs'):
-        data_dir_result = os.path.join(simparams.data_dir_result, 'MCS')
-    elif doe_method.lower().startswith('cls'):
-        data_dir_result = os.path.join(simparams.data_dir_result, 'Pluripotential')
-    else:
-        raise ValueError
+    data_dir_result = os.path.join(simparams.data_dir_result, 'MCS')
+    try: 
+        os.makedirs(data_dir_result)
+    except OSError as e:
+        pass
+
+    if pce_model.basis.hem_type == 'physicists':
+        filename_result = filename_result.replace('Mcs', 'Cls')
 
     try:
         data_set = np.load(os.path.join(data_dir_result, filename_result))
@@ -138,6 +123,7 @@ def get_test_data(simparams, solver, doe_method, n_test, filename = r'DoE_McsE6R
         y_test = data_set[-1,-n_test:] if n_test > 0 else data_set[-1,:]
 
     except FileNotFoundError:
+        ### 1. Get MCS samples for X
         if solver.dist_name.lower() == 'uniform':
             print('   > Solving test data from {} '.format(os.path.join(simparams.data_dir_sample, 'MCS','Uniform', filename)))
             data_set = np.load(os.path.join(simparams.data_dir_sample, 'MCS','Uniform', filename))
@@ -148,27 +134,37 @@ def get_test_data(simparams, solver, doe_method, n_test, filename = r'DoE_McsE6R
             data_set = np.load(os.path.join(simparams.data_dir_sample, 'MCS','Normal', filename))
             z_test = data_set[:solver.ndim,:] 
             x_test = solver.map_domain(z_test, [stats.norm(0,1),] * solver.ndim)
+        else:
+            raise ValueError
         y_test = solver.run(x_test)
 
+        ### 2. Mapping MCS samples from X to u
+        ###     dist_u is defined by pce_model
         ### Bounded domain maps to [-1,1] for both mcs and cls methods. so u = z
         ### Unbounded domain, mcs maps to N(0,1), cls maps to N(0,sqrt(0.5))
-        if doe_method.lower().startswith('cls') and solver.dist_name.lower().startswith('norm'):
-            u_test = z_test * np.sqrt(0.5) ## mu + sigma * x
+        if pce_model.basis.hem_type == 'physicists':
+            u_test = 0.0 + z_test * np.sqrt(0.5) ## mu + sigma * x
         else:
             u_test = z_test
         data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
-        if doe_method.lower().startswith('cls'):
-            np.save(os.path.join(data_dir_result, filename_result), data)
-        elif doe_method.lower().startswith('mcs'):
-            np.save(os.path.join(data_dir_result, filename_result), data)
-        else:
-            raise ValueError
+        np.save(os.path.join(data_dir_result, filename_result), data)
 
         u_test = u_test[:,-n_test:] if n_test > 0 else u_test
         x_test = x_test[:,-n_test:] if n_test > 0 else x_test
         y_test = y_test[:,-n_test:] if n_test > 0 else y_test
 
     return u_test, x_test, y_test
+
+def get_init_samples(n, solver, pce_model, doe_method='lhs', random_state=None, **kwargs):
+
+    if doe_method.lower() == 'lhs':
+        doe = museuq.LHS(pce_model.basis.dist_u)
+        z, u= doe.samples(n, random_state=random_state)
+    else:
+        raise NotImplementedError
+    x = solver.map_domain(u, z) ## z_train is the cdf of u_train
+    y = solver.run(x)
+    return u, x, y
 
 def cal_weight(doe_method, u_data, pce_model):
     """
@@ -190,9 +186,7 @@ def main():
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
     n_new       = 5
-    n_eval_init = 16
     iter_max    = 100
-    # n_splits    = 10
 
     ## ------------------------ Define solver ----------------------- ###
     pf          = 1e-4
@@ -215,55 +209,33 @@ def main():
     print('     - {:<23s} : {}'.format('Fitting method'   , fit_method))
 
     ## ------------------------ Define PCE model --------------------- ###
-    orth_poly   = museuq.Hermite(d=solver.ndim, hem_type='probabilists')
-    # orth_poly   = museuq.Hermite(d=solver.ndim, hem_type='physicists')
+    if doe_method.lower() == 'mcs':
+        orth_poly   = museuq.Hermite(d=solver.ndim, hem_type='probabilists')
+    elif doe_method.lower() == 'cls':
+        orth_poly   = museuq.Hermite(d=solver.ndim, hem_type='physicists')
     pce_model   = museuq.PCE(orth_poly)
     pce_model.info()
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     u_cand  = get_candidate_data(simparams, doe_method, orth_poly, n_cand, n_test)
-    u_test, x_test, y_test = get_test_data(simparams, solver, doe_method, n_test) 
+    u_test, x_test, y_test = get_test_data(simparams, solver, pce_model, n_test) 
     qoi_test= museuq.metrics.mquantiles(y_test, 1-pf)[0]
     print('   * {:<25s} : {}'.format('Candidate', u_cand.shape))
     print('   * {:<25s} : {}'.format('Test'     , u_test.shape))
     print('   * {:<25s} : {}'.format('Target QoI',qoi_test))
 
-    ## Here selecte the initial samples
+    ## ----------- Initial DoE ----------- ###
+    # init_optimality = optimality 
+    # init_basis_deg  = 10
+    # orth_poly.set_degree(init_basis_deg)
     print(' > Getting initial sample set...')
-    init_basis_deg  = 10
     sample_selected = []
     init_doe_method = 'lhs' 
-    init_optimality = optimality 
-    orth_poly.set_degree(init_basis_deg)
-
-    ### update candidate data set for this p degree, cls unbuounded
-    if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
-        u_cand_p = init_basis_deg **0.5 * u_cand
-    else:
-        u_cand_p = u_cand
-    if init_doe_method.lower() == 'lhs':
-        if orth_poly.dist_name.lower() == 'uniform':
-            doe = museuq.LHS([stats.uniform(-1,2),]*solver.ndim)
-        elif orth_poly.dist_name.lower().startswith('norm'):
-            if doe_method.lower().startswith('cls'):
-                doe = museuq.LHS([stats.norm(0,np.sqrt(0.5)),]*solver.ndim)
-            else:
-                doe = museuq.LHS([stats.norm(0,1),]*solver.ndim)
-
-        z_train, u_train = doe.samples(n_eval_init, random_state=100)
-        print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
-        print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))
-        print('   * {:<25s} : [{:.2f},{:.2f}]'.format(' z Domain ', np.amin(z_train), np.amax(z_train)))
-    else:
-        u_train = get_train_data(n_eval_init, u_cand_p, init_doe_method, optimality=init_optimality, sample_selected=sample_selected, basis=orth_poly)
-        print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
-        print('   * {:<25s} : {}'.format(' Optimality ', init_optimality))
-        print('   * {:<25s} : {}'.format(' Basis deg', init_basis_deg))
-        print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))
-
-    x_train = map_domain(u_train, solver, doe_method, orth_poly.dist_name)
-    y_train = solver.run(x_train)
+    init_n_eval     = 16
+    u_train, x_train, y_train = get_init_samples(init_n_eval, solver, pce_model, doe_method=init_doe_method, random_state=100)
+    print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
+    print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))
     print('   * {:<25s} : [{:.2f},{:.2f}]'.format(' u Domain ', np.amin(u_train), np.amax(u_train)))
     print('   * {:<25s} : [{:.2f},{:.2f}]'.format(' x Domain ', np.amin(x_train), np.amax(x_train)))
 
@@ -340,13 +312,8 @@ def main():
         active_basis[p] = [pce_model.basis.basis_degree[i] for i in acitve_index ]
         active_basis_path.append(active_basis[p])
 
-<<<<<<< HEAD
         adj_r2[p] = museuq.metrics.r2_score(y_train, y_train_hat)        
         adj_r2_path.append(museuq.metrics.r2_score(y_train, y_train_hat))
-=======
-        adj_r2[p] = museuq.metrics.r2_score(y_train, y_train_hat, pce_model.num_basis)        
-        adj_r2_path.append(museuq.metrics.r2_score(y_train, y_train_hat, pce_model.num_basis))
->>>>>>> 1dd16d5efb43aa3657affb625671c3d4299b77a6
         qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
         QoI[p] = qoi
         QoI_path.append(qoi)
@@ -357,7 +324,7 @@ def main():
         ### ============ Cheking Overfitting ============
         if simparams.check_overfitting(cv_error[plim[0]:p+1]):
             print('     >>> Possible overfitting detected')
-            print('         - cv error: {}'.format(np.around(cv_error[p-2:p+1], 4)))
+            print('         - cv error: {}'.format(np.around(cv_error[max(p-4,plim[0]):p+1], 4)))
             new_samples_pct[p]  = new_samples_pct[p] *0.5
             p = max(plim[0], p-2)
             new_samples_pct[p]= new_samples_pct[p] *0.1
@@ -373,8 +340,9 @@ def main():
                 active_basis[i] = 0
             continue
 
+        ### ============ Get new samples if not overfitting ============
         ### update candidate data set for this p degree, cls unbuounded
-        if doe_method.lower().startswith('cls') and orth_poly.dist_name.lower() == 'normal':
+        if doe_method.lower().startswith('cls') and pce_model.basis.dist_name=='norm':
             u_cand_p = p**0.5 * u_cand
         else:
             u_cand_p = u_cand
@@ -384,7 +352,7 @@ def main():
         n = math.ceil(sparsity[p] * new_samples_pct[p])
         print('   -- New samples ({:s} {}): p={:d}, {:d}/{:d}, pct:{:.2f} '.format(doe_method, optimality, p,n,sparsity[p], new_samples_pct[p]))
         u_train_new = get_train_data(n, u_cand_p,doe_method, optimality, sample_selected, pce_model.basis, active_basis[p])
-        x_train_new = map_domain(u_train_new, solver, doe_method, orth_poly.dist_name)
+        x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
         y_train_new = solver.run(x_train_new)
         u_train = np.hstack((u_train, u_train_new)) 
         x_train = np.hstack((x_train, x_train_new)) 
