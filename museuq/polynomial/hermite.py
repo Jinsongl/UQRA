@@ -29,7 +29,7 @@ class Hermite(PolyBase):
         self.name      = 'Hermite'
         self.hem_type  = hem_type
         self.nickname  = 'Heme' if hem_type.lower() == 'probabilists' else 'Hem'
-        self.dist_name = 'Normal'
+        self.dist_name = 'norm'
         if self.ndim is None:
             self.dist_u = None
         elif hem_type.lower() == 'probabilists':
