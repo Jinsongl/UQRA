@@ -26,8 +26,8 @@ class Hermite(PolyBase):
 
     def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total', hem_type='probabilists'):
         super().__init__(d=d, deg=deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
-        self.name      = 'Hermite'
         self.hem_type  = hem_type
+        self.name      = 'Hermite_e' if hem_type.lower() == 'probabilists' else 'Hermite'
         self.nickname  = 'Heme' if hem_type.lower() == 'probabilists' else 'Hem'
         self.dist_name = 'norm'
         if self.ndim is None:
