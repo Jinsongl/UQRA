@@ -38,7 +38,7 @@ class simParameters(object):
         sys.stdout = Logger()
         ###---------- Random system properties ------------------------
         self.seed       = [0,100]
-        self.model_name = model_name.capitalize()
+        self.model_name = model_name
 
         ###------------- Adaptive setting -----------------------------
         self.is_adaptive= False
@@ -226,7 +226,6 @@ class simParameters(object):
 
         # Create directory for model  
         try:
-            os.makedirs(model_dir)
             os.makedirs(data_dir_result)
             os.makedirs(figure_dir)
             # print(r'Data, Figure directories for model {} is created'.format(self.model_name))
