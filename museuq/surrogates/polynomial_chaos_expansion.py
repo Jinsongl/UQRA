@@ -139,6 +139,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.coef    = model.coef_
         self.active_index = range(self.num_basis)
         self.active_basis = self.basis.basis_degree
+        self.score   = model.score(X,y,w)
 
     def fit_olslars(self,x,y,w=None, *args, **kwargs):
         """
