@@ -590,13 +590,13 @@ class Franke(SolverBase):
 class corner_peak(SolverBase):
     """
     """
-    def __init__(self, dist, d=2):
+    def __init__(self, d):
         super().__init__()
         self.name = 'Corner peak'
         self.nickname = 'CornerPeak'
         self.ndim = int(d)
-        self.distributions = [dist,] * self.ndim
-        self.dist_name = dist.dist.name
+        self.distributions = [stats.norm(),] * self.ndim
+        self.dist_name = 'norm'
 
     def __str__(self):
         return 'Solver: Corner peak function'
@@ -616,8 +616,9 @@ class corner_peak(SolverBase):
         """
         mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
         Argument:
-            u: np.ndarray of shape(ndim, nsamples)
-            u_cdf: list of distributions from scipy.stats
+            two options:
+            1. cdf(u)
+            2. u and u_cdf
         """
         if isinstance(u_cdf, np.ndarray):
             assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
@@ -627,19 +628,11 @@ class corner_peak(SolverBase):
             x = []
             for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
                 assert idist_u.dist.name == idist_x.dist.name
-                if idist_u.dist.name == 'uniform':
-                    ua, ub = idist_u.support()
-                    loc_u, scl_u = ua, ub-ua
-                    xa, xb = idist_x.support()
-                    loc_x, scl_x = xa, xb-xa 
-                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
-
-                elif idist_u.dist.name == 'norm':
-                    mean_u = idist_u.mean()
-                    mean_x = idist_x.mean()
-                    std_u  = idist_u.std()
-                    std_x  = idist_x.std()
-                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+                mean_u = idist_u.mean()
+                mean_x = idist_x.mean()
+                std_u  = idist_u.std()
+                std_x  = idist_x.std()
+                x.append((iu-mean_u)/std_u * std_x + mean_x)
             x = np.vstack(x)
         return x
 
@@ -673,7 +666,6 @@ class exp_square_sum(SolverBase):
         if np.isnan(y).any():
             raise ValueError('nan in solver.run() result')
         return y
-
     def map_domain(self, u, u_cdf):
         """
         mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
@@ -724,7 +716,7 @@ class exp_abs_sum(SolverBase):
     def __str__(self):
         return 'Solver: Exponential of Sqaured Sum'
 
-    def run(self, x, c=[-2,1], w=[0.25,-0.75]):
+    def run(self, x, c=[1,1], w=[1,0.5]):
         x = np.array(x, copy=False, ndmin=2)
         c = np.array(c, copy=False, ndmin=1)
         w = np.array(w, copy=False, ndmin=1)
@@ -765,60 +757,4 @@ class exp_abs_sum(SolverBase):
             x = np.vstack(x)
         return x
 
-
-class exp_sum(SolverBase):
-    """ 
-    Collections which are widely used for multi-dimensional function integration and approximation tests
-    Reference:
-        Shin, Yeonjong, and Dongbin Xiu. "On a near optimal sampling strategy for least squares polynomial regression." Journal of Computational Physics 326 (2016): 931-946.
-    """
-
-    def __init__(self, dist, d=2):
-        super().__init__()
-        self.name = 'Exponential of Sum'
-        self.nickname = 'ExpSum'
-        self.ndim = int(d)
-        self.distributions = [dist,] * self.ndim
-        self.dist_name = dist.dist.name
-
-    def __str__(self):
-        return 'Solver: Exponential of Sqaured Sum'
-
-    def run(self, x):
-        x = np.array(x, copy=False, ndmin=2)
-        assert x.shape[0] == self.ndim
-        y = np.exp(-np.sum(x, axis=0))
-        if np.isnan(y).any():
-            raise ValueError('nan in solver.run() result')
-        return y
-    def map_domain(self, u, u_cdf):
-        """
-        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
-        Argument:
-            u: np.ndarray of shape(ndim, nsamples)
-            u_cdf: list of distributions from scipy.stats
-        """
-        if isinstance(u_cdf, np.ndarray):
-            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
-            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
-        else:
-            u, dist_u = super().map_domain(u, u_cdf) 
-            x = []
-            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
-                assert idist_u.dist.name == idist_x.dist.name
-                if idist_u.dist.name == 'uniform':
-                    ua, ub = idist_u.support()
-                    loc_u, scl_u = ua, ub-ua
-                    xa, xb = idist_x.support()
-                    loc_x, scl_x = xa, xb-xa 
-                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
-
-                elif idist_u.dist.name == 'norm':
-                    mean_u = idist_u.mean()
-                    mean_x = idist_x.mean()
-                    std_u  = idist_u.std()
-                    std_x  = idist_x.std()
-                    x.append((iu-mean_u)/std_u * std_x + mean_x)
-            x = np.vstack(x)
-        return x
 
