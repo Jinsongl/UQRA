@@ -200,6 +200,34 @@ class SparsePoly(SolverBase):
         coef[random.sample(range(0, self.num_basis), self.num_basis - k)] = 0.0
         return coef
 
+    def coef_error(self, model, normord=np.inf):
+        beta    = np.array(self.coef, copy=True)
+        beta_hat= np.array(model.coef, copy=True)
+
+        solver_basis_degree = self.basis.basis_degree
+        model_basis_degree  = model.basis.basis_degree
+
+        if len(solver_basis_degree) > len(model_basis_degree):
+            large_basis_degree = solver_basis_degree 
+            small_basis_degree = model_basis_degree
+            large_beta = beta
+            small_beta = beta_hat
+        else:
+            small_basis_degree = solver_basis_degree 
+            large_basis_degree = model_basis_degree
+            large_beta = beta_hat
+            small_beta = beta
+
+        basis_common = np.where([ibasis_degree in small_basis_degree  for ibasis_degree in large_basis_degree ])[0]
+        if normord == np.inf:
+            error_common = np.linalg.norm(large_beta[basis_common]-small_beta, normord)
+            large_beta[basis_common] = 0
+            error_left   =  max(abs(large_beta))
+            error = max( error_common, error_left )
+        elif normord == 1 or normord == 2 :
+            error = np.linalg.norm(large_beta[basis_common]-small_beta, normord)/ np.linalg.norm(beta, normord)
+        return  error
+
     def map_domain(self, u, u_cdf):
         """
         mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
