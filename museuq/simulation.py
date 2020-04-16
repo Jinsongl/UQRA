@@ -10,13 +10,258 @@
 
 """
 import os, sys
-import chaospy as cp
 import numpy as np
+import museuq
+from scipy import sparse
 from datetime import datetime
 from .utilities.classes import Logger
 from itertools import compress
 
-class simParameters(object):
+class Modeling(object):
+    def __init__(self):
+        pass
+
+    def get_tag(self):
+        if self.optimality:
+            tag = '{:s}{:s}_{:s}'.format(self.doe_method.capitalize(), self.optimality, self.fit_method.capitalize())
+        else:
+            tag = '{:s}_{:s}'.format(self.doe_method.capitalize(), self.fit_method.capitalize())
+
+        return tag
+
+    def get_init_samples(n, solver, pce_model, doe_method='lhs', random_state=None, **kwargs):
+
+        if doe_method.lower() == 'lhs':
+            doe = museuq.LHS(pce_model.basis.dist_u)
+            z, u= doe.samples(n, random_state=random_state)
+        else:
+            raise NotImplementedError
+        x = solver.map_domain(u, z) ## z_train is the cdf of u_train
+        y = solver.run(x)
+        return u, x, y
+
+    def get_candidate_data(self, simparams, orth_poly):
+        """
+        Return canndidate samples in u space
+        """
+        if orth_poly.dist_name.lower().startswith('norm'):
+            dist_name = 'Normal' 
+        elif orth_poly.dist_name.lower() == 'uniform':
+            dist_name = 'Uniform' 
+        else:
+            raise ValueError('Distribution {:s} not defined'.format(orth_poly.dist_name))
+        if self.doe_method.lower().startswith('mcs'):
+            filename= r'DoE_McsE6R0.npy'
+            mcs_data_set  = np.load(os.path.join(simparams.data_dir_sample, 'MCS', dist_name, filename))
+            u_cand = mcs_data_set[:orth_poly.ndim,:self.n_cand].reshape(orth_poly.ndim, -1)
+
+        elif self.doe_method.lower().startswith('cls') or self.doe_method.lower() == 'reference':
+            filename= r'DoE_McsE6d{:d}R0.npy'.format(orth_poly.ndim) if dist_name == 'Normal' else r'DoE_McsE6R0.npy'
+            cls_data_set  = np.load(os.path.join(simparams.data_dir_sample, 'Pluripotential', dist_name, filename))
+            u_cand = cls_data_set[:orth_poly.ndim,:self.n_cand].reshape(orth_poly.ndim, -1)
+        else:
+            raise ValueError
+
+        return u_cand
+
+    def get_test_data(self, simparams, solver, pce_model, filename = r'DoE_McsE6R0.npy'):
+        """
+        Return test data. 
+
+        Test data should always be in X-space. The correct sequence is X->y->u
+
+        To be able to generate MCS samples for X, we use MCS samples in Samples/MCS, noted as z here
+
+        If already exist in simparams.data_dir_result, then load and return
+        else, run solver
+
+        """
+        
+        # if solver.nickname.lower().startswith('poly') or solver.nickname.lower().startswith('sparsepoly'):
+            # filename_result = filename[:-4]+'_{:s}{:d}_p{:d}.npy'.format(solver.basis.nickname, solver.ndim,solver.basis.deg)
+        # else:
+            # filename_result = filename
+
+        data_dir_result = os.path.join(simparams.data_dir_result, 'TestData')
+        try: 
+            os.makedirs(data_dir_result)
+        except OSError as e:
+            pass
+
+        
+        filename_result = filename
+        if self.doe_method.lower() == 'cls':
+            filename_result = filename_result.replace('Mcs', 'Cls')
+
+        try:
+            data_set = np.load(os.path.join(data_dir_result, filename_result))
+            print('   > Retrieving test data from {}'.format(os.path.join(data_dir_result, filename_result)))
+            assert data_set.shape[0] == 2*solver.ndim+1
+            u_test = data_set[:solver.ndim,-self.n_test:] if self.n_test > 0 else data_set[:solver.ndim,:]
+            x_test = data_set[solver.ndim:2*solver.ndim,-self.n_test:] if self.n_test > 0 else data_set[solver.ndim:2*solver.ndim,:]
+            y_test = data_set[-1,-self.n_test:] if self.n_test > 0 else data_set[-1,:]
+
+        except FileNotFoundError:
+            ### 1. Get MCS samples for X
+            if solver.dist_name.lower() == 'uniform':
+                filename_test =  os.path.join(simparams.data_dir_sample, 'MCS','Uniform', filename)
+                print('   > Solving test data from {} '.format(filename_test))
+                data_set = np.load(filename_test)
+                z_test = data_set[:solver.ndim,:] 
+                x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * solver.ndim)
+            elif solver.dist_name.lower().startswith('norm'):
+                filename_test =  os.path.join(simparams.data_dir_sample, 'MCS','Normal', filename)
+                print('   > Solving test data from {} '.format(filename_test))
+                data_set = np.load(filename_test)
+                z_test = data_set[:solver.ndim,:] 
+                x_test = solver.map_domain(z_test, [stats.norm(0,1),] * solver.ndim)
+            else:
+                raise ValueError
+            y_test = solver.run(x_test)
+
+            ### 2. Mapping MCS samples from X to u
+            ###     dist_u is defined by pce_model
+            ### Bounded domain maps to [-1,1] for both mcs and cls methods. so u = z
+            ### Unbounded domain, mcs maps to N(0,1), cls maps to N(0,sqrt(0.5))
+            if self.doe_method.lower() == 'cls' and pce_model.basis.dist_name.lower().startswith('norm'):
+                u_test = 0.0 + z_test * np.sqrt(0.5) ## mu + sigma * x
+            else:
+                u_test = z_test
+            data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
+            np.save(os.path.join(data_dir_result, filename_result), data)
+            print('   > Saving test data to {} '.format(data_dir_result))
+
+            u_test = u_test[:,-self.n_test:] if self.n_test > 0 else u_test
+            x_test = x_test[:,-self.n_test:] if self.n_test > 0 else x_test
+            y_test = y_test[  -self.n_test:] if self.n_test > 0 else y_test
+
+        return u_test, x_test, y_test
+
+    def get_train_data(self, size, u_cand, basis=None, active_basis=None):
+        """
+        Return train data from candidate data set. All sampels are in U-space
+
+        Arguments:
+            size        : size of samples, (r, n): size n repeat r times
+            u_cand      : ndarray, candidate samples in U-space to be chosen from
+            sample_selected: samples already selected, need to be removed from candidate set to get n sampels
+            basis       : When optimality is 'D' or 'S', one need the design matrix in the basis selected
+            active_basis: activated basis used in optimality design
+
+        """
+        size = tuple(np.atleast_1d(size))
+        u_train_new = []
+        u_train_all = []
+
+        if len(size) == 1:
+            u_new, u_all = self._choose_samples_from_candidates(size[0]-len(self.sample_selected), u_cand,
+                    selected=self.sample_selected, basis=basis, active_basis=active_basis)
+            u_train_new.append(u_new)
+            u_train_all.append(u_all)
+
+        elif len(size) == 2:
+            if len(self.sample_selected) == 0:
+                self.sample_selected = [[] for _ in range(size[0])]
+            for r in range(size[0]):
+                u_new, u_all  = self._choose_samples_from_candidates(size[1]-len(self.sample_selected[r]), u_cand, 
+                        selected=self.sample_selected[r], basis=basis, active_basis=active_basis)
+                u_train_new.append(u_new)
+                u_train_all.append(u_all)
+        else:
+            raise NotImplementedError
+        u_train_new = np.array(u_train_new)
+        u_train_all = np.array(u_train_all)
+        return u_train_new, u_train_all
+
+    def _choose_samples_from_candidates(self, n, u_cand, selected=[], **kwargs):
+        """
+        Return train data from candidate data set. All sampels are in U-space
+
+        Arguments:
+            n           : int, size of samples 
+            u_cand      : ndarray, candidate samples in U-space to be chosen from
+            selected    : samples already selected, need to be removed from candidate set to get n sampels
+            basis       : When optimality is 'D' or 'S', one need the design matrix in the basis selected
+            active_basis: activated basis used in optimality design
+
+        """
+        if self.optimality is None:
+            samples_new = []
+            while len(samples_new) < n:
+                ### random index set
+                random_idx = set(np.random.randint(0, u_cand.shape[1], size=n*10))
+                ### remove selected passed
+                random_idx = random_idx.difference(set(selected))
+                ### remove selected chosen in this step
+                random_idx = random_idx.difference(set(samples_new))
+                ### update new samples set
+                samples_new += list(random_idx)
+            samples_new = samples_new[:n]
+            selected += samples_new
+
+        elif self.optimality:
+            basis = kwargs.get('basis', None)
+            active_basis = kwargs.get('active_basis', None)
+            doe = museuq.OptimalDesign(self.optimality, curr_set=selected)
+            if basis is None:
+                raise ValueError('For optimality design, basis function are needed')
+            else:
+                X  = basis.vandermonde(u_cand)
+
+            if active_basis == 0 or active_basis is None:
+                print('     - {:<23s} : {}/{}'.format('Optimal design based on ', basis.num_basis, basis.num_basis))
+                X = X
+            else:
+                active_index = np.array([i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis])
+                print('     - {:<23s} : {}/{}'.format('Optimal design based on ', len(active_index), basis.num_basis))
+                X = X[:, active_index]
+                
+            if self.doe_method.lower().startswith('cls'):
+                X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
+            samples_new = doe.samples(X, n_samples=n, orth_basis=True)
+
+        self._check_duplicate_samples(selected)
+        samples_new = u_cand[:,samples_new]
+        samples_all = u_cand[:,selected]
+        return samples_new, samples_all
+
+    def cal_cls_weight(self, u, basis):
+        """
+        Calculate weight for CLS based on Christoffel function evaluated in U-space
+        """
+        X = basis.vandermonde(u)
+        ### reproducing kernel
+        Kp = np.sum(X* X, axis=1)
+        w  = basis.num_basis / Kp
+        return w
+
+    def is_cls_unbounded(self):
+        return  self.doe_method.lower().startswith('cls') and self.dist_u_name.startswith('norm')
+
+    def set_dist_names(self, solver, pce_model):
+        self.dist_x_name = solver.dist_name.lower()
+        self.dist_u_name = pce_model.basis.dist_name.lower()
+
+    def _check_duplicate_samples(self, samples):
+        if len(samples) == 0:
+            raise ValueError('Sample size is 0')
+        if len(samples) != len(np.unique(samples)):
+            raise ValueError('Find duplciate samples in x ')
+
+    def rescale_data(self, X, sample_weight):
+        """Rescale data so as to support sample_weight"""
+        n_samples = X.shape[0]
+        sample_weight = np.asarray(sample_weight)
+        if sample_weight.ndim == 0:
+            sample_weight = np.full(n_samples, sample_weight,
+                                    dtype=sample_weight.dtype)
+        sample_weight = np.sqrt(sample_weight)
+        sw_matrix = sparse.dia_matrix((sample_weight, 0),
+                                      shape=(n_samples, n_samples))
+        X = sw_matrix @ X
+        return X
+
+class Parameters(object):
     """
     Define general parameter settings for simulation running and post data analysis. 
     System parameters will be different depending on solver 

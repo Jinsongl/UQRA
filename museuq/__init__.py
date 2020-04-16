@@ -8,7 +8,8 @@ import importlib
 import numpy as np
 import pandas as pd
 
-from museuq.simParameters import simParameters
+from museuq.simulation import Parameters
+from museuq.simulation import Modeling
 from museuq.polynomial._polybase import PolyBase
 from museuq.polynomial.hermite import Hermite
 from museuq.polynomial.legendre import Legendre
