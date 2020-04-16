@@ -248,7 +248,6 @@ class PolynomialChaosExpansion(SurrogateBase):
             if x.shape[1] * self.num_basis < size_of_array_4gb:
                 X = self.basis.vandermonde(x)
                 y = self.model.predict(X)
-
             else:
                 batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
                 y = []
