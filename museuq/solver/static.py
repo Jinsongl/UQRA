@@ -102,7 +102,7 @@ class Ishigami(SolverBase):
             x = np.vstack(x)
         return x
 
-class xsinx(SolverBase):
+class xSinx(SolverBase):
     """
     y = x*sin(x)
     """
@@ -148,7 +148,7 @@ class xsinx(SolverBase):
             x = np.vstack(x)
         return x
 
-class sparse_poly(SolverBase):
+class SparsePoly(SolverBase):
     """
     Sparse Polynomial
     """
@@ -231,7 +231,7 @@ class sparse_poly(SolverBase):
             x = np.vstack(x)
         return x
 
-class poly4th(SolverBase):
+class Poly4th(SolverBase):
     """
     y = 5 + -5*x + 2.5*x^2 -0.36*x^3 + 0.015*x^4
     """
@@ -279,7 +279,7 @@ class poly4th(SolverBase):
             x = np.vstack(x)
         return x
 
-class polynomial_square_root_function(SolverBase):
+class PolySquareRoot(SolverBase):
     """
     y = - [ (-x1+10)**2 + (x2+7)**2 + 10*(x1+x2)  **2 ]**0.5 + 14 
     x1,x2 ~ N(0,1)
@@ -330,7 +330,7 @@ class polynomial_square_root_function(SolverBase):
             x = np.vstack(x)
         return x
 
-class four_branch_system(SolverBase):
+class FourBranchSystem(SolverBase):
     """
     y = 10 - min{ 3 + 0.1(x1 - x2)**2 - (x1+x2)/sqrt(2)
                   3 + 0.1(x1 - x2)**2 + (x1+x2)/sqrt(2)
@@ -397,7 +397,7 @@ class four_branch_system(SolverBase):
             x = np.vstack(x)
         return x
     
-class polynomial_product_function(SolverBase):
+class PolyProduct(SolverBase):
     """
     y = 1/2 * sum( xi**4 + xi**2 + 5xi), i = 1, ..., d
 
@@ -458,7 +458,7 @@ class polynomial_product_function(SolverBase):
             x = np.vstack(x)
         return x
 
-class papaioannou2016sequential(SolverBase):
+class Papaioannou2016Sequential(SolverBase):
     """
     examples tested in paper:
         "Papaioannou, Iason, Costas Papadimitriou, and Daniel Straub. "Sequential importance sampling for structural reliability analysis." Structural safety 62 (2016): 66-75"
@@ -587,16 +587,16 @@ class Franke(SolverBase):
             x = np.vstack(x)
         return x
 
-class corner_peak(SolverBase):
+class CornerPeak(SolverBase):
     """
     """
-    def __init__(self, d):
+    def __init__(self, dist, d=2):
         super().__init__()
         self.name = 'Corner peak'
-        self.nickname = 'CornerPeak'
         self.ndim = int(d)
-        self.distributions = [stats.norm(),] * self.ndim
-        self.dist_name = 'norm'
+        self.distributions = [dist,] * self.ndim
+        self.dist_name = dist.dist.name
+        self.nickname = 'CornerPeak'
 
     def __str__(self):
         return 'Solver: Corner peak function'
@@ -616,9 +616,8 @@ class corner_peak(SolverBase):
         """
         mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
         Argument:
-            two options:
-            1. cdf(u)
-            2. u and u_cdf
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
         """
         if isinstance(u_cdf, np.ndarray):
             assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
@@ -628,17 +627,23 @@ class corner_peak(SolverBase):
             x = []
             for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
                 assert idist_u.dist.name == idist_x.dist.name
-                mean_u = idist_u.mean()
-                mean_x = idist_x.mean()
-                std_u  = idist_u.std()
-                std_x  = idist_x.std()
-                x.append((iu-mean_u)/std_u * std_x + mean_x)
+                if idist_u.dist.name == 'uniform':
+                    ua, ub = idist_u.support()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.support()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+
+                elif idist_u.dist.name == 'norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
             x = np.vstack(x)
         return x
 
-
-### 
-class exp_square_sum(SolverBase):
+class ExpSquareSum(SolverBase):
     """ 
     Collections which are widely used for multi-dimensional function integration and approximation tests
     Reference:
@@ -666,6 +671,7 @@ class exp_square_sum(SolverBase):
         if np.isnan(y).any():
             raise ValueError('nan in solver.run() result')
         return y
+
     def map_domain(self, u, u_cdf):
         """
         mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
@@ -697,8 +703,7 @@ class exp_square_sum(SolverBase):
             x = np.vstack(x)
         return x
 
-
-class exp_abs_sum(SolverBase):
+class ExpAbsSum(SolverBase):
     """ 
     Collections which are widely used for multi-dimensional function integration and approximation tests
     Reference:
@@ -716,7 +721,7 @@ class exp_abs_sum(SolverBase):
     def __str__(self):
         return 'Solver: Exponential of Sqaured Sum'
 
-    def run(self, x, c=[1,1], w=[1,0.5]):
+    def run(self, x, c=[-2,1], w=[0.25,-0.75]):
         x = np.array(x, copy=False, ndmin=2)
         c = np.array(c, copy=False, ndmin=1)
         w = np.array(w, copy=False, ndmin=1)
@@ -726,6 +731,7 @@ class exp_abs_sum(SolverBase):
         if np.isnan(y).any():
             raise ValueError('nan in solver.run() result')
         return y
+
     def map_domain(self, u, u_cdf):
         """
         mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
@@ -757,4 +763,117 @@ class exp_abs_sum(SolverBase):
             x = np.vstack(x)
         return x
 
+class ExpSum(SolverBase):
+    """ 
+    Collections which are widely used for multi-dimensional function integration and approximation tests
+    Reference:
+        Shin, Yeonjong, and Dongbin Xiu. "On a near optimal sampling strategy for least squares polynomial regression." Journal of Computational Physics 326 (2016): 931-946.
+    """
 
+    def __init__(self, dist, d=2):
+        super().__init__()
+        self.name = 'Exponential of Sum'
+        self.nickname = 'ExpSum'
+        self.ndim = int(d)
+        self.distributions = [dist,] * self.ndim
+        self.dist_name = dist.dist.name
+
+    def __str__(self):
+        return 'Solver: Exponential of Sqaured Sum'
+
+    def run(self, x):
+        x = np.array(x, copy=False, ndmin=2)
+        assert x.shape[0] == self.ndim
+        y = np.exp(-np.sum(x, axis=0))
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
+        return y
+
+    def map_domain(self, u, u_cdf):
+        """
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
+        Argument:
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
+        """
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                assert idist_u.dist.name == idist_x.dist.name
+                if idist_u.dist.name == 'uniform':
+                    ua, ub = idist_u.support()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.support()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+
+                elif idist_u.dist.name == 'norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+            x = np.vstack(x)
+        return x
+
+class ProductPeak(SolverBase):
+    """
+    """
+    def __init__(self, dist, d=2, c=[-3,2],w=[0.5,0.5]):
+        super().__init__()
+        self.name = 'Product peak'
+        self.ndim = int(d)
+        self.distributions = [dist,] * self.ndim
+        self.dist_name = dist.dist.name
+        self.c = np.array(c)
+        self.w = np.array(w)
+        self.nickname = 'ProductPeak'
+
+    def __str__(self):
+        return 'Solver: Product peak function'
+
+    def run(self, x, c=None, w=None):
+        x = np.array(x, copy=False, ndmin=2)
+        assert x.shape[0] == self.ndim
+        c = np.array(c) if c is not None else self.c
+        w = np.array(w) if w is not None else self.w
+        x = x.T
+        y = np.prod(1.0/(1.0/c**(2) + ((x+1)/2 - w)**2), axis=1)
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
+        return y
+
+    def map_domain(self,u, u_cdf):
+        """
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
+        Argument:
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
+        """
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                assert idist_u.dist.name == idist_x.dist.name
+                if idist_u.dist.name == 'uniform':
+                    ua, ub = idist_u.support()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.support()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+
+                elif idist_u.dist.name == 'norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+            x = np.vstack(x)
+        return x
