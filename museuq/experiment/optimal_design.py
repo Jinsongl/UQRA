@@ -36,7 +36,7 @@ class OptimalDesign(ExperimentBase):
     def __str__(self):
         return('Optimal Criteria: {:<15s}, num. samples: {:d} '.format(self.optimality, self.n_samples))
 
-    def samples(self,X,n_samples, *args, **kwargs):
+    def samples(self,X,n, *args, **kwargs):
         """
         Xb = Y
         X: Design matrix X(u) of shape(num_samples, num_features)
@@ -57,12 +57,12 @@ class OptimalDesign(ExperimentBase):
             curr_set    = kwargs.get('curr_set', self.curr_set)
             try:
                 ### return a new set of indices, curr_set will be updated
-                row_adding = self._get_quasi_optimal(n_samples, X, curr_set, orth_basis)
+                row_adding = self._get_quasi_optimal(n, X, curr_set, orth_basis)
                 self.curr_set = curr_set
             except:
                 print(curr_set)
                 raise ValueError('_get_quasi_optimal failed')
-            if len(np.unique(row_adding)) != n_samples:
+            if len(np.unique(row_adding)) != n:
                 print('Duplicate samples detected:')
                 print(' -> len(curr_set) = {}'.format(len(curr_set)))
                 print(' -> len(row_adding) = {}'.format(len(row_adding)))
@@ -70,9 +70,9 @@ class OptimalDesign(ExperimentBase):
         elif self.optimality.upper() == 'D':
             """ D optimality based on rank revealing QR factorization  """
             curr_set = kwargs.get('curr_set', self.curr_set)
-            row_adding  = self._get_rrqr_optimal(n_samples, X, curr_set)
+            row_adding  = self._get_rrqr_optimal(n, X, curr_set)
             self.curr_set = curr_set + row_adding
-            if len(np.unique(row_adding)) != n_samples:
+            if len(np.unique(row_adding)) != n:
                 print('Duplicate samples detected:')
                 print(' -> len(curr_set) = {}'.format(len(curr_set)))
                 print(' -> len(row_adding) = {}'.format(len(row_adding)))
@@ -141,8 +141,8 @@ class OptimalDesign(ExperimentBase):
         Returns:
         row selection matrix row_selected of shape (m, M)
         """
-        m       = helpers.check_int(m)
-        X       = np.array(X, copy=False, ndmin=2)
+        m = helpers.check_int(m)
+        X = np.array(X, copy=False, ndmin=2)
         if X.shape[0] < X.shape[1]:
             raise ValueError('Quasi optimal sebset are designed for overdetermined problem only')
         (Q, R)  = (X, None) if orth_basis else np.linalg.qr(X)
