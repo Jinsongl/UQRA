@@ -15,7 +15,6 @@ Johannessen, K. and Nygaard, E. (2000): â€œMetocean Design Criteria for KvitebjÃ
 
 """
 import numpy as np
-import chaospy as cp
 import scipy.stats as stats
 
 ####  Define distributions for the environment variables

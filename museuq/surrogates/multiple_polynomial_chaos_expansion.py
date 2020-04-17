@@ -9,7 +9,7 @@
 """
 
 """
-import numpy as np, chaospy as cp
+import numpy as np
 from .polynomial_chaos_expansion import PolynomialChaosExpansion
 
 class mPCE(PolynomialChaosExpansion):
