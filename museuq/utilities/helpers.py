@@ -83,9 +83,9 @@ def check_int(x):
     else:
         int_x = int(x)
         if int_x != x:
-            raise ValueError("deg must be integer")
+            raise ValueError("deg must be integer, {} given".format(x))
         if int_x < 0:
-            raise ValueError("deg must be non-negative")
+            raise ValueError("deg must be non-negative, {} given".format(x))
         return int_x
 
 def ECDF(x,**kwargs):
