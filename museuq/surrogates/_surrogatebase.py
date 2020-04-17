@@ -7,7 +7,7 @@
 """
 
 """
-import chaospy as cp, numpy as np, sklearn.gaussian_process as skgp
+import numpy as np, sklearn.gaussian_process as skgp
 import warnings
 # from museuq.utilities import museuq.metrics 
 from museuq.utilities.helpers import ordinal

@@ -618,10 +618,20 @@ class Franke(SolverBase):
 class CornerPeak(SolverBase):
     """
     """
-    def __init__(self, dist, d=2):
+    def __init__(self, dist, d=2, c=None,w=None):
         super().__init__()
         self.name = 'Corner peak'
         self.ndim = int(d)
+        if c is None:
+            self.c = 1.0/np.arange(1,self.ndim+1)**2
+        else:
+            self.c = np.array(c)
+
+        if w is None:
+            self.w = np.ones(self.ndim)* 0.5
+        else:
+            self.w = np.array(w)
+
         self.distributions = [dist,] * self.ndim
         self.dist_name = dist.dist.name
         self.nickname = 'CornerPeak'
@@ -629,13 +639,14 @@ class CornerPeak(SolverBase):
     def __str__(self):
         return 'Solver: Corner peak function'
 
-    def run(self, x):
+    def run(self, x, c=None, w=None):
         x = np.array(x, copy=False, ndmin=2)
         assert x.shape[0] == self.ndim
         x = x.T
-        c = np.array([1.0/(i+1)**2 for i in range(self.ndim)])
+        c = np.array(c) if c is not None else self.c
+        w = np.array(w) if w is not None else self.w
         y = np.sum(c* (x+1)/2, axis=1) + 1
-        y = y ** (-self.ndim-1)
+        y = 1.0/ y ** (self.ndim+1)
         if np.isnan(y).any():
             raise ValueError('nan in solver.run() result')
         return y
@@ -678,22 +689,24 @@ class ExpSquareSum(SolverBase):
         Shin, Yeonjong, and Dongbin Xiu. "On a near optimal sampling strategy for least squares polynomial regression." Journal of Computational Physics 326 (2016): 931-946.
     """
 
-    def __init__(self, dist, d=2):
+    def __init__(self, dist, d=2, c=[1,1], w=[1,0.5]):
         super().__init__()
         self.name = 'Exponential of Sqaured Sum'
         self.nickname = 'ExpSquareSum'
         self.ndim = int(d)
+        self.c = np.array(c)
+        self.w = np.array(w)
         self.distributions = [dist,] * self.ndim
         self.dist_name = dist.dist.name
 
     def __str__(self):
         return 'Solver: Exponential of Sqaured Sum'
 
-    def run(self, x, c=[1,1], w=[1,0.5]):
+    def run(self, x, c=None, w=None):
         x = np.array(x, copy=False, ndmin=2)
-        c = np.array(c, copy=False, ndmin=1)
-        w = np.array(w, copy=False, ndmin=1)
         assert x.shape[0] == self.ndim
+        c = np.array(c) if c is not None else self.c
+        w = np.array(w) if w is not None else self.w
         x = x.T
         y = np.exp(-np.sum(c**2 * ((x+1)/2 -w)**2, axis=1))
         if np.isnan(y).any():
@@ -738,11 +751,13 @@ class ExpAbsSum(SolverBase):
         Shin, Yeonjong, and Dongbin Xiu. "On a near optimal sampling strategy for least squares polynomial regression." Journal of Computational Physics 326 (2016): 931-946.
     """
 
-    def __init__(self, dist, d=2):
+    def __init__(self, dist, d=2, c=[-2,1], w=[0.25,-0.75]):
         super().__init__()
         self.name = 'Exponential of Absolute Sum'
         self.nickname = 'ExpAbsSum'
         self.ndim = int(d)
+        self.c = np.array(c)
+        self.w = np.array(w)
         self.distributions = [dist,] * self.ndim
         self.dist_name = dist.dist.name
 
@@ -751,9 +766,9 @@ class ExpAbsSum(SolverBase):
 
     def run(self, x, c=[-2,1], w=[0.25,-0.75]):
         x = np.array(x, copy=False, ndmin=2)
-        c = np.array(c, copy=False, ndmin=1)
-        w = np.array(w, copy=False, ndmin=1)
         assert x.shape[0] == self.ndim
+        c = np.array(c) if c is not None else self.c
+        w = np.array(w) if w is not None else self.w
         x = x.T
         y = np.exp(-np.sum(c*abs((x+1)/2 -w), axis=1))
         if np.isnan(y).any():
