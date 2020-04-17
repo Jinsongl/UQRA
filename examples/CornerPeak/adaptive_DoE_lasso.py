@@ -151,7 +151,7 @@ def get_test_data(simparams, solver, pce_model, n_test, filename = r'DoE_McsE6R0
 
         u_test = u_test[:,-n_test:] if n_test > 0 else u_test
         x_test = x_test[:,-n_test:] if n_test > 0 else x_test
-        y_test = y_test[:,-n_test:] if n_test > 0 else y_test
+        y_test = y_test[-n_test:] if n_test > 0 else y_test
 
     return u_test, x_test, y_test
 
@@ -160,9 +160,14 @@ def get_init_samples(n, solver, pce_model, doe_method='lhs', random_state=None, 
     if doe_method.lower() == 'lhs':
         doe = museuq.LHS(pce_model.basis.dist_u)
         z, u= doe.samples(n, random_state=random_state)
+        x = solver.map_domain(u, z) ## z_train is the cdf of u_train
     else:
-        raise NotImplementedError
-    x = solver.map_domain(u, z) ## z_train is the cdf of u_train
+        u_cand = kwargs['u_cand']
+        optimality = kwargs.get('optimality', None)
+        sample_selected=kwargs.get('sample_selected', [])
+        u_cand_p = pce_model.basis.deg **0.5* u_cand if (doe_method.lower()=='cls' and pce_model.basis.dist_name=='norm') else u_cand
+        u = get_train_data(n, u_cand_p, doe_method, optimality=optimality, sample_selected=sample_selected, basis=pce_model.basis)
+        x = solver.map_domain(u, pce_model.basis.dist_u)
     y = solver.run(x)
     return u, x, y
 
@@ -190,16 +195,16 @@ def main():
 
     ## ------------------------ Define solver ----------------------- ###
     pf          = 1e-3
-    solver      = museuq.corner_peak(2)
+    solver      = museuq.corner_peak(3)
     simparams   = museuq.simParameters(solver.nickname)
     # print(simparams.data_dir_result)
     ## ------------------------ Adaptive parameters ----------------- ###
-    plim        = (2,100)
+    plim        = (10,100)
     n_budget    = 2000
     n_cand      = int(1e5)
     n_test      = 40000
     doe_method  = 'CLS'
-    optimality  = None #'D', 'S', None
+    optimality  = 'S'#'D', 'S', None
     fit_method  = 'LASSOLARS'
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.02, min_r2=0.95)
     simparams.info()
@@ -226,14 +231,19 @@ def main():
     print('   * {:<25s} : {}'.format('Target QoI',qoi_test))
 
     ## ----------- Initial DoE ----------- ###
-    # init_optimality = optimality 
-    # init_basis_deg  = 10
-    # orth_poly.set_degree(init_basis_deg)
     print(' > Getting initial sample set...')
     sample_selected = []
-    init_doe_method = 'lhs' 
-    init_n_eval     = 16
-    u_train, x_train, y_train = get_init_samples(init_n_eval, solver, pce_model, doe_method=init_doe_method, random_state=100)
+    init_doe_method = 'cls' 
+    init_optimality = None 
+    init_basis_deg  = 10
+    orth_poly = museuq.Hermite(d=solver.ndim, deg=init_basis_deg, hem_type='probabilists')
+    pce_model = museuq.PCE(orth_poly)
+    init_n_eval     = math.ceil(1.5*pce_model.num_basis*np.log(pce_model.num_basis))
+    u_train, x_train, y_train = get_init_samples(init_n_eval, solver, pce_model, u_cand= u_cand, optimality=init_optimality, doe_method=init_doe_method, random_state=100)
+    # sample_selected = []
+    # init_n_eval     = 1024
+    # init_doe_method = 'lhs' 
+    # u_train, x_train, y_train = get_init_samples(init_n_eval, solver, pce_model, doe_method=init_doe_method, random_state=100)
     print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
     print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))
     print('   * {:<25s} : [{:.2f},{:.2f}]'.format(' u Domain ', np.amin(u_train), np.amax(u_train)))
@@ -267,7 +277,7 @@ def main():
 
         ### ============ Build Surrogate Model ============
         w_train = cal_weight(doe_method, u_train, pce_model)
-        pce_model.fit_lassolars(u_train, y_train, w_train)
+        pce_model.fit_lassolars(u_train, y_train, w_train, n_splits=10)
         y_train_hat = pce_model.predict(u_train)
         y_test_hat  = pce_model.predict(u_test)
         # print(np.min(w_train), np.max(w_train))
@@ -379,7 +389,7 @@ def main():
         ### ============ updating parameters ============
         p           += 1
         i_iteration += 1
-        if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p], score=score[plim[0]:p]):
+        if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p], r2=score[plim[0]:p]):
             break
 
 
