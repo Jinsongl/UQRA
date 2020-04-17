@@ -29,14 +29,29 @@ class Modeling(object):
 
         return tag
 
-    def get_init_samples(n, solver, pce_model, doe_method='lhs', random_state=None, **kwargs):
+    def get_init_samples(self, n, solver, pce_model, doe_method='lhs', random_state=None, **kwargs):
+        """
+        Get initial sample design, return samples in U,X space and results y
+
+        Arguments:
+            n: int, number of samples to return
+            solver: solver used to return y
+            pce_model: for LHS, provide the u distributions needed to be sampled
+                        for cls, need to know PCE.deg such that in unbounded case to scale u
+
+        """
 
         if doe_method.lower() == 'lhs':
             doe = museuq.LHS(pce_model.basis.dist_u)
             z, u= doe.samples(n, random_state=random_state)
+            x = solver.map_domain(u, z) ## z_train is the cdf of u_train
         else:
-            raise NotImplementedError
-        x = solver.map_domain(u, z) ## z_train is the cdf of u_train
+            u_cand = kwargs['u_cand']
+            optimality = kwargs.get('optimality', None)
+            sample_selected= self.sample_selected 
+            u_cand_p = pce_model.basis.deg **0.5* u_cand if (doe_method.lower()=='cls' and pce_model.basis.dist_name=='norm') else u_cand
+            u = get_train_data(n, u_cand_p, doe_method, optimality=optimality, sample_selected=sample_selected, basis=pce_model.basis)
+            x = solver.map_domain(u, pce_model.basis.dist_u)
         y = solver.run(x)
         return u, x, y
 
