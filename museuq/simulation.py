@@ -16,6 +16,7 @@ from scipy import sparse
 from datetime import datetime
 from .utilities.classes import Logger
 from itertools import compress
+import scipy.stats as stats
 
 class Modeling(object):
     def __init__(self):
@@ -50,7 +51,7 @@ class Modeling(object):
             optimality = kwargs.get('optimality', None)
             sample_selected= self.sample_selected 
             u_cand_p = pce_model.basis.deg **0.5* u_cand if (doe_method.lower()=='cls' and pce_model.basis.dist_name=='norm') else u_cand
-            u = get_train_data(n, u_cand_p, doe_method, optimality=optimality, sample_selected=sample_selected, basis=pce_model.basis)
+            _,u = get_train_data(n, u_cand_p, doe_method, optimality=optimality, sample_selected=sample_selected, basis=pce_model.basis)
             x = solver.map_domain(u, pce_model.basis.dist_u)
         y = solver.run(x)
         return u, x, y
@@ -165,16 +166,15 @@ class Modeling(object):
 
         """
         size = tuple(np.atleast_1d(size))
-        u_train_new = []
-        u_train_all = []
-
-        if len(size) == 1:
-            u_new, u_all = self._choose_samples_from_candidates(size[0]-len(self.sample_selected), u_cand,
+        if len(size) == 1 or size[0] == 1:
+            size = size[1] if size[0] == 1 else size[0]
+            u_new, u_all = self._choose_samples_from_candidates(size- len(self.sample_selected), u_cand,
                     selected=self.sample_selected, basis=basis, active_basis=active_basis)
-            u_train_new.append(u_new)
-            u_train_all.append(u_all)
+            return u_new, u_all
 
         elif len(size) == 2:
+            u_train_new = []
+            u_train_all = []
             if len(self.sample_selected) == 0:
                 self.sample_selected = [[] for _ in range(size[0])]
             for r in range(size[0]):
@@ -182,11 +182,11 @@ class Modeling(object):
                         selected=self.sample_selected[r], basis=basis, active_basis=active_basis)
                 u_train_new.append(u_new)
                 u_train_all.append(u_all)
+            u_train_new = np.array(u_train_new)
+            u_train_all = np.array(u_train_all)
+            return u_train_new, u_train_all
         else:
             raise NotImplementedError
-        u_train_new = np.array(u_train_new)
-        u_train_all = np.array(u_train_all)
-        return u_train_new, u_train_all
 
     def _choose_samples_from_candidates(self, n, u_cand, selected=[], **kwargs):
         """
@@ -200,6 +200,7 @@ class Modeling(object):
             active_basis: activated basis used in optimality design
 
         """
+        
         if self.optimality is None:
             samples_new = []
             while len(samples_new) < n:
@@ -233,7 +234,8 @@ class Modeling(object):
                 
             if self.doe_method.lower().startswith('cls'):
                 X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
-            samples_new = doe.samples(X, n_samples=n, orth_basis=True)
+            
+            samples_new = doe.samples(X, n, orth_basis=True)
 
         self._check_duplicate_samples(selected)
         samples_new = u_cand[:,samples_new]
