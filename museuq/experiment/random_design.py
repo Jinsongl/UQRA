@@ -90,7 +90,6 @@ class RandomDesign(ExperimentBase):
                 ###     3. If y <= f(x)/M accept
                 ###         Acceptance rate 1/M
                 M = 2 ** (self.ndim/2.0)
-                print('M = {}'.format(M))
                 n = int(2*M*self.n_samples) ## generate twice more samples
                 y = stats.uniform.rvs(0,1,size=n) 
                 
