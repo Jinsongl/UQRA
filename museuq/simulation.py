@@ -167,18 +167,19 @@ class Modeling(object):
         """
         size = tuple(np.atleast_1d(size))
         if precomputed is not None:
-            print('   > Retrieving train data from precomputed file: {:s}'.format(precomputed))
-            precomputed_data = np.load(precomputed)
-            if len(size) == 1 or size[0] == 1:
-                size = size[1] if size[0] == 1 else size[0]
-                u_new_idx = precomputed_data[:, len(self.sample_selected):size]
-                u_all_idx = precomputed_data[:,size]
-                u_new = u_cand[:,u_new_idx]
-                u_all = u_cand[:,u_all_idx]
-                return u_new, u_all
+            raise NotImplementedError
+            # print('   > Retrieving train data from precomputed file: {:s}'.format(precomputed))
+            # precomputed_data = np.load(precomputed)
+            # if len(size) == 1 or size[0] == 1:
+                # size = size[1] if size[0] == 1 else size[0]
+                # u_new_idx = precomputed_data[len(self.sample_selected):size]
+                # u_all_idx = precomputed_data[:size]
+                # u_new = u_cand[:,u_new_idx]
+                # u_all = u_cand[:,u_all_idx]
+                # return u_new, u_all
 
-            elif len(size) == 2:
-                raise ValueError('Precomputed data are only repeated once.')
+            # elif len(size) == 2:
+                # raise ValueError('Precomputed data are only repeated once.')
         else:
 
             if len(size) == 1 or size[0] == 1:
