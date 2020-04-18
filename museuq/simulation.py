@@ -80,7 +80,7 @@ class Modeling(object):
 
         return u_cand
 
-    def get_test_data(self, simparams, solver, pce_model, filename = r'DoE_McsE6R0.npy'):
+    def get_test_data(self, simparams, solver, pce_model, filename = r'DoE_McsE6R9.npy'):
         """
         Return test data. 
 
@@ -105,7 +105,7 @@ class Modeling(object):
             pass
 
         
-        filename_result = filename
+        filename_result = '{:s}_{:d}{:s}_'.format(solver.nickname, solver.ndim, pce_model.basis.nickname) + filename
         if self.doe_method.lower() == 'cls':
             filename_result = filename_result.replace('Mcs', 'Cls')
 
@@ -153,7 +153,7 @@ class Modeling(object):
 
         return u_test, x_test, y_test
 
-    def get_train_data(self, size, u_cand, basis=None, active_basis=None):
+    def get_train_data(self, size, u_cand, precomputed=None, basis=None, active_basis=None):
         """
         Return train data from candidate data set. All sampels are in U-space
 
@@ -166,27 +166,42 @@ class Modeling(object):
 
         """
         size = tuple(np.atleast_1d(size))
-        if len(size) == 1 or size[0] == 1:
-            size = size[1] if size[0] == 1 else size[0]
-            u_new, u_all = self._choose_samples_from_candidates(size- len(self.sample_selected), u_cand,
-                    selected=self.sample_selected, basis=basis, active_basis=active_basis)
-            return u_new, u_all
+        if precomputed is not None:
+            print('   > Retrieving train data from precomputed file: {:s}'.format(precomputed))
+            precomputed_data = np.load(precomputed)
+            if len(size) == 1 or size[0] == 1:
+                size = size[1] if size[0] == 1 else size[0]
+                u_new_idx = precomputed_data[:, len(self.sample_selected):size]
+                u_all_idx = precomputed_data[:,size]
+                u_new = u_cand[:,u_new_idx]
+                u_all = u_cand[:,u_all_idx]
+                return u_new, u_all
 
-        elif len(size) == 2:
-            u_train_new = []
-            u_train_all = []
-            if len(self.sample_selected) == 0:
-                self.sample_selected = [[] for _ in range(size[0])]
-            for r in range(size[0]):
-                u_new, u_all  = self._choose_samples_from_candidates(size[1]-len(self.sample_selected[r]), u_cand, 
-                        selected=self.sample_selected[r], basis=basis, active_basis=active_basis)
-                u_train_new.append(u_new)
-                u_train_all.append(u_all)
-            u_train_new = np.array(u_train_new)
-            u_train_all = np.array(u_train_all)
-            return u_train_new, u_train_all
+            elif len(size) == 2:
+                raise ValueError('Precomputed data are only repeated once.')
         else:
-            raise NotImplementedError
+
+            if len(size) == 1 or size[0] == 1:
+                size = size[1] if size[0] == 1 else size[0]
+                u_new, u_all = self._choose_samples_from_candidates(size- len(self.sample_selected), u_cand,
+                        selected=self.sample_selected, basis=basis, active_basis=active_basis)
+                return u_new, u_all
+
+            elif len(size) == 2:
+                u_train_new = []
+                u_train_all = []
+                if len(self.sample_selected) == 0:
+                    self.sample_selected = [[] for _ in range(size[0])]
+                for r in range(size[0]):
+                    u_new, u_all  = self._choose_samples_from_candidates(size[1]-len(self.sample_selected[r]), u_cand, 
+                            selected=self.sample_selected[r], basis=basis, active_basis=active_basis)
+                    u_train_new.append(u_new)
+                    u_train_all.append(u_all)
+                u_train_new = np.array(u_train_new)
+                u_train_all = np.array(u_train_all)
+                return u_train_new, u_train_all
+            else:
+                raise NotImplementedError
 
     def _choose_samples_from_candidates(self, n, u_cand, selected=[], **kwargs):
         """
