@@ -42,6 +42,11 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.active_index = None if self.num_basis is None else range(self.num_basis)
             self.active_basis = None if self.basis.basis_degree is None else self.basis.basis_degree 
             self.cv_error   = np.inf
+            if self.deg is None:
+                self.tag        = '{:d}{:s}0'.format(self.ndim, self.basis.nickname)
+            else:
+                self.tag        = '{:d}{:s}{:d}'.format(self.ndim, self.basis.nickname,self.deg)
+
             # ### Now assuming same marginal basis
             # try:
                 # dist_name = self.basis[0].name 
@@ -73,6 +78,18 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.active_index = None if self.num_basis is None else range(self.num_basis)
             self.active_basis = None if self.basis.basis_degree is None else self.basis.basis_degree 
     
+    def fit(self, method, x, y, w=None, **kwargs):
+        if method.lower().startswith('quad'):
+            self.fit_quadrature(x,w,y)
+        elif method.lower() == 'ols':
+            self.fit_ols(x,y,w=w, **kwargs)
+        elif method.lower() == 'olslars':
+            self.fit_olslars(x,y,w=w,**kwargs)
+        elif method.lower() == 'lassolars':
+            self.fit_lassolars(x,y,sample_weight=w,**kwargs)
+        else:
+            raise NotImplementedError
+
     def fit_quadrature(self, x, w, y):
         """
         fit with quadrature points
@@ -100,7 +117,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.active_index = range(self.num_basis)
         self.active_basis = self.basis.basis_degree
 
-    def fit_ols(self,x,y,w=None, *args, **kwargs):
+    def fit_ols(self,x,y,w=None,  **kwargs):
         """
         Fit PCE meta model with (weighted) Ordinary Least Error  
 
@@ -141,7 +158,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.active_basis = self.basis.basis_degree
         self.score   = model.score(X,y,w)
 
-    def fit_olslars(self,x,y,w=None, *args, **kwargs):
+    def fit_olslars(self,x,y,w=None, **kwargs):
         """
         (weighted) Ordinary Least Error on selected basis (LARs)
         Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
@@ -191,7 +208,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                 self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
         # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_index, len(self.active_index)))
 
-    def fit_lassolars(self,x,y,sample_weight=None, *args, **kwargs):
+    def fit_lassolars(self,x,y,sample_weight=None, **kwargs):
         """
         (weighted) Ordinary Least Error on selected basis (LARs)
         Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
