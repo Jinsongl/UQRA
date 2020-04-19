@@ -248,6 +248,7 @@ class Modeling(object):
             else:
                 active_index = np.array([i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis])
                 print('     - {:<23s} : {}/{}'.format('Optimal design based on ', len(active_index), basis.num_basis))
+                X = basis.vandermonde(u_cand)
                 X = X[:, active_index]
                 if self.params.doe_method.lower().startswith('cls'):
                     X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
