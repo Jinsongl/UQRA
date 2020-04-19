@@ -141,7 +141,7 @@ class Modeling(object):
                 z_test = data_set[:ndim,:] 
                 x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * ndim)
             elif solver.dist_name.lower().startswith('norm'):
-                self.filename_test = os.path.join(self.params.data_dir_sample, 'MCS','Normal', filename)
+                self.filename_test = os.path.join(self.params.data_dir_sample, 'MCS','Norm', filename)
                 print('   > Solving test data from {} '.format(self.filename_test))
                 data_set= np.load(self.filename_test)
                 z_test  = data_set[:ndim,:] 
