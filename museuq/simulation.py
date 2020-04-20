@@ -97,7 +97,7 @@ class Modeling(object):
 
         return u_cand
 
-    def get_test_data(self, solver, pce_model, filename = r'DoE_McsE6R9.npy', **kwargs):
+    def get_test_data(self, solver, pce_model, filename = r'DoE_McsE6R8.npy', **kwargs):
         """
         Return test data. 
 
@@ -111,6 +111,7 @@ class Modeling(object):
         """
         
         data_dir_result = os.path.join(self.params.data_dir_result, 'TestData')
+        print(data_dir_result)
         try: 
             os.makedirs(data_dir_result)
         except OSError as e:
@@ -135,17 +136,19 @@ class Modeling(object):
         except FileNotFoundError:
             ### 1. Get MCS samples for X
             if solver.dist_name.lower() == 'uniform':
-                self.filename_test =  os.path.join(self.params.data_dir_sample, 'MCS','Uniform', filename)
-                print('   > Solving test data from {} '.format(self.filename_test))
-                data_set = np.load(self.filename_test)
+                data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Uniform')
+                print('   > Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
+                data_set = np.load(os.path.join(data_dir_sample,filename))
                 z_test = data_set[:ndim,:] 
                 x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * ndim)
             elif solver.dist_name.lower().startswith('norm'):
-                self.filename_test = os.path.join(self.params.data_dir_sample, 'MCS','Norm', filename)
-                print('   > Solving test data from {} '.format(self.filename_test))
-                data_set= np.load(self.filename_test)
+                data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Norm')
+                print('   > Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
+                data_set= np.load(os.path.join(data_dir_sample,filename))
+                print(np.mean(data_set, axis=1))
+                print(np.std(data_set, axis=1))
                 z_test  = data_set[:ndim,:] 
-                x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * solver.ndim)
+                x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
             else:
                 raise ValueError
             y_test = solver.run(x_test)
