@@ -147,7 +147,7 @@ class OptimalDesign(ExperimentBase):
             raise ValueError('Quasi optimal sebset are designed for overdetermined problem only')
         (Q, R)  = (X, None) if orth_basis else np.linalg.qr(X)
         row_adding = []
-        for _ in tqdm(range(m), ascii=True, desc="   - [S-Optimal]"):
+        for _ in tqdm(range(m), ascii=True, desc="   - [S-Optimal]",ncols=80):
             ## find the next optimal index from Q which is not currently selected
             i = self._greedy_find_next_point(row_selected,Q)
             ## check if this index is already selected
