@@ -61,11 +61,11 @@ class PolynomialChaosExpansion(SurrogateBase):
                 # raise ValueError('Polynomial for {} has not been defined yet'.format(basis[0].name))
 
     def info(self):
-        print(r'   * {:<25s} : {:<20s}'.format('Surrogate Model Name', self.name))
+        print(r'   - {:<25s} : {:<20s}'.format('Surrogate Model Name', self.name))
         if self.deg is not None:
             print(r'     - {:<23s} : {}'.format('Askey-Wiener basis'   , self.basis.name))
             print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.deg ))
-            print(r'     - {:<23s} : {:d}'.format('No. poly basis (P)', self.basis.num_basis))
+            print(r'     - {:<23s} : {:d}'.format('No. poly basis   (P)', self.basis.num_basis))
             print(r'     - {:<23s} : {:d}'.format('No. active basis (s)', len(self.active_index)))
 
     def set_degree(self, p):
