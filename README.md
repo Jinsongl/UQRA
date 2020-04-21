@@ -1,2 +1,3 @@
-# Uncertainty Quantification Library at MUSE lab, UT Austin
+# Uncertainty Quantification For Risk Analysis
+
 # Jinsong Liu
