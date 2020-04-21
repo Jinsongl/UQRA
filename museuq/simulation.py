@@ -45,7 +45,7 @@ class Modeling(object):
 
         if doe_method.lower() == 'lhs':
             doe = museuq.LHS(self.model.basis.dist_u)
-            z, u= doe.samples(n, random_state=random_state)
+            z, u= doe.get_samples(n, random_state=random_state)
             x = self.solver.map_domain(u, z) ## z_train is the cdf of u_train
         else:
             raise NotImplementedError
@@ -167,85 +167,94 @@ class Modeling(object):
 
         return u_test, x_test, y_test
 
-    def get_train_data(self, size, u_cand, basis=None, active_basis=None):
+    def get_train_data(self, size, u_cand, u_train=None, basis=None, active_basis=None):
         """
         Return train data from candidate data set. All sampels are in U-space
-        size is how many MORE to be sampled besides those alrady existed in sample_selected
+        size is how many MORE to be sampled besides those alrady existed in u_train 
 
         Arguments:
             size        : size of samples, (r, n): size n repeat r times
             u_cand      : ndarray, candidate samples in U-space to be chosen from
-            sample_selected: samples already selected, need to be removed from candidate set to get n sampels
+            u_train     : samples already selected, need to be removed from candidate set to get n sampels
             basis       : When optimality is 'D' or 'S', one need the design matrix in the basis selected
             active_basis: activated basis used in optimality design
 
         """
-        size = tuple(np.atleast_1d(size))
-
+        size    = tuple(np.atleast_1d(size))
+        u_cand  = np.array(u_cand, ndmin=2)
         if len(size) == 1 or size[0] == 1:
             size = np.prod(size)
             u_new, u_all = self._choose_samples_from_candidates(size, u_cand,
-                    selected=self.sample_selected, basis=basis, active_basis=active_basis)
+                    u_selected=u_train, basis=basis, active_basis=active_basis)
             return u_new, u_all
 
         elif len(size) == 2:
+            repeat, n = size
             u_train_new = []
             u_train_all = []
-            if len(self.sample_selected) == 0:
-                self.sample_selected = [[] for _ in range(size[0])]
-            for r in range(size[0]):
-                u_new, u_all  = self._choose_samples_from_candidates(size[1], u_cand, 
-                        selected=self.sample_selected[r], basis=basis, active_basis=active_basis)
+            u_train = [None,] * repeat if u_train is None else u_train
+            assert len(u_train) == repeat
+            for r in range(repeat):
+                u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
+                        u_selected=u_train[r], basis=basis, active_basis=active_basis)
                 u_train_new.append(u_new)
                 u_train_all.append(u_all)
             u_train_new = np.array(u_train_new)
             u_train_all = np.array(u_train_all)
             return u_train_new, u_train_all
 
-    def _choose_samples_from_candidates(self, n, u_cand, selected=[], **kwargs):
+    def _choose_samples_from_candidates(self, n, u_cand, u_selected=None, **kwargs):
         """
         Return train data from candidate data set. All sampels are in U-space
 
         Arguments:
             n           : int, size of new samples in addtion to selected elements
             u_cand      : ndarray, candidate samples in U-space to be chosen from
-            selected    : samples already selected, need to be removed from candidate set to get n sampels
+            u_selected  : samples already are selected, need to be removed from candidate set to get n sampels
             basis       : When optimality is 'D' or 'S', one need the design matrix in the basis selected
             active_basis: activated basis used in optimality design
 
         """
         
+        selected_index = list(self._common_vectors(u_selected, u_cand))
+
         if self.params.optimality is None:
-            rows_slct_new = []
-            while len(rows_slct_new) < n:
+            row_index_adding = []
+            while len(row_index_adding) < n:
                 ### random index set
                 random_idx = set(np.random.randint(0, u_cand.shape[1], size=n*10))
-                ### remove selected passed
-                random_idx = random_idx.difference(set(selected))
-                ### remove selected chosen in this step
-                random_idx = random_idx.difference(set(rows_slct_new))
+                ### remove selected_index chosen in this step
+                random_idx = random_idx.difference(set(row_index_adding))
+                ### remove selected_index passed
+                random_idx = random_idx.difference(set(selected_index))
                 ### update new samples set
-                rows_slct_new += list(random_idx)
-            rows_slct_new = rows_slct_new[:n]
-            selected += rows_slct_new
+                row_index_adding += list(random_idx)
+            row_index_adding = row_index_adding[:n]
+            selected_index += row_index_adding
 
         elif self.params.optimality:
             basis = kwargs['basis']
             active_basis = kwargs.get('active_basis', None)
 
-            doe = museuq.OptimalDesign(self.params.optimality, curr_set=selected)
+            doe = museuq.OptimalDesign(self.params.optimality, selected_index=selected_index)
             ### Using full design matrix, and precomputed optimality file exists only for this calculation
             if active_basis == 0 or active_basis is None:
-                if self._check_precomputed_optimality(basis, selected):
+                if self._check_precomputed_optimality(basis):
                     print('     - {:<23s} : {}/{}, File: {}'.format('Optimal design based on ', basis.num_basis, basis.num_basis, self.filename_optimality))
-                    rows_slct_new = self.optimality_rows[len(selected):len(selected)+n]
-                    selected += list(rows_slct_new)
+                    row_index_adding = []
+                    for i in self.precomputed_optimality_index:
+                        if len(row_index_adding) >= n:
+                            break
+                        if i in selected_index:
+                            pass
+                        else:
+                            row_index_adding.append(i)
                 else:
                     print('     - {:<23s} : {}/{}'.format('Optimal design based on ', basis.num_basis, basis.num_basis))
                     X = basis.vandermonde(u_cand)
                     if self.params.doe_method.lower().startswith('cls'):
                         X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
-                    rows_slct_new = doe.samples(X, n, orth_basis=True)
+                    row_index_adding = doe.get_samples(X, n, orth_basis=True)
             ### Using partial columns
             else:
                 active_index = np.array([i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis])
@@ -254,38 +263,29 @@ class Modeling(object):
                 X = X[:, active_index]
                 if self.params.doe_method.lower().startswith('cls'):
                     X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
-                rows_slct_new = doe.samples(X, n, orth_basis=True)
+                row_index_adding = doe.get_samples(X, n, orth_basis=True)
 
-        self._check_duplicate_samples(selected)
-        samples_new = u_cand[:,rows_slct_new]
-        samples_all = u_cand[:,selected]
+        u_new = u_cand[:,row_index_adding]
+        u_all = np.hstack((u_selected, u_new))
+        self._check_duplicate_samples(u_all)
 
-        return samples_new, samples_all
+        return u_new, u_all
 
-    def _check_precomputed_optimality(self, basis, selected):
+    def _check_precomputed_optimality(self, basis):
         """
 
         """
-
         try:
-            self.optimality_rows = np.load(self.filename_optimality)
+            self.precomputed_optimality_index = np.load(self.filename_optimality)
         except (AttributeError, FileNotFoundError) as e:
             self.filename_optimality = 'DoE_{:s}E{:s}R0_{:d}{:s}{:d}_{:s}.npy'.format(self.params.doe_method.capitalize(),
                     '{:.0E}'.format(self.params.n_cand)[-1], self.ndim, self.model.basis.nickname, basis.deg, self.params.optimality)
             try:
-                self.optimality_rows = np.squeeze(np.load(os.path.join(self.params.data_dir_precomputed_optimality, self.filename_optimality)))
-                if len(selected):
-                    if np.array_equal(self.optimality_rows[:len(selected)], np.array(selected)):
-                        return True
-                    else:
-                        print('Precomputed optimality found but do not match selected_samples, will run Optimality Design directly')
-                        return False
-                else:
-                    return True
+                self.precomputed_optimality_index = np.squeeze(np.load(os.path.join(self.params.data_dir_precomputed_optimality, self.filename_optimality)))
+                return True
             except FileNotFoundError: 
                 print('FileNotFoundError: [Errno 2] No such file or directory: {}'.format(self.filename_optimality))
                 return False
-
         except:
             return False
 
@@ -302,11 +302,36 @@ class Modeling(object):
     def is_cls_unbounded(self):
         return  self.params.doe_method.lower().startswith('cls') and self.dist_u_name.startswith('norm')
 
+    def _common_vectors(self, A, B):
+        """
+        return the indices of each columns of array A in larger array B
+        """
+        A = np.array(A, ndmin=2)
+        B = np.array(B, ndmin=2)
+        if A.size == 0:
+            return np.array([])
+        if B.shape[1] == A.shape[1]:
+            B = B.T
+            A = A.T
+        if A.shape[0] > B.shape[0]:
+            raise ValueError('A must have less columns than B')
+
+        ## check if B is unique
+        uniqueB, uniqueB_idx = np.unique(B, axis=1, return_index=True)
+        if uniqueB.shape[1] != B.shape[1]:
+            raise ValueError('Array B have duplicate vectors')
+        BA= np.hstack((B, A))
+        unique_BA, unique_idx, inverse_idx = np.unique(BA, return_index=True, return_inverse=True, axis=1)
+        uniqueA_idx = unique_idx[B.shape[1]:] - B.shape[1]
+        idx_AinB = list(set(range(A.shape[1])).difference(set(uniqueA_idx)))
+        return np.array(idx_AinB)
+
     def _check_duplicate_samples(self, samples):
         if len(samples) == 0:
             raise ValueError('Sample size is 0')
-        if len(samples) != len(np.unique(samples)):
-            raise ValueError('Find duplciate samples in x ')
+        samples = np.array(samples, ndmin=2)
+        if samples.shape[1] != np.unique(samples, axis=1).shape[1]:
+            raise ValueError('Find duplciate samples ')
 
     def rescale_data(self, X, sample_weight):
         """Rescale data so as to support sample_weight"""
