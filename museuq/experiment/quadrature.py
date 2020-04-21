@@ -37,7 +37,7 @@ class QuadratureDesign(ExperimentBase):
     def __str__(self):
         return('Gauss Quadrature: {}'.format(quad_name))
 
-    def samples(self, n, theta=[0,1]):
+    def get_samples(self, n, theta=[0,1]):
         """
         Sampling n Gauss-Quadrature pints from distributions 
         Arguments:

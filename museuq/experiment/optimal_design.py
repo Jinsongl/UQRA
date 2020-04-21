@@ -21,68 +21,72 @@ import multiprocessing as mp
 class OptimalDesign(ExperimentBase):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
 
-    def __init__(self, optimality, curr_set=[]):
+    def __init__(self, optimality, selected_index=[]):
         """
         Optimal/Quasi Optimal Experimental design:
         Arguments:
-        n: int, number of samples 
-        optimality: optimal design optimality
+            optimality: optimal design optimality
         """
         super().__init__()
-        self.optimality = optimality 
-        self.filename   = '_'.join(['DoE', self.optimality.capitalize()])
-        self.curr_set   = curr_set
+        self.optimality = optimality.upper()
+        self.filename   = '_'.join(['DoE', self.optimality])
+        self.selected_index   = selected_index
 
     def __str__(self):
-        return('Optimal Criteria: {:<15s}, num. samples: {:d} '.format(self.optimality, self.n_samples))
+        return('Optimal-{:s} Design'.format(self.optimality))
 
-    def samples(self,X,n, *args, **kwargs):
+    def get_samples(self, X, n, **kwargs):
         """
+        Return n new samples from X exclude those already selected
         Xb = Y
         X: Design matrix X(u) of shape(num_samples, num_features)
         Arguments:
             X: design matrix to sample from. (feature to be added: distributions + n_candidates)
 
         Optional: 
-            curr_set: list of selected row indices currently
+            selected_index: list of selected row indices currently
             orth_basis: boolean, True if columns of design matrix is orthogonal to each other asymptotically
         Return:
             list of row indices selected 
         """
-        # self.filename= self.filename + num2print(n_samples)
+        selected_values = kwargs.get('selected', None)
 
-        if self.optimality.upper() == 'S':
+        if self.optimality == 'S':
             """ Xb = Y """
-            orth_basis  = kwargs.get('orth_basis', True)
-            curr_set    = kwargs.get('curr_set', self.curr_set)
+            orth_basis     = kwargs.get('orth_basis', True)
+            selected_index = kwargs.get('selected_index', self.selected_index)
             try:
-                ### return a new set of indices, curr_set will be updated
-                row_adding = self._get_quasi_optimal(n, X, curr_set, orth_basis)
-                self.curr_set = curr_set
+                ### return a new set of indices, selected_index will be updated
+                row_adding = self._get_quasi_optimal(n, X, selected_index, orth_basis)
+                self.selected_index = selected_index
             except:
-                print(curr_set)
+                print(selected_index)
                 raise ValueError('_get_quasi_optimal failed')
             if len(np.unique(row_adding)) != n:
                 print('Duplicate samples detected:')
-                print(' -> len(curr_set) = {}'.format(len(curr_set)))
+                print(' -> len(selected_index) = {}'.format(len(selected_index)))
                 print(' -> len(row_adding) = {}'.format(len(row_adding)))
                 print(' -> len(np.unique(row_adding)) = {}'.format(len(np.unique(row_adding))))
-        elif self.optimality.upper() == 'D':
+        elif self.optimality == 'D':
             """ D optimality based on rank revealing QR factorization  """
-            curr_set = kwargs.get('curr_set', self.curr_set)
-            row_adding  = self._get_rrqr_optimal(n, X, curr_set)
-            self.curr_set = curr_set + row_adding
+            selected_index = kwargs.get('selected_index', self.selected_index)
+            try:
+                row_adding = self._get_rrqr_optimal(n, X, selected_index)
+                self.selected_index = selected_index + row_adding
+            except:
+                print(selected_index)
+                raise ValueError('_get_rrqr_optimal failed')
             if len(np.unique(row_adding)) != n:
                 print('Duplicate samples detected:')
-                print(' -> len(curr_set) = {}'.format(len(curr_set)))
+                print(' -> len(selected_index) = {}'.format(len(selected_index)))
                 print(' -> len(row_adding) = {}'.format(len(row_adding)))
                 print(' -> len(np.unique(row_adding)) = {}'.format(len(np.unique(row_adding))))
         else:
             raise NotImplementedError
 
-        # print('current set: \n{}'.format(curr_set))
+        # print('current set: \n{}'.format(selected_index))
         # print('new set: \n{}'.format(row_adding))
-        # print('intersection: \n{}'.format(set(row_adding) & set(curr_set)))
+        # print('intersection: \n{}'.format(set(row_adding) & set(selected_index)))
         return row_adding 
 
     def _get_rrqr_optimal(self, m, X, row_selected):

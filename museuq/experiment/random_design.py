@@ -40,7 +40,7 @@ class RandomDesign(ExperimentBase):
         message = 'Random Design with method: {:s}, Distributions: {}'.format(self.method, dist_names)
         return message
 
-    def samples(self, n_samples, theta=[0,1]):
+    def get_samples(self, n_samples, theta=[0,1]):
         """
         Random sampling from distributions with specified method
         Arguments:

@@ -52,7 +52,7 @@ class LatinHyperCube(ExperimentBase):
         message = 'LHS Design with criterion: {:s}, distributions: {}'.format(self.criterion, dist_names)
         return message
 
-    def samples(self, n_samples, theta=[0,1], random_state=None):
+    def get_samples(self, n_samples, theta=[0,1], random_state=None):
         """
         LHS sampling from distributions 
         Arguments:
