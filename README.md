@@ -1,3 +1,3 @@
-# Uncertainty Quantification For Risk Analysis
+# Uncertainty Quantification for Risk Analysis (UQRA)
 
 # Jinsong Liu
