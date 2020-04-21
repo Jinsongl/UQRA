@@ -89,7 +89,7 @@ class Modeling(object):
                 if self.dist_x_name.startswith('norm'):
                     self.filename_candidates = r'DoE_ClsE6d{:d}R0.npy'.format(self.ndim)
                 else:
-                    self.filename_candidates = r'DoE_ClsE6dR0.npy'
+                    self.filename_candidates = r'DoE_ClsE6R0.npy'
                 data  = np.load(os.path.join(data_dir, self.filename_candidates))
                 u_cand = data[:self.ndim,:n].reshape(self.ndim, -1)
             else:
@@ -323,6 +323,62 @@ class Modeling(object):
 
     def info(self):
         pass
+
+    def test_data_reference(self):
+        """
+        Validate the distributions of test data
+        """
+        if self.dist_u_name.lower() == 'uniform':
+            u_mean = 0.0
+            u_std  = 0.5773
+        elif self.dist_u_name.lower().startswith('norm'):
+            if self.params.doe_method.lower() == 'cls':
+                u_mean = 0.0
+                u_std  = np.sqrt(0.5)
+            elif self.params.doe_method.lower() == 'mcs':
+                u_mean = 0.0
+                u_std  = 1.0
+            else:
+                raise ValueError
+        else:
+            raise ValueError
+
+        return u_mean, u_std
+            
+    def candidate_data_reference(self):
+        """
+        Validate the distributions of test data
+        """
+        if self.params.doe_method.lower() == 'mcs':
+            if self.dist_u_name.lower() == 'uniform':
+                u_mean = 0.0
+                u_std  = 0.58
+            elif self.dist_u_name.lower().startswith('norm'):
+                u_mean = 0.0
+                u_std  = 1.0
+            else:
+                raise ValueError
+        elif self.params.doe_method.lower() == 'cls':
+            if self.dist_u_name.lower() == 'uniform':
+                u_mean = 0.0
+                u_std  = 0.71
+            elif self.dist_u_name.lower().startswith('norm'):
+                u_mean = 0.0
+                if self.ndim == 1:
+                    u_std = 0.71
+                elif self.ndim == 2:
+                    u_std = 0.57
+                elif self.ndim == 3:
+                    u_std = 0.50
+                else:
+                    raise ValueError
+            else:
+                raise ValueError
+        else:
+            raise ValueError
+
+        return u_mean, u_std
+
 
 class Parameters(object):
     """
