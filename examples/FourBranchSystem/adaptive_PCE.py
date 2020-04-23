@@ -16,11 +16,12 @@ import scipy.stats as stats
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
 
+
 def main():
 
     ## ------------------------ Displaying set up ------------------- ###
     np.set_printoptions(precision=2)
-    np.set_printoptions(threshold=8)
+    np.set_printoptions(threshold=1000)
     np.set_printoptions(suppress=True)
     iter_max    = 300
     pf          = 1e-4
@@ -32,7 +33,6 @@ def main():
 
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters(solver)
-    simparams.pce_degs   = np.array(range(2,21))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
@@ -45,12 +45,8 @@ def main():
     ## ------------------------ Adaptive parameters ----------------- ###
     n_budget = 1000
     plim     = (2,100)
-    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, abs_qoi=0.02, min_r2=0.95)
+    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, rel_qoi=0.001, min_r2=0.95)
     simparams.info()
-    print('   - Sampling and Fitting:')
-    print('     - {:<23s} : {}'.format('Sampling method'  , simparams.doe_method))
-    print('     - {:<23s} : {}'.format('Optimality '      , simparams.optimality))
-    print('     - {:<23s} : {}'.format('Fitting method'   , simparams.fit_method))
 
     ## ------------------------ Define PCE model --------------------- ###
     # orth_poly = museuq.Legendre(d=solver.ndim)
@@ -59,17 +55,26 @@ def main():
     pce_model.info()
 
     modeling = museuq.Modeling(solver, pce_model, simparams)
-    modeling.sample_selected=[]
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     u_cand = modeling.get_candidate_data()
     u_test, x_test, y_test = modeling.get_test_data(solver, pce_model) 
     qoi_test= museuq.metrics.mquantiles(y_test, 1-pf)[0]
     with np.printoptions(precision=2):
-        print('    - {:<25s}: {}  {} {}'.format('u cand (shape, mean, std)',u_cand.shape, np.mean(u_cand, axis=1),np.std(u_cand, axis=1)))
-        print('    - {:<25s}: {} {} {}'.format('u test (shape, mean, std)', u_test.shape, np.mean(u_test, axis=1),np.std(u_test, axis=1)))
-        print('    - {:<25s}: {} {} {}'.format('x test (shape, mean, std)', u_test.shape, np.mean(x_test, axis=1),np.std(x_test, axis=1)))
+        u_cand_mean_std = np.array((np.mean(u_cand[0]), np.std(u_cand[0])))
+        u_test_mean_std = np.array((np.mean(u_test[0]), np.std(u_test[0])))
+        x_test_mean_std = np.array((np.mean(x_test[0]), np.std(x_test[0])))
+        u_cand_ref = np.array(modeling.candidate_data_reference())
+        u_test_ref = np.array(modeling.test_data_reference())
+        x_test_ref = np.array((solver.distributions[0].mean(), solver.distributions[0].std()))
+
+        print('    - {:<25s} : {}'.format('Candidate Data ', u_cand.shape))
+        print('    - {:<25s} : {}'.format('Test Data ', u_test.shape))
         print('    - {:<25s} : {}'.format('Target QoI [pf={:.0e}]'.format(pf), qoi_test))
+        print('    > {:<25s}'.format('Validate data set '))
+        print('    - {:<25s} : {} {} '.format('u cand (mean, std)', u_cand_mean_std, u_cand_ref))
+        print('    - {:<25s} : {} {} '.format('u test (mean, std)', u_test_mean_std, u_test_ref))
+        print('    - {:<25s} : {} {} '.format('x test (mean, std)', x_test_mean_std, x_test_ref))
 
     ## ----------- Initial DoE ----------- ###
     print(' > Getting initial sample set...')
@@ -80,9 +85,10 @@ def main():
     # pce_model.set_degree(init_basis_deg) 
     # init_n_eval     = math.ceil(1.5*pce_model.num_basis*np.log(pce_model.num_basis))
     # u_train, x_train, y_train = modeling.get_init_samples(init_n_eval, solver, pce_model,doe_method=init_doe_method, random_state=100)
-    init_n_eval     = 128
+    init_n_eval     = 32
     init_doe_method = 'lhs' 
     u_train, x_train, y_train = modeling.get_init_samples(init_n_eval, doe_method=init_doe_method, random_state=100)
+    u_sampling_pdf  = np.prod(pce_model.basis.dist_u[0].pdf(u_train), axis=0)
     print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
     print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))
     print('   * {:<25s} : [{:.2f},{:.2f}]'.format(' u Domain ', np.amin(u_train), np.amax(u_train)))
@@ -104,21 +110,58 @@ def main():
     QoI_path        = []
     active_basis    = [0,] * (plim[1]+1)
     active_basis_path= [] 
-    new_samples_pct = [1,]* (plim[1]+1)
+    new_samples_pct = [1, ]* (plim[1]+1)
+    bias_weight     = [1,]* (plim[1]+1)
 
     ### ============ Start adaptive iteration ============
     print(' > Starting iteration ...')
     while i_iteration < iter_max:
-        print('\n           ===========  >>> Iteration No. {:d}:   <<< =========='.format(i_iteration))
+        print('\n===================  >>> Iteration No. {:d}:   <<< =================='.format(i_iteration))
+        print('   - Sampling and Fitting:')
+        print('     - {:<23s} : {}'.format('Sampling method'  , simparams.doe_method))
+        print('     - {:<23s} : {}'.format('Optimality '      , simparams.optimality))
+        print('     - {:<23s} : {}'.format('Fitting method'   , simparams.fit_method))
         ### ============ Update PCE model ============
         orth_poly.set_degree(p)
         pce_model = museuq.PCE(orth_poly)
 
-        ### ============ Build Surrogate Model ============
+        ### ============ Build 1st Surrogate Model ============
+        bias_weight = modeling.cal_adaptive_bias_weight(u_train, p, u_sampling_pdf)
         if simparams.doe_method.lower().startswith('cls'):
             w_train = modeling.cal_cls_weight(u_train, pce_model.basis)
         else:
-            w_train = None
+            w_train = 1
+        w_train = w_train * bias_weight
+
+        pce_model.fit(simparams.fit_method, u_train, y_train, w_train, n_splits=5)
+        pce_model.estimate_sparsity_var(0.9)
+
+        print(' > New samples:')
+        ### ============ Get new samples ============
+        ### update candidate data set for this p degree, cls unbuounded
+        u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
+        n = math.ceil(2*pce_model.sparsity * new_samples_pct[p])
+        if u_train.shape[1] + n < min(2*pce_model.sparsity, math.ceil(0.5*pce_model.num_basis)):
+            n = max(2*pce_model.sparsity, math.ceil(0.5*pce_model.num_basis)) - u_train.shape[1]
+        u_train_new, _ = modeling.get_train_data(n, u_cand_p, u_train, basis=pce_model.basis, active_basis=pce_model.var_basis)
+        x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
+        y_train_new = solver.run(x_train_new)
+        u_sampling_pdf = np.concatenate((u_sampling_pdf, modeling.sampling_density(u_train_new, p))) 
+        u_train = np.hstack((u_train, u_train_new)) 
+        x_train = np.hstack((x_train, x_train_new)) 
+        y_train = np.hstack((y_train, y_train_new)) 
+        print('   - New samples ({:s} {}): p={:d}, s={:d}, n={:d}, pct={:.2f} '.format(
+            simparams.doe_method, simparams.optimality, p, pce_model.sparsity, n, new_samples_pct[p]))
+
+        ### ============ Build 2nd Surrogate Model ============
+        bias_weight = modeling.cal_adaptive_bias_weight(u_train, p, u_sampling_pdf)
+        print(bias_weight)
+        if simparams.doe_method.lower().startswith('cls'):
+            w_train = modeling.cal_cls_weight(u_train, pce_model.basis)
+            w_train = w_train * bias_weight[p]
+        else:
+            w_train = 1
+        w_train = w_train * bias_weight
         pce_model.fit(simparams.fit_method, u_train, y_train, w_train)
         y_train_hat = pce_model.predict(u_train)
         y_test_hat  = pce_model.predict(u_test)
@@ -158,13 +201,9 @@ def main():
         cv_error[p] = pce_model.cv_error        
         cv_error_path.append(pce_model.cv_error)
 
-        cum_var         = -np.cumsum(np.sort(-pce_model.coef[1:] **2))
-        y_hat_var_pct   = cum_var / cum_var[-1] 
-        sparsity_p      = np.argwhere(y_hat_var_pct > 0.9)[0][-1] + 1 ## return index
-        sparsity[p]     = sparsity_p + 1 ## phi_0
-        acitve_index    = [0,] + list(np.argsort(-pce_model.coef[1:])[:sparsity_p]+1)
-        active_basis[p] = [pce_model.basis.basis_degree[i] for i in acitve_index ]
-        active_basis_path.append(active_basis[p])
+        sparsity[p]     = pce_model.sparsity 
+        active_basis[p] = pce_model.var_basis 
+        active_basis_path.append(pce_model.var_basis)
 
         score[p] = pce_model.score
         score_path.append(pce_model.score)
@@ -191,14 +230,14 @@ def main():
 
         ### ============ Cheking Overfitting ============
         if simparams.check_overfitting(cv_error[plim[0]:p+1]):
-            print('         >>>  Overfitting Correction <<<')
-            print('         - cv error: {}'.format(np.around(cv_error[max(p-4,plim[0]):p+1], 4)))
-            new_samples_pct[p]  = new_samples_pct[p] *0.5
+            print(' > Overfitting Correction <<<')
+            print('   - cv error: {}'.format(np.around(cv_error[max(p-4,plim[0]):p+1], 4)))
+            # new_samples_pct[p]  = new_samples_pct[p] *0.5
             p = max(plim[0], p-2)
             new_samples_pct[p]= new_samples_pct[p] *0.5
             # plim[0] + np.argmin(cv_error[plim[0]:p+1])
             ### update candidate data set for this p degree, cls unbuounded
-            print('         - Reseting results for PCE order higher than p = {:d} '.format(p))
+            print('   - Reseting results for PCE order higher than p = {:d} '.format(p))
             for i in range(p+1, len(active_basis)):
                 QoI[i]          = 0
                 score[i]        = 0
@@ -208,33 +247,11 @@ def main():
                 active_basis[i] = 0
             continue
 
-        print(' > New samples:')
-        ### ============ Get new samples if not overfitting ============
-        ### update candidate data set for this p degree, cls unbuounded
-        u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
-        orth_poly.set_degree(p)
-        pce_model = museuq.PCE(orth_poly)
-        ### ============ Get training points ============
-        n = math.ceil(2 *sparsity[p] * new_samples_pct[p])
-        if u_train.shape[1] + n < min(2*sparsity[p], math.ceil(0.5*pce_model.num_basis)):
-            n = max(2*sparsity[p], math.ceil(0.5*pce_model.num_basis)) - u_train.shape[1]
-        u_train_new, _ = modeling.get_train_data(n, u_cand_p, basis=pce_model.basis, active_basis=active_basis[p])
-        x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
-        y_train_new = solver.run(x_train_new)
-        u_train = np.hstack((u_train, u_train_new)) 
-        x_train = np.hstack((x_train, x_train_new)) 
-        y_train = np.hstack((y_train, y_train_new)) 
-        print('   - New samples ({:s} {}): p={:d}, s={:d}, n={:d}, pct={:.2f} => Total: {:d} '.format(
-            simparams.doe_method, simparams.optimality, p,sparsity[p], n, new_samples_pct[p], len(modeling.sample_selected)))
-
-
         ### ============ updating parameters ============
         p           += 1
         i_iteration += 1
         if not simparams.is_adaptive_continue(n_eval_path[-1], p, qoi=QoI[plim[0]:p], r2=score[plim[0]:p]):
             break
-
-
     print('------------------------------------------------------------')
     print('>>>>>>>>>>>>>>> Adaptive simulation done <<<<<<<<<<<<<<<<<<<')
     print('------------------------------------------------------------')
@@ -247,7 +264,7 @@ def main():
     # print(pce_model.coef[pce_model.coef!=0])
     # print(solver.coef[solver.coef!=0])
 
-    filename = 'Adaptive_{:s}_{:s}_{:s}test'.format(solver.nickname, pce_model.tag[:-1], simparams.tag)
+    filename = 'Adaptive_{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
     path_data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, score_path, QoI_path, test_error_path]) 
     np.save(os.path.join(simparams.data_dir_result, filename+'_path'), path_data)
     data  = np.array([n_eval_path, poly_order_path, cv_error, active_basis, score, QoI, test_error]) 
