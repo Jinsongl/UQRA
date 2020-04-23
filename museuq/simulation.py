@@ -252,7 +252,7 @@ class Modeling(object):
                         else:
                             row_index_adding.append(i)
                     u_new = u_cand[:,row_index_adding]
-                    u_all = np.hstack((u_selected, u_new))
+                    u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
                     duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
                     if len(duplicated_idx_in_all) > 0:
                         raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
@@ -263,7 +263,7 @@ class Modeling(object):
                         X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
                     row_index_adding = doe.get_samples(X, n, orth_basis=True)
                     u_new = u_cand[:,row_index_adding]
-                    u_all = np.hstack((u_selected, u_new))
+                    u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
                     duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
                     if len(duplicated_idx_in_all) > 0:
                         raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
@@ -278,7 +278,7 @@ class Modeling(object):
                 row_index_adding = doe.get_samples(X, n, orth_basis=True)
 
                 u_new = u_cand[:,row_index_adding]
-                u_all = np.hstack((u_selected, u_new))
+                u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
                 duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
                 if len(duplicated_idx_in_all) > 0:
                     raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
