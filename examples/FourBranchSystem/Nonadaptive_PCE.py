@@ -50,9 +50,9 @@ def main():
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = None #'D', 'S', None
-    simparams.hem_type   = 'physicists'
-    # simparams.hem_type   = 'probabilists'
+    simparams.optimality = 'D' #'D', 'S', None
+    # simparams.hem_type   = 'physicists'
+    simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 5
     repeat      = 50 if simparams.optimality is None else 1
@@ -132,7 +132,7 @@ def main():
         coef_err= []
         cond_num= []
         test_l2 = []
-        u_train = None
+        u_train = [None,] * repeat
         ### ============ Start adaptive iteration ============
         for i, n in enumerate(nsamples):
             ### ============ Get training points ============
@@ -140,6 +140,7 @@ def main():
             # print(u_cand_p[:,:3])
             # print(u_cand[:,:3])
             n = n - len(modeling.sample_selected)
+            u_train = u_train[0] if repeat == 1 else u_train
             _, u_train = modeling.get_train_data((repeat,n), u_cand_p, u_train=u_train, basis=pce_model.basis)
             # print(modeling.sample_selected)
             QoI_     = []
