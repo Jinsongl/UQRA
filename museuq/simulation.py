@@ -144,8 +144,6 @@ class Modeling(object):
                 data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Norm')
                 print('    - Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
                 data_set= np.load(os.path.join(data_dir_sample,filename))
-                print(np.mean(data_set, axis=1))
-                print(np.std(data_set, axis=1))
                 z_test  = data_set[:ndim,:] 
                 x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
             else:
@@ -230,7 +228,11 @@ class Modeling(object):
                 ### update new samples set
                 row_index_adding += list(random_idx)
             row_index_adding = row_index_adding[:n]
-            selected_index += row_index_adding
+            u_new = u_cand[:,row_index_adding]
+            u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
+            duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
+            if len(duplicated_idx_in_all) > 0:
+                raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
 
         elif self.params.optimality:
             basis = kwargs['basis']
@@ -240,7 +242,7 @@ class Modeling(object):
             ### Using full design matrix, and precomputed optimality file exists only for this calculation
             if active_basis == 0 or active_basis is None:
                 if self._check_precomputed_optimality(basis):
-                    print('     - {:<23s} : {}/{}, File: {}'.format('Optimal design based on ', basis.num_basis, basis.num_basis, self.filename_optimality))
+                    print('   - {:<23s} : {}/{}, File: {}'.format('Optimal design based on ', basis.num_basis, basis.num_basis, self.filename_optimality))
                     row_index_adding = []
                     for i in self.precomputed_optimality_index:
                         if len(row_index_adding) >= n:
@@ -249,25 +251,37 @@ class Modeling(object):
                             pass
                         else:
                             row_index_adding.append(i)
+                    u_new = u_cand[:,row_index_adding]
+                    u_all = np.hstack((u_selected, u_new))
+                    duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
+                    if len(duplicated_idx_in_all) > 0:
+                        raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
                 else:
-                    print('     - {:<23s} : {}/{}'.format('Optimal design based on ', basis.num_basis, basis.num_basis))
+                    print('   - {:<23s} : {}/{}'.format('Optimal design based on ', basis.num_basis, basis.num_basis))
                     X = basis.vandermonde(u_cand)
                     if self.params.doe_method.lower().startswith('cls'):
                         X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
                     row_index_adding = doe.get_samples(X, n, orth_basis=True)
+                    u_new = u_cand[:,row_index_adding]
+                    u_all = np.hstack((u_selected, u_new))
+                    duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
+                    if len(duplicated_idx_in_all) > 0:
+                        raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
             ### Using partial columns
             else:
                 active_index = np.array([i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis])
-                print('     - {:<23s} : {}/{}'.format('Optimal design based on ', len(active_index), basis.num_basis))
+                print('   - {:<23s} : {}/{}'.format('Optimal design based on ', len(active_index), basis.num_basis))
                 X = basis.vandermonde(u_cand)
                 X = X[:, active_index]
                 if self.params.doe_method.lower().startswith('cls'):
                     X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
                 row_index_adding = doe.get_samples(X, n, orth_basis=True)
 
-        u_new = u_cand[:,row_index_adding]
-        u_all = np.hstack((u_selected, u_new))
-        self._check_duplicate_samples(u_all)
+                u_new = u_cand[:,row_index_adding]
+                u_all = np.hstack((u_selected, u_new))
+                duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
+                if len(duplicated_idx_in_all) > 0:
+                    raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
 
         return u_new, u_all
 
@@ -299,6 +313,11 @@ class Modeling(object):
         w  = basis.num_basis / Kp
         return w
 
+    def cal_adaptive_bias_weight(self, u, p, sampling_pdf):
+        sampling_pdf_p = self.sampling_density(u, p)
+        w = sampling_pdf_p/sampling_pdf
+        return w
+
     def is_cls_unbounded(self):
         return  self.params.doe_method.lower().startswith('cls') and self.dist_u_name.startswith('norm')
 
@@ -306,32 +325,37 @@ class Modeling(object):
         """
         return the indices of each columns of array A in larger array B
         """
-        A = np.array(A, ndmin=2)
         B = np.array(B, ndmin=2)
-        if A.size == 0:
+        if A is None or A.size == 0:
             return np.array([])
-        if B.shape[1] == A.shape[1]:
-            B = B.T
-            A = A.T
-        if A.shape[0] > B.shape[0]:
+        if A.shape[1] > B.shape[1]:
             raise ValueError('A must have less columns than B')
 
+        ## check if A is unique
+        duplicate_idx_A = self._check_duplicate_rows(A.T)
+        if len(duplicate_idx_A) > 0:
+            raise ValueError('Array A have duplicate vectors: {}'.format(duplicate_idx_A))
         ## check if B is unique
-        uniqueB, uniqueB_idx = np.unique(B, axis=1, return_index=True)
-        if uniqueB.shape[1] != B.shape[1]:
-            raise ValueError('Array B have duplicate vectors')
+        duplicate_idx_B = self._check_duplicate_rows(B.T)
+        if len(duplicate_idx_B) > 0:
+            raise ValueError('Array B have duplicate vectors: {}'.format(duplicate_idx_B))
         BA= np.hstack((B, A))
-        unique_BA, unique_idx, inverse_idx = np.unique(BA, return_index=True, return_inverse=True, axis=1)
-        uniqueA_idx = unique_idx[B.shape[1]:] - B.shape[1]
-        idx_AinB = list(set(range(A.shape[1])).difference(set(uniqueA_idx)))
-        return np.array(idx_AinB)
+        duplicate_idx_BA = self._check_duplicate_rows(BA.T)
 
-    def _check_duplicate_samples(self, samples):
-        if len(samples) == 0:
-            raise ValueError('Sample size is 0')
-        samples = np.array(samples, ndmin=2)
-        if samples.shape[1] != np.unique(samples, axis=1).shape[1]:
-            raise ValueError('Find duplciate samples ')
+        return duplicate_idx_BA
+
+    def _check_duplicate_rows(self, A):
+        """
+
+        """
+        duplicate_idx = np.arange(A.shape[0])
+        j = 0
+        while len(duplicate_idx) > 0 and j < A.shape[1]:
+            icol = A[duplicate_idx,j]
+            uniques, uniq_idx, counts = np.unique(icol,return_index=True,return_counts=True)
+            duplicate_idx = uniq_idx[counts>=2] 
+            j+=1
+        return duplicate_idx
 
     def rescale_data(self, X, sample_weight):
         """Rescale data so as to support sample_weight"""
@@ -403,6 +427,27 @@ class Modeling(object):
             raise ValueError
 
         return u_mean, u_std
+
+    def sampling_density(self, u, p):
+        if self.params.doe_method.lower().startswith('mcs'):
+            if self.dist_u_name.startswith('norm'):
+                pdf = np.prod(stats.norm(0,1).pdf(u), axis=0)
+            elif self.dist_u_name.startswith('uniform'):
+                pdf = np.prod(stats.uniform(-1,2).pdf(u), axis=0)
+            else:
+                raise ValueError('{:s} not defined for MCS'.format(self.dist_u_name))
+
+        elif self.params.doe_method.lower().startswith('cls'):
+            if self.dist_u_name.startswith('norm'):
+                pdf = 1.0/(2*np.pi * np.sqrt(p))*(2 - np.linalg.norm(u/np.sqrt(p),2, axis=0)**2)**(self.ndim/2.0) 
+                pdf[pdf<0] = 0
+            elif self.dist_u_name.startswith('uniform'):
+                pdf = 1.0/np.prod(np.sqrt(1-u**2), axis=0)/np.pi**self.ndim
+            else:
+                raise ValueError('{:s} not defined for CLS'.format(self.dist_u_name))
+        else:
+            raise ValueError('{:s} not defined '.format(self.params.doe_methodd))
+        return pdf
 
 
 class Parameters(object):
