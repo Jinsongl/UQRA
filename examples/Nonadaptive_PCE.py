@@ -220,7 +220,7 @@ def main():
         # filename = 'Fix_{:s}_{:s}_reference'.format(solver.nickname, simparams.get_tag())
         # np.save(os.path.join(simparams.data_dir_result, filename), data_alpha)
         data_p.append(data_alpha)
-    filename = '{:s}_{:s}_{:s}_reference'.format(solver.nickname, pce_model.tag, simparams.tag)
+    filename = '{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
     np.save(os.path.join(simparams.data_dir_result, filename), np.array(data_p))
 
 if __name__ == '__main__':
