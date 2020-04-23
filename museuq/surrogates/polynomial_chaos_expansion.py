@@ -243,6 +243,14 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
         self.score    = model.score(X, y)
 
+    def estimate_sparsity_var(self, sigma):
+        cum_var       = -np.cumsum(np.sort(-self.coef[1:] **2))
+        y_hat_var_pct = cum_var / cum_var[-1] 
+        sparsity      = np.argwhere(y_hat_var_pct > sigma)[0][-1] + 1 ## return index +1 since cum_var starts with 1, not 0
+        self.sparsity = sparsity + 1 ## +1 to always count phi_0
+        self.var_index= [0,] + list(np.argsort(-self.coef[1:])[:sparsity]+1)
+        self.var_basis= [self.basis.basis_degree[i] for i in self.var_index]
+
     def predict(self,x, **kwargs):
         """
         Predict using surrogate models 
