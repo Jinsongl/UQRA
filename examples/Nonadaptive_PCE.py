@@ -33,37 +33,37 @@ def main():
     # solver      = museuq.SparsePoly(orth_poly, sparsity='full', seed=100)
 
     # solver      = museuq.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
-    # solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
-    # solver      = museuq.CornerPeak(stats.uniform(-1,2), d=4)
+    solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
+    # solver      = museuq.CornerPeak(stats.uniform(-1,2), d=2)
     # solver      = museuq.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
     # solver      = museuq.Franke()
 
     # solver      = museuq.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
     # solver      = museuq.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = museuq.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
-    solver      = museuq.ProductPeak(stats.norm(0,1), d=3, c=1.0/np.array([1,2,3])**2, w=[0.5,]*3)
+    # solver      = museuq.ProductPeak(stats.norm(0,1), d=3, c=1.0/np.array([1,2,3])**2, w=[0.5,]*3)
     # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
     # solver      = museuq.FourBranchSystem()
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters(solver)
-    simparams.pce_degs   = np.array(range(2,16))
+    simparams.pce_degs   = np.array(range(13, 16))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'D' #'D', 'S', None
-    simparams.hem_type   = 'physicists'
+    simparams.optimality = None #'D', 'S', None
+    # simparams.hem_type   = 'physicists'
     # simparams.hem_type   = 'probabilists'
-    simparams.fit_method = 'LASSOLARS'
+    simparams.fit_method = 'OLS'
     simparams.n_splits   = 5
-    repeat      = 50 if simparams.optimality is None else 1
+    repeat               = 50 if simparams.optimality is None else 1
     simparams.update()
     simparams.info()
 
 
     ## ----------- Oversampling ratio ----------- ###
     alpha =[]
-    alpha.append([0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0])
-    # alpha.append([1.1,2.0, 2*np.log(pce_model.num_basis)])
+    # alpha.append([0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0])
+    alpha.append([1.1,2.0])
     # alpha.append(np.linspace(1, 2, 6))
     # alpha.append(np.linspace(2, 4, 6))
     # alpha.append(np.linspace(4,10,11))
@@ -73,14 +73,13 @@ def main():
 
     # nsamples = []
     # nsamples.append(np.arange(pce_model.num_basis+1, 500, 20))
-    # nsamples.append(2*math.ceil(np.log(pce_model.num_basis) * pce_model.num_basis))
     # nsamples = np.unique(np.hstack(nsamples))
+
 
     ### ============ Initial Values ============
     print(' > Starting simulation...')
     data_p = []
     for p in simparams.pce_degs:
-
         print('\n================================================================================')
         simparams.info()
         print('   - Sampling and Fitting:')
@@ -88,8 +87,8 @@ def main():
         print('     - {:<23s} : {}'.format('Optimality '      , simparams.optimality))
         print('     - {:<23s} : {}'.format('Fitting method'   , simparams.fit_method))
         ## ----------- Define PCE  ----------- ###
-        # orth_poly= museuq.Legendre(d=solver.ndim, deg=p)
-        orth_poly= museuq.Hermite(d=solver.ndim, deg=p, hem_type=simparams.hem_type)
+        orth_poly= museuq.Legendre(d=solver.ndim, deg=p)
+        # orth_poly= museuq.Hermite(d=solver.ndim, deg=p, hem_type=simparams.hem_type)
         pce_model= museuq.PCE(orth_poly)
         pce_model.info()
 
@@ -221,7 +220,7 @@ def main():
         # filename = 'Fix_{:s}_{:s}_reference'.format(solver.nickname, simparams.get_tag())
         # np.save(os.path.join(simparams.data_dir_result, filename), data_alpha)
         data_p.append(data_alpha)
-    filename = '{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
+    filename = '{:s}_{:s}_{:s}_reference'.format(solver.nickname, pce_model.tag, simparams.tag)
     np.save(os.path.join(simparams.data_dir_result, filename), np.array(data_p))
 
 if __name__ == '__main__':
