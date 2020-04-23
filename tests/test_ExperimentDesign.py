@@ -3,7 +3,7 @@
 import museuq, unittest,warnings,os, sys, math
 from tqdm import tqdm
 import time
-import numpy as np, chaospy as cp, scipy as sp 
+import numpy as np, scipy as sp 
 
 sys.stdout  = museuq.utilities.classes.Logger()
 
@@ -154,7 +154,6 @@ class BasicTestSuite(unittest.TestCase):
 
 
     def test_Soptimality(slef):
-        np.random.seed(100)
         x = np.linspace(-1,1,1000)
         y = cdf_chebyshev(x)
         ndim    = 2
@@ -168,15 +167,16 @@ class BasicTestSuite(unittest.TestCase):
         for i, p in enumerate([5, ]):
             mean_kappa = []
             for _ in range(1):
-                np.random.seed()
+                np.random.seed(100)
                 orth_poly = museuq.Legendre(d=ndim,deg=p)
-                doe     = museuq.OptimalDesign('S', curr_set=[3284,])
+                # orth_poly = museuq.Hermite(d=ndim,deg=p, hem_type='physicists')
+                doe     = museuq.OptimalDesign('S', selected_index=[3284,])
                 X       = orth_poly.vandermonde(x_cand)
-                idx     = doe.samples(X, n_samples=math.ceil(1.2 * orth_poly.num_basis), orth_basis=True)
+                idx     = doe.get_samples(X, n=math.ceil(1.2 * orth_poly.num_basis), orth_basis=True)
                 print('adding:')
                 print(idx)
                 print('current:')
-                print(doe.curr_set)
+                print(doe.selected_index)
                 x_samples = x_cand[:,idx]
                 X_train = orth_poly.vandermonde(x_samples)
                 _, s, _ = np.linalg.svd(X_train)
