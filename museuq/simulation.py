@@ -296,6 +296,8 @@ class Modeling(object):
                     '{:.0E}'.format(self.params.n_cand)[-1], self.ndim, self.model.basis.nickname, basis.deg, self.params.optimality)
             try:
                 self.precomputed_optimality_index = np.squeeze(np.load(os.path.join(self.params.data_dir_precomputed_optimality, self.filename_optimality)))
+                if self.precomputed_optimality_index.ndim == 2:
+                    self.precomputed_optimality_index = self.precomputed_optimality_index[0]
                 return True
             except FileNotFoundError: 
                 print('FileNotFoundError: [Errno 2] No such file or directory: {}'.format(self.filename_optimality))
