@@ -32,28 +32,29 @@ def main():
     # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='probabilists')
     # solver      = museuq.SparsePoly(orth_poly, sparsity='full', seed=100)
 
+    # solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = museuq.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
-    solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = museuq.CornerPeak(stats.uniform(-1,2), d=2)
     # solver      = museuq.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
     # solver      = museuq.Franke()
+    # solver      = museuq.Ishigami()
 
-    # solver      = museuq.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
     # solver      = museuq.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
+    # solver      = museuq.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
     # solver      = museuq.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
-    # solver      = museuq.ProductPeak(stats.norm(0,1), d=3, c=1.0/np.array([1,2,3])**2, w=[0.5,]*3)
+    # solver      = museuq.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
     # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
-    # solver      = museuq.FourBranchSystem()
+    solver      = museuq.FourBranchSystem()
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters(solver)
-    simparams.pce_degs   = np.array(range(13, 16))
+    simparams.pce_degs   = np.array(range(15,16))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = None #'D', 'S', None
-    # simparams.hem_type   = 'physicists'
+    simparams.optimality = 'D'#'D', 'S', None
+    simparams.hem_type   = 'physicists'
     # simparams.hem_type   = 'probabilists'
-    simparams.fit_method = 'OLS'
+    simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 5
     repeat               = 50 if simparams.optimality is None else 1
     simparams.update()
@@ -62,8 +63,8 @@ def main():
 
     ## ----------- Oversampling ratio ----------- ###
     alpha =[]
-    # alpha.append([0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0])
-    alpha.append([1.1,2.0])
+    alpha.append([0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0])
+    # alpha.append([1.1,2.0])
     # alpha.append(np.linspace(1, 2, 6))
     # alpha.append(np.linspace(2, 4, 6))
     # alpha.append(np.linspace(4,10,11))
@@ -72,7 +73,8 @@ def main():
     alphas = np.unique(np.hstack(alpha))
 
     # nsamples = []
-    # nsamples.append(np.arange(pce_model.num_basis+1, 500, 20))
+    # nsamples.append(np.arange(21+1, 130, 5))
+    # nsamples.append(np.arange(57+1, 350, 15))
     # nsamples = np.unique(np.hstack(nsamples))
 
 
@@ -87,8 +89,8 @@ def main():
         print('     - {:<23s} : {}'.format('Optimality '      , simparams.optimality))
         print('     - {:<23s} : {}'.format('Fitting method'   , simparams.fit_method))
         ## ----------- Define PCE  ----------- ###
-        orth_poly= museuq.Legendre(d=solver.ndim, deg=p)
-        # orth_poly= museuq.Hermite(d=solver.ndim, deg=p, hem_type=simparams.hem_type)
+        # orth_poly= museuq.Legendre(d=solver.ndim, deg=p)
+        orth_poly= museuq.Hermite(d=solver.ndim, deg=p, hem_type=simparams.hem_type)
         pce_model= museuq.PCE(orth_poly)
         pce_model.info()
 
@@ -165,7 +167,8 @@ def main():
                     w_train = None
                     U_train = U_train
 
-                pce_model.fit(simparams.fit_method, iu_train, y_train, w_train, n_splits=min(simparams.n_splits, iu_train.shape[1]))
+                # pce_model.fit(simparams.fit_method, iu_train, y_train, w_train, n_splits=min(simparams.n_splits, iu_train.shape[1]))
+                pce_model.fit(simparams.fit_method, iu_train, y_train, w_train)
                 # pce_model.fit_ols(iu_train, y_train, w_train)
                 y_train_hat = pce_model.predict(iu_train)
                 y_test_hat  = pce_model.predict(u_test)
