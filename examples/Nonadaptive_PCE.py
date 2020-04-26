@@ -32,7 +32,7 @@ def main():
     # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='probabilists')
     # solver      = museuq.SparsePoly(orth_poly, sparsity='full', seed=100)
 
-    solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
+    # solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = museuq.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
     # solver      = museuq.CornerPeak(stats.uniform(-1,2), d=2)
     # solver      = museuq.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
@@ -221,7 +221,11 @@ def main():
         # np.save(os.path.join(simparams.data_dir_result, filename), data_alpha)
         data_p.append(data_alpha)
     filename = '{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
-    np.save(os.path.join(simparams.data_dir_result, filename), np.array(data_p))
+    try:
+        np.save(os.path.join(simparams.data_dir_result, filename), np.array(data_p))
+    except:
+        np.save(os.path.join(os.getcwd(), filename), np.array(data_p))
+
 
 if __name__ == '__main__':
     main()
