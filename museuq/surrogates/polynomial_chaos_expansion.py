@@ -105,10 +105,6 @@ class PolynomialChaosExpansion(SurrogateBase):
         if len(x.T) != len(w):
             raise TypeError("expected x and w to have same length")
 
-        # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.deg))
-        # print(r'   * {:<25s} : (X, Y, W) = {} x {} x {}'.format('Train data shape', x.shape, y.shape, w.shape))
-
         # norms = np.sum(X.T**2 * w, -1)
         norms       = self.basis.basis_norms *self.basis.basis_norms_const**self.basis.ndim
         coef        = np.sum(X.T * y * w, -1) / norms 
@@ -139,12 +135,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         y = np.squeeze(y)
 
         n_splits= kwargs.get('n_splits', X.shape[0])
+        n_splits= min(n_splits, X.shape[0])
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-        # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.deg))
-        # print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
-        
         ## calculate k-folder cross-validation error
         model   = linear_model.LinearRegression(fit_intercept=False)
         neg_mse = model_selection.cross_val_score(model, X, y, scoring = 'neg_mean_squared_error', cv=kf, n_jobs=mp.cpu_count())
@@ -180,11 +173,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         y = np.squeeze(y)
         ## parameters for LassoLars 
         n_splits= kwargs.get('n_splits', X.shape[0])
+        n_splits= min(n_splits, X.shape[0])
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-        # print(r' > PCE surrogate models with {:s}'.format(self.fit_method))
-        # print(r'   * {:<25s} : ndim={:d}, p={:d}'.format('Polynomial', self.ndim, self.deg))
-        # print(r'   * {:<25s} : X = {}, Y = {}'.format('Train data shape', X.shape, y.shape))
         ### 1. Perform variable selection first
         model_lars       = linear_model.Lars(fit_intercept=False).fit(X,y)
         ### 2. Perform linear regression on every set of first i basis 
@@ -206,7 +197,6 @@ class PolynomialChaosExpansion(SurrogateBase):
                 self.coef     = model.coef_
                 self.active_index = active_indices
                 self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
-        # print(r'   * {:<25s} : {} ->#:{:d}'.format('Active basis', self.active_index, len(self.active_index)))
 
     def fit_lassolars(self,x,y,sample_weight=None, **kwargs):
         """
@@ -232,6 +222,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             X, y = self._rescale_data(X, y, sample_weight)
         ## parameters for LassoLars 
         n_splits= kwargs.get('n_splits', X.shape[0])
+        n_splits= min(n_splits, X.shape[0])
         max_iter= kwargs.get('max_iter', 500)
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
@@ -244,12 +235,22 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.score    = model.score(X, y)
 
     def estimate_sparsity_var(self, sigma):
-        cum_var       = -np.cumsum(np.sort(-self.coef[1:] **2))
-        y_hat_var_pct = cum_var / cum_var[-1] 
-        sparsity      = np.argwhere(y_hat_var_pct > sigma)[0][-1] + 1 ## return index +1 since cum_var starts with 1, not 0
-        self.sparsity = sparsity + 1 ## +1 to always count phi_0
-        self.var_index= [0,] + list(np.argsort(-self.coef[1:])[:sparsity]+1)
-        self.var_basis= [self.basis.basis_degree[i] for i in self.var_index]
+        if (self.coef==0).all():
+            self.sparsity = 0 
+            self.var_index= [] 
+            self.var_basis= []
+
+        elif self.coef[0] != 0 and (self.coef[1:]==0).all():
+            self.sparsity = 1
+            self.var_index= [0] 
+            self.var_basis= [self.basis.basis_degree[0]]
+        else:
+            cum_var       = -np.cumsum(np.sort(-self.coef[1:] **2))
+            y_hat_var_pct = cum_var / cum_var[-1] 
+            sparsity      = np.argwhere(y_hat_var_pct > sigma)[0][-1] + 1 ## return index +1 since cum_var starts with 1, not 0
+            self.sparsity = sparsity + 1 ## +1 to always count phi_0
+            self.var_index= [0,] + list(np.argsort(-self.coef[1:])[:sparsity]+1)
+            self.var_basis= [self.basis.basis_degree[i] for i in self.var_index]
 
     def predict(self,x, **kwargs):
         """
