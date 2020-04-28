@@ -9,7 +9,7 @@
 """
 
 """
-import os, sys
+import os, sys, math
 import numpy as np
 import museuq
 from scipy import sparse
@@ -17,6 +17,7 @@ from datetime import datetime
 from .utilities.classes import Logger
 from itertools import compress
 import scipy.stats as stats
+from tqdm import tqdm
 
 class Modeling(object):
     """
@@ -240,9 +241,14 @@ class Modeling(object):
 
             doe = museuq.OptimalDesign(self.params.optimality, selected_index=selected_index)
             ### Using full design matrix, and precomputed optimality file exists only for this calculation
-            if active_basis == 0 or active_basis is None:
+            if active_basis == 0 or active_basis is None or len(active_basis) == 0:
                 if self._check_precomputed_optimality(basis):
-                    print('   - {:<23s} : {}/{}, File: {}'.format('Optimal design based on ', basis.num_basis, basis.num_basis, self.filename_optimality))
+                    try:
+                        tqdm.write('   - {:<17} : Basis, {}/{}; #samples:{:d}; File: {}'.format(
+                            'Optimal design ', basis.num_basis, basis.num_basis, n, self.filename_optimality))
+                    except:
+                        print('   - {:<17} : Basis, {}/{}; #samples:{:d}; File: {}'.format(
+                            'Optimal design ', basis.num_basis, basis.num_basis, n, self.filename_optimality))
                     row_index_adding = []
                     for i in self.precomputed_optimality_index:
                         if len(row_index_adding) >= n:
@@ -257,7 +263,12 @@ class Modeling(object):
                     if len(duplicated_idx_in_all) > 0:
                         raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
                 else:
-                    print('   - {:<23s} : {}/{}'.format('Optimal design based on ', basis.num_basis, basis.num_basis))
+                    try: 
+                        tqdm.write('   - {:<17} : Basis, {}/{}; #samples:{:d}'.format(
+                            'Optimal design  ', basis.num_basis, basis.num_basis, n))
+                    except:
+                        print('   - {:<17} : Basis, {}/{}; #samples:{:d}'.format(
+                            'Optimal design  ', basis.num_basis, basis.num_basis, n))
                     X = basis.vandermonde(u_cand)
                     if self.params.doe_method.lower().startswith('cls'):
                         X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
@@ -799,4 +810,24 @@ class Parameters(object):
             self.tag = '{:s}{:s}_{:s}'.format(self.doe_method.capitalize(), self.optimality, self.fit_method.capitalize())
         else:
             self.tag = '{:s}_{:s}'.format(self.doe_method.capitalize(), self.fit_method.capitalize())
+
+    def update_num_samples(self, P):
+        try:
+            self.alphas = np.array(self.alphas).flatten()
+            ### alpha = -1 for reference: 2 * P * log(P)
+            if (self.alphas == -1).any():
+                self.alphas[self.alphas==-1] = 2 * np.log(P)
+            self.num_samples = np.array([math.ceil(P*ialpha) for ialpha in self.alphas])
+            self.alphas = self.num_samples / P
+        except AttributeError:
+            try:
+                self.num_samples = np.array(self.num_samples).flatten()
+                if (self.num_samples == -1).any():
+                    self.num_samples[self.num_samples == -1] = int(math.ceil(2 * np.log(P) * P))
+                self.alphas = self.num_samples /P
+            except AttributeError:
+                raise ValueError('Either alphas or num_samples should be defined')
+
+
+
 
