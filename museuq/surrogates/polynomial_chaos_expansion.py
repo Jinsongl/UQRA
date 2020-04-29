@@ -133,6 +133,12 @@ class PolynomialChaosExpansion(SurrogateBase):
         y = np.array(y, copy=False, ndmin=2)
         X = self.basis.vandermonde(x)
         y = np.squeeze(y)
+        active_basis = kwargs.get('active_basis', None)
+        if active_basis is None:
+            active_index = np.arange(self.basis.num_basis).tolist()
+        else:
+            active_index = [i for i in range(self.basis.num_basis) if self.basis.basis_degree[i] in active_basis]
+        X = X[:, active_index]
 
         n_splits= kwargs.get('n_splits', X.shape[0])
         n_splits= min(n_splits, X.shape[0])
@@ -147,8 +153,12 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.cv_error= -np.mean(neg_mse)
         self.model   = model 
         self.coef    = model.coef_
-        self.active_index = range(self.num_basis)
-        self.active_basis = self.basis.basis_degree
+        if active_basis is None:
+            self.active_index = range(self.num_basis)
+            self.active_basis = self.basis.basis_degree
+        else:
+            self.active_index = active_index
+            self.active_basis = active_basis
         self.score   = model.score(X,y,w)
 
     def fit_olslars(self,x,y,w=None, **kwargs):
@@ -236,9 +246,9 @@ class PolynomialChaosExpansion(SurrogateBase):
 
     def estimate_sparsity_var(self, sigma):
         if (self.coef==0).all():
-            self.sparsity = 0 
-            self.var_index= [] 
-            self.var_basis= []
+            self.sparsity = self.num_basis
+            self.var_index= np.arange(self.num_basis).tolist()
+            self.var_basis= self.basis.basis_degree
 
         elif self.coef[0] != 0 and (self.coef[1:]==0).all():
             self.sparsity = 1
@@ -268,8 +278,24 @@ class PolynomialChaosExpansion(SurrogateBase):
             raise ValueError('Expecting {:d}-D sampels, but {:d} given'.format(self.ndim, x.shape[0]))
         if self.fit_method == 'GLK':
             y = self.basis(x)
-        elif self.fit_method in ['OLS','OLSLARS','LASSOLARS']:
 
+        elif self.fit_method in ['OLS']:
+            size_of_array_4gb = 1e8/2.0
+            if x.shape[1] * self.num_basis < size_of_array_4gb:
+                X = self.basis.vandermonde(x)[:, self.active_index]
+                y = self.model.predict(X)
+            else:
+                batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
+                y = []
+                for i in range(math.ceil(x.shape[1]/batch_size)):
+                    idx_beg = i*batch_size
+                    idx_end = min((i+1) * batch_size, x.shape[1])
+                    x_      = x[:,idx_beg:idx_end]
+                    X_      = self.basis.vandermonde(x_)[:, self.active_index]
+                    y_      = self.model.predict(X_)
+                    y      += list(y_)
+                y = np.array(y) 
+        elif self.fit_method in ['OLSLARS','LASSOLARS']:
             size_of_array_4gb = 1e8/2.0
             if x.shape[1] * self.num_basis < size_of_array_4gb:
                 X = self.basis.vandermonde(x)
