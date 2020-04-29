@@ -47,17 +47,17 @@ def main():
     # solver      = museuq.FourBranchSystem()
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters(solver)
-    simparams.pce_degs   = np.array(range(2,6))
+    simparams.pce_degs   = np.array(range(2,16))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = None #'D', 'S', None
+    simparams.optimality = 'D'#'D', 'S', None
     # simparams.hem_type   = 'physicists'
     simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeat               = 5 if simparams.optimality is None else 1
-    simparams.alphas     = [0.3,0.5,0.7,0.9,1.0] 
+    repeats              = 1 if simparams.optimality == 'D' else 2
+    alphas               = np.arange(3,11)/10 
     # simparams.num_samples=np.arange(21+1, 130, 5)
     simparams.update()
     simparams.info()
@@ -101,7 +101,7 @@ def main():
             print('    - {:<25s} : {} {} '.format('x test (mean, std)', x_test_mean_std, x_test_ref))
 
         ## ----------- Oversampling ratio ----------- ###
-        simparams.update_num_samples(pce_model.num_basis)
+        simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
         print(' > Oversampling ratio: {}'.format(np.around(simparams.alphas,2)))
 
         QoI     = []
@@ -109,7 +109,7 @@ def main():
         cv_err  = []
         test_err= []
         cond_num= []
-        u_train = [None,] * repeat
+        u_train = [None,] * repeats
         # coef_err= []
 
         for i, n in enumerate(simparams.num_samples):
@@ -118,19 +118,19 @@ def main():
             ### ============ Get training points ============
             u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
             # n = n - len(modeling.sample_selected)
-            u_train = u_train[0] if repeat == 1 else u_train
+            u_train = u_train[0] if repeats == 1 else u_train
             if simparams.optimality is not None:
                 n1 = max(2,int(round(n/2)))
             else:
                 n1 = n
-            _, u_train = modeling.get_train_data((repeat,n1), u_cand_p, u_train=None, basis=pce_model.basis)
+            _, u_train = modeling.get_train_data((repeats,n1), u_cand_p, u_train=None, basis=pce_model.basis)
             # print(modeling.sample_selected)
             QoI_     = []
             score_   = []
             cv_err_  = []
             test_err_= []
             cond_num_= []
-            u_train  = [u_train,] if repeat == 1 else u_train
+            u_train  = [u_train,] if repeats == 1 else u_train
             # coef_err_= []
             for iu_train in tqdm(u_train, ascii=True, ncols=80,
                     desc='   [alpha={:.2f}, {:d}/{:d}, n={:d}]'.format(simparams.alphas[i], i+1, len(simparams.alphas),n)):
