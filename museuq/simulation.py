@@ -172,7 +172,7 @@ class Modeling(object):
         size is how many MORE to be sampled besides those alrady existed in u_train 
 
         Arguments:
-            size        : size of samples, (r, n): size n repeat r times
+            size        : size of samples, (r, n): size n repeats r times
             u_cand      : ndarray, candidate samples in U-space to be chosen from
             u_train     : samples already selected, need to be removed from candidate set to get n sampels
             basis       : When optimality is 'D' or 'S', one need the design matrix in the basis selected
@@ -181,26 +181,68 @@ class Modeling(object):
         """
         size    = tuple(np.atleast_1d(size))
         u_cand  = np.array(u_cand, ndmin=2)
-        if len(size) == 1 or size[0] == 1:
-            size = np.prod(size)
-            u_new, u_all = self._choose_samples_from_candidates(size, u_cand,
-                    u_selected=u_train, basis=basis, active_basis=active_basis)
-            return u_new, u_all
-
+        if len(size) == 1:
+            repeats, n = 1, size[0]
         elif len(size) == 2:
-            repeat, n = size
-            u_train_new = []
-            u_train_all = []
-            u_train = [None,] * repeat if u_train is None else u_train
-            assert len(u_train) == repeat
-            for r in range(repeat):
-                u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
-                        u_selected=u_train[r], basis=basis, active_basis=active_basis)
-                u_train_new.append(u_new)
-                u_train_all.append(u_all)
-            u_train_new = np.array(u_train_new)
-            u_train_all = np.array(u_train_all)
-            return u_train_new, u_train_all
+            repeats, n = size[0], size[1]
+        else:
+            raise ValueError
+
+        if u_train is None:
+            u_train = [None,] * repeats
+        else:
+            u_train = np.array(u_train, ndmin=2)
+            if u_train.ndim == 2:
+                assert u_train.shape[0] == self.ndim
+                u_train = [u_train,] * repeats
+            elif u_train.ndim == 3:
+                assert u_train.shape[0] == repeats
+                assert u_train.shape[1] == self.ndim
+            else:
+                ValueError('Wrong data type for u_train: {}'.format(u_train.shape))
+        u_train_new = []
+        u_train_all = []
+        u_train     = [None,] * repeats if u_train is None else u_train
+        assert len(u_train) == repeats, 'u_trian shape: {}, repeats={}'.format(u_train.shape, repeats)
+        len_basis = 'None' if basis is None else basis.num_basis
+        len_active_basis = 'All' if active_basis is None else len(active_basis)
+
+        tqdm.write('   - {:<10s} : Optimality, {}; Basis, {}/{}; size:({:d}, {:d})'.format(
+            'Train data ', self.params.optimality, len_active_basis, len_basis, repeats,n))
+
+        precomputed = self._check_precomputed_optimality(basis) 
+        if precomputed:
+            tqdm.write('   - {:<10s} : {:s}'.format('File ', self.filename_optimality))
+
+        for r in tqdm(range(repeats), ascii=True, ncols=80, desc='  - Repeat'):
+            u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
+                    u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=False)
+            u_train_new.append(u_new)
+            u_train_all.append(u_all)
+        u_train_new = u_train_new[0] if repeats == 1 else np.array(u_train_new)
+        u_train_all = u_train_all[0] if repeats == 1 else np.array(u_train_all)
+
+        # if len(size) == 1 or size[0] == 1:
+            # size = np.prod(size)
+            # u_new, u_all = self._choose_samples_from_candidates(size, u_cand,
+                    # u_selected=u_train, basis=basis, active_basis=active_basis, precomputed=True)
+            # return u_new, u_all
+
+        # elif len(size) == 2:
+            # repeats, n  = size
+            # u_train_new = []
+            # u_train_all = []
+            # u_train = [None,] * repeats if u_train is None else u_train
+            # assert len(u_train) == repeats
+            # precomputed = self._check_precomputed_optimality(basis) 
+            # for r in tqdm(range(repeats), ascii=True, ncols=80, desc='  - Repeat'):
+                # u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
+                        # u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=False)
+                # u_train_new.append(u_new)
+                # u_train_all.append(u_all)
+            # u_train_new = np.array(u_train_new)
+            # u_train_all = np.array(u_train_all)
+        return u_train_new, u_train_all
 
     def _choose_samples_from_candidates(self, n, u_cand, u_selected=None, **kwargs):
         """
@@ -238,17 +280,18 @@ class Modeling(object):
         elif self.params.optimality:
             basis = kwargs['basis']
             active_basis = kwargs.get('active_basis', None)
+            use_precomputed = kwargs.get('precomputed', True)
 
             doe = museuq.OptimalDesign(self.params.optimality, selected_index=selected_index)
             ### Using full design matrix, and precomputed optimality file exists only for this calculation
             if active_basis == 0 or active_basis is None or len(active_basis) == 0:
-                if self._check_precomputed_optimality(basis):
-                    try:
-                        tqdm.write('   - {:<17} : Basis, {}/{}; #samples:{:d}; File: {}'.format(
-                            'Optimal design ', basis.num_basis, basis.num_basis, n, self.filename_optimality))
-                    except:
-                        print('   - {:<17} : Basis, {}/{}; #samples:{:d}; File: {}'.format(
-                            'Optimal design ', basis.num_basis, basis.num_basis, n, self.filename_optimality))
+                if self._check_precomputed_optimality(basis) and use_precomputed:
+                    # try:
+                        # tqdm.write('   - {:<17} : Basis, {}/{}; #samples:{:d}; File: {}'.format(
+                            # 'Optimal design ', basis.num_basis, basis.num_basis, n, self.filename_optimality))
+                    # except:
+                        # print('   - {:<17} : Basis, {}/{}; #samples:{:d}; File: {}'.format(
+                            # 'Optimal design ', basis.num_basis, basis.num_basis, n, self.filename_optimality))
                     row_index_adding = []
                     for i in self.precomputed_optimality_index:
                         if len(row_index_adding) >= n:
@@ -263,12 +306,12 @@ class Modeling(object):
                     if len(duplicated_idx_in_all) > 0:
                         raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
                 else:
-                    try: 
-                        tqdm.write('   - {:<17} : Basis, {}/{}; #samples:{:d}'.format(
-                            'Optimal design  ', basis.num_basis, basis.num_basis, n))
-                    except:
-                        print('   - {:<17} : Basis, {}/{}; #samples:{:d}'.format(
-                            'Optimal design  ', basis.num_basis, basis.num_basis, n))
+                    # try: 
+                        # tqdm.write('   - {:<17} : Basis, {}/{}; #samples:{:d}'.format(
+                            # 'Optimal design  ', basis.num_basis, basis.num_basis, n))
+                    # except:
+                        # print('   - {:<17} : Basis, {}/{}; #samples:{:d}'.format(
+                            # 'Optimal design  ', basis.num_basis, basis.num_basis, n))
                     X = basis.vandermonde(u_cand)
                     if self.params.doe_method.lower().startswith('cls'):
                         X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
@@ -281,7 +324,7 @@ class Modeling(object):
             ### Using partial columns
             else:
                 active_index = np.array([i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis])
-                print('   - {:<23s} : {}/{}'.format('Optimal design based on ', len(active_index), basis.num_basis))
+                # print('   - {:<17} : {}/{}'.format('Optimal design ', len(active_index), basis.num_basis))
                 X = basis.vandermonde(u_cand)
                 X = X[:, active_index]
                 if self.params.doe_method.lower().startswith('cls'):
@@ -300,6 +343,8 @@ class Modeling(object):
         """
 
         """
+        if basis is None:
+            return False
         try:
             self.precomputed_optimality_index = np.load(self.filename_optimality)
         except (AttributeError, FileNotFoundError) as e:
@@ -811,21 +856,24 @@ class Parameters(object):
         else:
             self.tag = '{:s}_{:s}'.format(self.doe_method.capitalize(), self.fit_method.capitalize())
 
-    def update_num_samples(self, P):
+    def update_num_samples(self, P, **kwargs):
+
         try:
-            self.alphas = np.array(self.alphas).flatten()
+            alphas = kwargs['alphas']
+            self.alphas = np.array(alphas).flatten()
             ### alpha = -1 for reference: 2 * P * log(P)
             if (self.alphas == -1).any():
                 self.alphas[self.alphas==-1] = 2 * np.log(P)
             self.num_samples = np.array([math.ceil(P*ialpha) for ialpha in self.alphas])
             self.alphas = self.num_samples / P
-        except AttributeError:
+        except NameError:
             try:
+                num_samples = kwargs['num_samples']
                 self.num_samples = np.array(self.num_samples).flatten()
                 if (self.num_samples == -1).any():
                     self.num_samples[self.num_samples == -1] = int(math.ceil(2 * np.log(P) * P))
                 self.alphas = self.num_samples /P
-            except AttributeError:
+            except NameError:
                 raise ValueError('Either alphas or num_samples should be defined')
 
 
