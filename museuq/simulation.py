@@ -348,8 +348,11 @@ class Modeling(object):
         try:
             self.precomputed_optimality_index = np.load(self.filename_optimality)
         except (AttributeError, FileNotFoundError) as e:
-            self.filename_optimality = 'DoE_{:s}E{:s}R0_{:d}{:s}{:d}_{:s}.npy'.format(self.params.doe_method.capitalize(),
-                    '{:.0E}'.format(self.params.n_cand)[-1], self.ndim, self.model.basis.nickname, basis.deg, self.params.optimality)
+            if self.params.optimality is None:
+                return False
+            else:
+                self.filename_optimality = 'DoE_{:s}E{:s}R0_{:d}{:s}{:d}_{:s}.npy'.format(self.params.doe_method.capitalize(),
+                        '{:.0E}'.format(self.params.n_cand)[-1], self.ndim, self.model.basis.nickname, basis.deg, self.params.optimality)
             try:
                 self.precomputed_optimality_index = np.squeeze(np.load(os.path.join(self.params.data_dir_precomputed_optimality, self.filename_optimality)))
                 if self.precomputed_optimality_index.ndim == 2:
