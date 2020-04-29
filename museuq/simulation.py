@@ -181,6 +181,7 @@ class Modeling(object):
         """
         size    = tuple(np.atleast_1d(size))
         u_cand  = np.array(u_cand, ndmin=2)
+
         if len(size) == 1:
             repeats, n = 1, size[0]
         elif len(size) == 2:
@@ -188,6 +189,7 @@ class Modeling(object):
         else:
             raise ValueError
 
+        ## u_train format checking
         if u_train is None:
             u_train = [None,] * repeats
         else:
@@ -200,12 +202,13 @@ class Modeling(object):
                 assert u_train.shape[1] == self.ndim
             else:
                 ValueError('Wrong data type for u_train: {}'.format(u_train.shape))
+
         u_train_new = []
         u_train_all = []
         u_train     = [None,] * repeats if u_train is None else u_train
         assert len(u_train) == repeats, 'u_trian shape: {}, repeats={}'.format(u_train.shape, repeats)
-        len_basis = 'None' if basis is None else basis.num_basis
-        len_active_basis = 'All' if active_basis is None else len(active_basis)
+        len_basis = self.solver.basis.num_basis if basis is None else basis.num_basis
+        len_active_basis = self.solver.basis.num_basis if active_basis is None else len(active_basis)
 
         tqdm.write('   - {:<10s} : Optimality, {}; Basis, {}/{}; size:({:d}, {:d})'.format(
             'Train data ', self.params.optimality, len_active_basis, len_basis, repeats,n))
@@ -214,7 +217,8 @@ class Modeling(object):
         if precomputed:
             tqdm.write('   - {:<10s} : {:s}'.format('File ', self.filename_optimality))
 
-        for r in tqdm(range(repeats), ascii=True, ncols=80, desc='  - Repeat'):
+        # for r in tqdm(range(repeats), ascii=True, ncols=80, desc='  - Repeat'):
+        for r in range(repeats):
             u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
                     u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=False)
             u_train_new.append(u_new)
@@ -260,6 +264,8 @@ class Modeling(object):
         selected_index = list(self._common_vectors(u_selected, u_cand))
 
         if self.params.optimality is None:
+            ### for non optimality design, design matrix X is irrelative, so all columns are used
+            self.active_index = np.arange(self.solver.basis.num_basis).tolist() ## all columns
             row_index_adding = []
             while len(row_index_adding) < n:
                 ### random index set
@@ -285,6 +291,7 @@ class Modeling(object):
             doe = museuq.OptimalDesign(self.params.optimality, selected_index=selected_index)
             ### Using full design matrix, and precomputed optimality file exists only for this calculation
             if active_basis == 0 or active_basis is None or len(active_basis) == 0:
+                self.active_index = np.arange(basis.num_basis).tolist()
                 if self._check_precomputed_optimality(basis) and use_precomputed:
                     # try:
                         # tqdm.write('   - {:<17} : Basis, {}/{}; #samples:{:d}; File: {}'.format(
@@ -323,10 +330,10 @@ class Modeling(object):
                         raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
             ### Using partial columns
             else:
-                active_index = np.array([i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis])
+                self.active_index = [i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis]
                 # print('   - {:<17} : {}/{}'.format('Optimal design ', len(active_index), basis.num_basis))
                 X = basis.vandermonde(u_cand)
-                X = X[:, active_index]
+                X = X[:,self.active_index]
                 if self.params.doe_method.lower().startswith('cls'):
                     X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
                 row_index_adding = doe.get_samples(X, n, orth_basis=True)
@@ -369,6 +376,7 @@ class Modeling(object):
         Calculate weight for CLS based on Christoffel function evaluated in U-space
         """
         X = basis.vandermonde(u)
+        X = X[:, self.active_index]
         ### reproducing kernel
         Kp = np.sum(X* X, axis=1)
         w  = basis.num_basis / Kp
@@ -529,9 +537,9 @@ class Parameters(object):
         normalize: 
     """
 
-    def __init__(self, solver, **kwargs):
+    def __init__(self,**kwargs):
         sys.stdout  = Logger()
-        self.solver = solver
+        # self.solver = solver
         self.optimality = None
         ###------------- Adaptive setting -----------------------------
         self.is_adaptive= False
@@ -860,19 +868,18 @@ class Parameters(object):
             self.tag = '{:s}_{:s}'.format(self.doe_method.capitalize(), self.fit_method.capitalize())
 
     def update_num_samples(self, P, **kwargs):
-
         try:
             alphas = kwargs['alphas']
-            self.alphas = np.array(alphas).flatten()
+            self.alphas = np.array(alphas, dtype=np.float64).flatten()
             ### alpha = -1 for reference: 2 * P * log(P)
             if (self.alphas == -1).any():
-                self.alphas[self.alphas==-1] = 2 * np.log(P)
+                self.alphas[self.alphas==-1] = 2.0 * np.log(P)
             self.num_samples = np.array([math.ceil(P*ialpha) for ialpha in self.alphas])
             self.alphas = self.num_samples / P
         except NameError:
             try:
                 num_samples = kwargs['num_samples']
-                self.num_samples = np.array(self.num_samples).flatten()
+                self.num_samples = np.array(self.num_samples, dtype=np.int32).flatten()
                 if (self.num_samples == -1).any():
                     self.num_samples[self.num_samples == -1] = int(math.ceil(2 * np.log(P) * P))
                 self.alphas = self.num_samples /P
