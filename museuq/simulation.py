@@ -220,7 +220,7 @@ class Modeling(object):
         # for r in tqdm(range(repeats), ascii=True, ncols=80, desc='  - Repeat'):
         for r in range(repeats):
             u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
-                    u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=False)
+                    u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=precomputed)
             u_train_new.append(u_new)
             u_train_all.append(u_all)
         u_train_new = u_train_new[0] if repeats == 1 else np.array(u_train_new)
