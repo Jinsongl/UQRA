@@ -55,27 +55,27 @@ def main():
     ndim = 2
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
-    simparams.pce_degs   = np.array([25])
+    simparams.pce_degs   = np.array(range(21,31))
     simparams.n_cand     = int(1e5)
-    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = None #'D', 'S', None
-    simparams.hem_type   = 'physicists'
+    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.optimality = 'S'#'D', 'S', None
+    # simparams.hem_type   = 'physicists'
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'OLS'
     simparams.n_splits   = 50
     repeats              = 50 if simparams.optimality is None else 1
-    alphas = np.linspace(1,2,11)
-    alphas = np.append(alphas,np.linspace(2,4,11))
-    alphas = np.append(alphas,np.linspace(4,10,13))
-    # alphas               = [-1]
+    # alphas = np.linspace(1,2,11)
+    # alphas = np.append(alphas,np.linspace(2,4,11))
+    # alphas = np.append(alphas,np.linspace(4,10,13))
+    alphas               = [1.2, 2.0]
     # simparams.num_samples=np.arange(21+1, 130, 5)
     ### ============ Initial Values ============
     print(' > Starting simulation...')
     data_p = []
     for p in simparams.pce_degs:
         ## ------------------------ Define solver ----------------------- ###
-        # orth_poly   = museuq.Legendre(d=ndim, deg=p)
-        orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type=simparams.hem_type)
+        orth_poly   = museuq.Legendre(d=ndim, deg=p)
+        # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type=simparams.hem_type)
         solver      = museuq.SparsePoly(orth_poly, sparsity='full', seed=100)
         simparams.solver = solver
         simparams.update()
