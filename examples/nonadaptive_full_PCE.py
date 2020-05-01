@@ -50,14 +50,15 @@ def main():
     simparams.pce_degs   = np.array(range(2,16))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
-    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'D'#'D', 'S', None
-    # simparams.hem_type   = 'physicists'
-    simparams.hem_type   = 'probabilists'
+    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.optimality = 'S'#'D', 'S', None
+    simparams.hem_type   = 'physicists'
+    # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats              = 1 if simparams.optimality == 'D' else 2
+    repeats               = 50 if simparams.optimality is None else 1
     alphas               = np.arange(3,11)/10 
+    # alphas               = [-1]
     # simparams.num_samples=np.arange(21+1, 130, 5)
     simparams.update()
     simparams.info()
@@ -108,10 +109,9 @@ def main():
         score   = []
         cv_err  = []
         test_err= []
+        coef_err= []
         cond_num= []
         u_train = [None,] * repeats
-        # coef_err= []
-
         for i, n in enumerate(simparams.num_samples):
             ### ============ Initialize pce_model for each n ============
             pce_model= museuq.PCE(orth_poly)
@@ -130,34 +130,14 @@ def main():
             cv_err_  = []
             test_err_= []
             cond_num_= []
+            coef_err_= []
             u_train  = [u_train,] if repeats == 1 else u_train
-            # coef_err_= []
             for iu_train in tqdm(u_train, ascii=True, ncols=80,
                     desc='   [alpha={:.2f}, {:d}/{:d}, n={:d}]'.format(simparams.alphas[i], i+1, len(simparams.alphas),n)):
 
                 ix_train = solver.map_domain(iu_train, pce_model.basis.dist_u)
                 # assert np.array_equal(iu_train, ix_train)
                 iy_train = solver.run(ix_train)
-                if simparams.optimality is not None:
-                    ### ============ Build Full PCE model ============
-                    U_train = pce_model.basis.vandermonde(iu_train) 
-                    if simparams.doe_method.lower().startswith('cls'):
-                        w_train = modeling.cal_cls_weight(iu_train, pce_model.basis)
-                        U_train = modeling.rescale_data(U_train, w_train) 
-                    else:
-                        w_train = None
-                        U_train = U_train
-
-                    pce_model.fit(simparams.fit_method, iu_train, iy_train, w_train, n_splits=simparams.n_splits)
-                    pce_model.estimate_sparsity_var(0.9)
-
-                    ### update candidate data set for this p degree, cls unbuounded
-                    u_train_new, _ = modeling.get_train_data(n-n1, u_cand_p, u_train=iu_train, basis=pce_model.basis, active_basis=pce_model.var_basis)
-                    x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
-                    y_train_new = solver.run(x_train_new)
-                    iu_train = np.hstack((iu_train, u_train_new)) 
-                    ix_train = np.hstack((ix_train, x_train_new)) 
-                    iy_train = np.hstack((iy_train, y_train_new)) 
 
                 ### ============ Build Surrogate Model ============
                 U_train = pce_model.basis.vandermonde(iu_train) 
@@ -175,8 +155,8 @@ def main():
                 y_test_hat  = pce_model.predict(u_test)
 
                 ## condition number, kappa = max(svd)/min(svd)
-                _, s, _ = np.linalg.svd(U_train)
-                kappa = max(abs(s)) / min(abs(s)) 
+                _, sig_value, _ = np.linalg.svd(U_train)
+                kappa = max(abs(sig_value)) / min(abs(sig_value)) 
 
 
                 # QoI_.append(np.linalg.norm(solver.coef- pce_model.coef, np.inf) < 1e-2)
