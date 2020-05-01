@@ -234,33 +234,31 @@ class PolynomialChaosExpansion(SurrogateBase):
         n_splits= kwargs.get('n_splits', X.shape[0])
         n_splits= min(n_splits, X.shape[0])
         max_iter= kwargs.get('max_iter', 500)
+        epsilon = kwargs.get('epsilon', 1e-6)
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
         model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count(),fit_intercept=False).fit(X,y)
         self.model    = model 
         self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
         self.coef     = model.coef_
-        self.active_index = [i for i, icoef in enumerate(model.coef_) if abs(icoef) > 1e-4]
+        self.active_index = [i for i, icoef in enumerate(model.coef_) if abs(icoef) > epsilon]
         self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
+        self.sparsity = len(self.active_index)
         self.score    = model.score(X, y)
 
-    def estimate_sparsity_var(self, sigma):
-        if (self.coef==0).all():
-            self.sparsity = self.num_basis
-            self.var_index= np.arange(self.num_basis).tolist()
-            self.var_basis= self.basis.basis_degree
+    def mean(self):
+        return self.coef[0]
 
-        elif self.coef[0] != 0 and (self.coef[1:]==0).all():
-            self.sparsity = 1
-            self.var_index= [0] 
-            self.var_basis= [self.basis.basis_degree[0]]
+    def var(self, pct=1):
+        cum_var = -np.cumsum(np.sort(-self.coef[1:] **2))
+        if cum_var[-1] == 0:
+            self.var_basis_index = [0]
+            self.var_pct_basis  = [self.basis.basis_degree[0]]
         else:
-            cum_var       = -np.cumsum(np.sort(-self.coef[1:] **2))
             y_hat_var_pct = cum_var / cum_var[-1] 
-            sparsity      = np.argwhere(y_hat_var_pct > sigma)[0][-1] + 1 ## return index +1 since cum_var starts with 1, not 0
-            self.sparsity = sparsity + 1 ## +1 to always count phi_0
-            self.var_index= [0,] + list(np.argsort(-self.coef[1:])[:sparsity]+1)
-            self.var_basis= [self.basis.basis_degree[i] for i in self.var_index]
+            n_pct_var_term= np.argwhere(y_hat_var_pct > pct)[0][-1] + 1 ## return index +1 since cum_var starts with 1, not 0
+            self.var_basis_index= [0,] + list(np.argsort(-self.coef[1:])[:n_pct_var_term+1]+1) ## +1 to always count phi_0
+            self.var_pct_basis  = [self.basis.basis_degree[i] for i in self.var_basis_index]
 
     def predict(self,x, **kwargs):
         """
