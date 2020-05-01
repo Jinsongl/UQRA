@@ -183,14 +183,15 @@ class Modeling(object):
         u_cand  = np.array(u_cand, ndmin=2)
 
         if len(size) == 1:
-            repeats, n = 1, size[0]
+            repeats, n = 1, int(size[0])
         elif len(size) == 2:
-            repeats, n = size[0], size[1]
+            repeats, n = int(size[0]), int(size[1])
         else:
             raise ValueError
 
         ## u_train format checking
         if u_train is None:
+            print(repeats)
             u_train = [None,] * repeats
         else:
             u_train = np.array(u_train, ndmin=2)
