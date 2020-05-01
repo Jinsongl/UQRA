@@ -56,7 +56,7 @@ def main():
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats               = 50 if simparams.optimality is None else 1
+    repeats              = 50 if simparams.optimality is None else 1
     alphas               = np.arange(3,11)/10 
     # alphas               = [-1]
     # simparams.num_samples=np.arange(21+1, 130, 5)
@@ -65,7 +65,7 @@ def main():
 
     ### ============ Initial Values ============
     print(' > Starting simulation...')
-    data_p = []
+    data_poly_deg = []
     for p in simparams.pce_degs:
         print('\n================================================================================')
         simparams.info()
@@ -105,12 +105,12 @@ def main():
         simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
         print(' > Oversampling ratio: {}'.format(np.around(simparams.alphas,2)))
 
-        QoI     = []
-        score   = []
-        cv_err  = []
-        test_err= []
-        coef_err= []
-        cond_num= []
+        QoI_nsample     = []
+        score_nsample   = []
+        cv_err_nsample  = []
+        test_err_nsample= []
+        coef_err_nsample= []
+        cond_num_nsample= []
         u_train = [None,] * repeats
         for i, n in enumerate(simparams.num_samples):
             ### ============ Initialize pce_model for each n ============
@@ -119,18 +119,14 @@ def main():
             u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
             # n = n - len(modeling.sample_selected)
             u_train = u_train[0] if repeats == 1 else u_train
-            if simparams.optimality is not None:
-                n1 = max(2,int(round(n/2)))
-            else:
-                n1 = n
-            _, u_train = modeling.get_train_data((repeats,n1), u_cand_p, u_train=None, basis=pce_model.basis)
+            _, u_train = modeling.get_train_data((repeats,n), u_cand_p, u_train=None, basis=pce_model.basis)
             # print(modeling.sample_selected)
-            QoI_     = []
-            score_   = []
-            cv_err_  = []
-            test_err_= []
-            cond_num_= []
-            coef_err_= []
+            QoI_repeat     = []
+            score_repeat   = []
+            cv_err_repeat  = []
+            test_err_repeat= []
+            cond_num_repeat= []
+            coef_err_repeat= []
             u_train  = [u_train,] if repeats == 1 else u_train
             for iu_train in tqdm(u_train, ascii=True, ncols=80,
                     desc='   [alpha={:.2f}, {:d}/{:d}, n={:d}]'.format(simparams.alphas[i], i+1, len(simparams.alphas),n)):
@@ -159,43 +155,43 @@ def main():
                 kappa = max(abs(sig_value)) / min(abs(sig_value)) 
 
 
-                # QoI_.append(np.linalg.norm(solver.coef- pce_model.coef, np.inf) < 1e-2)
-                QoI_.append(museuq.metrics.mquantiles(y_test_hat, 1-np.array(pf)))
-                test_err_.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
-                cond_num_.append(kappa)
-                score_.append(pce_model.score)
-                cv_err_.append(pce_model.cv_error)
+                # QoI_repeat.append(np.linalg.norm(solver.coef- pce_model.coef, np.inf) < 1e-2)
+                QoI_repeat.append(museuq.metrics.mquantiles(y_test_hat, 1-np.array(pf)))
+                test_err_repeat.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
+                cond_num_repeat.append(kappa)
+                score_repeat.append(pce_model.score)
+                cv_err_repeat.append(pce_model.cv_error)
 
             ### ============ calculating & updating metrics ============
             with np.printoptions(precision=4):
-                print('     - {:<15s} : {}'.format( 'QoI'       , np.mean(QoI_, axis=0)))
-                print('     - {:<15s} : {:.4f}'.format( 'Test MSE ' , np.mean(test_err_)))
-                print('     - {:<15s} : {:.4f}'.format( 'CV MSE'    , np.mean(cv_err_)))
-                print('     - {:<15s} : {:.4f}'.format( 'Score '    , np.mean(score_)))
-                print('     - {:<15s} : {:.4f}'.format( 'kappa '    , np.mean(cond_num_)))
+                print('     - {:<15s} : {}'.format( 'QoI'       , np.mean(QoI_repeat, axis=0)))
+                print('     - {:<15s} : {:.4f}'.format( 'Test MSE ' , np.mean(test_err_repeat)))
+                print('     - {:<15s} : {:.4f}'.format( 'CV MSE'    , np.mean(cv_err_repeat)))
+                print('     - {:<15s} : {:.4f}'.format( 'Score '    , np.mean(score_repeat)))
+                print('     - {:<15s} : {:.4f}'.format( 'kappa '    , np.mean(cond_num_repeat)))
                 print('     ----------------------------------------')
 
-            QoI.append(np.array(QoI_))
-            test_err.append(test_err_)
-            cv_err.append(cv_err_)
-            score.append(score_)
-            cond_num.append(cond_num_)
-        QoI      = np.moveaxis(np.array(QoI), -1, 0)
-        QoI      = [iqoi for iqoi in QoI]
-        score    = np.array(score)
-        test_err = np.array(test_err)
-        cond_num = np.array(cond_num)
-        poly_deg = score/score*p
-        nsamples = np.repeat(simparams.num_samples.reshape(-1,1), score.shape[1], axis=1)
+            QoI_nsample.append(np.array(QoI_repeat))
+            test_err_nsample.append(test_err_repeat)
+            cv_err_nsample.append(cv_err_repeat)
+            score_nsample.append(score_repeat)
+            cond_num_nsample.append(cond_num_repeat)
+        QoI_nsample      = np.moveaxis(np.array(QoI_nsample), -1, 0)
+        QoI_nsample      = [iqoi for iqoi in QoI_nsample]
+        score_nsample    = np.array(score_nsample)
+        test_err_nsample = np.array(test_err_nsample)
+        cond_num_nsample = np.array(cond_num_nsample)
+        poly_deg = score_nsample/score_nsample*p
+        nsamples = np.repeat(simparams.num_samples.reshape(-1,1), score_nsample.shape[1], axis=1)
 
-        data_alpha = np.array([poly_deg, nsamples, *QoI, cond_num, score, test_err])
+        data_alpha = np.array([poly_deg, nsamples, *QoI_nsample, cond_num_nsample, score_nsample, test_err_nsample])
         data_alpha = np.moveaxis(data_alpha, 1, 0)
-        data_p.append(data_alpha)
+        data_poly_deg.append(data_alpha)
     filename = '{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
     try:
-        np.save(os.path.join(simparams.data_dir_result, filename), np.array(data_p))
+        np.save(os.path.join(simparams.data_dir_result, filename), np.array(data_poly_deg))
     except:
-        np.save(os.path.join(os.getcwd(), filename), np.array(data_p))
+        np.save(os.path.join(os.getcwd(), filename), np.array(data_poly_deg))
 
 
 if __name__ == '__main__':
