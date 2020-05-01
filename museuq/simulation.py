@@ -31,6 +31,7 @@ class Modeling(object):
         self.dist_u_name = model.basis.dist_name.lower()
         assert solver.ndim == model.ndim
         self.ndim = solver.ndim
+        self.active_index = np.arange(self.model.basis.num_basis).tolist() ## all columns
 
     def get_init_samples(self, n, doe_method='lhs', random_state=None, **kwargs):
         """
@@ -208,8 +209,8 @@ class Modeling(object):
         u_train_all = []
         u_train     = [None,] * repeats if u_train is None else u_train
         assert len(u_train) == repeats, 'u_trian shape: {}, repeats={}'.format(u_train.shape, repeats)
-        len_basis = self.solver.basis.num_basis if basis is None else basis.num_basis
-        len_active_basis = self.solver.basis.num_basis if active_basis is None else len(active_basis)
+        len_basis = self.model.basis.num_basis if basis is None else basis.num_basis
+        len_active_basis = self.model.basis.num_basis if active_basis is None else len(active_basis)
 
         tqdm.write('   - {:<10s} : Optimality, {}; Basis, {}/{}; size:({:d}, {:d})'.format(
             'Train data ', self.params.optimality, len_active_basis, len_basis, repeats,n))
@@ -266,7 +267,7 @@ class Modeling(object):
 
         if self.params.optimality is None:
             ### for non optimality design, design matrix X is irrelative, so all columns are used
-            self.active_index = np.arange(self.solver.basis.num_basis).tolist() ## all columns
+            self.active_index = np.arange(self.model.basis.num_basis).tolist() ## all columns
             row_index_adding = []
             while len(row_index_adding) < n:
                 ### random index set
