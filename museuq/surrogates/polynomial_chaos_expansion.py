@@ -237,7 +237,12 @@ class PolynomialChaosExpansion(SurrogateBase):
         epsilon = kwargs.get('epsilon', 1e-6)
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-        model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count(),fit_intercept=False).fit(X,y)
+        try:    
+            model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count(),fit_intercept=False).fit(X,y)
+        except ValueError as e:
+            #### looks like a bug in KFold
+            print(e)
+            pass
         self.model    = model 
         self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
         self.coef     = model.coef_
