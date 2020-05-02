@@ -192,7 +192,6 @@ class Modeling(object):
 
         ## u_train format checking
         if u_train is None:
-            print(repeats)
             u_train = [None,] * repeats
         else:
             u_train = np.array(u_train, ndmin=2)
