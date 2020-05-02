@@ -43,16 +43,16 @@ def main():
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
     simparams.solver     = solver
-    simparams.pce_degs   = np.array([10])
+    simparams.pce_degs   = np.array(range(2,16))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'S'#'D', 'S', None
+    simparams.optimality = 'D'#'D', 'S', None
     # simparams.hem_type   = 'physicists'
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats              = 5 #if simparams.optimality is None else 1
+    repeats              = 1 if simparams.optimality == 'D' else 5
     alphas               = [0.5] 
     # alphas               = [-1]
     # simparams.num_samples=np.arange(21+1, 130, 5)
@@ -108,7 +108,6 @@ def main():
         u_train = [u_cand_p[:, idx] for idx in random_idx] 
         x_train = [solver.map_domain(iu_train, pce_model.basis.dist_u) for iu_train in u_train]
         y_train = [solver.run(ix_train) for ix_train in x_train]
-        nsamples= [[iu_train.shape[1],] for iu_train in u_train]
         # for i, n in enumerate(simparams.num_samples):
         data_repeat  = []
         for i in tqdm(range(repeats), ascii=True, ncols=80):
@@ -116,28 +115,28 @@ def main():
             iu_train = u_train[i]
             ix_train = x_train[i]
             iy_train = y_train[i]
-            QoI_nsample      = [[0,]*len(pf)]
-            score_nsample    = [0,]
-            cv_err_nsample   = [0,]
-            test_err_nsample = [0,]
-            # coef_err_nsample= []
-            cond_num_nsample = [0,]
-            poly_deg_nsample = [0,]
-            nsamples = [simparams.num_samples[-1],]
-            while nsamples[-1] < pce_model.num_basis:
+            # QoI_nsample      = [[0,]*len(pf)]
+            # score_nsample    = [0,]
+            # cv_err_nsample   = [0,]
+            # test_err_nsample = [0,]
+            # # coef_err_nsample= []
+            # cond_num_nsample = [0,]
+            # poly_deg_nsample = [0,]
+            nsamples = simparams.num_samples[-1]
+            while nsamples < pce_model.num_basis:
                 ### ============ Build Surrogate Model ============
                 if simparams.doe_method.lower().startswith('cls'):
                     w_train = modeling.cal_cls_weight(iu_train, pce_model.basis)
                 else:
                     w_train = None
-                tqdm.write('     [Sparsity: alpha={:.2f}, n={:d}]'.format(nsamples[-1]/pce_model.num_basis, nsamples[-1]))
+                tqdm.write('     [Sparsity: alpha={:.2f}, n={:d}]'.format(nsamples/pce_model.num_basis, nsamples))
                 pce_model.fit('LASSOLARS', iu_train, iy_train, w_train, n_splits=simparams.n_splits)
                 ### update candidate data set for this p degree, cls unbuounded
                 # n = min(pce_model.sparsity, math.ceil(1.1*pce_model.num_basis) - iu_train.shape[1])
                 # if n == 0:
                     # break
                 pce_model.var(0.9)
-                n = min(len(pce_model.var_pct_basis), pce_model.num_basis - nsamples[-1])
+                n = min(len(pce_model.var_pct_basis), pce_model.num_basis - nsamples)
                 u_train_new, _ = modeling.get_train_data(n, u_cand_p, u_train=iu_train, basis=pce_model.basis, active_basis=pce_model.active_basis)
                 # u_train_new, _ = modeling.get_train_data(n, u_cand_p, u_train=iu_train, basis=pce_model.basis)
                 x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
@@ -148,7 +147,6 @@ def main():
                 u_train[i] = iu_train
                 x_train[i] = ix_train
                 y_train[i] = iy_train
-                nsamples.append(iu_train.shape[-1])
 
                 U_train = pce_model.basis.vandermonde(iu_train)[:, modeling.active_index] 
                 if simparams.doe_method.lower().startswith('cls'):
@@ -157,7 +155,7 @@ def main():
                 else:
                     w_train = None
                     U_train = U_train
-                tqdm.write('     [Fit model: alpha={:.2f}, n={:d}]'.format(nsamples[-1]/pce_model.num_basis, nsamples[-1]))
+                tqdm.write('     [Fit model: alpha={:.2f}, n={:d}]'.format(nsamples/pce_model.num_basis, nsamples))
                 pce_model.fit('ols', iu_train, iy_train, w_train, n_splits=simparams.n_splits, active_basis=pce_model.active_basis)
                 # pce_model.fit('ols', iu_train, iy_train, w_train, n_splits=simparams.n_splits)
                 y_train_hat = pce_model.predict(iu_train)
@@ -166,35 +164,44 @@ def main():
                 _, sig_value, _ = np.linalg.svd(U_train)
                 kappa = max(abs(sig_value)) / min(abs(sig_value)) 
 
-                QoI_nsample.append(museuq.metrics.mquantiles(y_test_hat, 1-np.array(pf)))
-                test_err_nsample.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
-                cond_num_nsample.append(kappa)
-                score_nsample.append(pce_model.score)
-                cv_err_nsample.append(pce_model.cv_error)
-                poly_deg_nsample.append(p)
+                
+                # QoI_nsample.append(museuq.metrics.mquantiles(y_test_hat, 1-np.array(pf)))
+                # test_err_nsample.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
+                # cond_num_nsample.append(kappa)
+                # score_nsample.append(pce_model.score)
+                # cv_err_nsample.append(pce_model.cv_error)
+                # poly_deg_nsample.append(p)
+
+                nsamples = iu_train.shape[-1]
+                test_mse = museuq.metrics.mean_squared_error(y_test, y_test_hat)
+                QoI   = museuq.metrics.mquantiles(y_test_hat, 1-np.array(pf))
+                data_ = np.array([p, nsamples, kappa, pce_model.score, pce_model.cv_error, test_mse])
+                data_ = np.append(data_, QoI)
+                data_poly_deg.append(data_)
 
                 ### ============ calculating & updating metrics ============
                 with np.printoptions(precision=4):
-                    tqdm.write('     - {:<15s} : {}'.format( 'QoI'       , QoI_nsample[-1]))
-                    tqdm.write('     - {:<15s} : {:.4f}'.format( 'Test MSE ' , test_err_nsample[-1]))
-                    tqdm.write('     - {:<15s} : {:.4f}'.format( 'CV MSE'    , cv_err_nsample[-1]))
-                    tqdm.write('     - {:<15s} : {:.4f}'.format( 'Score '    , score_nsample[-1]))
-                    tqdm.write('     - {:<15s} : {:.4f}'.format( 'kappa '    , cond_num_nsample[-1]))
+                    tqdm.write('     - {:<15s} : {}'.format( 'QoI'       , QoI))
+                    tqdm.write('     - {:<15s} : {:.4f}'.format( 'Test MSE ' , test_mse))
+                    tqdm.write('     - {:<15s} : {:.4f}'.format( 'CV MSE'    , pce_model.cv_error))
+                    tqdm.write('     - {:<15s} : {:.4f}'.format( 'Score '    , pce_model.score))
+                    tqdm.write('     - {:<15s} : {:.4f}'.format( 'kappa '    , kappa))
                     tqdm.write('     ----------------------------------------')
 
-            QoI_nsample     = np.array(QoI_nsample)
-            nsamples        = np.array(nsamples).reshape(-1,1)
-            test_err_nsample= np.array(test_err_nsample).reshape(-1,1)
-            cond_num_nsample= np.array(cond_num_nsample).reshape(-1,1)
-            score_nsample   = np.array(score_nsample).reshape(-1,1)
-            cv_err_nsample  = np.array(cv_err_nsample).reshape(-1,1)
-            poly_deg_nsample= np.array(poly_deg_nsample).reshape(-1,1)
-            data_nsample    = np.hstack((poly_deg_nsample, nsamples, QoI_nsample, 
-                cond_num_nsample, score_nsample, test_err_nsample, cv_err_nsample))
+            # QoI_nsample     = np.array(QoI_nsample)
+            # nsamples        = np.array(nsamples).reshape(-1,1)
+            # test_err_nsample= np.array(test_err_nsample).reshape(-1,1)
+            # cond_num_nsample= np.array(cond_num_nsample).reshape(-1,1)
+            # score_nsample   = np.array(score_nsample).reshape(-1,1)
+            # cv_err_nsample  = np.array(cv_err_nsample).reshape(-1,1)
+            # poly_deg_nsample= np.array(poly_deg_nsample).reshape(-1,1)
+            # data_nsample    = np.hstack((poly_deg_nsample, nsamples, QoI_nsample, 
+                # cond_num_nsample, score_nsample, test_err_nsample, cv_err_nsample))
 
-            data_repeat.append(data_nsample)
+            # data_repeat.append(data_nsample)
 
-        data_poly_deg.append(data_repeat)
+        # data_poly_deg.append(data_repeat)
+
     filename = '{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), np.array(data_poly_deg))
