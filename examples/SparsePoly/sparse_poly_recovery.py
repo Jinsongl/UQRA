@@ -55,7 +55,7 @@ def main():
     ndim = 2
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
-    simparams.pce_degs   = np.array([5])
+    simparams.pce_degs   = np.array([10])
     simparams.n_cand     = int(1e5)
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
     simparams.optimality = None #'D', 'S', None
@@ -63,9 +63,9 @@ def main():
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats              = 20 if simparams.optimality is None else 1
-    ratio_ns             = np.linspace(1,5,9) 
-    ratio_sp             = np.linspace(0,1,11)
+    repeats              = 10 if simparams.optimality is None else 1
+    ratio_ns             = np.linspace(1,5,5) 
+    ratio_sp             = np.linspace(0,1,5)
     # alphas             = np.linspace(0,1,51)
     # alphas = np.append(alphas,np.linspace(2,4,11))
     # alphas = np.append(alphas,np.linspace(4,10,13))
@@ -89,13 +89,13 @@ def main():
         sparsity = np.unique(np.rint(ratio_sp * orth_poly.num_basis).astype(np.int32))
         sparsity = sparsity[sparsity != 0]
         sparsity = sparsity[sparsity != 1]
-        print('# sparsity: {:d}'.format(len(sparsity)))
         data_s = []
-        for s in sparsity:
+        for i, s in enumerate(sparsity):
             nsamples = np.unique(np.rint(ratio_ns * s).astype(np.int32))
-            print('# n: {:d}'.format(len(nsamples)))
             data_n = []
-            for i, n in enumerate(nsamples):
+            for j, nsample in enumerate(nsamples):
+                if nsample > orth_poly.num_basis:
+                    continue
                 solver = museuq.SparsePoly(orth_poly, sparsity=s, seed=100)
                 simparams.solver = solver
                 simparams.update()
@@ -123,12 +123,13 @@ def main():
                     print('    > {:<25s}'.format('Validate data set '))
                     print('    - {:<25s} : {} {} '.format('u cand (mean, std)', u_cand_mean_std, u_cand_ref))
 
+                print(' > Case: s: {:d}/{:d}, n: {:d}/{:d}'.format(i, len(sparsity), j, len(nsamples)))
                 ### ============ Initialize pce_model for each n ============
                 pce_model= museuq.PCE(orth_poly)
                 ### ============ Get training points ============
                 u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
-                # n = n - len(modeling.sample_selected)
-                _, u_train = modeling.get_train_data((repeats,n), u_cand_p, u_train=None, basis=pce_model.basis)
+                # nsample = nsample - len(modeling.sample_selected)
+                _, u_train = modeling.get_train_data((repeats,nsample), u_cand_p, u_train=None, basis=pce_model.basis)
                 # print(modeling.sample_selected)
                 score_repeat   = []
                 cv_err_repeat  = []
@@ -139,7 +140,7 @@ def main():
                 nsamples_repeat= []
                 u_train  = [u_train,] if repeats == 1 else u_train
                 for iu_train in tqdm(u_train, ascii=True, ncols=80,
-                        desc='   [s={:d}, n={:d}, P={:d}]'.format(s, n, pce_model.num_basis)):
+                        desc='   [s={:d}, n={:d}, P={:d}]'.format(s, nsample, pce_model.num_basis)):
 
                     ix_train = solver.map_domain(iu_train, pce_model.basis.dist_u)
                     iy_train = solver.run(ix_train)
@@ -167,7 +168,7 @@ def main():
                     cv_err_repeat.append(pce_model.cv_error)
                     poly_deg_repeat.append(p)
                     sparsity_repeat.append(s)
-                    nsamples_repeat.append(n)
+                    nsamples_repeat.append(nsample)
 
                 data_n.append(np.array([poly_deg_repeat, sparsity_repeat, nsamples_repeat, coef_err_repeat, 
                     cond_num_repeat, score_repeat, cv_err_repeat]))
@@ -178,8 +179,8 @@ def main():
                     print('     - {:<15s} : {:.4f}'.format( 'Score '    , np.mean(score_repeat)))
                     print('     - {:<15s} : {:.4e}'.format( 'kappa '    , np.mean(cond_num_repeat)))
                     print('     ----------------------------------------')
-            data_s.append(data_n)
-        data_p.append(data_s)
+            data_s.append(np.array(data_n))
+        data_p.append(np.array(data_s))
 
     filename = '{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
     try:
