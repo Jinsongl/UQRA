@@ -191,7 +191,7 @@ def main():
 
             data_repeat.append(data_nsample)
 
-        data_poly_deg.append(data_nsample)
+        data_poly_deg.append(data_repeat)
     filename = '{:s}_{:s}_{:s}_pct{:d}'.format(
             solver.nickname, pce_model.tag, simparams.tag, int(alphas[0]*10))
     try:
