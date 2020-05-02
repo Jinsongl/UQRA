@@ -24,7 +24,7 @@ def main():
     np.set_printoptions(precision=8)
     np.set_printoptions(threshold=1000)
     np.set_printoptions(suppress=True)
-    pf          = [1e-4, 1e-5]
+    pf          = [1e-4, 1e-5, 1e-6]
     np.random.seed(100)
     ## ------------------------ Define solver ----------------------- ###
     solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
@@ -53,7 +53,7 @@ def main():
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     repeats              = 50 if simparams.optimality is None else 1
-    alphas               = [0.7] 
+    alphas               = [0.5] 
     # alphas               = [-1]
     # simparams.num_samples=np.arange(21+1, 130, 5)
     simparams.update()
@@ -132,6 +132,7 @@ def main():
                     w_train = modeling.cal_cls_weight(iu_train, pce_model.basis)
                 else:
                     w_train = None
+                tqdm.write('     [Sparsity: alpha={:.2f}, n={:d}]'.format(nsamples[i][-1]/pce_model.num_basis, nsamples[i][-1]))
                 pce_model.fit('LASSOLARS', iu_train, iy_train, w_train, n_splits=simparams.n_splits)
                 ### update candidate data set for this p degree, cls unbuounded
                 # n = min(pce_model.sparsity, math.ceil(1.1*pce_model.num_basis) - iu_train.shape[1])
@@ -158,7 +159,7 @@ def main():
                 else:
                     w_train = None
                     U_train = U_train
-                tqdm.write('   [alpha={:.2f}, n={:d}]'.format(nsamples[i][-1]/pce_model.num_basis, nsamples[i][-1]))
+                tqdm.write('     [Fit model: alpha={:.2f}, n={:d}]'.format(nsamples[i][-1]/pce_model.num_basis, nsamples[i][-1]))
                 pce_model.fit('ols', iu_train, iy_train, w_train, n_splits=simparams.n_splits, active_basis=pce_model.active_basis)
                 # pce_model.fit('ols', iu_train, iy_train, w_train, n_splits=simparams.n_splits)
                 y_train_hat = pce_model.predict(iu_train)
@@ -183,7 +184,7 @@ def main():
                     tqdm.write('     ----------------------------------------')
 
             # QoI_repeat.append(np.linalg.norm(solver.coef- pce_model.coef, np.inf) < 1e-2)
-            QoI_repeat.append(np.array(QoI_nsample))
+            QoI_repeat.append(np.array(QoI_nsample).T)
             test_err_repeat.append(test_err_nsample)
             cond_num_repeat.append(cond_num_nsample)
             score_repeat.append(score_nsample)
@@ -205,9 +206,7 @@ def main():
         # data_alpha       = np.moveaxis(data_alpha, 1, 0)
 
 
-        print(np.array(QoI_repeat).shape)
         QoI = np.moveaxis(np.array(QoI_repeat), 0, -1)
-        QoI = np.moveaxis(QoI, 0, 1)
         QoI = [iqoi for iqoi in QoI]
         score    = np.array(score_repeat).T
         test_err = np.array(test_err_repeat).T
@@ -218,7 +217,8 @@ def main():
         # data_alpha       = np.moveaxis(data_alpha, 1, 0)
 
         data_poly_deg.append(data_alpha)
-    filename = '{:s}_{:s}_{:s}_test'.format(solver.nickname, pce_model.tag, simparams.tag)
+    filename = '{:s}_{:s}_{:s}_pct{:d}'.format(
+            solver.nickname, pce_model.tag, simparams.tag, int(simparams.alphas[0]*100))
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), np.array(data_poly_deg))
     except:
