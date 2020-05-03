@@ -274,15 +274,8 @@ class PolynomialChaosExpansion(SurrogateBase):
         elif self.fit_method in ['OLS']:
             size_of_array_4gb = 1e8/2.0
 
-            active_basis = kwargs.get('active_basis', None)
-            if active_basis is None or len(active_basis) == 0:
-                active_index = np.arange(self.basis.num_basis).tolist()
-            else:
-                active_index = [i for i in range(self.basis.num_basis) if self.basis.basis_degree[i] in active_basis]
-            assert len(active_index) != 0
-
             if x.shape[1] * self.num_basis < size_of_array_4gb:
-                X = self.basis.vandermonde(x)[:, active_index]
+                X = self.basis.vandermonde(x)[:, self.active_index]
                 y = self.model.predict(X)
             else:
                 batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
@@ -291,7 +284,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                     idx_beg = i*batch_size
                     idx_end = min((i+1) * batch_size, x.shape[1])
                     x_      = x[:,idx_beg:idx_end]
-                    X_      = self.basis.vandermonde(x_)[:, active_index]
+                    X_      = self.basis.vandermonde(x_)[:, self.active_index]
                     y_      = self.model.predict(X_)
                     y      += list(y_)
                 y = np.array(y) 
