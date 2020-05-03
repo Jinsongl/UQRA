@@ -13,7 +13,6 @@ import museuq, warnings, random, math
 import numpy as np, os, sys
 import collections
 import scipy.stats as stats
-from scipy import sparse
 from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = museuq.utilities.classes.Logger()
@@ -47,13 +46,13 @@ def main():
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'D'#'D', 'S', None
+    simparams.optimality = None #'D', 'S', None
     # simparams.hem_type   = 'physicists'
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats              = 1 if simparams.optimality == 'D' else 5
-    alphas               = [0.5] 
+    repeats              = 1 if simparams.optimality == 'D' else 50
+    alphas               = [0.3] 
     # alphas               = [-1]
     # simparams.num_samples=np.arange(21+1, 130, 5)
     simparams.update()
@@ -62,7 +61,6 @@ def main():
     ### ============ Initial Values ============
     print(' > Starting simulation...')
     data_poly_deg = []
-    QoI = [[],] * len(pf)
     for p in simparams.pce_degs:
         print('\n================================================================================')
         simparams.info()
@@ -148,13 +146,13 @@ def main():
                 x_train[i] = ix_train
                 y_train[i] = iy_train
 
-                U_train = pce_model.basis.vandermonde(iu_train)[:, modeling.active_index] 
+                U_train = pce_model.basis.vandermonde(iu_train)
                 if simparams.doe_method.lower().startswith('cls'):
-                    w_train = modeling.cal_cls_weight(iu_train, pce_model.basis)
+                    w_train = modeling.cal_cls_weight(iu_train, pce_model.basis, pce_model.active_index)
                     U_train = modeling.rescale_data(U_train, w_train) 
                 else:
                     w_train = None
-                    U_train = U_train
+                    U_train = U_train[:, pce_model.active_index]
                 tqdm.write('     [Fit model: alpha={:.2f}, n={:d}]'.format(nsamples/pce_model.num_basis, nsamples))
                 pce_model.fit('ols', iu_train, iy_train, w_train, n_splits=simparams.n_splits, active_basis=pce_model.active_basis)
                 # pce_model.fit('ols', iu_train, iy_train, w_train, n_splits=simparams.n_splits)
