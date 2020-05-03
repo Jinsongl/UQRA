@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#jjjj! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
@@ -46,19 +46,6 @@ class PolynomialChaosExpansion(SurrogateBase):
                 self.tag        = '{:d}{:s}0'.format(self.ndim, self.basis.nickname)
             else:
                 self.tag        = '{:d}{:s}{:d}'.format(self.ndim, self.basis.nickname,self.deg)
-
-            # ### Now assuming same marginal basis
-            # try:
-                # dist_name = self.basis[0].name 
-            # except AttributeError:
-                # dist_name = self.basis[0].dist.name 
-
-            # if dist_name == 'norm':
-                # self.basis = museuq.Hermite(d=self.ndim, deg=self.deg)
-            # elif dist_name == 'uniform':
-                # self.basis = museuq.Legendre(d=self.ndim, deg=self.deg)
-            # else:
-                # raise ValueError('Polynomial for {} has not been defined yet'.format(basis[0].name))
 
     def info(self):
         print(r'   - {:<25s} : {:<20s}'.format('Surrogate Model Name', self.name))
@@ -134,10 +121,11 @@ class PolynomialChaosExpansion(SurrogateBase):
         X = self.basis.vandermonde(x)
         y = np.squeeze(y)
         active_basis = kwargs.get('active_basis', None)
-        if active_basis is None:
+        if active_basis is None or len(active_basis) == 0:
             active_index = np.arange(self.basis.num_basis).tolist()
         else:
             active_index = [i for i in range(self.basis.num_basis) if self.basis.basis_degree[i] in active_basis]
+        assert len(active_index) != 0
         X = X[:, active_index]
 
         n_splits= kwargs.get('n_splits', X.shape[0])
@@ -241,7 +229,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count(),fit_intercept=False).fit(X,y)
         except ValueError as e:
             #### looks like a bug in KFold
-            tqdm.write(e)
+            print(e)
             return
         self.model    = model 
         self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
@@ -250,6 +238,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
         self.sparsity = len(self.active_index)
         self.score    = model.score(X, y)
+        self._least_ns_ratio()
 
     def mean(self):
         return self.coef[0]
@@ -284,8 +273,16 @@ class PolynomialChaosExpansion(SurrogateBase):
 
         elif self.fit_method in ['OLS']:
             size_of_array_4gb = 1e8/2.0
+
+            active_basis = kwargs.get('active_basis', None)
+            if active_basis is None or len(active_basis) == 0:
+                active_index = np.arange(self.basis.num_basis).tolist()
+            else:
+                active_index = [i for i in range(self.basis.num_basis) if self.basis.basis_degree[i] in active_basis]
+            assert len(active_index) != 0
+
             if x.shape[1] * self.num_basis < size_of_array_4gb:
-                X = self.basis.vandermonde(x)[:, self.active_index]
+                X = self.basis.vandermonde(x)[:, active_index]
                 y = self.model.predict(X)
             else:
                 batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
@@ -294,7 +291,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                     idx_beg = i*batch_size
                     idx_end = min((i+1) * batch_size, x.shape[1])
                     x_      = x[:,idx_beg:idx_end]
-                    X_      = self.basis.vandermonde(x_)[:, self.active_index]
+                    X_      = self.basis.vandermonde(x_)[:, active_index]
                     y_      = self.model.predict(X_)
                     y      += list(y_)
                 y = np.array(y) 
@@ -351,3 +348,47 @@ class PolynomialChaosExpansion(SurrogateBase):
         X = sw_matrix @ X
         y = sw_matrix @ y
         return X, y
+
+    def _least_ns_ratio(self):
+        """
+        """
+        if self.basis.nickname == 'Leg':
+            ratio_sp = self.sparsity / self.num_basis
+            if ratio_sp > 0.8:
+                self.least_ns_ratio = 1.5
+            elif ratio_sp > 0.6:
+                self.least_ns_ratio = 1.8
+            elif ratio_sp > 0.5:
+                self.least_ns_ratio = 2.0
+            elif ratio_sp > 0.4:
+                self.least_ns_ratio = 2.2
+            elif ratio_sp > 0.3:
+                self.least_ns_ratio = 2.8
+            elif ratio_sp > 0.2:
+                self.least_ns_ratio = 3.5
+            elif ratio_sp > 0.1:
+                self.least_ns_ratio = 4.5
+            else:
+                self.least_ns_ratio = 6.0
+        elif self.basis.nickname.lower().startswith('hem'):
+            ratio_sp = self.sparsity / self.num_basis
+            if ratio_sp > 0.8:
+                self.least_ns_ratio = 1.5
+            elif ratio_sp > 0.6:
+                self.least_ns_ratio = 1.8
+            elif ratio_sp > 0.5:
+                self.least_ns_ratio = 2.0
+            elif ratio_sp > 0.4:
+                self.least_ns_ratio = 2.2
+            elif ratio_sp > 0.3:
+                self.least_ns_ratio = 2.8
+            elif ratio_sp > 0.2:
+                self.least_ns_ratio = 3.5
+            elif ratio_sp > 0.1:
+                self.least_ns_ratio = 4.5
+            else:
+                self.least_ns_ratio = 6.0
+        else:
+            raise NotImplementedError
+
+
