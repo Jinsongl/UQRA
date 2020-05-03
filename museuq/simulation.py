@@ -31,7 +31,6 @@ class Modeling(object):
         self.dist_u_name = model.basis.dist_name.lower()
         assert solver.ndim == model.ndim
         self.ndim = solver.ndim
-        self.active_index = np.arange(self.model.basis.num_basis).tolist() ## all columns
 
     def get_init_samples(self, n, doe_method='lhs', random_state=None, **kwargs):
         """
@@ -182,7 +181,7 @@ class Modeling(object):
         """
         size    = tuple(np.atleast_1d(size))
         u_cand  = np.array(u_cand, ndmin=2)
-
+        
         if len(size) == 1:
             repeats, n = 1, int(size[0])
         elif len(size) == 2:
@@ -208,8 +207,12 @@ class Modeling(object):
         u_train_all = []
         u_train     = [None,] * repeats if u_train is None else u_train
         assert len(u_train) == repeats, 'u_trian shape: {}, repeats={}'.format(u_train.shape, repeats)
-        len_basis = self.model.basis.num_basis if basis is None else basis.num_basis
-        len_active_basis = self.model.basis.num_basis if active_basis is None else len(active_basis)
+
+
+        basis = self.model.basis if basis is None else basis
+        len_basis = basis.num_basis
+        active_basis = basis.basis_degree if active_basis is None or len(active_basis) == 0 else active_basis
+        len_active_basis = len(active_basis)
 
         tqdm.write('   - {:<10s} : Optimality, {}; Basis, {}/{}; size:({:d}, {:d})'.format(
             'Train data ', self.params.optimality, len_active_basis, len_basis, repeats,n))
@@ -227,26 +230,6 @@ class Modeling(object):
         u_train_new = u_train_new[0] if repeats == 1 else np.array(u_train_new)
         u_train_all = u_train_all[0] if repeats == 1 else np.array(u_train_all)
 
-        # if len(size) == 1 or size[0] == 1:
-            # size = np.prod(size)
-            # u_new, u_all = self._choose_samples_from_candidates(size, u_cand,
-                    # u_selected=u_train, basis=basis, active_basis=active_basis, precomputed=True)
-            # return u_new, u_all
-
-        # elif len(size) == 2:
-            # repeats, n  = size
-            # u_train_new = []
-            # u_train_all = []
-            # u_train = [None,] * repeats if u_train is None else u_train
-            # assert len(u_train) == repeats
-            # precomputed = self._check_precomputed_optimality(basis) 
-            # for r in tqdm(range(repeats), ascii=True, ncols=80, desc='  - Repeat'):
-                # u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
-                        # u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=False)
-                # u_train_new.append(u_new)
-                # u_train_all.append(u_all)
-            # u_train_new = np.array(u_train_new)
-            # u_train_all = np.array(u_train_all)
         return u_train_new, u_train_all
 
     def _choose_samples_from_candidates(self, n, u_cand, u_selected=None, **kwargs):
@@ -266,7 +249,6 @@ class Modeling(object):
 
         if self.params.optimality is None:
             ### for non optimality design, design matrix X is irrelative, so all columns are used
-            self.active_index = np.arange(self.model.basis.num_basis).tolist() ## all columns
             row_index_adding = []
             while len(row_index_adding) < n:
                 ### random index set
@@ -292,7 +274,7 @@ class Modeling(object):
             doe = museuq.OptimalDesign(self.params.optimality, selected_index=selected_index)
             ### Using full design matrix, and precomputed optimality file exists only for this calculation
             if active_basis == 0 or active_basis is None or len(active_basis) == 0:
-                self.active_index = np.arange(basis.num_basis).tolist()
+                active_index = np.arange(basis.num_basis).tolist()
                 if self._check_precomputed_optimality(basis) and use_precomputed:
                     # try:
                         # tqdm.write('   - {:<17} : Basis, {}/{}; #samples:{:d}; File: {}'.format(
@@ -331,10 +313,11 @@ class Modeling(object):
                         raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
             ### Using partial columns
             else:
-                self.active_index = [i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis]
+                active_index = [i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis]
                 # print('   - {:<17} : {}/{}'.format('Optimal design ', len(active_index), basis.num_basis))
                 X = basis.vandermonde(u_cand)
-                X = X[:,self.active_index]
+                assert len(active_index) != 0
+                X = X[:,active_index]
                 if self.params.doe_method.lower().startswith('cls'):
                     X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
                 row_index_adding = doe.get_samples(X, n, orth_basis=True)
@@ -372,12 +355,15 @@ class Modeling(object):
         except:
             return False
 
-    def cal_cls_weight(self, u, basis):
+    def cal_cls_weight(self, u, basis, active_index=None):
         """
         Calculate weight for CLS based on Christoffel function evaluated in U-space
         """
+        if active_index is None or len(active_index) == 0:
+            active_index = np.arange(basis.num_basis).tolist() ## all columns
         X = basis.vandermonde(u)
-        X = X[:, self.active_index]
+        assert len(active_index) != 0
+        X = X[:, active_index]
         ### reproducing kernel
         Kp = np.sum(X* X, axis=1)
         w  = basis.num_basis / Kp
