@@ -697,7 +697,7 @@ class Parameters(object):
         """
 
         ## Algorithm stop when nsim_completed >= n_budget 
-        if nsim_completed > self.n_budget:
+        if nsim_completed >= self.n_budget:
             print(' >! Stopping... Reach simulation budget,  {:d} >= {:d} '.format(nsim_completed, self.n_budget))
             return False
 
