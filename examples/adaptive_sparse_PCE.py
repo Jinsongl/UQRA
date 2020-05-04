@@ -21,7 +21,7 @@ def main():
 
     ## ------------------------ Displaying set up ------------------- ###
     np.set_printoptions(precision=4)
-    np.set_printoptions(threshold=1000)
+    np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
     iter_max    = 200
     pf          = 1e-4
@@ -49,8 +49,8 @@ def main():
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = None #'D', 'S', None
-    # simparams.hem_type   = 'physicists'
+    simparams.optimality = 'S'#'D', 'S', None
+    simparams.hem_type   = 'physicists'
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
@@ -58,14 +58,14 @@ def main():
     repeats              = 1 # if simparams.optimality == 'D' else 5
     simparams.update()
     ## ------------------------ Adaptive parameters ----------------- ###
-    n_budget = 1000
+    n_budget = 400
     plim     = (2,100)
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, rel_qoi=0.01, min_r2=0.95)
     simparams.info()
 
     ## ------------------------ Define Initial PCE model --------------------- ###
-    orth_poly = museuq.Legendre(d=solver.ndim, deg=plim[0])
-    # orth_poly = museuq.Hermite(d=solver.ndim, deg=plim[0], hem_type=simparams.hem_type)
+    # orth_poly = museuq.Legendre(d=solver.ndim, deg=plim[0])
+    orth_poly = museuq.Hermite(d=solver.ndim, deg=plim[0], hem_type=simparams.hem_type)
     pce_model = museuq.PCE(orth_poly)
     pce_model.info()
 
@@ -93,7 +93,7 @@ def main():
 
     ## ----------- Initial DoE ----------- ###
     print(' > Getting initial sample set...')
-    init_n_eval     = 32
+    init_n_eval     = 64
     init_doe_method = 'lhs' 
     u_train, x_train, y_train = modeling.get_init_samples(init_n_eval, doe_method=init_doe_method, random_state=100)
     u_sampling_pdf  = np.prod(pce_model.basis.dist_u[0].pdf(u_train), axis=0)
@@ -134,24 +134,28 @@ def main():
         pce_model = museuq.PCE(orth_poly)
         modeling  = museuq.Modeling(solver, pce_model, simparams)
 
-        ### ============ Build 1st Surrogate Model ============
+        ### ============ Estimate sparsity ============
+        tqdm.write(' > {:<20s}: alpha = {:.2f}, # samples = {:d}'.format(
+                    'Sparsity estimating',u_train.shape[1]/pce_model.num_basis, u_train.shape[1]))
         bias_weight = modeling.cal_adaptive_bias_weight(u_train, p, u_sampling_pdf)
         if simparams.doe_method.lower().startswith('cls'):
             w_train = modeling.cal_cls_weight(u_train, pce_model.basis)
         else:
             w_train = 1
         w_train = w_train * bias_weight
-        pce_model.fit(simparams.fit_method, u_train, y_train, w_train, n_splits=simparams.n_splits)
-        pce_model.var(0.9)
+        pce_model.fit(simparams.fit_method, u_train, y_train, w_train, n_splits=simparams.n_splits, epsilon=1e-4)
+        pce_model.var(0.99)
 
-        print(' > New samples:')
         ### ============ Get new samples ============
         ### update candidate data set for this p degree, cls unbuounded
         u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
         n = math.ceil(len(pce_model.var_pct_basis)* new_samples_pct[p])
+        # n = math.ceil(len(pce_model.active_basis)* new_samples_pct[p])
         if u_train.shape[1] + n < math.ceil(pce_model.least_ns_ratio * pce_model.sparsity):
             n = math.ceil(pce_model.least_ns_ratio * pce_model.sparsity)  - u_train.shape[1]
 
+        tqdm.write(' > {:<20s}: Optimality-> {}; Basis-> {}/{}; # new samples = {:d}; pct={:.2f} '.format(
+            'New samples', simparams.optimality, len(pce_model.active_basis), pce_model.num_basis, n, new_samples_pct[p]))
         u_train_new, _ = modeling.get_train_data(n, u_cand_p, u_train, basis=pce_model.basis, active_basis=pce_model.active_basis)
         x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
         y_train_new = solver.run(x_train_new)
@@ -159,18 +163,19 @@ def main():
         u_train = np.hstack((u_train, u_train_new)) 
         x_train = np.hstack((x_train, x_train_new)) 
         y_train = np.hstack((y_train, y_train_new)) 
-        print('   - New samples ({:s} {}): p={:d}, s={:d}, n={:d}, pct={:.2f} '.format(
-            simparams.doe_method, simparams.optimality, p, pce_model.sparsity, n, new_samples_pct[p]))
 
         ### ============ Build 2nd Surrogate Model ============
         bias_weight = modeling.cal_adaptive_bias_weight(u_train, p, u_sampling_pdf)
-        print(bias_weight)
+        # print(bias_weight)
         if simparams.doe_method.lower().startswith('cls'):
             w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.active_index)
             w_train = w_train * bias_weight[p]
         else:
             w_train = 1
         w_train = w_train * bias_weight
+
+        tqdm.write(' > {:<20s}: alpha = {:.2f}, # samples = {:d}'.format(
+            'Fitting sparse model', u_train.shape[1]/pce_model.num_basis, u_train.shape[1]))
         pce_model.fit('ols', u_train, y_train, w_train, n_splits=simparams.n_splits, active_basis=pce_model.active_basis)
         y_train_hat = pce_model.predict(u_train)
         y_test_hat  = pce_model.predict(u_test)
@@ -262,12 +267,14 @@ def main():
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
     # print(pce_model.coef[pce_model.coef!=0])
     # print(solver.coef[solver.coef!=0])
-
-    filename = 'Adaptive_{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
+    filename = 'Adaptive_{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag[:4], simparams.tag)
     path_data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, score_path, QoI_path, test_error_path]) 
     np.save(os.path.join(simparams.data_dir_result, filename+'_path'), path_data)
     data  = np.array([n_eval_path, poly_order_path, cv_error, active_basis, score, QoI, test_error]) 
     np.save(os.path.join(simparams.data_dir_result, filename), data)
+    data_train = np.vstack((u_train, x_train, y_train.reshape(1, -1)))
+    np.save(os.path.join(simparams.data_dir_result, filename+'_train'), data_train)
+
 
 if __name__ == '__main__':
     main()
