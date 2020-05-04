@@ -81,16 +81,18 @@ class Modeling(object):
             self.filename_optimality = kwargs.get('filename_optimality', None)
 
         except KeyError:
-            if doe_method.startswith('mcs'):
+            if doe_method.lower().startswith('mcs'):
                 self.filename_candidates = r'DoE_McsE6R0.npy'
                 data = np.load(os.path.join(data_dir, self.filename_candidates))
                 u_cand = data[:self.ndim,:n].reshape(self.ndim, -1) ## will raise error when samples files smaller than n
 
-            elif doe_method.startswith('cls') or doe_method == 'reference':
-                if self.dist_x_name.startswith('norm'):
+            elif doe_method.lower().startswith('cls') or doe_method == 'reference':
+                if self.dist_x_name.lower().startswith('norm'):
                     self.filename_candidates = r'DoE_ClsE6d{:d}R0.npy'.format(self.ndim)
-                else:
+                elif self.dist_x_name.lower().startswith('uniform'):
                     self.filename_candidates = r'DoE_ClsE6R0.npy'
+                else:
+                    raise ValueError('dist_x_name {} not defined'.format(self.dist_x_name))
                 data  = np.load(os.path.join(data_dir, self.filename_candidates))
                 u_cand = data[:self.ndim,:n].reshape(self.ndim, -1)
             else:
@@ -214,9 +216,6 @@ class Modeling(object):
         basis       = self.model.basis if basis is None else basis
         active_basis= basis.basis_degree if active_basis is None or len(active_basis) == 0 else active_basis
 
-        tqdm.write('   - {:<10s} : Optimality, {}; Basis, {}/{}; size:({:d}, {:d})'.format(
-            'Train data ', self.params.optimality, len(active_basis), basis.num_basis, repeats, n))
-
         ### Checking if the data is available to speed up the process
         ### Precomputed datasets are only available to Optimality Design (S/D) with ALL basis 
         precomputed = self._check_precomputed_optimality(basis, active_basis) 
@@ -228,8 +227,12 @@ class Modeling(object):
                     u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=precomputed)
             u_train_new.append(u_new)
             u_train_all.append(u_all)
-        u_train_new = u_train_new[0] if repeats == 1 else np.array(u_train_new)
-        u_train_all = u_train_all[0] if repeats == 1 else np.array(u_train_all)
+        if len(size) == 1:
+            u_train_new = u_train_new[0] 
+            u_train_all = u_train_all[0]
+        elif len(size) == 2:
+            u_train_new = np.array(u_train_new)
+            u_train_all = np.array(u_train_all)
 
         return u_train_new, u_train_all
 
@@ -281,7 +284,7 @@ class Modeling(object):
                         else:
                             row_index_adding.append(i)
                 except AttributeError:
-                    raise AttributeError, 'Precomputed is True but precomputed_optimality_index was not found'
+                    raise AttributeError('Precomputed is True but precomputed_optimality_index was not found')
                 u_new = u_cand[:,row_index_adding]
                 u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
                 duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
@@ -384,7 +387,7 @@ class Modeling(object):
         return w
 
     def is_cls_unbounded(self):
-        return  self.params.doe_method.lower().startswith('cls') and self.dist_u_name.startswith('norm')
+        return  self.params.doe_method.lower().startswith('cls') and self.dist_u_name.lower().startswith('norm')
 
     def _common_vectors(self, A, B):
         """
@@ -495,18 +498,18 @@ class Modeling(object):
 
     def sampling_density(self, u, p):
         if self.params.doe_method.lower().startswith('mcs'):
-            if self.dist_u_name.startswith('norm'):
+            if self.dist_u_name.lower().startswith('norm'):
                 pdf = np.prod(stats.norm(0,1).pdf(u), axis=0)
-            elif self.dist_u_name.startswith('uniform'):
+            elif self.dist_u_name.lower().startswith('uniform'):
                 pdf = np.prod(stats.uniform(-1,2).pdf(u), axis=0)
             else:
                 raise ValueError('{:s} not defined for MCS'.format(self.dist_u_name))
 
         elif self.params.doe_method.lower().startswith('cls'):
-            if self.dist_u_name.startswith('norm'):
+            if self.dist_u_name.lower().startswith('norm'):
                 pdf = 1.0/(2*np.pi * np.sqrt(p))*(2 - np.linalg.norm(u/np.sqrt(p),2, axis=0)**2)**(self.ndim/2.0) 
                 pdf[pdf<0] = 0
-            elif self.dist_u_name.startswith('uniform'):
+            elif self.dist_u_name.lower().startswith('uniform'):
                 pdf = 1.0/np.prod(np.sqrt(1-u**2), axis=0)/np.pi**self.ndim
             else:
                 raise ValueError('{:s} not defined for CLS'.format(self.dist_u_name))
