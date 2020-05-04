@@ -95,6 +95,7 @@ class Modeling(object):
                 u_cand = data[:self.ndim,:n].reshape(self.ndim, -1)
             else:
                 raise ValueError('DoE method {:s} not defined'.format(doe_method))
+            self.filename_optimality = kwargs.get('filename_optimality', None)
 
         return u_cand
 
@@ -168,23 +169,25 @@ class Modeling(object):
 
     def get_train_data(self, size, u_cand, u_train=None, basis=None, active_basis=None):
         """
-        Return train data from candidate data set. All sampels are in U-space
+        Return train data from candidate data set. All samples are in U-space
         size is how many MORE to be sampled besides those alrady existed in u_train 
 
         Arguments:
             size        : size of samples, (r, n): size n repeats r times
             u_cand      : ndarray, candidate samples in U-space to be chosen from
-            u_train     : samples already selected, need to be removed from candidate set to get n sampels
+            u_train     : samples already selected, need to be removed from candidate set to get n samples
             basis       : When optimality is 'D' or 'S', one need the design matrix in the basis selected
             active_basis: activated basis used in optimality design
 
         """
-        size    = tuple(np.atleast_1d(size))
+        ###  formating the input arguments
         u_cand  = np.array(u_cand, ndmin=2)
-        
+        size    = tuple(np.atleast_1d(size))
         if len(size) == 1:
+            ## case: just a number if given n
             repeats, n = 1, int(size[0])
         elif len(size) == 2:
+            ## case: (1,n) or (r, n) 
             repeats, n = int(size[0]), int(size[1])
         else:
             raise ValueError
@@ -195,33 +198,31 @@ class Modeling(object):
         else:
             u_train = np.array(u_train, ndmin=2)
             if u_train.ndim == 2:
+                ## just one train data set is given, of shape(ndim, nsamples)
                 assert u_train.shape[0] == self.ndim
                 u_train = [u_train,] * repeats
             elif u_train.ndim == 3:
+                ## #repeats train data set are given, of shape(repeats, ndim, nsamples)
                 assert u_train.shape[0] == repeats
                 assert u_train.shape[1] == self.ndim
             else:
                 ValueError('Wrong data type for u_train: {}'.format(u_train.shape))
+        assert len(u_train) == repeats, 'Expecting {:d} trianing set, but {:d} were given, u_train.shape={}'.format(repeats, len(u_train), u_train.shape )
 
         u_train_new = []
         u_train_all = []
-        u_train     = [None,] * repeats if u_train is None else u_train
-        assert len(u_train) == repeats, 'u_trian shape: {}, repeats={}'.format(u_train.shape, repeats)
-
-
-        basis = self.model.basis if basis is None else basis
-        len_basis = basis.num_basis
-        active_basis = basis.basis_degree if active_basis is None or len(active_basis) == 0 else active_basis
-        len_active_basis = len(active_basis)
+        basis       = self.model.basis if basis is None else basis
+        active_basis= basis.basis_degree if active_basis is None or len(active_basis) == 0 else active_basis
 
         tqdm.write('   - {:<10s} : Optimality, {}; Basis, {}/{}; size:({:d}, {:d})'.format(
-            'Train data ', self.params.optimality, len_active_basis, len_basis, repeats,n))
+            'Train data ', self.params.optimality, len(active_basis), basis.num_basis, repeats, n))
 
-        precomputed = self._check_precomputed_optimality(basis) 
+        ### Checking if the data is available to speed up the process
+        ### Precomputed datasets are only available to Optimality Design (S/D) with ALL basis 
+        precomputed = self._check_precomputed_optimality(basis, active_basis) 
         if precomputed:
-            tqdm.write('   - {:<10s} : {:s}'.format('File ', self.filename_optimality))
+            tqdm.write('   - {:<20s} : {:s}'.format('Precomputed File ', self.filename_optimality))
 
-        # for r in tqdm(range(repeats), ascii=True, ncols=80, desc='  - Repeat'):
         for r in range(repeats):
             u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
                     u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=precomputed)
@@ -232,19 +233,19 @@ class Modeling(object):
 
         return u_train_new, u_train_all
 
-    def _choose_samples_from_candidates(self, n, u_cand, u_selected=None, **kwargs):
+    def _choose_samples_from_candidates(self, n, u_cand, u_selected=None, basis=None, active_basis=None, precomputed=False):
         """
-        Return train data from candidate data set. All sampels are in U-space
+        Return train data from candidate data set. All samples are in U-space (with pluripotential equilibrium measure nv(x))
 
         Arguments:
             n           : int, size of new samples in addtion to selected elements
             u_cand      : ndarray, candidate samples in U-space to be chosen from
-            u_selected  : samples already are selected, need to be removed from candidate set to get n sampels
+            u_selected  : samples already are selected, need to be removed from candidate set to get n samples
             basis       : When optimality is 'D' or 'S', one need the design matrix in the basis selected
             active_basis: activated basis used in optimality design
 
         """
-        
+        ### get the list of indices in u_selected
         selected_index = list(self._common_vectors(u_selected, u_cand))
 
         if self.params.optimality is None:
@@ -267,22 +268,11 @@ class Modeling(object):
                 raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
 
         elif self.params.optimality:
-            basis = kwargs['basis']
-            active_basis = kwargs.get('active_basis', None)
-            use_precomputed = kwargs.get('precomputed', True)
-
             doe = museuq.OptimalDesign(self.params.optimality, selected_index=selected_index)
             ### Using full design matrix, and precomputed optimality file exists only for this calculation
-            if active_basis == 0 or active_basis is None or len(active_basis) == 0:
-                active_index = np.arange(basis.num_basis).tolist()
-                if self._check_precomputed_optimality(basis) and use_precomputed:
-                    # try:
-                        # tqdm.write('   - {:<17} : Basis, {}/{}; #samples:{:d}; File: {}'.format(
-                            # 'Optimal design ', basis.num_basis, basis.num_basis, n, self.filename_optimality))
-                    # except:
-                        # print('   - {:<17} : Basis, {}/{}; #samples:{:d}; File: {}'.format(
-                            # 'Optimal design ', basis.num_basis, basis.num_basis, n, self.filename_optimality))
-                    row_index_adding = []
+            if precomputed:
+                row_index_adding = []
+                try:
                     for i in self.precomputed_optimality_index:
                         if len(row_index_adding) >= n:
                             break
@@ -290,67 +280,85 @@ class Modeling(object):
                             pass
                         else:
                             row_index_adding.append(i)
-                    u_new = u_cand[:,row_index_adding]
-                    u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
-                    duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
-                    if len(duplicated_idx_in_all) > 0:
-                        raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
-                else:
-                    # try: 
-                        # tqdm.write('   - {:<17} : Basis, {}/{}; #samples:{:d}'.format(
-                            # 'Optimal design  ', basis.num_basis, basis.num_basis, n))
-                    # except:
-                        # print('   - {:<17} : Basis, {}/{}; #samples:{:d}'.format(
-                            # 'Optimal design  ', basis.num_basis, basis.num_basis, n))
-                    X = basis.vandermonde(u_cand)
-                    if self.params.doe_method.lower().startswith('cls'):
-                        X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
-                    row_index_adding = doe.get_samples(X, n, orth_basis=True)
-                    u_new = u_cand[:,row_index_adding]
-                    u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
-                    duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
-                    if len(duplicated_idx_in_all) > 0:
-                        raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
-            ### Using partial columns
-            else:
-                active_index = [i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis]
-                # print('   - {:<17} : {}/{}'.format('Optimal design ', len(active_index), basis.num_basis))
-                X = basis.vandermonde(u_cand)
-                assert len(active_index) != 0
-                X = X[:,active_index]
-                if self.params.doe_method.lower().startswith('cls'):
-                    X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
-                row_index_adding = doe.get_samples(X, n, orth_basis=True)
-
+                except AttributeError:
+                    raise AttributeError, 'Precomputed is True but precomputed_optimality_index was not found'
                 u_new = u_cand[:,row_index_adding]
                 u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
                 duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
                 if len(duplicated_idx_in_all) > 0:
                     raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
+            else:
+                active_index = [i for i in range(basis.num_basis) if basis.basis_degree[i] in active_basis]
+                assert len(active_index) != 0
+                X = basis.vandermonde(u_cand)
+                X = X[:,active_index]
+                if self.params.doe_method.lower().startswith('cls'):
+                    X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
+                row_index_adding = doe.get_samples(X, n, orth_basis=True)
+                u_new = u_cand[:,row_index_adding]
+                u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
+                duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
+                if len(duplicated_idx_in_all) > 0:
+                    raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
+            # if active_basis == 0 or active_basis is None or len(active_basis) == 0:
+                # active_index = np.arange(basis.num_basis).tolist()
+                # if self._check_precomputed_optimality(basis) and precomputed:
+                    # row_index_adding = []
+                    # for i in self.precomputed_optimality_index:
+                        # if len(row_index_adding) >= n:
+                            # break
+                        # if i in selected_index:
+                            # pass
+                        # else:
+                            # row_index_adding.append(i)
+                    # u_new = u_cand[:,row_index_adding]
+                    # u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
+                    # duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
+                    # if len(duplicated_idx_in_all) > 0:
+                        # raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
+                # else:
+                    # X = basis.vandermonde(u_cand)
+                    # if self.params.doe_method.lower().startswith('cls'):
+                        # X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
+                    # row_index_adding = doe.get_samples(X, n, orth_basis=True)
+                    # u_new = u_cand[:,row_index_adding]
+                    # u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
+                    # duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
+                    # if len(duplicated_idx_in_all) > 0:
+                        # raise ValueError('Array have duplicate vectors: {}'.format(duplicated_idx_in_all))
 
         return u_new, u_all
 
-    def _check_precomputed_optimality(self, basis):
+    def _check_precomputed_optimality(self, basis, active_basis):
         """
 
         """
+        ### Case: direct MCS and CLS without optimality, basis could be None
         if basis is None:
             return False
+        if self.params.optimality is None:
+            return False
+
+        ### Case: Optimal design with only sigificant basis 
+        if len(active_basis) < basis.num_basis:
+            return False
+
+        ### Case: Optimal design with all basis 
         try:
+            ### If filename_optimality was given in get_candidate_data
             self.precomputed_optimality_index = np.load(self.filename_optimality)
-        except (AttributeError, FileNotFoundError) as e:
-            if self.params.optimality is None:
-                return False
-            else:
-                self.filename_optimality = 'DoE_{:s}E{:s}R0_{:d}{:s}{:d}_{:s}.npy'.format(self.params.doe_method.capitalize(),
-                        '{:.0E}'.format(self.params.n_cand)[-1], self.ndim, self.model.basis.nickname, basis.deg, self.params.optimality)
+        except (AttributeError, FileNotFoundError, TypeError) as e:
+            self.filename_optimality = 'DoE_{:s}E{:s}R0_{:d}{:s}{:d}_{:s}.npy'.format(self.params.doe_method.capitalize(),
+                    '{:.0E}'.format(self.params.n_cand)[-1], self.ndim, self.model.basis.nickname, basis.deg, self.params.optimality)
             try:
                 self.precomputed_optimality_index = np.squeeze(np.load(os.path.join(self.params.data_dir_precomputed_optimality, self.filename_optimality)))
+                ### For some S-Optimality designs, there exist more than one sets
+                ### wip: need to complete this feature. At this moment, if more than one exist, use the first one
                 if self.precomputed_optimality_index.ndim == 2:
                     self.precomputed_optimality_index = self.precomputed_optimality_index[0]
                 return True
             except FileNotFoundError: 
-                print('FileNotFoundError: [Errno 2] No such file or directory: {}'.format(self.filename_optimality))
+                print('FileNotFound: No such file or directory: {}'.format(self.filename_optimality))
                 return False
         except:
             return False
