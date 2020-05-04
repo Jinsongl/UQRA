@@ -49,23 +49,23 @@ def sparse_poly_coef_error(solver, model, normord=np.inf):
 def main():
     ## ------------------------ Displaying set up ------------------- ###
     np.set_printoptions(precision=4)
-    np.set_printoptions(threshold=10000)
+    np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
-    np.random.seed(10)
+    np.random.seed(100)
     ndim = 2
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
     simparams.pce_degs   = np.array([10])
     simparams.n_cand     = int(1e5)
-    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
     simparams.optimality = None #'D', 'S', None
     # simparams.hem_type   = 'physicists'
-    # simparams.hem_type   = 'probabilists'
+    simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats              = 10 if simparams.optimality is None else 1
-    ratio_ns             = np.linspace(1,5,5) 
-    ratio_sp             = np.linspace(0,1,5)
+    repeats              = 50 if simparams.optimality is None else 1
+    ratio_ns             = np.linspace(1,5,21) 
+    ratio_sp             = np.linspace(0,1,21)
     # alphas             = np.linspace(0,1,51)
     # alphas = np.append(alphas,np.linspace(2,4,11))
     # alphas = np.append(alphas,np.linspace(4,10,13))
@@ -76,8 +76,8 @@ def main():
     data_p = []
     for p in simparams.pce_degs:
         ## ------------------------ Define solver ----------------------- ###
-        orth_poly   = museuq.Legendre(d=ndim, deg=p)
-        # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type=simparams.hem_type)
+        # orth_poly   = museuq.Legendre(d=ndim, deg=p)
+        orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type=simparams.hem_type)
         ## ----------- Oversampling ratio ----------- ###
         # simparams.update_num_samples(orth_poly.num_basis, alphas=alphas)
         # print(' > Oversampling ratio: {}'.format(np.around(simparams.alphas,2)))
@@ -89,9 +89,11 @@ def main():
         sparsity = np.unique(np.rint(ratio_sp * orth_poly.num_basis).astype(np.int32))
         sparsity = sparsity[sparsity != 0]
         sparsity = sparsity[sparsity != 1]
+        # sparsity = [5,]
         data_s = []
         for i, s in enumerate(sparsity):
             nsamples = np.unique(np.rint(ratio_ns * s).astype(np.int32))
+            # nsamples = np.arange(6,81) 
             data_n = []
             for j, nsample in enumerate(nsamples):
                 if nsample > orth_poly.num_basis:
@@ -145,7 +147,7 @@ def main():
                     ix_train = solver.map_domain(iu_train, pce_model.basis.dist_u)
                     iy_train = solver.run(ix_train)
                     ### ============ Build Surrogate Model ============
-                    U_train = pce_model.basis.vandermonde(iu_train)[:, modeling.active_index]
+                    U_train = pce_model.basis.vandermonde(iu_train)
                     if simparams.doe_method.lower().startswith('cls'):
                         w_train = modeling.cal_cls_weight(iu_train, pce_model.basis)
                         U_train = modeling.rescale_data(U_train, w_train) 
