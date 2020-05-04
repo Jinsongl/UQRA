@@ -70,7 +70,7 @@ class Modeling(object):
         except KeyError:
             n = self.params.n_cand
         doe_method = self.params.doe_method.lower()
-        data_dir = os.path.join(self.params.data_dir_sample, doe_method.upper(), self.dist_x_name.capitalize()) 
+        data_dir = os.path.join(self.params.data_dir_sample, doe_method.upper(), self.dist_u_name.capitalize()) 
         try:
             self.filename_candidates = kwargs['filename']
             try:
@@ -366,7 +366,8 @@ class Modeling(object):
         X = X[:, active_index]
         ### reproducing kernel
         Kp = np.sum(X* X, axis=1)
-        w  = basis.num_basis / Kp
+        P  = len(active_index)
+        w  = P / Kp
         return w
 
     def cal_adaptive_bias_weight(self, u, p, sampling_pdf):
