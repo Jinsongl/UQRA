@@ -35,12 +35,12 @@ def main():
     # solver      = museuq.Franke()
     # solver      = museuq.Ishigami()
 
-    solver      = museuq.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
+    # solver      = museuq.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = museuq.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
     # solver      = museuq.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
     # solver      = museuq.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
     # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
-    # solver      = museuq.FourBranchSystem()
+    solver      = museuq.FourBranchSystem()
 
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
@@ -48,24 +48,24 @@ def main():
     simparams.pce_degs   = np.array(range(2,16))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
-    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'D'#'D', 'S', None
+    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.optimality = None #'D', 'S', None
     # simparams.hem_type   = 'physicists'
-    simparams.hem_type   = 'probabilists'
+    # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     # simparams.update_dir(data_dir_result='/Users/jinsongliu/BoxSync/PhD_UT/Reproduce_Papers/OptimalityS_JSC2016/Data')
     repeats              = 1 # if simparams.optimality == 'D' else 5
     simparams.update()
     ## ------------------------ Adaptive parameters ----------------- ###
-    n_budget = 300
+    n_budget = 1000
     plim     = (2,100)
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, rel_qoi=0.01, min_r2=0.95)
     simparams.info()
 
     ## ------------------------ Define Initial PCE model --------------------- ###
-    # orth_poly = museuq.Legendre(d=solver.ndim, deg=plim[0])
-    orth_poly = museuq.Hermite(d=solver.ndim, deg=plim[0], hem_type=simparams.hem_type)
+    orth_poly = museuq.Legendre(d=solver.ndim, deg=plim[0])
+    # orth_poly = museuq.Hermite(d=solver.ndim, deg=plim[0], hem_type=simparams.hem_type)
     pce_model = museuq.PCE(orth_poly)
     pce_model.info()
 
@@ -73,7 +73,7 @@ def main():
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     u_cand = modeling.get_candidate_data()
-    u_test, x_test, y_test = modeling.get_test_data(solver, pce_model) 
+    u_test, x_test, y_test = modeling.get_test_data(solver, pce_model)
     qoi_test= museuq.metrics.mquantiles(y_test, 1-pf)[0]
     with np.printoptions(precision=2):
         u_cand_mean_std = np.array((np.mean(u_cand[0]), np.std(u_cand[0])))
