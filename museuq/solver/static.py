@@ -455,7 +455,7 @@ class PolyProduct(SolverBase):
 
     def run(self, x):
         x = np.array(x, copy=False)
-        assert x.shape[0] == self.ndim
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         y = np.array([ix**4 + ix**2 + 5*ix for ix in x])
         y = 0.5 * np.sum(y, axis=0)
         if np.isnan(y).any():
@@ -641,7 +641,7 @@ class CornerPeak(SolverBase):
 
     def run(self, x, c=None, w=None):
         x = np.array(x, copy=False, ndmin=2)
-        assert x.shape[0] == self.ndim
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         x = x.T
         c = np.array(c) if c is not None else self.c
         w = np.array(w) if w is not None else self.w
@@ -704,7 +704,7 @@ class ExpSquareSum(SolverBase):
 
     def run(self, x, c=None, w=None):
         x = np.array(x, copy=False, ndmin=2)
-        assert x.shape[0] == self.ndim
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         c = np.array(c) if c is not None else self.c
         w = np.array(w) if w is not None else self.w
         x = x.T
@@ -766,7 +766,7 @@ class ExpAbsSum(SolverBase):
 
     def run(self, x, c=[-2,1], w=[0.25,-0.75]):
         x = np.array(x, copy=False, ndmin=2)
-        assert x.shape[0] == self.ndim
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         c = np.array(c) if c is not None else self.c
         w = np.array(w) if w is not None else self.w
         x = x.T
@@ -826,7 +826,7 @@ class ExpSum(SolverBase):
 
     def run(self, x):
         x = np.array(x, copy=False, ndmin=2)
-        assert x.shape[0] == self.ndim
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         y = np.exp(-np.sum(x, axis=0))
         if np.isnan(y).any():
             raise ValueError('nan in solver.run() result')
@@ -881,7 +881,7 @@ class ProductPeak(SolverBase):
 
     def run(self, x, c=None, w=None):
         x = np.array(x, copy=False, ndmin=2)
-        assert x.shape[0] == self.ndim
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         c = np.array(c) if c is not None else self.c
         w = np.array(w) if w is not None else self.w
         x = x.T
