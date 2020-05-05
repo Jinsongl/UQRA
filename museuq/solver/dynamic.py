@@ -45,6 +45,7 @@ class linear_oscillator(SolverBase):
         self.tmax        = kwargs.get('time_max', 1000)
         self.dt          = kwargs.get('dt', 0.1)
         self.distributions= kwargs.get('environment', Kvitebjorn)
+        self.dist_name   = self.distributions.__name__.split('.')[-1]
         # self.theta_m = [] 
         # self.theta_s = [] 
         ### two ways defining mck
@@ -73,20 +74,23 @@ class linear_oscillator(SolverBase):
                 '   - {:<15s} : {}\n'.format('dt' , self.dt)
         return message
 
-    def run(self, x):
+    def run(self, x, return_all=False):
         """
         run linear_oscillator:
         Arguments:
-            x, power spectrum parameters, ndarray of shape (nsamples, n_parameters)
+            x, power spectrum parameters, ndarray of shape (n_parameters, nsamples)
 
         """
-        x = np.array(x, copy=False, ndmin=2)
+        x = np.array(x, copy=False, ndmin=2).T
         # x = x.reshape(-1,1) if x.ndim == 1 else x
         ## if x is just one set of input of shape (2, 1)
         pbar_x  = tqdm(x, ascii=True, desc="   - ")
         # Note that xlist and ylist will be tuples (since zip will be unpacked). If you want them to be lists, you can for instance use:
         y_raw, y_QoI = map(list, zip(*[self._linear_oscillator(ix) for ix in pbar_x]))
-        return np.array(y_raw), np.array(y_QoI)
+        if return_all:
+            return np.array(y_raw), np.array(y_QoI)
+        else:
+            return np.array(y_QoI)
 
     def x_psd(self, f, x, **kwargs):
         """
@@ -147,21 +151,25 @@ class linear_oscillator(SolverBase):
         museuq.enablePrint()
         return y_raw, y_QoI
             
-    def map_domain(self, u, dist_u):
+    def map_domain(self, u, u_cdf):
         """
         mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
         Argument:
             u and dist_u
         """
-        ### convert dist_u to list and append to dist_u with U(0,1) if necessary to make sure the dimension matches
-        u, dist_u = super().map_domain(u, dist_u)
-        u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
-        assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:d} given'.format(self.name, self.ndim, u_cdf.shape[0])
 
-        if isinstance(self.distributions, list):
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
             x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
-        elif self.distributions.__name__ == 'museuq.environment.Kvitebjorn':
-            x = Kvitebjorn.ppf(u_cdf)
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+
+            if self.distributions.__name__ == 'museuq.environment.Kvitebjorn':
+                x = Kvitebjorn.ppf(u_cdf)
+            else:
+                raise ValueError('Distribution name not defined: {:s}'.format(self.distributions.__name__))
+        return x
         return x
 
 
