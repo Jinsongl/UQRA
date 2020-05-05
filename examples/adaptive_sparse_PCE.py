@@ -40,7 +40,9 @@ def main():
     # solver      = museuq.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
     # solver      = museuq.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
     # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
-    solver      = museuq.FourBranchSystem()
+    # solver      = museuq.FourBranchSystem()
+
+    solver      = museuq.linear_oscillator() 
 
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
@@ -73,7 +75,7 @@ def main():
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     u_cand = modeling.get_candidate_data()
-    u_test, x_test, y_test = modeling.get_test_data(solver, pce_model)
+    u_test, x_test, y_test = modeling.get_test_data(solver, pce_model, n=100)
     qoi_test= museuq.metrics.mquantiles(y_test, 1-pf)[0]
     with np.printoptions(precision=2):
         u_cand_mean_std = np.array((np.mean(u_cand[0]), np.std(u_cand[0])))
