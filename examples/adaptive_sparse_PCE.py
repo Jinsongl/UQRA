@@ -49,7 +49,7 @@ def main():
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'S'#'D', 'S', None
+    simparams.optimality = 'D'#'D', 'S', None
     simparams.hem_type   = 'physicists'
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
@@ -58,7 +58,7 @@ def main():
     repeats              = 1 # if simparams.optimality == 'D' else 5
     simparams.update()
     ## ------------------------ Adaptive parameters ----------------- ###
-    n_budget = 400
+    n_budget = 1000
     plim     = (2,100)
     simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, rel_qoi=0.01, min_r2=0.95)
     simparams.info()
@@ -144,15 +144,17 @@ def main():
             w_train = 1
         w_train = w_train * bias_weight
         pce_model.fit(simparams.fit_method, u_train, y_train, w_train, n_splits=simparams.n_splits, epsilon=1e-4)
-        pce_model.var(0.99)
+        # pce_model.var(0.99)
 
         ### ============ Get new samples ============
         ### update candidate data set for this p degree, cls unbuounded
         u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
-        n = math.ceil(len(pce_model.var_pct_basis)* new_samples_pct[p])
-        # n = math.ceil(len(pce_model.active_basis)* new_samples_pct[p])
+        # n = math.ceil(len(pce_model.var_pct_basis)* new_samples_pct[p])
+        n = math.ceil(len(pce_model.active_basis)* new_samples_pct[p])
         if u_train.shape[1] + n < math.ceil(pce_model.least_ns_ratio * pce_model.sparsity):
             n = math.ceil(pce_model.least_ns_ratio * pce_model.sparsity)  - u_train.shape[1]
+        if u_train.shape[1] + n > n_budget:
+            n = n_budget - u_train.shape[1]
 
         tqdm.write(' > {:<20s}: Optimality-> {}; Basis-> {}/{}; # new samples = {:d}; pct={:.2f} '.format(
             'New samples', simparams.optimality, len(pce_model.active_basis), pce_model.num_basis, n, new_samples_pct[p]))
