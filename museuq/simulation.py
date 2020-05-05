@@ -87,9 +87,9 @@ class Modeling(object):
                 u_cand = data[:self.ndim,:n].reshape(self.ndim, -1) ## will raise error when samples files smaller than n
 
             elif doe_method.lower().startswith('cls') or doe_method == 'reference':
-                if self.dist_x_name.lower().startswith('norm'):
+                if self.dist_u_name.lower().startswith('norm'):
                     self.filename_candidates = r'DoE_ClsE6d{:d}R0.npy'.format(self.ndim)
-                elif self.dist_x_name.lower().startswith('uniform'):
+                elif self.dist_u_name.lower().startswith('uniform'):
                     self.filename_candidates = r'DoE_ClsE6R0.npy'
                 else:
                     raise ValueError('dist_x_name {} not defined'.format(self.dist_x_name))
@@ -123,7 +123,6 @@ class Modeling(object):
         n = kwargs.get('n', self.params.n_test)
         assert solver.ndim == pce_model.ndim
         ndim = solver.ndim
-        
         self.filename_test = '{:s}_{:d}{:s}_'.format(solver.nickname, ndim, pce_model.basis.nickname) + filename
         if self.params.doe_method.lower() == 'cls':
             self.filename_test = self.filename_test.replace('Mcs', 'Cls')
@@ -138,28 +137,46 @@ class Modeling(object):
 
         except FileNotFoundError:
             ### 1. Get MCS samples for X
-            if solver.dist_name.lower() == 'uniform':
+            if pce_model.basis.dist_name.lower() == 'uniform':
                 data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Uniform')
                 print('    - Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
                 data_set = np.load(os.path.join(data_dir_sample,filename))
-                z_test = data_set[:ndim,:] 
+                z_test = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
                 x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * ndim)
-            elif solver.dist_name.lower().startswith('norm'):
+            elif pce_model.basis.dist_name.lower().startswith('norm'):
                 data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Norm')
                 print('    - Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
                 data_set= np.load(os.path.join(data_dir_sample,filename))
-                z_test  = data_set[:ndim,:] 
+                z_test  = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
                 x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
             else:
                 raise ValueError
             y_test = solver.run(x_test)
+            if y_test.ndim == 1:
+                y_test = y_test.reshape(1,-1)
+            elif y_test.ndim == 2:
+                if y_test.shape[0] == n:
+                    y_test = y_test.T
+                elif y_test.shape[1] == n:
+                    y_test = y_test
+                else:
+                    raise ValueError('Solver output format not understood: {}, expecting has {:d} in 1 dimensino'.format(n))
+            else:
+                if solver.nickname.lower() == 'sdof':
+                    y = []
+                    for iy_test in y_test.T:
+                        y.append(iy_test)
+                    y_test = np.vstack((y))
+                else:
+                    raise NotImplementedError
+            print(y_test.shape)
 
             ### 2. Mapping MCS samples from X to u
             ###     dist_u is defined by pce_model
             ### Bounded domain maps to [-1,1] for both mcs and cls methods. so u = z
             ### Unbounded domain, mcs maps to N(0,1), cls maps to N(0,sqrt(0.5))
             u_test = 0.0 + z_test * np.sqrt(0.5) if self.is_cls_unbounded() else z_test
-            data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
+            data   = np.vstack((u_test, x_test, y_test))
             np.save(os.path.join(data_dir_result, self.filename_test), data)
             print('   > Saving test data to {} '.format(data_dir_result))
 
