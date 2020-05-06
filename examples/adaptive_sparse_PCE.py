@@ -33,7 +33,7 @@ def main():
     # solver      = museuq.CornerPeak(stats.uniform(-1,2), d=2)
     # solver      = museuq.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
     # solver      = museuq.Franke()
-    # solver      = museuq.Ishigami()
+    solver      = museuq.Ishigami()
 
     # solver      = museuq.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = museuq.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
@@ -42,7 +42,7 @@ def main():
     # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
     # solver      = museuq.FourBranchSystem()
 
-    solver      = museuq.linear_oscillator(qoi2analysis=[1], stats2cal='absmax') 
+    # solver      = museuq.linear_oscillator(qoi2analysis=[1], stats2cal='absmax') 
 
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
@@ -50,10 +50,10 @@ def main():
     simparams.pce_degs   = np.array(range(2,16))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
-    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'S'#'D', 'S', None
-    # simparams.hem_type   = 'physicists'
-    simparams.hem_type   = 'probabilists'
+    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.optimality = 'D'#'D', 'S', None
+    simparams.hem_type   = 'physicists'
+    # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     # simparams.update_dir(data_dir_result='/Users/jinsongliu/BoxSync/PhD_UT/Reproduce_Papers/OptimalityS_JSC2016/Data')
@@ -66,8 +66,8 @@ def main():
     simparams.info()
 
     ## ------------------------ Define Initial PCE model --------------------- ###
-    # orth_poly = museuq.Legendre(d=solver.ndim, deg=plim[0])
-    orth_poly = museuq.Hermite(d=solver.ndim, deg=plim[0], hem_type=simparams.hem_type)
+    orth_poly = museuq.Legendre(d=solver.ndim, deg=plim[0])
+    # orth_poly = museuq.Hermite(d=solver.ndim, deg=plim[0], hem_type=simparams.hem_type)
     pce_model = museuq.PCE(orth_poly)
     pce_model.info()
 
@@ -98,7 +98,7 @@ def main():
 
     ## ----------- Initial DoE ----------- ###
     print(' > Getting initial sample set...')
-    init_n_eval     = 64
+    init_n_eval     = 32
     init_doe_method = 'lhs' 
     u_train, x_train, y_train = modeling.get_init_samples(init_n_eval, doe_method=init_doe_method, random_state=random_seed)
     u_sampling_pdf  = np.prod(pce_model.basis.dist_u[0].pdf(u_train), axis=0)
@@ -149,13 +149,13 @@ def main():
             w_train = 1
         w_train = w_train * bias_weight
         pce_model.fit(simparams.fit_method, u_train, y_train, w_train, n_splits=simparams.n_splits, epsilon=1e-4)
-        # pce_model.var(0.99)
+        pce_model.var(0.95)
 
         ### ============ Get new samples ============
         ### update candidate data set for this p degree, cls unbuounded
         u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
-        # n = math.ceil(len(pce_model.var_pct_basis)* new_samples_pct[p])
-        n = math.ceil(len(pce_model.active_basis)* new_samples_pct[p])
+        n = math.ceil(len(pce_model.var_pct_basis)* new_samples_pct[p])
+        # n = math.ceil(len(pce_model.active_basis)* new_samples_pct[p])
         if u_train.shape[1] + n < math.ceil(pce_model.least_ns_ratio * pce_model.sparsity):
             n = math.ceil(pce_model.least_ns_ratio * pce_model.sparsity)  - u_train.shape[1]
         if u_train.shape[1] + n > n_budget:
