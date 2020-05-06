@@ -44,6 +44,7 @@ class Modeling(object):
 
         """
 
+        qoi = kwargs.get('qoi', None)
         if doe_method.lower() == 'lhs':
             doe = museuq.LHS(self.model.basis.dist_u)
             z, u= doe.get_samples(n, random_state=random_state)
@@ -57,7 +58,14 @@ class Modeling(object):
             # u_cand_p = p **0.5* u_cand if (doe_method.lower()=='cls' and self.model.basis.dist_name=='norm') else u_cand
             # _,u = get_train_data(n, u_cand_p, doe_method, optimality=optimality, sample_selected=sample_selected, basis=self.model.basis)
             # x = self.solver.map_domain(u, self.model.basis.dist_u)
-        y = self.solver.run(x)
+        y = self.solver.run(x, random_seed=random_state)
+        # idx = []
+        # for i, iqoi in enumerate(qoi):
+            # if iqoi is None:
+                # idx.append(list(np.arange(y.shape[i])))
+            # else:
+                # idx.append([iqoi])
+        # y = y[idx]
         return u, x, y
 
     def get_candidate_data(self, **kwargs):
@@ -120,7 +128,10 @@ class Modeling(object):
         except OSError as e:
             pass
 
-        n = kwargs.get('n', self.params.n_test)
+        n       = kwargs.get('n'    , self.params.n_test)
+        iqoi    = kwargs.get('iqoi' , 0 )
+        seed    = kwargs.get('random_seed', None)
+        
         assert solver.ndim == pce_model.ndim
         ndim = solver.ndim
         self.filename_test = '{:s}_{:d}{:s}_'.format(solver.nickname, ndim, pce_model.basis.nickname) + filename
@@ -130,10 +141,11 @@ class Modeling(object):
         try:
             data_set = np.load(os.path.join(data_dir_result, self.filename_test))
             print('    - Retrieving test data from {}'.format(os.path.join(data_dir_result, self.filename_test)))
-            assert data_set.shape[0] == 2*ndim+1
-            u_test = data_set[      :  ndim,:n] if n > 0 else data_set[     :  ndim,:]
-            x_test = data_set[ndim  :2*ndim,:n] if n > 0 else data_set[ndim :2*ndim,:]
-            y_test = data_set[-1,           :n] if n > 0 else data_set[-1,          :]
+            if not solver.nickname.lower().startswith('sdof'):
+                assert data_set.shape[0] == 2*ndim+1
+            u_test = data_set[      :  ndim,:n] if n > 0 else data_set[     :  ndim , : ]
+            x_test = data_set[ndim  :2*ndim,:n] if n > 0 else data_set[ndim :2*ndim , : ]
+            y_test = data_set[iqoi         ,:n] if n > 0 else data_set[iqoi         , :n]
 
         except FileNotFoundError:
             ### 1. Get MCS samples for X
@@ -151,7 +163,15 @@ class Modeling(object):
                 x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
             else:
                 raise ValueError
-            y_test = solver.run(x_test)
+            y_test = solver.run(x_test, random_seed=seed)
+            print(y_test[:,:4])
+
+            ### 2. Mapping MCS samples from X to u
+            ###     dist_u is defined by pce_model
+            ### Bounded domain maps to [-1,1] for both mcs and cls methods. so u = z
+            ### Unbounded domain, mcs maps to N(0,1), cls maps to N(0,sqrt(0.5))
+            u_test = 0.0 + z_test * np.sqrt(0.5) if self.is_cls_unbounded() else z_test
+
             if y_test.ndim == 1:
                 y_test = y_test.reshape(1,-1)
             elif y_test.ndim == 2:
@@ -169,13 +189,7 @@ class Modeling(object):
                     y_test = np.vstack((y))
                 else:
                     raise NotImplementedError
-            print(y_test.shape)
 
-            ### 2. Mapping MCS samples from X to u
-            ###     dist_u is defined by pce_model
-            ### Bounded domain maps to [-1,1] for both mcs and cls methods. so u = z
-            ### Unbounded domain, mcs maps to N(0,1), cls maps to N(0,sqrt(0.5))
-            u_test = 0.0 + z_test * np.sqrt(0.5) if self.is_cls_unbounded() else z_test
             data   = np.vstack((u_test, x_test, y_test))
             np.save(os.path.join(data_dir_result, self.filename_test), data)
             print('   > Saving test data to {} '.format(data_dir_result))
