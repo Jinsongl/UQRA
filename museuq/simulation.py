@@ -129,7 +129,7 @@ class Modeling(object):
             pass
 
         n       = kwargs.get('n'    , self.params.n_test)
-        iqoi    = kwargs.get('iqoi' , 0 )
+        iqoi    = kwargs.get('iqoi' , -1 )
         seed    = kwargs.get('random_seed', None)
         
         assert solver.ndim == pce_model.ndim
@@ -145,7 +145,7 @@ class Modeling(object):
                 assert data_set.shape[0] == 2*ndim+1
             u_test = data_set[      :  ndim,:n] if n > 0 else data_set[     :  ndim , : ]
             x_test = data_set[ndim  :2*ndim,:n] if n > 0 else data_set[ndim :2*ndim , : ]
-            y_test = data_set[iqoi         ,:n] if n > 0 else data_set[iqoi         , :n]
+            y_test = data_set[iqoi         ,:n] if n > 0 else data_set[iqoi         , : ]
 
         except FileNotFoundError:
             ### 1. Get MCS samples for X
