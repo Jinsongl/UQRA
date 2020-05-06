@@ -166,8 +166,8 @@ def samples_hs_ppf(u):
     Hs_scale = 2.691
     h0       = 2.9
 
-    u = np.squeeze(u)
-    assert min(u) >=0 and max(u) <=1
+    u = np.array(u,ndmin=1)
+    assert min(u) >=0 and max(u) <=1, 'CDF values should be in range [0,1]'
     samples1 = stats.lognorm.ppf(u, s=sigma_Hs, loc=0, scale=np.exp(mu_Hs))
     samples2 = stats.weibull_min.ppf(u, c=Hs_shape, loc=0, scale=Hs_scale) #0 #Hs_scale * (-np.log(1-u)) **(1/Hs_shape)
     samples_hs = np.where(samples1<=h0,samples1, samples2)
