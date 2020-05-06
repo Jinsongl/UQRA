@@ -64,7 +64,7 @@ class Ishigami(SolverBase):
     def __str__(self):
         return 'solver: Ishigami function (p={})'.format(self.p)
 
-    def run(self, x):
+    def run(self, x, **kwargs):
         x = np.array(x, copy=False, ndmin=2)
         assert x.shape[0] == int(3), 'Ishigami function expecting 3 random variables, {:d} given'.format(x.shape[0])
         y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
@@ -117,7 +117,7 @@ class xSinx(SolverBase):
     def __str__(self):
         return 'solver: x*sin(x)'
 
-    def run(self, x):
+    def run(self, x, **kwargs):
         x = np.array(x,copy=False, ndmin=1)
         y = x * np.sin(x)
         if np.isnan(y).any():
@@ -183,7 +183,7 @@ class SparsePoly(SolverBase):
     def __str__(self):
         return 'solver: sparse polynomial function'
 
-    def run(self, x):
+    def run(self, x, **kwargs):
         y = self.basis(x)
         if np.isnan(y).any():
             raise ValueError('nan in solver.run() result')
@@ -275,7 +275,7 @@ class Poly4th(SolverBase):
     def __str__(self):
         return 'solver: 4th-order polynomial function'
 
-    def run(self, x):
+    def run(self, x, **kwargs):
         x = np.array(x, copy=False, ndmin=1)
         y = 5 + -5*x + 2.5*x**2 -0.36*x**3 + 0.015*x**4
         if np.isnan(y).any():
@@ -327,7 +327,7 @@ class PolySquareRoot(SolverBase):
     def __str__(self):
         return 'solver: Polynomial square root function'
 
-    def run(self, x):
+    def run(self, x, **kwargs):
         x = np.array(x, copy=False)
         x1 = x[0,:]
         x2 = x[1,:]
@@ -385,7 +385,7 @@ class FourBranchSystem(SolverBase):
     def __str__(self):
         return 'Solver: four branch system'
 
-    def run(self, x):
+    def run(self, x, **kwargs):
         x = np.array(x, ndim=2, copy=False).reshape(2,-1)
         x1 = x[0,:]
         x2 = x[1,:]
@@ -453,7 +453,7 @@ class PolyProduct(SolverBase):
     def __str__(self):
         return 'Solver: polynomial product function'
 
-    def run(self, x):
+    def run(self, x, **kwargs):
         x = np.array(x, copy=False)
         assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         y = np.array([ix**4 + ix**2 + 5*ix for ix in x])
@@ -581,7 +581,7 @@ class Franke(SolverBase):
     def __str__(self):
         return 'solver: franke function'
 
-    def run(self, x):
+    def run(self, x, **kwargs):
         x = np.array(x, copy=0, ndmin=2)
         x1,x2 = x
         f1 = 0.75 * np.exp(-(9.0*x1 -2.0)**2/ 4.0 - (9.0*x2 -2)**2/4.0)
@@ -639,7 +639,7 @@ class CornerPeak(SolverBase):
     def __str__(self):
         return 'Solver: Corner peak function'
 
-    def run(self, x, c=None, w=None):
+    def run(self, x, c=None, w=None, **kwargs):
         x = np.array(x, copy=False, ndmin=2)
         assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         x = x.T
@@ -702,7 +702,7 @@ class ExpSquareSum(SolverBase):
     def __str__(self):
         return 'Solver: Exponential of Sqaured Sum'
 
-    def run(self, x, c=None, w=None):
+    def run(self, x, c=None, w=None, **kwargs):
         x = np.array(x, copy=False, ndmin=2)
         assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         c = np.array(c) if c is not None else self.c
@@ -764,7 +764,7 @@ class ExpAbsSum(SolverBase):
     def __str__(self):
         return 'Solver: Exponential of Sqaured Sum'
 
-    def run(self, x, c=[-2,1], w=[0.25,-0.75]):
+    def run(self, x, c=[-2,1], w=[0.25,-0.75], **kwargs):
         x = np.array(x, copy=False, ndmin=2)
         assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         c = np.array(c) if c is not None else self.c
@@ -824,7 +824,7 @@ class ExpSum(SolverBase):
     def __str__(self):
         return 'Solver: Exponential of Sqaured Sum'
 
-    def run(self, x):
+    def run(self, x, **kwargs):
         x = np.array(x, copy=False, ndmin=2)
         assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         y = np.exp(-np.sum(x, axis=0))
@@ -879,7 +879,7 @@ class ProductPeak(SolverBase):
     def __str__(self):
         return 'Solver: Product peak function'
 
-    def run(self, x, c=None, w=None):
+    def run(self, x, c=None, w=None, **kwargs):
         x = np.array(x, copy=False, ndmin=2)
         assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
         c = np.array(c) if c is not None else self.c
