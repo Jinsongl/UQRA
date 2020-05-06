@@ -46,6 +46,7 @@ class linear_oscillator(SolverBase):
         self.dt          = kwargs.get('dt', 0.1)
         self.distributions= kwargs.get('environment', Kvitebjorn)
         self.dist_name   = self.distributions.__name__.split('.')[-1]
+        self.nsim        = kwargs.get('nsim', 10)  ## number of short term simulations
         # self.theta_m = [] 
         # self.theta_s = [] 
         ### two ways defining mck
@@ -74,19 +75,27 @@ class linear_oscillator(SolverBase):
                 '   - {:<15s} : {}\n'.format('dt' , self.dt)
         return message
 
-    def run(self, x, return_all=False):
+    def run(self, x, return_all=False, random_seed=None, **kwargs):
         """
         run linear_oscillator:
         Arguments:
             x, power spectrum parameters, ndarray of shape (n_parameters, nsamples)
 
         """
+        np.random.seed(random_seed)
+        nsim = kwargs.get('nsim', self.nsim)
         x = np.array(x, copy=False, ndmin=2).T
         # x = x.reshape(-1,1) if x.ndim == 1 else x
         ## if x is just one set of input of shape (2, 1)
-        pbar_x  = tqdm(x, ascii=True, desc="   - ")
+        y_raw = []
+        y_QoI = []
+        seeds = np.random.randint(0, int(2**32-1), size=nsim) 
+        for insim in range(nsim):
         # Note that xlist and ylist will be tuples (since zip will be unpacked). If you want them to be lists, you can for instance use:
-        y_raw, y_QoI = map(list, zip(*[self._linear_oscillator(ix) for ix in pbar_x]))
+            pbar_x  = tqdm(x, ascii=True, desc="    - {:d}/{:d} ".format(insim, self.nsim))
+            y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, seed=seeds[insim]) for ix in pbar_x]))
+            y_raw.append(y_raw_)
+            y_QoI.append(y_QoI_)
         if return_all:
             return np.array(y_raw), np.array(y_QoI)
         else:
@@ -122,7 +131,7 @@ class linear_oscillator(SolverBase):
 
         return psd_x, psd_y 
 
-    def _linear_oscillator(self, x):
+    def _linear_oscillator(self, x, seed=None):
         """
         Solving linear oscillator in frequency domain
         m x'' + c x' + k x = f => 
@@ -141,8 +150,8 @@ class linear_oscillator(SolverBase):
         f    = np.arange(len(t)+1) * df
         ##--------- oscillator properties -----------
         psd_x, psd_y = self.psd(f, x)
-        t0, x_t = psd_x.gen_process()
-        t1, y_t = psd_y.gen_process()
+        t0, x_t = psd_x.gen_process(seed=seed)
+        t1, y_t = psd_y.gen_process(seed=seed)
         assert (t0==t1).all()
 
         y_raw = np.vstack((t0, x_t, y_t)).T
@@ -160,7 +169,10 @@ class linear_oscillator(SolverBase):
 
         if isinstance(u_cdf, np.ndarray):
             assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
-            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+            if self.distributions.__name__ == 'museuq.environment.Kvitebjorn':
+                x = Kvitebjorn.ppf(u_cdf)
+            else:
+                raise ValueError('Distribution name not defined: {:s}'.format(self.distributions.__name__))
         else:
             u, dist_u = super().map_domain(u, u_cdf) 
             u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
