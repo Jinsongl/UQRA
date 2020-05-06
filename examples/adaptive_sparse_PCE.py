@@ -25,7 +25,7 @@ def main():
     np.set_printoptions(suppress=True)
     iter_max    = 200
     pf          = 1e-4
-    np.random.seed(100)
+    random_seed = 100
 
     ## ------------------------ Define solver ----------------------- ###
     # solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
@@ -42,7 +42,7 @@ def main():
     # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
     # solver      = museuq.FourBranchSystem()
 
-    solver      = museuq.linear_oscillator() 
+    solver      = museuq.linear_oscillator(qoi2analysis=[1], stats2cal='absmax') 
 
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
@@ -50,14 +50,14 @@ def main():
     simparams.pce_degs   = np.array(range(2,16))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
-    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'D'#'D', 'S', None
-    simparams.hem_type   = 'physicists'
-    # simparams.hem_type   = 'probabilists'
+    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.optimality = 'S'#'D', 'S', None
+    # simparams.hem_type   = 'physicists'
+    simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     # simparams.update_dir(data_dir_result='/Users/jinsongliu/BoxSync/PhD_UT/Reproduce_Papers/OptimalityS_JSC2016/Data')
-    repeats              = 1 # if simparams.optimality == 'D' else 5
+    # repeats              = 1 # if simparams.optimality == 'D' else 5
     simparams.update()
     ## ------------------------ Adaptive parameters ----------------- ###
     n_budget = 1000
@@ -75,7 +75,7 @@ def main():
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     u_cand = modeling.get_candidate_data()
-    u_test, x_test, y_test = modeling.get_test_data(solver, pce_model, n=100)
+    u_test, x_test, y_test = modeling.get_test_data(solver, pce_model)
     qoi_test= museuq.metrics.mquantiles(y_test, 1-pf)[0]
     with np.printoptions(precision=2):
         u_cand_mean_std = np.array((np.mean(u_cand[0]), np.std(u_cand[0])))
@@ -83,7 +83,6 @@ def main():
         x_test_mean_std = np.array((np.mean(x_test[0]), np.std(x_test[0])))
         u_cand_ref = np.array(modeling.candidate_data_reference())
         u_test_ref = np.array(modeling.test_data_reference())
-        x_test_ref = np.array((solver.distributions[0].mean(), solver.distributions[0].std()))
 
         print('    - {:<25s} : {}'.format('Candidate Data ', u_cand.shape))
         print('    - {:<25s} : {}'.format('Test Data ', u_test.shape))
@@ -91,13 +90,17 @@ def main():
         print('    > {:<25s}'.format('Validate data set '))
         print('    - {:<25s} : {} {} '.format('u cand (mean, std)', u_cand_mean_std, u_cand_ref))
         print('    - {:<25s} : {} {} '.format('u test (mean, std)', u_test_mean_std, u_test_ref))
-        print('    - {:<25s} : {} {} '.format('x test (mean, std)', x_test_mean_std, x_test_ref))
+        try:
+            x_test_ref = np.array((solver.distributions[0].mean(), solver.distributions[0].std()))
+            print('    - {:<25s} : {} {} '.format('x test (mean, std)', x_test_mean_std, x_test_ref))
+        except:
+            pass
 
     ## ----------- Initial DoE ----------- ###
     print(' > Getting initial sample set...')
     init_n_eval     = 64
     init_doe_method = 'lhs' 
-    u_train, x_train, y_train = modeling.get_init_samples(init_n_eval, doe_method=init_doe_method, random_state=100)
+    u_train, x_train, y_train = modeling.get_init_samples(init_n_eval, doe_method=init_doe_method, random_state=random_seed)
     u_sampling_pdf  = np.prod(pce_model.basis.dist_u[0].pdf(u_train), axis=0)
     print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
     print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))
