@@ -42,7 +42,8 @@ def main():
     # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
     # solver      = museuq.FourBranchSystem()
 
-    solver      = museuq.linear_oscillator(qoi2analysis=[1], stats2cal='absmax') 
+    qoi2analysis= 1
+    solver      = museuq.linear_oscillator(qoi2analysis=qoi2analysis, stats2cal='absmax',nsim=10) 
 
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
@@ -51,13 +52,12 @@ def main():
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'S'#'D', 'S', None
+    simparams.optimality = None #'D', 'S', None
     simparams.hem_type   = 'physicists'
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     # simparams.update_dir(data_dir_result='/Users/jinsongliu/BoxSync/PhD_UT/Reproduce_Papers/OptimalityS_JSC2016/Data')
-    repeats              = 1 # if simparams.optimality == 'D' else 5
     simparams.update()
     ## ------------------------ Adaptive parameters ----------------- ###
     n_budget = 1000
@@ -75,8 +75,8 @@ def main():
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     u_cand = modeling.get_candidate_data()
-    u_test, x_test, y_test = modeling.get_test_data(solver, pce_model, n=100, iqoi=15, r=3, random_seed=random_seed)
-    print(y_test.shape)
+    u_test, x_test, y_test = modeling.get_test_data(solver, pce_model, n=10000, iqoi=list(range(4,14)), random_seed=random_seed)
+    y_test = np.mean(y_test, axis=0)
     qoi_test= museuq.metrics.mquantiles(y_test, 1-pf)[0]
     with np.printoptions(precision=2):
         u_cand_mean_std = np.array((np.mean(u_cand[0]), np.std(u_cand[0])))
@@ -99,10 +99,10 @@ def main():
 
     ## ----------- Initial DoE ----------- ###
     print(' > Getting initial sample set...')
-    init_n_eval     = 64
+    init_n_eval     = 32
     init_doe_method = 'lhs' 
     u_train, x_train, y_train = modeling.get_init_samples(init_n_eval, doe_method=init_doe_method, random_state=random_seed)
-    print(y_train.shape)
+    y_train = np.mean(y_train, axis=0)
     u_sampling_pdf  = np.prod(pce_model.basis.dist_u[0].pdf(u_train), axis=0)
     print('   * {:<25s} : {}'.format(' doe_method ', init_doe_method))
     print('   * {:<25s} : {}'.format(' u train shape ', u_train.shape))
@@ -151,7 +151,7 @@ def main():
             w_train = 1
         w_train = w_train * bias_weight
         pce_model.fit(simparams.fit_method, u_train, y_train, w_train, n_splits=simparams.n_splits, epsilon=1e-4)
-        # pce_model.var(0.99)
+        # pce_model.var(0.95)
 
         ### ============ Get new samples ============
         ### update candidate data set for this p degree, cls unbuounded
@@ -167,7 +167,8 @@ def main():
             'New samples', simparams.optimality, len(pce_model.active_basis), pce_model.num_basis, n, new_samples_pct[p]))
         u_train_new, _ = modeling.get_train_data(n, u_cand_p, u_train, basis=pce_model.basis, active_basis=pce_model.active_basis)
         x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
-        y_train_new = solver.run(x_train_new, r=repeat, random_seed=seed)
+        y = solver.run(x_train_new, random_seed=random_seed)
+        y_train_new = np.mean(y,axis=0)
         u_sampling_pdf = np.concatenate((u_sampling_pdf, modeling.sampling_density(u_train_new, p))) 
         u_train = np.hstack((u_train, u_train_new)) 
         x_train = np.hstack((x_train, x_train_new)) 
@@ -276,7 +277,7 @@ def main():
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
     # print(pce_model.coef[pce_model.coef!=0])
     # print(solver.coef[solver.coef!=0])
-    filename = 'Adaptive_{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag[:4], simparams.tag)
+    filename = 'Adaptive_{:s}_{:s}_{:s}_y{:d}'.format(solver.nickname, pce_model.tag[:4], simparams.tag, qoi2analysis)
     path_data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, score_path, QoI_path, test_error_path]) 
     np.save(os.path.join(simparams.data_dir_result, filename+'_path'), path_data)
     data  = np.array([n_eval_path, poly_order_path, cv_error, active_basis, score, QoI, test_error]) 
