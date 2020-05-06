@@ -341,6 +341,8 @@ def _get_stats(data, stats2cal=['mean', 'std', 'skewness', 'kurtosis', 'absmax',
             ndarray (nstats, nsamples/nqois) 
     """
     res = []
+    if isinstance(stats2cal, str):
+        stats2cal = [stats2cal,]
 
     for istats in stats2cal:
         if istats.lower()  in ['mean', 'mu']:
@@ -365,7 +367,7 @@ def _get_stats(data, stats2cal=['mean', 'std', 'skewness', 'kurtosis', 'absmax',
             res.append(_up_crossing(data, axis=axis))
 
         else:
-            raise ValueError 
+            raise ValueError('{:s} not found'.format(istats))
     return np.squeeze(np.array(res))
 
 
