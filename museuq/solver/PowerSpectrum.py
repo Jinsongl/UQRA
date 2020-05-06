@@ -120,7 +120,7 @@ class PowerSpectrum(object):
         self.sides='double'
         return psd_f, psd_pxx
 
-    def gen_process(self,t=None):
+    def gen_process(self,t=None, seed=None):
         """
         Generate Gaussian time series for given spectrum with IFFT method
         Note: For one side psd, one need to create IFFT coefficients for negative frequencies to use IFFT method. 
@@ -160,6 +160,7 @@ class PowerSpectrum(object):
             assert self._is_symmetric(self.f, self.pxx)
             f, pxx = self.f, self.pxx
 
+        np.random.seed(seed)
         fmax, df = f[-1]  , f[1]-f[0]
         tmax, dt = 0.5/df , 0.5/fmax
         ntime_steps = f.size//2 #int(fmax/df) same as number of frequencies
