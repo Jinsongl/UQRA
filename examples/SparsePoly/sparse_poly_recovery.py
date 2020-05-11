@@ -57,15 +57,15 @@ def main():
     simparams = museuq.Parameters()
     simparams.pce_degs   = np.array([10])
     simparams.n_cand     = int(1e5)
-    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
     simparams.optimality = None #'D', 'S', None
-    # simparams.hem_type   = 'physicists'
-    simparams.hem_type   = 'probabilists'
+    simparams.hem_type   = 'physicists'
+    # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats              = 50 if simparams.optimality is None else 1
-    ratio_ns             = np.linspace(1,5,21) 
-    ratio_sp             = np.linspace(0,1,21)
+    repeats              = 100 if simparams.optimality is None else 1
+    ratio_sm             = np.linspace(0,1,21)[1:]
+    ratio_mp             = np.linspace(0,1,21)[1:]
     # alphas             = np.linspace(0,1,51)
     # alphas = np.append(alphas,np.linspace(2,4,11))
     # alphas = np.append(alphas,np.linspace(4,10,13))
@@ -86,18 +86,16 @@ def main():
         cond_num_nsample = []
         coef_err_nsample = []
         u_train = [None,] * repeats
-        sparsity = np.unique(np.rint(ratio_sp * orth_poly.num_basis).astype(np.int32))
-        sparsity = sparsity[sparsity != 0]
-        sparsity = sparsity[sparsity != 1]
         # sparsity = [5,]
-        data_s = []
-        for i, s in enumerate(sparsity):
-            nsamples = np.unique(np.rint(ratio_ns * s).astype(np.int32))
-            # nsamples = np.arange(6,81) 
-            data_n = []
-            for j, nsample in enumerate(nsamples):
-                if nsample > orth_poly.num_basis:
-                    continue
+        data_n = []
+        nsamples = np.rint(ratio_mp * orth_poly.num_basis).astype(np.int32)
+        for j, nsample in enumerate(nsamples):
+            sparsity = np.rint(ratio_sm * nsamples).astype(np.int32)
+            sparsity = sparsity[sparsity != 0]
+            sparsity = sparsity[sparsity != 1]
+            data_s = []
+            for i, s in enumerate(sparsity):
+                # nsamples = np.arange(6,81) 
                 solver = museuq.SparsePoly(orth_poly, sparsity=s, seed=100)
                 simparams.solver = solver
                 simparams.update()
