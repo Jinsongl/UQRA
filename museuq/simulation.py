@@ -538,7 +538,7 @@ class Modeling(object):
 
         elif self.params.doe_method.lower().startswith('cls'):
             if self.dist_u_name.lower().startswith('norm'):
-                pdf = 1.0/(2*np.pi * np.sqrt(p))*(2 - np.linalg.norm(u/np.sqrt(p),2, axis=0)**2)**(self.ndim/2.0) 
+                pdf = 1.0/(self.ndim*np.pi * np.sqrt(p))*(2 - np.linalg.norm(u/np.sqrt(p),2, axis=0)**2)**(self.ndim/2.0) 
                 pdf[pdf<0] = 0
             elif self.dist_u_name.lower().startswith('uniform'):
                 pdf = 1.0/np.prod(np.sqrt(1-u**2), axis=0)/np.pi**self.ndim
