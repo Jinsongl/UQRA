@@ -55,7 +55,7 @@ def main():
     ndim = 2
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
-    simparams.pce_degs   = np.array([10])
+    simparams.pce_degs   = np.array([20])
     simparams.n_cand     = int(1e5)
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
     simparams.optimality = None #'D', 'S', None
@@ -63,7 +63,7 @@ def main():
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats              = 100 if simparams.optimality is None else 1
+    repeats              = 100 if simparams.optimality is None else 100
     ratio_sm             = np.linspace(0,1,21)[1:]
     ratio_mp             = np.linspace(0,1,21)[1:]
     # alphas             = np.linspace(0,1,51)
@@ -95,6 +95,8 @@ def main():
             sparsity = sparsity[sparsity != 1]
             data_s = []
             for i, s in enumerate(sparsity):
+                if s > nsample:
+                    continue
                 # nsamples = np.arange(6,81) 
                 solver = museuq.SparsePoly(orth_poly, sparsity=s, seed=100)
                 simparams.solver = solver
@@ -138,7 +140,6 @@ def main():
                 poly_deg_repeat= []
                 sparsity_repeat= []
                 nsamples_repeat= []
-                u_train  = [u_train,] if repeats == 1 else u_train
                 for iu_train in tqdm(u_train, ascii=True, ncols=80,
                         desc='   [s={:d}, n={:d}, P={:d}]'.format(s, nsample, pce_model.num_basis)):
 

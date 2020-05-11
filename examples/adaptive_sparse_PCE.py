@@ -38,9 +38,9 @@ def main():
     # solver      = museuq.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = museuq.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
     # solver      = museuq.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
-    solver      = museuq.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
+    # solver      = museuq.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
     # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
-    # solver      = museuq.FourBranchSystem()
+    solver      = museuq.FourBranchSystem()
 
     # solver      = museuq.linear_oscillator(qoi2analysis=[1], stats2cal='absmax') 
 
@@ -149,13 +149,13 @@ def main():
             w_train = 1
         w_train = w_train * bias_weight
         pce_model.fit(simparams.fit_method, u_train, y_train, w_train, n_splits=simparams.n_splits, epsilon=1e-4)
-        # pce_model.var(0.95)
+        pce_model.var(0.95)
 
         ### ============ Get new samples ============
         ### update candidate data set for this p degree, cls unbuounded
         u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
-        # n = math.ceil(len(pce_model.var_pct_basis)* new_samples_pct[p])
-        n = math.ceil(len(pce_model.active_basis)* new_samples_pct[p])
+        n = math.ceil(len(pce_model.var_pct_basis)* new_samples_pct[p])
+        # n = math.ceil(len(pce_model.active_basis)* new_samples_pct[p])
         if u_train.shape[1] + n < math.ceil(pce_model.least_ns_ratio * pce_model.sparsity):
             n = math.ceil(pce_model.least_ns_ratio * pce_model.sparsity)  - u_train.shape[1]
         if u_train.shape[1] + n > n_budget:
@@ -274,7 +274,7 @@ def main():
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
     # print(pce_model.coef[pce_model.coef!=0])
     # print(solver.coef[solver.coef!=0])
-    filename = 'Adaptive_{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag[:4], simparams.tag)
+    filename = 'Adaptive_{:s}_{:s}_{:s}test'.format(solver.nickname, pce_model.tag[:4], simparams.tag)
     path_data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, score_path, QoI_path, test_error_path]) 
     np.save(os.path.join(simparams.data_dir_result, filename+'_path'), path_data)
     data  = np.array([n_eval_path, poly_order_path, cv_error, active_basis, score, QoI, test_error]) 
