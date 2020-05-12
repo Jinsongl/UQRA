@@ -63,7 +63,7 @@ def main():
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats              = 100 if simparams.optimality is None else 100
+    repeats              = 1 if simparams.optimality == 'D'  else 50
     ratio_sm             = np.linspace(0,1,21)[1:]
     ratio_mp             = np.linspace(0,1,21)[1:]
     # alphas             = np.linspace(0,1,51)
@@ -81,10 +81,6 @@ def main():
         ## ----------- Oversampling ratio ----------- ###
         # simparams.update_num_samples(orth_poly.num_basis, alphas=alphas)
         # print(' > Oversampling ratio: {}'.format(np.around(simparams.alphas,2)))
-        score_nsample    = []
-        cv_error_nsample = []
-        cond_num_nsample = []
-        coef_err_nsample = []
         u_train = [None,] * repeats
         # sparsity = [5,]
         data_n = []
@@ -140,6 +136,7 @@ def main():
                 poly_deg_repeat= []
                 sparsity_repeat= []
                 nsamples_repeat= []
+                coef_err_l2    = []
                 for iu_train in tqdm(u_train, ascii=True, ncols=80,
                         desc='   [s={:d}, n={:d}, P={:d}]'.format(s, nsample, pce_model.num_basis)):
 
@@ -170,9 +167,10 @@ def main():
                     poly_deg_repeat.append(p)
                     sparsity_repeat.append(s)
                     nsamples_repeat.append(nsample)
+                    coef_err_l2.append(sparse_poly_coef_error(solver, pce_model, 2)/np.linalg.norm(solver.coef,2))
 
                 data_n.append(np.array([poly_deg_repeat, sparsity_repeat, nsamples_repeat, coef_err_repeat, 
-                    cond_num_repeat, score_repeat, cv_err_repeat]))
+                    cond_num_repeat, score_repeat, cv_err_repeat, coef_err_l2]))
                 ### ============ calculating & updating metrics ============
                 with np.printoptions(precision=4):
                     print('     - {:<15s} : {:.4f}'.format( '|coef|'    , np.mean(coef_err_repeat)))
