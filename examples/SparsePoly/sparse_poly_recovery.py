@@ -84,11 +84,10 @@ def main():
         u_train = [None,] * repeats
         # sparsity = [5,]
         data_n = []
-        nsamples = np.rint(ratio_mp * orth_poly.num_basis).astype(np.int32)
+        nsamples = np.unique(np.rint(ratio_mp * orth_poly.num_basis).astype(np.int32))
         for j, nsample in enumerate(nsamples):
-            sparsity = np.rint(ratio_sm * nsamples).astype(np.int32)
+            sparsity = np.unique(np.rint(ratio_sm * nsamples).astype(np.int32))
             sparsity = sparsity[sparsity != 0]
-            sparsity = sparsity[sparsity != 1]
             data_s = []
             for i, s in enumerate(sparsity):
                 if s > nsample:
