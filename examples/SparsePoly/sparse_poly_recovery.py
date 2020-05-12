@@ -57,10 +57,10 @@ def main():
     simparams = museuq.Parameters()
     simparams.pce_degs   = np.array([20])
     simparams.n_cand     = int(1e5)
-    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'S'#'D', 'S', None
-    simparams.hem_type   = 'physicists'
-    # simparams.hem_type   = 'probabilists'
+    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.optimality = None #'D', 'S', None
+    # simparams.hem_type   = 'physicists'
+    simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     repeats              = 1 if simparams.optimality == 'D'  else 50
@@ -88,6 +88,7 @@ def main():
         for j, nsample in enumerate(nsamples):
             sparsity = np.unique(np.rint(ratio_sm * nsamples).astype(np.int32))
             sparsity = sparsity[sparsity != 0]
+            sparsity = sparsity[sparsity != 1]
             data_s = []
             for i, s in enumerate(sparsity):
                 if s > nsample:
