@@ -200,7 +200,7 @@ class Modeling(object):
 
         return u_test, x_test, y_test
 
-    def get_train_data(self, size, u_cand, u_train=None, basis=None, active_basis=None):
+    def get_train_data(self, size, u_cand, u_train=None, basis=None, active_basis=None, precomputed=True):
         """
         Return train data from candidate data set. All samples are in U-space
         size is how many MORE to be sampled besides those alrady existed in u_train 
@@ -249,11 +249,13 @@ class Modeling(object):
 
         ### Checking if the data is available to speed up the process
         ### Precomputed datasets are only available to Optimality Design (S/D) with ALL basis 
-        precomputed = self._check_precomputed_optimality(basis, active_basis) 
+        if precomputed:
+            precomputed = self._check_precomputed_optimality(basis, active_basis) 
+
         if precomputed:
             tqdm.write('   - {:<20s} : {:s}'.format('Precomputed File ', self.filename_optimality))
 
-        for r in range(repeats):
+        for r in tqdm(range(repeats), ascii=True,ncols=80, desc='   '):
             u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
                     u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=precomputed)
             u_train_new.append(u_new)

@@ -58,7 +58,7 @@ def main():
     simparams.pce_degs   = np.array([20])
     simparams.n_cand     = int(1e5)
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = None #'D', 'S', None
+    simparams.optimality = 'S'#'D', 'S', None
     simparams.hem_type   = 'physicists'
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
@@ -131,7 +131,7 @@ def main():
                 ### ============ Get training points ============
                 u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
                 # nsample = nsample - len(modeling.sample_selected)
-                _, u_train = modeling.get_train_data((repeats,nsample), u_cand_p, u_train=None, basis=pce_model.basis)
+                _, u_train = modeling.get_train_data((repeats,nsample), u_cand_p, u_train=None, basis=pce_model.basis, precomputed=False)
                 # print(modeling.sample_selected)
                 score_repeat   = []
                 cv_err_repeat  = []
