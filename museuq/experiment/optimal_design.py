@@ -105,7 +105,8 @@ class OptimalDesign(ExperimentBase):
 
         ## each QR iteration returns rank(X_candidate) samples, which is min(X_candidate.shape)
         ## to have m samples, need to run RRQR ceil(m/rnak(X_candidate)) times
-        for _ in tqdm(range(math.ceil(m/min(X_candidate.shape))), ascii=True, desc='    - [D-Optimal]',ncols=80):
+        # for _ in tqdm(range(math.ceil(m/min(X_candidate.shape))), ascii=True, desc='    - [D-Optimal]',ncols=80):
+        for _ in range(math.ceil(m/min(X_candidate.shape))):
             ## remove the new selected indices from candidate 
             row_candidate = list(set(row_candidate).difference(set(row_adding)))
             if not row_candidate:
@@ -322,7 +323,8 @@ class OptimalDesign(ExperimentBase):
         else:
             batch_size = math.floor(size_of_array_8gb/k/k)  ## large memory is allocated as 8 GB
             Alpha = []
-            for i in tqdm(range(math.ceil(n_k/batch_size)), ascii=True, desc='   Batch (n={:d}): -'.format(batch_size),ncols=80):
+            # for i in tqdm(range(math.ceil(n_k/batch_size)), ascii=True, desc='   Batch (n={:d}): -'.format(batch_size),ncols=80):
+            for i in range(math.ceil(n_k/batch_size)):
                 idx_start = i*batch_size
                 idx_end   = min((i+1) * batch_size, n_k)
                 R_        = R[idx_start:idx_end, :]
