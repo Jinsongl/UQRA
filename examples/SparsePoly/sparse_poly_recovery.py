@@ -156,7 +156,7 @@ def main():
                     coef_abserr_inf = sparse_poly_coef_error(solver, pce_model, np.inf)
                     coef_relerr_l2 = (sparse_poly_coef_error(solver, pce_model, 2)/np.linalg.norm(solver.coef,2))
 
-                data_p.append([p, s, n, coef_abserr_inf, kappa, pce_model.score, pce_model.cv_error, coef_relerr_l2])
+                    data_p.append([p, s, n, coef_abserr_inf, kappa, pce_model.score, pce_model.cv_error, coef_relerr_l2])
                 ### ============ calculating & updating metrics ============
                 # with np.printoptions(precision=4):
                     # print('     - {:<15s} : {:.4f}'.format( '|coef|'    , np.mean(coef_err_repeat)))

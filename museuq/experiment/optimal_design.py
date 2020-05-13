@@ -50,6 +50,8 @@ class OptimalDesign(ExperimentBase):
             list of row indices selected 
         """
         selected_values = kwargs.get('selected', None)
+        seed = kwargs.get('seed', None)
+        np.random.seed(seed)
 
         if self.optimality == 'S':
             """ Xb = Y """
@@ -105,8 +107,8 @@ class OptimalDesign(ExperimentBase):
 
         ## each QR iteration returns rank(X_candidate) samples, which is min(X_candidate.shape)
         ## to have m samples, need to run RRQR ceil(m/rnak(X_candidate)) times
-        # for _ in tqdm(range(math.ceil(m/min(X_candidate.shape))), ascii=True, desc='    - [D-Optimal]',ncols=80):
-        for _ in range(math.ceil(m/min(X_candidate.shape))):
+        for _ in tqdm(range(math.ceil(m/min(X_candidate.shape))), ascii=True, desc='    - [D-Optimal]',ncols=80):
+        # for _ in range(math.ceil(m/min(X_candidate.shape))):
             ## remove the new selected indices from candidate 
             row_candidate = list(set(row_candidate).difference(set(row_adding)))
             if not row_candidate:
@@ -152,8 +154,8 @@ class OptimalDesign(ExperimentBase):
             raise ValueError('Quasi optimal sebset are designed for overdetermined problem only')
         (Q, R)  = (X, None) if orth_basis else np.linalg.qr(X)
         row_adding = []
-        # for _ in tqdm(range(m), ascii=True, desc="   - [S-Optimal]",ncols=80):
-        for _ in range(m):
+        for _ in tqdm(range(m), ascii=True, desc="   - [S-Optimal]",ncols=80):
+        # for _ in range(m):
             ## find the next optimal index from Q which is not currently selected
             i = self._greedy_find_next_point(row_selected,Q)
             ## check if this index is already selected
