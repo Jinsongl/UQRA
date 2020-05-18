@@ -14,12 +14,18 @@ from museuq.polynomial._polybase import PolyBase
 from museuq.polynomial.hermite import Hermite
 from museuq.polynomial.legendre import Legendre
 
+from museuq.environment._envbase import EnvBase
+from museuq.environment.environment import Environment as Environment
+from museuq.environment import *
+
 from museuq.experiment.quadrature import QuadratureDesign
 from museuq.experiment.random_design import RandomDesign
 from museuq.experiment.lhs import LatinHyperCube as LHS
 from museuq.experiment.optimal_design import OptimalDesign 
 
-from museuq.solver.dynamic import linear_oscillator, duffing_oscillator
+# from museuq.solver.dynamic import linear_oscillator, duffing_oscillator
+from museuq.solver.linear_oscillator import linear_oscillator as linear_oscillator
+from museuq.solver.duffing_oscillator import duffing_oscillator as duffing_oscillator
 from museuq.solver.static import * 
 from museuq.solver.ErrorClass import NullError, IidError, CovError
 
