@@ -48,7 +48,7 @@ def sparse_poly_coef_error(solver, model, normord=np.inf):
 
 def main():
     ## ------------------------ Displaying set up ------------------- ###
-j   np.set_printoptions(precision=4)
+    np.set_printoptions(precision=4)
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
     np.random.seed(100)
@@ -58,7 +58,7 @@ j   np.set_printoptions(precision=4)
     simparams.pce_degs   = np.array([20])
     simparams.n_cand     = int(1e5)
     simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'S'#'D', 'S', None
+    simparams.optimality = None #'D', 'S', None
     # simparams.hem_type   = 'physicists'
     simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
@@ -88,11 +88,7 @@ j   np.set_printoptions(precision=4)
             sparsity = sparsity[sparsity != 1]
             data_s = []
             for i, s in enumerate(sparsity):
-                print(' > Case: n={:d} [{:d}/{:d}], s={:d}[{:d}/{:d}]'.format(n,j,len(nsamples),s,i,len(sparsity)))
-                # check_psn = psn_done == [s,n]
-                # if np.logical_and(check_psn[:,0], check_psn[:,1]).any():
-                    # print('     pass')
-                    # continue
+                print(' > Case: s={:d}[{:d}/{:d}], n={:d} [{:d}/{:d}]'.format(s, i, len(sparsity), n,j, len(nsamples)))
                 check_psn = psn_todo == [s,n]
                 is_psn_todo = np.logical_and(check_psn[:,0], check_psn[:,1]).any()
                 if not is_psn_todo:
@@ -134,7 +130,7 @@ j   np.set_printoptions(precision=4)
                 pce_model= museuq.PCE(orth_poly)
                 ### ============ Get training points ============
                 u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
-                _, u_train = modeling.get_train_data((repeats,n), u_cand_p, u_train=None, basis=pce_model.basis)
+                _, u_train = modeling.get_train_data((repeats,n), u_cand_p, u_train=None, basis=pce_model.basis, precomputed=False)
                 for iu_train in tqdm(u_train, ascii=True, ncols=80,
                         desc='   [s={:d}, ={:d}, P={:d}]'.format(s, n, pce_model.num_basis)):
 
