@@ -214,7 +214,6 @@ class linear_oscillator(SolverBase):
         return ndim
 
     def generate_samples(self, n, seed=None):
-
         n = int(n)
         x = []
         np.random.seed(seed)
