@@ -157,10 +157,10 @@ def main():
     time_params =  [time_start, time_ramp, time_max, dt]
     
     ## parameters to post analysis
-    qoi2analysis = [0,]
+    out_responses = [0,]
     # [mean, std, skewness, kurtosis, absmax, absmin, up_crossing, moving_avg, moving_std]
     stats = [1,1,1,1,1,1,0] 
-    post_params = [qoi2analysis, stats]
+    post_params = [out_responses, stats]
     normalize = True
 
     # doe_type  = 'Uniform_DoE'

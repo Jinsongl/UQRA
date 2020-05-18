@@ -66,16 +66,16 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_linear_oscillator(self):
         random_seed = 100
-        qoi2analysis = [1,2]
+        out_responses = [1,2]
         nsim = 3
-        stats2cal = ['absmax']
+        out_stats = ['absmax']
         m=1
         c=0.02/np.pi
         k=1.0/np.pi/np.pi
         m,c,k  = [stats.norm(m, 0.1*m), stats.norm(c, 0.1*c), stats.norm(k, 0.1*k)]
         # env    = museuq.Environment([stats.uniform, stats.norm])
         solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='spec_test1',
-                qoi2analysis=qoi2analysis, stats2cal=stats2cal)
+                out_responses=out_responses, out_stats=out_stats)
         print(solver)
         samples= solver.generate_samples(100, seed=random_seed)
         print(samples.shape)
@@ -128,11 +128,17 @@ class BasicTestSuite(unittest.TestCase):
         # f = lambda t: 8 * np.cos(0.5 * t)
         np.random.seed(100)
         dt = 0.01 
-        qoi2analysis = [1,2]
+        out_responses = [1,2]
         nsim = 1
-        stats2cal = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
-        solver = museuq.duffing_oscillator(qoi2analysis=qoi2analysis, stats2cal=stats2cal, tmax=2000, dt=dt,y0=[1,0], spec_name='JONSWAP')
+        out_stats = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
+        # solver = museuq.duffing_oscillator(m=1,c=0.2*np.pi,k=4*np.pi**2,s=np.pi**2, out_responses=out_responses, out_stats=out_stats, tmax=18000, dt=dt,y0=[1,0])
+        f = lambda t: 0.39 * np.cos(1.4 * t)
+        solver = museuq.duffing_oscillator(m=1,c=0.1,k=-1,s=1,excitation=f, out_responses=out_responses, out_stats=out_stats, tmax=18000, dt=dt,y0=[0,0])
+        x = solver.generate_samples(1)
         print(solver)
+        print(x)
+        y = solver.run(x,return_raw=True)
+
         # data_dir_src    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal/'
         # data_dir_destn  = r'/Volumes/External/MUSE_UQ_DATA/Duffing/Data/' 
         # for r in range(1):

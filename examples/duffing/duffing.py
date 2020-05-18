@@ -75,9 +75,9 @@ def main():
     time_params =  [time_start, time_ramp, time_max, dt]
     
     ## parameters to post analysis
-    qoi2analysis = [0,]
+    out_responses = [0,]
     stats = [1,1,1,1,1,1,0] # [mean, std, skewness, kurtosis, absmax, absmin, up_crossing, moving_avg, moving_std]
-    post_params = [qoi2analysis, stats]
+    post_params = [out_responses, stats]
     normalize = True
 
     quad_simparam = simParameter(dist_zeta, doe_params = doe_params, \

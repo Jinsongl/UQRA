@@ -59,9 +59,9 @@ class linear_oscillator(SolverBase):
         self.tmax       = kwargs.get('time_max', 100)
         self.tmax       = kwargs.get('tmax', 100)
         self.dt         = kwargs.get('dt', 0.01)
-        self.stats2cal  = kwargs.get('stats2cal', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
+        self.out_stats  = kwargs.get('out_stats', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
         self.n_short_term= kwargs.get('n_short_term', 10)  ## number of short term simulations
-        self.qoi2analysis= kwargs.get('qoi2analysis', 'ALL')
+        self.out_responses= kwargs.get('out_responses', 'ALL')
 
     def __str__(self):
         message1 = 'Single Degree of Fredom Oscillator: \n'
@@ -84,7 +84,7 @@ class linear_oscillator(SolverBase):
 
         """
         n_short_term    = kwargs.get('n_short_term', self.n_short_term)
-        qoi2analysis    = kwargs.get('qoi2analysis', self.qoi2analysis)
+        out_responses    = kwargs.get('out_responses', self.out_responses)
         x = np.array(x.T, copy=False, ndmin=2)
         np.random.seed(random_seed)
         seeds = np.random.randint(0, int(2**32-1), size=n_short_term) 
@@ -93,14 +93,14 @@ class linear_oscillator(SolverBase):
             pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(ishort_term, self.n_short_term))
             ### Note that xlist and ylist will be tuples (since zip will be unpacked). 
             ### If you want them to be lists, you can for instance use:
-            y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, seed=seeds[ishort_term], qoi2analysis=qoi2analysis) for ix in pbar_x]))
+            y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, seed=seeds[ishort_term], out_responses=out_responses) for ix in pbar_x]))
             y_QoI.append(y_QoI_)
             if return_all:
                 np.save('{:s}_raw{:d}'.format(self.nickname,ishort_term), np.array(y_raw_))
         return np.array(y_QoI)
 
 
-    def _linear_oscillator(self, x, seed=None,qoi2analysis='ALL'):
+    def _linear_oscillator(self, x, seed=None,out_responses='ALL'):
         """
         Solving linear oscillator in frequency domain
         m x'' + c x' + k x = f => 
@@ -129,7 +129,7 @@ class linear_oscillator(SolverBase):
 
         y_raw = np.vstack((t0, x_t, y_t)).T
         museuq.blockPrint()
-        y_QoI = museuq.get_stats(y_raw, qoi2analysis=qoi2analysis, stats2cal=self.stats2cal, axis=0) 
+        y_QoI = museuq.get_stats(y_raw, out_responses=out_responses, out_stats=self.out_stats, axis=0) 
         museuq.enablePrint()
         return y_raw, y_QoI
             

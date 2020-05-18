@@ -299,52 +299,52 @@ def get_weighted_exceedance(x, **kwargs):
     return res
 
 
-def get_stats(data, qoi2analysis='ALL', stats2cal=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=None):
+def get_stats(data, out_responses='ALL', out_stats=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=None):
     """
-    Return column-wise statistic properties for given qoi2analysis and stats2cal
+    Return column-wise statistic properties for given out_responses and out_stats
     Parameters:
         - data: file type or array-like (ndim/ntime_series, nsamples/nqois)
             > file: file full name must given, including extension
             > array-like of shape (nsampes, m,n) or (nsample,)
                 m,n: format for one solver simulation
                 nsamples: number of simulations run
-        - qoi2analysis: array of integers, Column indices to analysis
-        - stats2cal: array of boolen, indicators of statistics to calculate
+        - out_responses: array of integers, Column indices to analysis
+        - out_stats: array of boolen, indicators of statistics to calculate
           [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
     Return:
-        list of calculated statistics [ np.array(nstats, nqoi2analysis)] 
+        list of calculated statistics [ np.array(nstats, nout_responses)] 
     """
     print(r' > Calculating statistics...')
     print(r'   * {:<15s} '.format('post analysis parameters'))
-    print(r'     - {:<15s} : {} '.format('qoi2analysis', qoi2analysis))
-    print(r'     - {:<15s} : {} '.format('statistics'  , stats2cal))
+    print(r'     - {:<15s} : {} '.format('out_responses', out_responses))
+    print(r'     - {:<15s} : {} '.format('statistics'  , out_stats))
 
     if isinstance(data, (np.ndarray, np.generic)):
         data = data.reshape(-1,1) if data.ndim == 1 else data
-        data = data if qoi2analysis == 'ALL' else np.squeeze(data[:, qoi2analysis])
+        data = data if out_responses == 'ALL' else np.squeeze(data[:, out_responses])
     elif isinstance(data, str):
         data = _load_data_from_file(data)
         data = data.reshape(-1,1) if data.ndim == 1 else data
-        data = data if qoi2analysis == 'ALL' else np.squeeze(data[:, qoi2analysis])
+        data = data if out_responses == 'ALL' else np.squeeze(data[:, out_responses])
     else:
         raise ValueError('Input format for get_stats are not defined, {}'.format(type(data)))
-    res = _get_stats(data, stats2cal=stats2cal, axis=axis)
+    res = _get_stats(data, out_stats=out_stats, axis=axis)
     return res
 
-def _get_stats(data, stats2cal=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=None):
+def _get_stats(data, out_stats=['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'], axis=None):
     """ Calculate statistics of data along specified axis
         Parameters:
           - data: np.ndarray 
-          - stats2cal: list, indicator of statistics to be calculated, 
+          - out_stats: list, indicator of statistics to be calculated, 
             [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
         Return: 
             ndarray (nstats, nsamples/nqois) 
     """
     res = []
-    if isinstance(stats2cal, str):
-        stats2cal = [stats2cal,]
+    if isinstance(out_stats, str):
+        out_stats = [out_stats,]
 
-    for istats in stats2cal:
+    for istats in out_stats:
         if istats.lower()  in ['mean', 'mu']:
             res.append(np.mean(data, axis=axis))
         elif istats.lower() in ['std', 'sigma']:

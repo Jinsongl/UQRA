@@ -40,8 +40,8 @@ class linear_oscillator(SolverBase):
         self.spec_name   = kwargs.get('spec_name', 'JONSWAP')
         self.ndim_spec   = PowerSpectrum(self.spec_name).ndim
         self.ndim        = self.ndim_spec + int(0) ## need to change when cmk are also random 
-        self.qoi2analysis= kwargs.get('qoi2analysis', 'ALL')
-        self.stats2cal   = kwargs.get('stats2cal', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
+        self.out_responses= kwargs.get('out_responses', 'ALL')
+        self.out_stats   = kwargs.get('out_stats', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
         self.axis        = kwargs.get('axis', 0)
         self.tmax        = kwargs.get('time_max', 1000)
         self.dt          = kwargs.get('dt', 0.1)
@@ -71,7 +71,7 @@ class linear_oscillator(SolverBase):
                 '   - {:<15s} : {}\n'.format('zeta'     , np.around(self.zeta, 2))      + \
                 '   - {:<15s} : {}\n'.format('omega_n'  , np.around(self.omega_n, 2))   + \
                 '   - {:<15s} : {}\n'.format('spec_name', self.spec_name)               + \
-                '   - {:<15s} : {}\n'.format('qoi2analysis', self.qoi2analysis)         + \
+                '   - {:<15s} : {}\n'.format('out_responses', self.out_responses)         + \
                 '   - {:<15s} : {}\n'.format('time_max' , self.tmax)                    + \
                 '   - {:<15s} : {}\n'.format('dt' , self.dt)
         return message
@@ -85,7 +85,7 @@ class linear_oscillator(SolverBase):
         """
         np.random.seed(random_seed)
         n_short_term = kwargs.get('n_short_term', self.n_short_term)
-        qoi2analysis = kwargs.get('qoi2analysis', self.qoi2analysis)
+        out_responses = kwargs.get('out_responses', self.out_responses)
         x = np.array(x.T, copy=False, ndmin=2)
         # x = x.reshape(-1,1) if x.ndim_spec == 1 else x
         ## if x is just one set of input of shape (2, 1)
@@ -94,7 +94,7 @@ class linear_oscillator(SolverBase):
         for ishort_term in range(n_short_term):
         # Note that xlist and ylist will be tuples (since zip will be unpacked). If you want them to be lists, you can for instance use:
             pbar_x  = tqdm(x, ascii=True, desc="    - {:d}/{:d} ".format(ishort_term, self.n_short_term))
-            y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, seed=seeds[ishort_term], qoi2analysis=qoi2analysis) for ix in pbar_x]))
+            y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, seed=seeds[ishort_term], out_responses=out_responses) for ix in pbar_x]))
             y_QoI.append(y_QoI_)
             if return_all:
                 np.save('{:s}_raw{:d}'.format(self.nickname,ishort_term), np.array(y_raw_))
@@ -130,7 +130,7 @@ class linear_oscillator(SolverBase):
 
         return psd_x, psd_y 
 
-    def _linear_oscillator(self, x, seed=None,qoi2analysis='ALL'):
+    def _linear_oscillator(self, x, seed=None,out_responses='ALL'):
         """
         Solving linear oscillator in frequency domain
         m x'' + c x' + k x = f => 
@@ -155,7 +155,7 @@ class linear_oscillator(SolverBase):
 
         y_raw = np.vstack((t0, x_t, y_t)).T
         museuq.blockPrint()
-        y_QoI = museuq.get_stats(y_raw, qoi2analysis=qoi2analysis, stats2cal=self.stats2cal, axis=0) 
+        y_QoI = museuq.get_stats(y_raw, out_responses=out_responses, out_stats=self.out_stats, axis=0) 
         museuq.enablePrint()
         return y_raw, y_QoI
             
@@ -216,8 +216,8 @@ class duffing_oscillator(SolverBase):
         self.ndim_spec   = PowerSpectrum(self.spec_name).ndim
         self.ndim        = self.ndim_spec + int(0) ## need to change when cmk are also random 
         self.excitation  = kwargs.get('excitation', None)
-        self.qoi2analysis= kwargs.get('qoi2analysis', 'ALL')
-        self.stats2cal   = kwargs.get('stats2cal', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
+        self.out_responses= kwargs.get('out_responses', 'ALL')
+        self.out_stats   = kwargs.get('out_stats', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
         self.axis        = kwargs.get('axis', 0)
         self.tmax        = kwargs.get('time_max', 1000)
         self.tmax        = kwargs.get('tmax', 1000)
@@ -249,7 +249,7 @@ class duffing_oscillator(SolverBase):
         message = 'Duffing Oscillator: \n'                                              + \
                 '   - {:<15s} : {}\n'.format('mcks'     , np.around(self.mcks, 2))      + \
                 '   - {:<15s} : {}\n'.format('excitation', self.excitation.__name__ if self.excitation else self.spec_name) + \
-                '   - {:<15s} : {}\n'.format('qoi2analysis', self.qoi2analysis)         + \
+                '   - {:<15s} : {}\n'.format('out_responses', self.out_responses)         + \
                 '   - {:<15s} : {}\n'.format('time_max' , self.tmax)                    + \
                 '   - {:<15s} : {}\n'.format('dt' , self.dt)
         return message
@@ -263,14 +263,14 @@ class duffing_oscillator(SolverBase):
         """
         np.random.seed(random_seed)
         n_short_term = kwargs.get('n_short_term', self.n_short_term)
-        qoi2analysis = kwargs.get('qoi2analysis', self.qoi2analysis)
+        out_responses = kwargs.get('out_responses', self.out_responses)
         x = np.array(x.T, copy=False, ndmin=2)
         pbar_x  = tqdm(x, ascii=True, desc="   - ")
         y_QoI = []
         seeds = np.random.randint(0, int(2**32-1), size=n_short_term) 
         for ishort_term in range(n_short_term):
             pbar_x  = tqdm(x, ascii=True, desc="    - {:d}/{:d} ".format(ishort_term, self.n_short_term))
-            y_raw_, y_QoI_ = map(list, zip(*[self._duffing_oscillator(ix, seed=seeds[ishort_term], qoi2analysis=qoi2analysis) for ix in pbar_x]))
+            y_raw_, y_QoI_ = map(list, zip(*[self._duffing_oscillator(ix, seed=seeds[ishort_term], out_responses=out_responses) for ix in pbar_x]))
             y_QoI.append(y_QoI_)
             if return_all:
                 np.save('{:s}_raw{:d}'.format(self.nickname,ishort_term), np.array(y_raw_))
@@ -297,7 +297,7 @@ class duffing_oscillator(SolverBase):
         return x
 
 
-    def _duffing_oscillator(self, x, seed=None, qoi2analysis='ALL'):
+    def _duffing_oscillator(self, x, seed=None, out_responses='ALL'):
 
         assert len(x) == self.ndim_spec, "Expecting {:d} variables but {:d} given".format(self.ndim_spec, len(x))
         t = np.arange(0,int(self.tmax/self.dt) +1) * self.dt
@@ -307,7 +307,7 @@ class duffing_oscillator(SolverBase):
         y_raw = np.vstack((t, x_t, solution.y)).T
 
         museuq.blockPrint()
-        y_QoI = museuq.get_stats(y_raw, qoi2analysis=qoi2analysis, stats2cal=self.stats2cal, axis=0) 
+        y_QoI = museuq.get_stats(y_raw, out_responses=out_responses, out_stats=self.out_stats, axis=0) 
         museuq.enablePrint()
         return y_raw, y_QoI
 

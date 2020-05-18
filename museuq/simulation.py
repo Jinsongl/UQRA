@@ -183,7 +183,7 @@ class Modeling(object):
                 x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
             else:
                 raise ValueError
-            y_test = solver.run(x_test, random_seed=seed,qoi2analysis='ALL')
+            y_test = solver.run(x_test, random_seed=seed,out_responses='ALL')
 
             ### 2. Mapping MCS samples from X to u
             ###     dist_u is defined by pce_model
@@ -581,7 +581,7 @@ class Parameters(object):
         solver.nickname: 
         doe_params  = [doe_method, doe_rule, doe_order]
         time_params = [time_start, time_ramp, time_max, dt]
-        post_params = [qoi2analysis=[0,], stats=[1,1,1,1,1,1,0]]
+        post_params = [out_responses=[0,], stats=[1,1,1,1,1,1,0]]
             stats: [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
         sys_def_params: array of parameter sets defining the solver
             if no sys_def_params is required, sys_def_params = None
@@ -625,8 +625,8 @@ class Parameters(object):
             print(r'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('ramp ', self.time_ramp , 'dt ', self.dt ))
         if self.post_params:
             print(r'   * {:<15s} '.format('post analysis parameters'))
-            qoi2analysis = self.qoi2analysis if self.qoi2analysis is not None else 'All'
-            print(r'     - {:<23s} : {} '.format('qoi2analysis', qoi2analysis))
+            out_responses = self.out_responses if self.out_responses is not None else 'All'
+            print(r'     - {:<23s} : {} '.format('out_responses', out_responses))
             print(r'     - {:<23s} : {} '.format('statistics'  , self.stats)) 
 
         if self.is_adaptive:
@@ -690,7 +690,7 @@ class Parameters(object):
         ## define parameters related to post processing
         ### ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
         self.post_params    = kwargs.get('post_params'  , [None, None])
-        self.qoi2analysis   = kwargs.get('qoi2analysis' , self.post_params[0]) 
+        self.out_responses   = kwargs.get('out_responses' , self.post_params[0]) 
         self.stats          = kwargs.get('stats'        , self.post_params[1])
 
         ###-------------Systerm input params ----------------------------

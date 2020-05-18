@@ -18,11 +18,11 @@ def main():
     f = lambda t: 8 * np.cos(0.5 *t)
     np.random.seed(100)
     dt =0.12566370614359174 
-    qoi2analysis = [1,2]
+    out_responses = [1,2]
     nsim = 1
-    stats2cal = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
+    out_stats = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
     method = 'LSODA'
-    solver = museuq.duffing_oscillator(m=1,c=0.02,k=1,s=5,qoi2analysis=qoi2analysis, excitation=f,stats2cal=stats2cal, tmax=18000, dt=dt,y0=[0,0], method=method)
+    solver = museuq.duffing_oscillator(m=1,c=0.02,k=1,s=5,out_responses=out_responses, excitation=f,out_stats=out_stats, tmax=18000, dt=dt,y0=[0,0], method=method)
     print(solver)
     data_dir_src    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal/'
     data_dir_destn  = r'/Volumes/External/MUSE_UQ_DATA/Duffing/Data/' 
@@ -42,9 +42,9 @@ def main():
         # np.save(os.path.join(data_dir_destn, filename), y_QoI)
 
     # np.random.seed(100)
-    # qoi2analysis = [1,2]
-    # stats2cal = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
-    # solver = museuq.linear_oscillator(qoi2analysis=qoi2analysis, stats2cal=stats2cal)
+    # out_responses = [1,2]
+    # out_stats = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
+    # solver = museuq.linear_oscillator(out_responses=out_responses, out_stats=out_stats)
     # print()
     # data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal/'
     # for r in range(10):

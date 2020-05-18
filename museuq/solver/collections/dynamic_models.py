@@ -115,12 +115,12 @@ def linear_oscillator(t, x, **kwargs):
     if return_all:
         return y
     else:
-        qoi2analysis= kwargs.get('qoi2analysis', 'ALL')
-        stats2cal   = kwargs.get('stats2cal', [1,1,1,1,1,1,0])
+        out_responses= kwargs.get('out_responses', 'ALL')
+        out_stats   = kwargs.get('out_stats', [1,1,1,1,1,1,0])
         axis        = kwargs.get('axis', 0)
         data        = np.concatenate((x_t, y_t), axis=1)
         helpers.blockPrint()
-        y_stats = helpers.get_stats(data, qoi2analysis =qoi2analysis, stats2cal = stats2cal, axis=axis) 
+        y_stats = helpers.get_stats(data, out_responses =out_responses, out_stats = out_stats, axis=axis) 
         helpers.enablePrint()
         return y_stats
         
