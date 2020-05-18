@@ -128,10 +128,10 @@ class Modeling(object):
         except OSError as e:
             pass
 
-        n       = kwargs.get('n'    , self.params.n_test)
-        iqoi    = kwargs.get('iqoi' , -1 )
+        n       = kwargs.get('n'   , self.params.n_test)
+        qoi     = kwargs.get('qoi' , [0,] )
         seed    = kwargs.get('random_seed', None)
-        
+        n_short_term = kwargs.get('n_short_term', 1)
         assert solver.ndim == pce_model.ndim
         ndim = solver.ndim
         self.filename_test = '{:s}_{:d}{:s}_'.format(solver.nickname, ndim, pce_model.basis.nickname) + filename
@@ -139,13 +139,33 @@ class Modeling(object):
             self.filename_test = self.filename_test.replace('Mcs', 'Cls')
 
         try:
-            data_set = np.load(os.path.join(data_dir_result, self.filename_test))
-            print('    - Retrieving test data from {}'.format(os.path.join(data_dir_result, self.filename_test)))
-            if not solver.nickname.lower().startswith('sdof'):
-                assert data_set.shape[0] == 2*ndim+1
-            u_test = data_set[      :  ndim,:n] if n > 0 else data_set[     :  ndim , : ]
-            x_test = data_set[ndim  :2*ndim,:n] if n > 0 else data_set[ndim :2*ndim , : ]
-            y_test = data_set[iqoi         ,:n] if n > 0 else data_set[iqoi         , : ]
+            u_test = None 
+            x_test = None
+            y_test = []
+            for iqoi in qoi:
+                filename_iqoi = self.filename_test[:-4] + '_y{:d}.npy'.format(iqoi)
+                data_set = np.load(os.path.join(data_dir_result, filename_iqoi))
+                print('    - Retrieving test data from {}'.format(os.path.join(data_dir_result, filename_iqoi)))
+                if not solver.nickname.lower().startswith('sdof'):
+                    assert data_set.shape[0] == 2*ndim+1
+
+                u_test_ = data_set[     :  ndim,:n] if n > 0 else data_set[     :  ndim, :]
+                x_test_ = data_set[ndim :2*ndim,:n] if n > 0 else data_set[ndim :2*ndim, :]
+
+                if u_test is None:
+                    u_test  = u_test_
+                else:
+                    assert np.array_equal(u_test_, u_test)
+
+                if x_test is None:
+                    x_test  = x_test_
+                else:
+                    assert np.array_equal(x_test_, x_test)
+
+                y_test_ = data_set[2*ndim: 2*ndim+n_short_term,:n] if n > 0 else data_set[2*ndim: 2*ndim+n_short_term, : ]
+                y_test.append(y_test_)
+            if len(y_test) == 1:
+                y_test = y_test[0]
 
         except FileNotFoundError:
             ### 1. Get MCS samples for X
@@ -163,40 +183,41 @@ class Modeling(object):
                 x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
             else:
                 raise ValueError
-            y_test = solver.run(x_test, random_seed=seed)
-            print(y_test[:,:4])
+            y_test = solver.run(x_test, random_seed=seed,qoi2analysis='ALL')
 
             ### 2. Mapping MCS samples from X to u
             ###     dist_u is defined by pce_model
             ### Bounded domain maps to [-1,1] for both mcs and cls methods. so u = z
             ### Unbounded domain, mcs maps to N(0,1), cls maps to N(0,sqrt(0.5))
             u_test = 0.0 + z_test * np.sqrt(0.5) if self.is_cls_unbounded() else z_test
+            u_test = u_test[:,:n] if n > 0 else u_test
+            x_test = x_test[:,:n] if n > 0 else x_test
 
             if y_test.ndim == 1:
-                y_test = y_test.reshape(1,-1)
+                data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
+                np.save(os.path.join(data_dir_result, self.filename_test), data)
+                print('   > Saving test data to {} '.format(data_dir_result))
+                y_test = y_test[  :n] if n > 0 else y_test
             elif y_test.ndim == 2:
-                if y_test.shape[0] == n:
-                    y_test = y_test.T
-                elif y_test.shape[1] == n:
-                    y_test = y_test
-                else:
-                    raise ValueError('Solver output format not understood: {}, expecting has {:d} in 1 dimensino'.format(n))
-            else:
+                # if y_test.shape[0] == n:
+                    # y_test = y_test.T
+                # elif y_test.shape[1] == n:
+                    # y_test = y_test
+                # else:
+                raise ValueError('Solver output format not understood: {}, expecting has {:d} in 1 dimensino'.format(n))
+            elif y_test.ndim == 3:
+                ### (n_short_term, n, nqoi)
                 if solver.nickname.lower() == 'sdof':
                     y = []
-                    for iy_test in y_test.T:
-                        y.append(iy_test)
-                    y_test = np.vstack((y))
+                    for i, iqoi_test in enumerate(y_test.T):
+                        data = np.vstack((u_test, x_test, iqoi_test.T))
+                        np.save(os.path.join(data_dir_result, self.filename_test[:-4]+'_y{:d}.npy'.format(i)), data)
+                        y.append(iqoi_test[:n] if n > 0 else iqoi_test)
+                    print('   > Saving test data to {} '.format(data_dir_result))
+                    y_test = y
                 else:
                     raise NotImplementedError
 
-            data   = np.vstack((u_test, x_test, y_test))
-            np.save(os.path.join(data_dir_result, self.filename_test), data)
-            print('   > Saving test data to {} '.format(data_dir_result))
-
-            u_test = u_test[:,:n] if n > 0 else u_test
-            x_test = x_test[:,:n] if n > 0 else x_test
-            y_test = y_test[  :n] if n > 0 else y_test
 
         return u_test, x_test, y_test
 
@@ -250,14 +271,14 @@ class Modeling(object):
         ### Checking if the data is available to speed up the process
         ### Precomputed datasets are only available to Optimality Design (S/D) with ALL basis 
         if precomputed:
-            precomputed = self._check_precomputed_optimality(basis, active_basis) 
+            precomputed, precomputed_index = self._check_precomputed_optimality(basis, active_basis) 
 
         if precomputed:
             tqdm.write('   - {:<20s} : {:s}'.format('Precomputed File ', self.filename_optimality))
 
         for r in tqdm(range(repeats), ascii=True,ncols=80, desc='   '):
             u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
-                    u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=precomputed)
+                    u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=precomputed, precomputed_index=precomputed_index[r])
             u_train_new.append(u_new)
             u_train_all.append(u_all)
         if len(size) == 1:
@@ -269,7 +290,7 @@ class Modeling(object):
 
         return u_train_new, u_train_all
 
-    def _choose_samples_from_candidates(self, n, u_cand, u_selected=None, basis=None, active_basis=None, precomputed=False):
+    def _choose_samples_from_candidates(self, n, u_cand, u_selected=None, basis=None, active_basis=None, precomputed=False, precomputed_index=None):
         """
         Return train data from candidate data set. All samples are in U-space (with pluripotential equilibrium measure nv(x))
 
@@ -309,7 +330,7 @@ class Modeling(object):
             if precomputed:
                 row_index_adding = []
                 try:
-                    for i in self.precomputed_optimality_index:
+                    for i in precomputed_index:
                         if len(row_index_adding) >= n:
                             break
                         if i in selected_index:
@@ -317,7 +338,7 @@ class Modeling(object):
                         else:
                             row_index_adding.append(i)
                 except AttributeError:
-                    raise AttributeError('Precomputed is True but precomputed_optimality_index was not found')
+                    raise AttributeError('Precomputed is True but precomputed_index was not found')
                 u_new = u_cand[:,row_index_adding]
                 u_all = u_new if u_selected is None else np.hstack((u_selected, u_new))
                 duplicated_idx_in_all = self._check_duplicate_rows(u_all.T)
@@ -371,33 +392,33 @@ class Modeling(object):
         """
         ### Case: direct MCS and CLS without optimality, basis could be None
         if basis is None:
-            return False
+            return False, [None,]
         if self.params.optimality is None:
-            return False
+            return False, [None,]
 
         ### Case: Optimal design with only sigificant basis 
         if len(active_basis) < basis.num_basis:
-            return False
+            return False, [None,]
 
         ### Case: Optimal design with all basis 
         try:
             ### If filename_optimality was given in get_candidate_data
-            self.precomputed_optimality_index = np.load(self.filename_optimality)
+            precomputed_optimality_index = np.load(self.filename_optimality)
         except (AttributeError, FileNotFoundError, TypeError) as e:
             self.filename_optimality = 'DoE_{:s}E{:s}R0_{:d}{:s}{:d}_{:s}.npy'.format(self.params.doe_method.capitalize(),
                     '{:.0E}'.format(self.params.n_cand)[-1], self.ndim, self.model.basis.nickname, basis.deg, self.params.optimality)
             try:
-                self.precomputed_optimality_index = np.squeeze(np.load(os.path.join(self.params.data_dir_precomputed_optimality, self.filename_optimality)))
+                precomputed_optimality_index = np.squeeze(np.load(os.path.join(self.params.data_dir_precomputed_optimality, self.filename_optimality)))
                 ### For some S-Optimality designs, there exist more than one sets
                 ### wip: need to complete this feature. At this moment, if more than one exist, use the first one
-                if self.precomputed_optimality_index.ndim == 2:
-                    self.precomputed_optimality_index = self.precomputed_optimality_index[0]
-                return True
+                # if self.precomputed_optimality_index.ndim == 2:
+                    # self.precomputed_optimality_index = self.precomputed_optimality_index
+                return True, precomputed_optimality_index
             except FileNotFoundError: 
                 print('FileNotFound: No such file or directory: {}'.format(self.filename_optimality))
-                return False
+                return False, [None,]
         except:
-            return False
+            return False, [None,]
 
     def cal_cls_weight(self, u, basis, active_index=None):
         """
