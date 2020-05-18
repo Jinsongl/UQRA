@@ -57,16 +57,16 @@ def main():
     simparams = museuq.Parameters()
     simparams.pce_degs   = np.array([20])
     simparams.n_cand     = int(1e5)
-    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = None #'D', 'S', None
-    simparams.hem_type   = 'physicists'
-    # simparams.hem_type   = 'probabilists'
+    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.optimality = 'S'#'D', 'S', None
+    # simparams.hem_type   = 'physicists'
+    simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     repeats              = 1 if simparams.optimality == 'D'  else 50
     ratio_sn             = np.linspace(0,1,21)[1:]
     ratio_nP             = np.linspace(0,1,21)[1:]
-    psn_done             = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/SparsePoly/SparsePoly_Phase_2Hem20_Cls_Lassolars_psn.npy')
+    # psn_done             = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/SparsePoly/SparsePoly_Phase_2Hem20_Cls_Lassolars_psn.npy')
     # alphas             = np.linspace(0,1,51)
     # alphas = np.append(alphas,np.linspace(2,4,11))
     # alphas = np.append(alphas,np.linspace(4,10,13))
@@ -88,11 +88,11 @@ def main():
             sparsity = sparsity[sparsity != 1]
             data_s = []
             for i, s in enumerate(sparsity):
-                print(' > Case: s={:d}[{:d}/{:d}], n={:d} [{:d}/{:d}]'.format(s, i, len(sparsity), n,j, len(nsamples)))
-                check_psn = psn_done == [s,n]
-                if np.logical_and(check_psn[:,0], check_psn[:,1]).any():
-                    print('     pass')
-                    continue
+                print(' > Case: n={:d} [{:d}/{:d}], s={:d}[{:d}/{:d}]'.format(n,j,len(nsamples),s,i,len(sparsity)))
+                # check_psn = psn_done == [s,n]
+                # if np.logical_and(check_psn[:,0], check_psn[:,1]).any():
+                    # print('     pass')
+                    # continue
                 if s > n:
                     print('     pass')
                     continue
@@ -108,7 +108,7 @@ def main():
                 modeling = museuq.Modeling(solver, pce_model, simparams)
                 # modeling.sample_selected=[]
 
-                print('\================================================================================')
+                print('\n================================================================================')
                 print('   - Sampling and Fitting:')
                 print('     - {:<23s} : {}'.format('Sampling method'  , simparams.doe_method))
                 print('     - {:<23s} : {}'.format('Optimality '      , simparams.optimality))
@@ -129,7 +129,7 @@ def main():
                 pce_model= museuq.PCE(orth_poly)
                 ### ============ Get training points ============
                 u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
-                _, u_train = modeling.get_train_data((repeats,n), u_cand_p, u_train=None, basis=pce_model.basis, precomputed=False)
+                _, u_train = modeling.get_train_data((repeats,n), u_cand_p, u_train=None, basis=pce_model.basis)
                 for iu_train in tqdm(u_train, ascii=True, ncols=80,
                         desc='   [s={:d}, ={:d}, P={:d}]'.format(s, n, pce_model.num_basis)):
 
