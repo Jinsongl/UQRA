@@ -409,6 +409,7 @@ class Modeling(object):
                     '{:.0E}'.format(self.params.n_cand)[-1], self.ndim, self.model.basis.nickname, basis.deg, self.params.optimality)
             try:
                 precomputed_optimality_index = np.squeeze(np.load(os.path.join(self.params.data_dir_precomputed_optimality, self.filename_optimality)))
+                precomputed_optimality_index = np.array(precomputed_optimality_index, ndmin=2)
                 ### For some S-Optimality designs, there exist more than one sets
                 ### wip: need to complete this feature. At this moment, if more than one exist, use the first one
                 # if self.precomputed_optimality_index.ndim == 2:
