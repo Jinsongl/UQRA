@@ -131,6 +131,7 @@ class Modeling(object):
         n       = kwargs.get('n'   , self.params.n_test)
         qoi     = kwargs.get('qoi' , [0,] )
         seed    = kwargs.get('random_seed', None)
+        n       = int(n)
         n_short_term = kwargs.get('n_short_term', 1)
         assert solver.ndim == pce_model.ndim
         ndim = solver.ndim
@@ -145,7 +146,7 @@ class Modeling(object):
             for iqoi in qoi:
                 filename_iqoi = self.filename_test[:-4] + '_y{:d}.npy'.format(iqoi)
                 data_set = np.load(os.path.join(data_dir_result, filename_iqoi))
-                print('    - Retrieving test data from {}'.format(os.path.join(data_dir_result, filename_iqoi)))
+                print('   - Retrieving test data from {}'.format(os.path.join(data_dir_result, filename_iqoi)))
                 if not solver.nickname.lower().startswith('sdof'):
                     assert data_set.shape[0] == 2*ndim+1
 
