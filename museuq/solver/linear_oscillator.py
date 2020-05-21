@@ -87,7 +87,7 @@ class linear_oscillator(SolverBase):
         out_responses    = kwargs.get('out_responses', self.out_responses)
         x = np.array(x.T, copy=False, ndmin=2)
         np.random.seed(random_seed)
-        seeds = np.random.randint(0, int(2**32-1), size=n_short_term) 
+        seeds = np.random.randint(0, int(2**31-1), size=n_short_term) 
         y_QoI = []
         for ishort_term in range(n_short_term):
             pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(ishort_term, self.n_short_term))
