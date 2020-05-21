@@ -204,13 +204,17 @@ class linear_oscillator(SolverBase):
         """
         env must be an object of museuq.Environemnt or None
         """
+        # self.distributions= kwargs.get('environment', Kvitebjorn)
+        # self.dist_name   = self.distributions.__name__.split('.')[-1]
         if self.environment is None:
             ndim = 0
+            self.dist_name = 'None'
 
         else:
             assert isinstance(self.environment, museuq.EnvBase)
             ndim = self.environment.ndim
             self.random_params['env'] = self.environment
+            self.dist_name = '_'.join(self.environment.name)
         return ndim
 
     def generate_samples(self, n, seed=None):
@@ -251,8 +255,6 @@ class linear_oscillator(SolverBase):
 
         """
 
-        # self.distributions= kwargs.get('environment', Kvitebjorn)
-        # self.dist_name   = self.distributions.__name__.split('.')[-1]
 
         if self.excitation is None:
             f = lambda t: t * 0 
@@ -295,6 +297,6 @@ class linear_oscillator(SolverBase):
         f_hz  = spectrum_x.freq  ## freq in Hz
         H_square = 1.0/np.sqrt( (k-m*f_hz**2)**2 + (c*f_hz)**2)
         psd_y = H_square * spectrum_x.pxx
-        spectrum_y = PowerSpectrum('SDOF')
+        spectrum_y = PowerSpectrum()
         spectrum_y.set_density(spectrum_x.freq, psd_y, sides=spectrum_x.sides)
         return spectrum_y 
