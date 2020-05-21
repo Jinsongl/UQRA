@@ -139,7 +139,8 @@ class Kvitebjorn(EnvBase):
         hs= self.samples_hs_ppf(u)
         ### generate n random Tp given above Hs
         tp= self.samples_tp(hs)
-        return np.array([hs, tp])
+        res = np.array([hs, tp]).reshape(2,-1)
+        return res
 
 ## Environment Contour
     def EC(self, P,T=1000,n=100):
@@ -204,7 +205,7 @@ class Kvitebjorn(EnvBase):
         sigma_tp= np.sqrt(b1 + b2*np.exp(-b3*hs))
 
         if tp_cdf is None:
-            samples = np.random.lognormal(mean=mu_tp, sigma=sigma_tp, size=len(hs)) 
+            samples = np.random.lognormal(mean=mu_tp, sigma=sigma_tp, size=np.size(hs)) 
         else:
             samples = stats.lognorm.ppf(tp_cdf, s=sigma_tp, loc=0, scale=np.exp(mu_tp)) 
 
