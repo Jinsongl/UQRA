@@ -48,7 +48,7 @@ def sparse_poly_coef_error(solver, model, normord=np.inf):
 
 def main():
     ## ------------------------ Displaying set up ------------------- ###
-j   np.set_printoptions(precision=4)
+    np.set_printoptions(precision=4)
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
     np.random.seed(100)
@@ -57,16 +57,16 @@ j   np.set_printoptions(precision=4)
     simparams = museuq.Parameters()
     simparams.pce_degs   = np.array([20])
     simparams.n_cand     = int(1e5)
-    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
     simparams.optimality = 'S'#'D', 'S', None
-    # simparams.hem_type   = 'physicists'
-    simparams.hem_type   = 'probabilists'
+    simparams.hem_type   = 'physicists'
+    # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats              = 1 if simparams.optimality == 'D'  else 50
-    ratio_sn             = np.linspace(0,1,21)[1:]
-    ratio_nP             = np.linspace(0,1,21)[1:]
-    psn_todo             = np.load('PhaseTransition_2Heme20_Mcs_todo.npy')
+    repeats              = 1 if simparams.optimality == 'D'  else 10
+    ratio_sn             = np.linspace(0,1,21)[5:11]
+    ratio_nP             = np.linspace(0,1,21)[15:]
+    # psn_todo             = np.load('PhaseTransition_2Hem20_ClsS_todo.npy')
     # alphas             = np.linspace(0,1,51)
     # alphas = np.append(alphas,np.linspace(2,4,11))
     # alphas = np.append(alphas,np.linspace(4,10,13))
@@ -88,16 +88,16 @@ j   np.set_printoptions(precision=4)
             sparsity = sparsity[sparsity != 1]
             data_s = []
             for i, s in enumerate(sparsity):
-                print(' > Case: n={:d} [{:d}/{:d}], s={:d}[{:d}/{:d}]'.format(n,j,len(nsamples),s,i,len(sparsity)))
+                print(' > Case: n={:d} [{:d}/{:d}], s={:d} [{:d}/{:d}]'.format(n,j,len(nsamples),s,i,len(sparsity)))
                 # check_psn = psn_done == [s,n]
                 # if np.logical_and(check_psn[:,0], check_psn[:,1]).any():
                     # print('     pass')
                     # continue
-                check_psn = psn_todo == [s,n]
-                is_psn_todo = np.logical_and(check_psn[:,0], check_psn[:,1]).any()
-                if not is_psn_todo:
-                    print('     pass')
-                    continue
+                # check_psn = psn_todo == [s,n]
+                # is_psn_todo = np.logical_and(check_psn[:,0], check_psn[:,1]).any()
+                # if not is_psn_todo:
+                    # print('     pass')
+                    # continue
                 if s > n:
                     print('     pass')
                     continue
@@ -136,7 +136,7 @@ j   np.set_printoptions(precision=4)
                 u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
                 _, u_train = modeling.get_train_data((repeats,n), u_cand_p, u_train=None, basis=pce_model.basis)
                 for iu_train in tqdm(u_train, ascii=True, ncols=80,
-                        desc='   [s={:d}, ={:d}, P={:d}]'.format(s, n, pce_model.num_basis)):
+                        desc='   [s={:d}, n={:d}, P={:d}]'.format(s, n, pce_model.num_basis)):
 
                     ix_train = solver.map_domain(iu_train, pce_model.basis.dist_u)
                     iy_train = solver.run(ix_train)
@@ -148,10 +148,23 @@ j   np.set_printoptions(precision=4)
                     else:
                         w_train = None
                         U_train = U_train
+                    if simparams.optimality:
+                        density = modeling.sampling_density(iu_train, p)
+                        w_train = w_train * density / np.amin(density)
 
-                    # tqdm.write("iu_train.shape {}".format(iu_train.shape))
-                    # tqdm.write("iy_train.shape {}".format(iy_train.shape))
                     pce_model.fit(simparams.fit_method, iu_train, iy_train, w_train, n_splits=simparams.n_splits)
+                    # y_cand_p_hat = pce_model.predict(u_cand_p)
+
+                    # ### ============ Build Surrogate Model ============
+                    # U_cand_p = pce_model.basis.vandermonde(u_cand_p)
+                    # if simparams.doe_method.lower().startswith('cls'):
+                        # w_train = modeling.cal_cls_weight(u_cand_p, pce_model.basis)
+                        # U_cand_p= modeling.rescale_data(U_cand_p, w_train) 
+                    # else:
+                        # w_train = None
+                        # U_cand_p= U_train
+
+                    # pce_model.fit(simparams.fit_method, u_cand_p, y_cand_p_hat, w_train, n_splits=simparams.n_splits)
 
                     ## condition number, kappa = max(svd)/min(svd)
                     _, sig_value, _ = np.linalg.svd(U_train)
@@ -162,13 +175,13 @@ j   np.set_printoptions(precision=4)
                     coef_relerr_l2 =(sparse_poly_coef_error(solver, pce_model,2)/np.linalg.norm(solver.coef,2))
 
                     data_p.append([p,s,n,coef_abserr_inf,kappa,pce_model.score,pce_model.cv_error,coef_relerr_l2])
-                ### ============ calculating & updating metrics ============
-                # with np.printoptions(precision=4):
-                    # print('     - {:<15s} : {:.4f}'.format( '|coef|'    , np.mean(coef_err_repeat)))
-                    # print('     - {:<15s} : {:.4f}'.format( 'CV MSE'    , np.mean(cv_err_repeat)))
-                    # print('     - {:<15s} : {:.4f}'.format( 'Score '    , np.mean(score_repeat)))
-                    # print('     - {:<15s} : {:.4e}'.format( 'kappa '    , np.mean(cond_num_repeat)))
-                    # print('     ----------------------------------------')
+                ## ============ calculating & updating metrics ============
+                    with np.printoptions(precision=4):
+                        print('     - {:<15s} : {:.4f}'.format( '|coef|'    , coef_abserr_inf))
+                        print('     - {:<15s} : {:.4f}'.format( 'CV MSE'    , pce_model.cv_error))
+                        print('     - {:<15s} : {:.4f}'.format( 'Score '    , pce_model.score))
+                        print('     - {:<15s} : {:.4e}'.format( 'kappa '    , kappa))
+                        print('     ----------------------------------------')
 
     filename = '{:s}_Phase_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
     try:

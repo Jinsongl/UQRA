@@ -26,43 +26,33 @@ def main():
     iter_max    = 200
     pf          = 1e-4
     random_seed = 100
+    n_short_term= 1
 
     ## ------------------------ Define solver ----------------------- ###
-    # solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
-    # solver      = museuq.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
-    # solver      = museuq.CornerPeak(stats.uniform(-1,2), d=2)
-    # solver      = museuq.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
-    # solver      = museuq.Franke()
-    # solver      = museuq.Ishigami()
+    # out_responses= [2,] 
+    # solver      = museuq.linear_oscillator(out_responses=out_responses, out_stats='absmax',n_short_term=n_short_term) 
 
-    # solver      = museuq.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
-    # solver      = museuq.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
-    # solver      = museuq.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
-    # solver      = museuq.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
-    # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
-    # solver      = museuq.FourBranchSystem()
-
-    qoi2analysis= 1
-    solver      = museuq.linear_oscillator(qoi2analysis=qoi2analysis, stats2cal='absmax',nsim=10) 
-
+    out_responses= [2,] 
+    solver      = museuq.duffing_oscillator(out_responses=out_responses, out_stats='absmax',
+            n_short_term=n_short_term, spec_name='JONSWAP') 
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
     simparams.solver     = solver
-    simparams.pce_degs   = np.array(range(2,16))
+    # simparams.pce_degs   = np.array(range(2,16))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
-    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = None #'D', 'S', None
-    simparams.hem_type   = 'physicists'
-    # simparams.hem_type   = 'probabilists'
+    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.optimality = 'S'#'D', 'S', None
+    # simparams.hem_type   = 'physicists'
+    simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     # simparams.update_dir(data_dir_result='/Users/jinsongliu/BoxSync/PhD_UT/Reproduce_Papers/OptimalityS_JSC2016/Data')
     simparams.update()
     ## ------------------------ Adaptive parameters ----------------- ###
-    n_budget = 1000
+    n_budget = 300
     plim     = (2,100)
-    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, rel_qoi=0.01, min_r2=0.95)
+    simparams.set_adaptive_parameters(n_budget=n_budget, plim=plim, rel_qoi=0.0001, min_r2=0.95)
     simparams.info()
 
     ## ------------------------ Define Initial PCE model --------------------- ###
@@ -75,9 +65,10 @@ def main():
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     u_cand = modeling.get_candidate_data()
-    u_test, x_test, y_test = modeling.get_test_data(solver, pce_model, n=10000, iqoi=list(range(4,14)), random_seed=random_seed)
+    u_test, x_test, y_test = modeling.get_test_data(solver, pce_model, n=10000, 
+            qoi=out_responses,n_short_term=n_short_term, random_seed=random_seed)
     y_test = np.mean(y_test, axis=0)
-    qoi_test= museuq.metrics.mquantiles(y_test, 1-pf)[0]
+    exceed_val_y_test = museuq.metrics.mquantiles(y_test, 1-pf)[0]
     with np.printoptions(precision=2):
         u_cand_mean_std = np.array((np.mean(u_cand[0]), np.std(u_cand[0])))
         u_test_mean_std = np.array((np.mean(u_test[0]), np.std(u_test[0])))
@@ -87,7 +78,7 @@ def main():
 
         print('    - {:<25s} : {}'.format('Candidate Data ', u_cand.shape))
         print('    - {:<25s} : {}'.format('Test Data ', u_test.shape))
-        print('    - {:<25s} : {}'.format('Target QoI [pf={:.0e}]'.format(pf), qoi_test))
+        print('    - {:<25s} : {}'.format('Target QoI [pf={:.0e}]'.format(pf), exceed_val_y_test))
         print('    > {:<25s}'.format('Validate data set '))
         print('    - {:<25s} : {} {} '.format('u cand (mean, std)', u_cand_mean_std, u_cand_ref))
         print('    - {:<25s} : {} {} '.format('u test (mean, std)', u_test_mean_std, u_test_ref))
@@ -151,22 +142,27 @@ def main():
             w_train = 1
         w_train = w_train * bias_weight
         pce_model.fit(simparams.fit_method, u_train, y_train, w_train, n_splits=simparams.n_splits, epsilon=1e-4)
-        # pce_model.var(0.95)
+        pce_model.var(0.95)
 
         ### ============ Get new samples ============
         ### update candidate data set for this p degree, cls unbuounded
         u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
-        # n = math.ceil(len(pce_model.var_pct_basis)* new_samples_pct[p])
-        n = math.ceil(len(pce_model.active_basis)* new_samples_pct[p])
+        n = max(3,math.ceil(len(pce_model.var_pct_basis)* new_samples_pct[p]))
+        # n = math.ceil(len(pce_model.active_basis)* new_samples_pct[p])
         if u_train.shape[1] + n < math.ceil(pce_model.least_ns_ratio * pce_model.sparsity):
             n = math.ceil(pce_model.least_ns_ratio * pce_model.sparsity)  - u_train.shape[1]
         if u_train.shape[1] + n > n_budget:
             n = n_budget - u_train.shape[1]
 
+        if n == 0:
+            break
+
         tqdm.write(' > {:<20s}: Optimality-> {}; Basis-> {}/{}; # new samples = {:d}; pct={:.2f} '.format(
             'New samples', simparams.optimality, len(pce_model.active_basis), pce_model.num_basis, n, new_samples_pct[p]))
         u_train_new, _ = modeling.get_train_data(n, u_cand_p, u_train, basis=pce_model.basis, active_basis=pce_model.active_basis)
         x_train_new = solver.map_domain(u_train_new, pce_model.basis.dist_u)
+        print('u_train: {}'.format(u_train_new.shape))
+        print('x_train: {}'.format(x_train_new.shape))
         y = solver.run(x_train_new, random_seed=random_seed)
         y_train_new = np.mean(y,axis=0)
         u_sampling_pdf = np.concatenate((u_sampling_pdf, modeling.sampling_density(u_train_new, p))) 
@@ -239,7 +235,7 @@ def main():
             pass
         print('   - {:<25s} : {}'.format('Score  ', np.around(score[plim[0]:p+1], 2)))
         print('   - {:<25s} : {}'.format('cv error ', np.squeeze(np.array(cv_error[plim[0]:p+1]))))
-        print('   - {:<25s} : {}'.format('QoI [{:.2f}]'.format(qoi_test), np.around(np.squeeze(np.array(QoI[plim[0]:p+1])), 2)))
+        print('   - {:<25s} : {}'.format('QoI [{:.2f}]'.format(exceed_val_y_test), np.around(np.squeeze(np.array(QoI[plim[0]:p+1])), 2)))
         print('   - {:<25s} : {}'.format('test error', np.squeeze(np.array(test_error[plim[0]:p+1]))))
 
         ### ============ Cheking Overfitting ============
@@ -273,17 +269,18 @@ def main():
     # print(' - {:<25s} : {} -> #{:d}'.format(' # Active basis', pce_model.active_basis, len(pce_model.active_index)))
     print(' - {:<25s} : {}'.format('# samples', n_eval_path[-1]))
     print(' - {:<25s} : {}'.format('R2_adjusted ', np.around(np.squeeze(np.array(score[plim[0]:p], dtype=np.float)), 2)))
-    print(' - {:<25s} : {}'.format('QoI [{:.2f}]'.format(qoi_test), np.around(np.squeeze(np.array(QoI[plim[0]:p], dtype=np.float)), 2)))
+    print(' - {:<25s} : {}'.format('QoI [{:.2f}]'.format(exceed_val_y_test), np.around(np.squeeze(np.array(QoI[plim[0]:p], dtype=np.float)), 2)))
     # print(np.linalg.norm(pce_model.coef - solver.coef, np.inf))
     # print(pce_model.coef[pce_model.coef!=0])
     # print(solver.coef[solver.coef!=0])
-    filename = 'Adaptive_{:s}_{:s}_{:s}_y{:d}'.format(solver.nickname, pce_model.tag[:4], simparams.tag, qoi2analysis)
-    path_data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, score_path, QoI_path, test_error_path]) 
-    np.save(os.path.join(simparams.data_dir_result, filename+'_path'), path_data)
-    data  = np.array([n_eval_path, poly_order_path, cv_error, active_basis, score, QoI, test_error]) 
-    np.save(os.path.join(simparams.data_dir_result, filename), data)
-    data_train = np.vstack((u_train, x_train, y_train.reshape(1, -1)))
-    np.save(os.path.join(simparams.data_dir_result, filename+'_train'), data_train)
+    for iqoi in out_responses:
+        filename = 'Adaptive_{:s}_{:s}_{:s}_y{:d}'.format(solver.nickname, pce_model.tag[:4], simparams.tag, iqoi)
+        path_data  = np.array([n_eval_path, poly_order_path, cv_error_path, active_basis_path, score_path, QoI_path, test_error_path]) 
+        np.save(os.path.join(simparams.data_dir_result, filename+'_path'), path_data)
+        data  = np.array([n_eval_path, poly_order_path, cv_error, active_basis, score, QoI, test_error]) 
+        np.save(os.path.join(simparams.data_dir_result, filename), data)
+        data_train = np.vstack((u_train, x_train, y_train.reshape(1, -1)))
+        np.save(os.path.join(simparams.data_dir_result, filename+'_train'), data_train)
 
 
 if __name__ == '__main__':

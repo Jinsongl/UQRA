@@ -74,15 +74,15 @@ class BasicTestSuite(unittest.TestCase):
         k=1.0/np.pi/np.pi
         # m,c,k  = [stats.norm(m, 0.1*m), stats.norm(c, 0.1*c), stats.norm(k, 0.1*k)]
         # env    = museuq.Environment([stats.uniform, stats.norm])
-        print(Kvitebjorn)
-        solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='kkk', environment=Kvitebjorn(),
+        solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='JONSWAP', environment=Kvitebjorn(),t=1000,
                 out_responses=out_responses, out_stats=out_stats)
-        print(solver)
-        for i in range(10):
-            samples= solver.generate_samples(1e6, seed=None)
-            np.save('DoE_McsE6R{:d}'.format(i), samples)
-        print(solver.ndim)
+        samples= solver.generate_samples(1e5, seed=random_seed)
         print(samples)
+        y = solver.run(samples)
+        print(y)
+        np.save('y', np.array(y))
+
+
         # for r in range(2):
             # # filename = r'DoE_McsE6R{:d}.npy'.format(r)
             # # data_dir = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform/'

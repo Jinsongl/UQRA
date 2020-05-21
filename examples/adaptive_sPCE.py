@@ -40,9 +40,9 @@ def main():
     # solver      = museuq.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
     # solver      = museuq.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
     # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
-    solver      = museuq.FourBranchSystem()
+    # solver      = museuq.FourBranchSystem()
 
-    # solver      = museuq.linear_oscillator(qoi2analysis=[1], stats2cal='absmax') 
+    solver      = museuq.linear_oscillator(out_responses=[1], out_stats='absmax') 
 
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()

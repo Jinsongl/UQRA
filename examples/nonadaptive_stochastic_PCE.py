@@ -26,23 +26,8 @@ def main():
     pf          = [1e-4, 1e-5, 1e-6]
     np.random.seed(100)
     ## ------------------------ Define solver ----------------------- ###
-    # solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
-    # solver      = museuq.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
-    # solver      = museuq.CornerPeak(stats.uniform(-1,2), d=2)
-    # solver      = museuq.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
-    # solver      = museuq.Franke()
-    # solver      = museuq.Ishigami()
-
-    solver      = museuq.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
-    # solver      = museuq.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
-    # solver      = museuq.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
-    # solver      = museuq.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
-    # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
-    # solver      = museuq.FourBranchSystem()
-
-
     random_seed = 100
-    out_responses = [1,2]
+    out_responses = [1]
     out_stats = ['absmax']
     m=1
     c=0.02/np.pi
@@ -50,8 +35,8 @@ def main():
     # m,c,k  = [stats.norm(m, 0.1*m), stats.norm(c, 0.1*c), stats.norm(k, 0.1*k)]
     # environment = museuq.Environment([stats.uniform, stats.norm])
     environment = museuq.environment.Kvitebjorn.Kvitebjorn()
-    solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='JONSWAP', environment=environment,
-            out_responses=out_responses, out_stats=out_stats)
+    solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='JONSWAP', environment=environment,dt=0.1,
+            out_responses=out_responses, out_stats=out_stats, n_short_term=2)
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
     simparams.solver     = solver
@@ -62,7 +47,7 @@ def main():
     simparams.optimality = 'S'#'D', 'S', None
     simparams.hem_type   = 'physicists'
     # simparams.hem_type   = 'probabilists'
-    simparams.fit_method = 'LASSOLARS'
+    simparams.fit_method = 'OLS'
     simparams.n_splits   = 50
     repeats              = 50 if simparams.optimality is None else 1
     # alphas               = np.arange(3,11)/10 
@@ -93,7 +78,7 @@ def main():
         ## ----------- Candidate and testing data set for DoE ----------- ###
         print(' > Getting candidate data set...')
         u_cand = modeling.get_candidate_data()
-        u_test, x_test, y_test = modeling.get_test_data(solver, pce_model) 
+        u_test, x_test, y_test = modeling.get_test_data(solver, pce_model,qoi=out_responses) 
         print(museuq.metrics.mquantiles(y_test, 1-np.array(pf)))
         u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
         # assert np.array_equal(u_test, x_test)
@@ -103,13 +88,13 @@ def main():
             x_test_mean_std = np.array((np.mean(x_test[0]), np.std(x_test[0])))
             u_cand_ref = np.array(modeling.candidate_data_reference())
             u_test_ref = np.array(modeling.test_data_reference())
-            x_test_ref = np.array((solver.distributions[0].mean(), solver.distributions[0].std()))
+            # x_test_ref = np.array((solver.distributions[0].mean(), solver.distributions[0].std()))
             print('    - {:<25s} : {}'.format('Candidate Data ', u_cand.shape))
             print('    - {:<25s} : {}'.format('Test Data ', u_test.shape))
             print('    > {:<25s}'.format('Validate data set '))
             print('    - {:<25s} : {} {} '.format('u cand (mean, std)', u_cand_mean_std, u_cand_ref))
             print('    - {:<25s} : {} {} '.format('u test (mean, std)', u_test_mean_std, u_test_ref))
-            print('    - {:<25s} : {} {} '.format('x test (mean, std)', x_test_mean_std, x_test_ref))
+            # print('    - {:<25s} : {} {} '.format('x test (mean, std)', x_test_mean_std, x_test_ref))
 
         ## ----------- Oversampling ratio ----------- ###
         simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
@@ -139,6 +124,9 @@ def main():
                     w_train = None
                     U_train = U_train[:, pce_model.active_index]
 
+                print(iu_train.shape)
+                print(iy_train.shape)
+                print(w_train.shape)
                 pce_model.fit(simparams.fit_method, iu_train, iy_train, w_train, n_splits=simparams.n_splits)
                 # pce_model.fit(simparams.fit_method, iu_train, y_train, w_train)
                 y_train_hat = pce_model.predict(iu_train)
