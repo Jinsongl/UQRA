@@ -36,18 +36,25 @@ class PowerSpectrum(object):
 
     """
 
-    def __init__(self, name, *args):
+    def __init__(self, name=None, *args):
         self.name   = name
         # self.freq   = None 
         # self.pxx    = None 
         self.sides  = 'single' 
         self.args   = args
-        try:
-            self.density_func = getattr(spectrums, self.name.lower())
-            sig = inspect.signature(self.density_func) 
-            self.ndim = len(sig.parameters) - 1
-        except AttributeError:
+        if self.name is None:
             self.ndim = None
+        elif isinstance(self.name, str):
+            self.name = self.name.lower()
+            try:
+                self.density_func = getattr(spectrums, self.name.lower())
+                sig = inspect.signature(self.density_func) 
+                self.ndim = len(sig.parameters) - 1
+            except AttributeError as e:
+                self.ndim = None
+                raise ValueError(e)
+        else:
+            raise ValueError("'module 'museuq.solver.spectrums' has no attribute '{}'".format(self.name))
 
     def set_density(self, f_hz, pxx, sides='single'):
         assert f_hz.shape == pxx.shape, 'f_hz and pxx should have same shape. f_hz.shape={}, pxx.shape={}'.format(f_hz.shape, pxx.shape)
