@@ -27,7 +27,7 @@ class Kvitebjorn(EnvBase):
 
     def __init__(self):
         self.ndim = int(2)
-        self.dist_names = ['lognorm','lognorm']
+        self.name = ['lognorm_weibull','lognorm']
 
     def dist_Hs(self, x, key='value'):
         """
@@ -91,7 +91,7 @@ class Kvitebjorn(EnvBase):
         hs = np.squeeze(x[0,:])
         tp = np.squeeze(x[1,:])
         hs_pdf = np.squeeze(self._hs_pdf(hs))
-        tp_pdf = np.squeeze(_tp_pdf(tp, hs))
+        tp_pdf = np.squeeze(self._tp_pdf(tp, hs))
         y = np.array(hs_pdf * tp_pdf)
         return y
 
@@ -108,8 +108,8 @@ class Kvitebjorn(EnvBase):
         
         hs = np.squeeze(x[0,:])
         tp = np.squeeze(x[1,:])
-        hs_cdf = np.squeeze(_hs_cdf(hs))
-        tp_cdf = np.squeeze(_tp_cdf(tp, hs))
+        hs_cdf = np.squeeze(self._hs_cdf(hs))
+        tp_cdf = np.squeeze(self._tp_cdf(tp, hs))
         y = np.array([hs_cdf, tp_cdf])
         return y
 
@@ -124,8 +124,8 @@ class Kvitebjorn(EnvBase):
         assert np.amax(u) <= 1
 
         tp_cdf = None if u.shape[0] == 1 else u[1,:]
-        hs = samples_hs_ppf(u[0,:])
-        tp = samples_tp(hs, tp_cdf=tp_cdf)
+        hs = self.samples_hs_ppf(u[0,:])
+        tp = self.samples_tp(hs, tp_cdf=tp_cdf)
         return np.array([hs, tp])
 
     def rvs(self, size=None):
@@ -133,12 +133,12 @@ class Kvitebjorn(EnvBase):
         Generate random sample for Kvitebjørn
 
         """
-        n = int(n)
+        n = int(size)
         u = np.random.uniform(0,1,n)
         ### generate n random Hs
-        hs= samples_hs_ppf(u)
+        hs= self.samples_hs_ppf(u)
         ### generate n random Tp given above Hs
-        tp= samples_tp(hs)
+        tp= self.samples_tp(hs)
         return np.array([hs, tp])
 
 ## Environment Contour
@@ -158,7 +158,7 @@ class Kvitebjorn(EnvBase):
         beta        = stats.norm.ppf(1-p)
         print(r' - {:<25s}: {:.2e}'.format('Failure probability', p))
         print(r' - {:<25s}: {:.2f}'.format('Reliability index', beta))
-        EC_normal   = _make_circles(beta,n=n)
+        EC_normal   = self._make_circles(beta,n=n)
         EC_norm_cdf = stats.norm.cdf(EC_normal)
         EC_samples  = samples(EC_norm_cdf)
         res         = np.vstack((EC_normal, EC_samples))

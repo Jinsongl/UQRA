@@ -16,7 +16,7 @@ from museuq.polynomial.legendre import Legendre
 
 from museuq.environment._envbase import EnvBase
 from museuq.environment.environment import Environment as Environment
-from museuq.environment import *
+# from museuq.environment import *
 
 from museuq.experiment.quadrature import QuadratureDesign
 from museuq.experiment.random_design import RandomDesign

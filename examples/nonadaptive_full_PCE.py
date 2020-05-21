@@ -39,6 +39,19 @@ def main():
     # solver      = museuq.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
     # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
     # solver      = museuq.FourBranchSystem()
+
+
+    random_seed = 100
+    out_responses = [1,2]
+    out_stats = ['absmax']
+    m=1
+    c=0.02/np.pi
+    k=1.0/np.pi/np.pi
+    # m,c,k  = [stats.norm(m, 0.1*m), stats.norm(c, 0.1*c), stats.norm(k, 0.1*k)]
+    # environment = museuq.Environment([stats.uniform, stats.norm])
+    environment = museuq.environment.Kvitebjorn.Kvitebjorn()
+    solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='JONSWAP', environment=environment,
+            out_responses=out_responses, out_stats=out_stats)
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
     simparams.solver     = solver
@@ -52,8 +65,8 @@ def main():
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     repeats              = 50 if simparams.optimality is None else 1
-    alphas               = np.arange(3,11)/10 
-    # alphas               = [-1]
+    # alphas               = np.arange(3,11)/10 
+    alphas               = [1.1]
     # simparams.num_samples=np.arange(21+1, 130, 5)
     simparams.update()
     simparams.info()

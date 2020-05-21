@@ -4,7 +4,7 @@ import museuq, unittest,warnings,os, sys
 from tqdm import tqdm
 import numpy as np, scipy as sp 
 from museuq.solver.PowerSpectrum import PowerSpectrum
-from museuq.environment import Kvitebjorn as Kvitebjorn
+from museuq.environment.Kvitebjorn import Kvitebjorn as Kvitebjorn
 from sklearn import datasets
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
@@ -72,24 +72,28 @@ class BasicTestSuite(unittest.TestCase):
         m=1
         c=0.02/np.pi
         k=1.0/np.pi/np.pi
-        m,c,k  = [stats.norm(m, 0.1*m), stats.norm(c, 0.1*c), stats.norm(k, 0.1*k)]
+        # m,c,k  = [stats.norm(m, 0.1*m), stats.norm(c, 0.1*c), stats.norm(k, 0.1*k)]
         # env    = museuq.Environment([stats.uniform, stats.norm])
-        solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='spec_test1',
+        print(Kvitebjorn)
+        solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='kkk', environment=Kvitebjorn(),
                 out_responses=out_responses, out_stats=out_stats)
         print(solver)
-        samples= solver.generate_samples(100, seed=random_seed)
-        print(samples.shape)
-        for r in range(2):
-            # filename = r'DoE_McsE6R{:d}.npy'.format(r)
-            # data_dir = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform/'
-            # u        = np.load(os.path.join(data_dir, filename))[:solver.ndim,:]
-            # x        = solver.map_domain(u, [stats.uniform(-1,2),] * solver.ndim) 
-            # print(np.mean(u, axis=1))
-            # print(np.std(u, axis=1))
-            # print(np.mean(x, axis=1))
-            # print(np.std(x, axis=1))
-            y_QoI = solver.run(samples, random_seed=random_seed) 
-            print(np.array(y_QoI).shape)
+        for i in range(10):
+            samples= solver.generate_samples(1e6, seed=None)
+            np.save('DoE_McsE6R{:d}'.format(i), samples)
+        print(solver.ndim)
+        print(samples)
+        # for r in range(2):
+            # # filename = r'DoE_McsE6R{:d}.npy'.format(r)
+            # # data_dir = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform/'
+            # # u        = np.load(os.path.join(data_dir, filename))[:solver.ndim,:]
+            # # x        = solver.map_domain(u, [stats.uniform(-1,2),] * solver.ndim) 
+            # # print(np.mean(u, axis=1))
+            # # print(np.std(u, axis=1))
+            # # print(np.mean(x, axis=1))
+            # # print(np.std(x, axis=1))
+            # y_QoI = solver.run(samples, random_seed=random_seed) 
+            # print(np.array(y_QoI).shape)
 
     def test_four_branch(self):
         np.random.seed(100)
