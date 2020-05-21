@@ -55,12 +55,13 @@ class linear_oscillator(SolverBase):
         self.environment= environment
         self.ndim_env   = self._validate_env()
         self.ndim       = self.ndim_sys + self.ndim_env
+        self.dist_name  = 'None'
 
         self.tmax       = kwargs.get('time_max', 100)
         self.tmax       = kwargs.get('tmax', 100)
         self.dt         = kwargs.get('dt', 0.01)
         self.out_stats  = kwargs.get('out_stats', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
-        self.n_short_term= kwargs.get('n_short_term', 10)  ## number of short term simulations
+        self.n_short_term= kwargs.get('n_short_term', 1)  ## number of short term simulations
         self.out_responses= kwargs.get('out_responses', 'ALL')
 
     def __str__(self):
@@ -97,8 +98,8 @@ class linear_oscillator(SolverBase):
             y_QoI.append(y_QoI_)
             if return_all:
                 np.save('{:s}_raw{:d}'.format(self.nickname,ishort_term), np.array(y_raw_))
-        return np.array(y_QoI)
-
+        y_QoI = np.array(y_QoI)
+        return y_QoI
 
     def _linear_oscillator(self, x, seed=None,out_responses='ALL'):
         """
@@ -167,6 +168,7 @@ class linear_oscillator(SolverBase):
         assert x.shape[0] == int(3) + self.ndim_env
         return x
 
+    # def random_params_mean
 
     def _validate_mck(self):
         """
