@@ -61,9 +61,13 @@ def spec_test1(f, c=2):
         
     """
     # print('\t{:s} : c= {:.2f}'.format(spec_test1.__name__, c))
-    f = 2 * np.pi * f
-    sf = 2*c/(c**2 + f**2) * 2 * np.pi
+    sf = 2*c/(c**2 + (2*np.pi*f)**2) 
     df = f[1] - f[0]
     sa = np.sum(sf*df) 
+    return f, sf
+
+def white_noise(f, F0=1,a=0,b=5):
+    sf = F0 
+    sa = abs(b-a) * F0
     return f, sf
 
