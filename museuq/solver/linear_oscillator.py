@@ -50,11 +50,14 @@ class linear_oscillator(SolverBase):
         self.m          = m
         self.c          = c
         self.k          = k
+        self.params_is_rand = []
         self.ndim_sys   = self._validate_mck()
         self.excitation = excitation
         self.environment= environment
         self.ndim_env   = self._validate_env()
         self.ndim       = self.ndim_sys + self.ndim_env
+        assert self.ndim == sum(self.params_is_rand)
+        self.nparams    = np.size(self.params_is_rand)
         self.dist_name  = 'None'
 
         self.tmax       = kwargs.get('time_max', 100)
@@ -63,6 +66,8 @@ class linear_oscillator(SolverBase):
         self.out_stats  = kwargs.get('out_stats', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
         self.n_short_term= kwargs.get('n_short_term', 1)  ## number of short term simulations
         self.out_responses= kwargs.get('out_responses', 'ALL')
+        self.t          = np.arange(0,int(self.tmax/self.dt) +1) * self.dt
+        self.f_hz       = np.arange(len(self.t)+1) *0.5/self.t[-1]
 
     def __str__(self):
         message1 = 'Single Degree of Fredom Oscillator: \n'
@@ -88,20 +93,20 @@ class linear_oscillator(SolverBase):
         out_responses    = kwargs.get('out_responses', self.out_responses)
         x = np.array(x.T, copy=False, ndmin=2)
         np.random.seed(random_seed)
-        seeds = np.random.randint(0, int(2**31-1), size=n_short_term) 
+        phase_seeds = np.random.randint(0, int(2**31-1), size=n_short_term) 
         y_QoI = []
         for ishort_term in range(n_short_term):
-            pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(ishort_term, self.n_short_term))
+            pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(ishort_term, n_short_term))
             ### Note that xlist and ylist will be tuples (since zip will be unpacked). 
             ### If you want them to be lists, you can for instance use:
-            y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, seed=seeds[ishort_term], out_responses=out_responses) for ix in pbar_x]))
+            y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=phase_seeds[ishort_term], out_responses=out_responses) for ix in pbar_x]))
             y_QoI.append(y_QoI_)
             if return_all:
                 np.save('{:s}_raw{:d}'.format(self.nickname,ishort_term), np.array(y_raw_))
         y_QoI = np.array(y_QoI)
         return y_QoI
 
-    def _linear_oscillator(self, x, seed=None,out_responses='ALL'):
+    def _linear_oscillator(self, x, random_seed=None,out_responses='ALL'):
         """
         Solving linear oscillator in frequency domain
         m x'' + c x' + k x = f => 
@@ -115,18 +120,22 @@ class linear_oscillator(SolverBase):
         """
         ndim = int(3) + self.ndim_env
         assert len(x) == ndim, "Expecting {:d} variables but {:d} given".format(ndim, len(x))
-        t    = np.arange(0,int(self.tmax/self.dt) +1) * self.dt
-        tmax = t[-1]
-        df   = 0.5/tmax
-        f_hz = np.arange(len(t)+1) * df
         ##--------- oscillator properties -----------
         params_mck, params_env = x[:3], x[3:]
-        spectrum_x = self.external_force_psd(params_env, f_hz)
+        m,c,k = params_mck 
+        spectrum_x = self.external_force_psd(params_env, self.f_hz)
         spectrum_y = self.response_psd(params_mck, spectrum_x)
 
-        t0, x_t = spectrum_x.gen_process(seed=seed)
-        t1, y_t = spectrum_y.gen_process(seed=seed)
-        assert (t0==t1).all()
+        np.random.seed(random_seed)
+        theta_x = np.random.uniform(-np.pi, np.pi, np.size(self.f_hz))
+        t0, x_t, f_hz_x, theta_x = spectrum_x.gen_process(t=self.t, phase=theta_x)
+        omega   = 2*np.pi*f_hz_x
+        A, B    = k - m * omega**2 , c * omega
+        theta_y =  np.arctan(-(A * np.tan(theta_x) + B) / (A - B * np.tan(theta_x)))
+        t1, y_t, f_hz_y, theta_y = spectrum_y.gen_process(t=self.t, phase=theta_y)
+        assert np.array_equal(t0,t1)
+        assert np.array_equal(f_hz_x,f_hz_y)
+        assert np.array_equal(self.t,t1)
 
         y_raw = np.vstack((t0, x_t, y_t)).T
         museuq.blockPrint()
@@ -134,7 +143,7 @@ class linear_oscillator(SolverBase):
         museuq.enablePrint()
         return y_raw, y_QoI
             
-    def map_domain(self, u, u_cdf):
+    def map_domain(self, u, u_cdf, only_rand=False):
         """
         mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
         Argument:
@@ -179,24 +188,27 @@ class linear_oscillator(SolverBase):
         if museuq.isfromstats(self.m):
             ndim += int(1)
             self.random_params['m'] = self.m
+            self.params_is_rand.append(True)
         elif np.isscalar(self.m):
-            pass
+            self.params_is_rand.append(False)
         else:
             raise ValueError('SDOF: mass value type error: {}'.format(self.m))
 
         if museuq.isfromstats(self.c):
             ndim += int(1)
             self.random_params['c'] = self.c
+            self.params_is_rand.append(True)
         elif np.isscalar(self.c):
-            pass
+            self.params_is_rand.append(False)
         else:
             raise ValueError('SDOF: dampling value type error: {}'.format(self.m))
 
         if museuq.isfromstats(self.k):
             ndim += int(1)
             self.random_params['k'] = self.k
+            self.params_is_rand.append(True)
         elif np.isscalar(self.k):
-            pass
+            self.params_is_rand.append(False)
         else:
             raise ValueError('SDOF: stiffness value type error: {}'.format(self.m))
 
@@ -211,18 +223,19 @@ class linear_oscillator(SolverBase):
         if self.environment is None:
             ndim = 0
             self.dist_name = 'None'
-
         else:
             assert isinstance(self.environment, museuq.EnvBase)
             ndim = self.environment.ndim
             self.random_params['env'] = self.environment
             self.dist_name = '_'.join(self.environment.name)
+            for i in range(ndim):
+                self.params_is_rand.append(True)
         return ndim
 
-    def generate_samples(self, n, seed=None):
+    def generate_samples(self, n, random_seed=None):
         n = int(n)
         x = []
-        np.random.seed(seed)
+        np.random.seed(random_seed)
         ### mck samples 
         i = 0
         for ikey in ['m', 'c', 'k']:
@@ -296,9 +309,9 @@ class linear_oscillator(SolverBase):
             PowerSpectrum object of input and output signal
         """
         m,c,k = mck
-        f_hz  = spectrum_x.freq  ## freq in Hz
+        f_hz  = spectrum_x.f_hz  ## f_hz in Hz
         H_square = 1.0/np.sqrt( (k-m*f_hz**2)**2 + (c*f_hz)**2)
         psd_y = H_square * spectrum_x.pxx
         spectrum_y = PowerSpectrum()
-        spectrum_y.set_density(spectrum_x.freq, psd_y, sides=spectrum_x.sides)
+        spectrum_y.set_density(spectrum_x.f_hz, psd_y, sides=spectrum_x.sides)
         return spectrum_y 

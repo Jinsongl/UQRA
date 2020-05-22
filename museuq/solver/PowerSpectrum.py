@@ -38,7 +38,7 @@ class PowerSpectrum(object):
 
     def __init__(self, name=None, *args):
         self.name   = name
-        # self.freq   = None 
+        # self.f_hz   = None 
         # self.pxx    = None 
         self.sides  = 'single' 
         self.args   = args
@@ -58,14 +58,14 @@ class PowerSpectrum(object):
 
     def set_density(self, f_hz, pxx, sides='single'):
         assert f_hz.shape == pxx.shape, 'f_hz and pxx should have same shape. f_hz.shape={}, pxx.shape={}'.format(f_hz.shape, pxx.shape)
-        self.freq   = f_hz
+        self.f_hz   = f_hz
         self.pxx    = pxx
         self.sides  = sides
 
     def cal_density(self, f_hz):
         f_hz, pxx = self.density_func(f_hz, *self.args)
         assert f_hz.shape == pxx.shape, 'f_hz and pxx should have same shape. f_hz.shape={}, pxx.shape={}'.format(f_hz.shape, pxx.shape)
-        self.freq = f_hz
+        self.f_hz = f_hz
         self.pxx  = pxx
         return pxx
 
@@ -82,14 +82,14 @@ class PowerSpectrum(object):
         # ---------------------------------------------------------
         # for single side psd, transform to double side and return corresponding f_hz, pxx
         # Transformation shouldn't change obj.f_hz, obj.pxx
-        if not self._is_symmetric(self.freq, self.pxx):
+        if not self._is_symmetric(self.f_hz, self.pxx):
             psd_f, psd_pxx = self.psd_single2double()
         else:
-            psd_f   = self.freq
+            psd_f   = self.f_hz
             psd_pxx = self.pxx
 
         nfrequencies    = psd_f.size 
-        fmin, fmax, df  = self.freq[0], self.freq[-1], self.freq[1]-self.freq[0]
+        fmin, fmax, df  = self.f_hz[0], self.f_hz[-1], self.f_hz[1]-self.f_hz[0]
         dt              = 1.0/(2*fmax)
         acf_ifft        = np.fft.ifft(psd_pxx) / dt
         acf             = np.sqrt(acf_ifft.real**2 + acf_ifft.imag**2)
@@ -121,21 +121,21 @@ class PowerSpectrum(object):
         # reorder frequency from negative to positive ascending order
         psd_pxx = np.array([x for _,x in sorted(zip(psd_f,psd_pxx))])
         psd_f   = np.array([x for _,x in sorted(zip(psd_f,psd_f))])
-        self.freq  = psd_f
+        self.f_hz  = psd_f
         self.pxx= psd_pxx
         self.sides='double'
         return psd_f, psd_pxx
 
-    def gen_process(self,t=None, seed=None):
+    def gen_process(self,t=None, phase=None, random_seed=None):
         """
         Generate Gaussian time series for given spectrum with IFFT method
         Note: For one side psd, one need to create IFFT coefficients for negative frequencies to use IFFT method. 
-            Single side psd need to be divide by 2 to create double side psd, S1(self.freq) = S1(-self.freq) = S2(self.freq)/2
-            Phase: theta(self.freq) = -theta(-self.freq) 
+            Single side psd need to be divide by 2 to create double side psd, S1(self.f_hz) = S1(-self.f_hz) = S2(self.f_hz)/2
+            Phase: theta(self.f_hz) = -theta(-self.f_hz) 
 
         Arguments:
-            self.freq: ndarry, frequency in Hz
-            pxx: pwd values corresponding to self.freq array. 
+            self.f_hz: ndarry, frequency in Hz
+            pxx: pwd values corresponding to self.f_hz array. 
         Return:
             t: time index, start 0 to tmax 
             etat: surface wave time series
@@ -144,9 +144,9 @@ class PowerSpectrum(object):
 
         Features need to add:
             1. douebl side psd
-            2. padding zero values for self.pxx when self.freq[0] < 0 and self.freq is not symmetric
+            2. padding zero values for self.pxx when self.f_hz[0] < 0 and self.f_hz is not symmetric
             3. gen_process arguments should be time, not frequency , sounds more reasonable.
-                if this feature need to be added, interpolation of self.freq may needed.
+                if this feature need to be added, interpolation of self.f_hz may needed.
 
         # numpy.fft.ifft(a, n=None, axis=-1, norm=None)
         #   The input should be ordered in the same way as is returned by fft, i.e.,
@@ -163,33 +163,38 @@ class PowerSpectrum(object):
         if self.sides.lower() == 'single':
             f_hz, pxx= self.psd_single2double()
         else:
-            assert self._is_symmetric(self.freq, self.pxx)
-            f_hz, pxx = self.freq, self.pxx
+            assert self._is_symmetric(self.f_hz, self.pxx)
+            f_hz, pxx = self.f_hz, self.pxx
 
-        np.random.seed(seed)
         fmax, df = f_hz[-1]  , f_hz[1]-f_hz[0]
         tmax, dt = 0.5/df , 0.5/fmax
         ntime_steps = f_hz.size//2 #int(fmax/df) same as number of frequencies
         time = np.arange(-ntime_steps,ntime_steps+1) * dt
 
-        theta   = np.random.uniform(-np.pi, np.pi, ntime_steps + 1)
-        theta   = np.hstack((-np.flip(theta[1:]),theta)) # concatenation along the second axis
-        ampf    = np.sqrt(pxx*df) # amplitude
+        if phase is None:
+            np.random.seed(random_seed)
+            theta = np.random.uniform(-np.pi, np.pi, ntime_steps + 1)
+            theta = np.hstack((-np.flip(theta[1:]),theta)) # concatenation along the second axis
+        else:
+            theta = phase[:ntime_steps+1]
+            theta = np.hstack((-np.flip(theta[1:]),theta)) # concatenation along the second axis
 
+        assert np.size(f_hz) == np.size(theta)
+        ampf    = np.sqrt(pxx*df) # amplitude
         eta_fft_coeffs = ampf * np.exp(1j*theta)
         eta = np.fft.ifft(np.roll(eta_fft_coeffs,ntime_steps+1)) *(2*ntime_steps+1)
         eta = np.roll(eta,ntime_steps).real # roll back to [-T, T], IFFT result should be real, imaginary part is very small ~10^-16
 
         time, eta = time[ntime_steps:2*ntime_steps+1], eta[ntime_steps:2*ntime_steps+1]
 
-        if t:
+        if t is not None:
             if t[1]-t[0] < time[1]-time[0]:
                 raise ValueError('Higher frequency needed to achieve time domain resolution dt={:.4f}'.format(t[1]-t[0]))
             if t[-1] > time[-1]:
                 raise ValueError('Higher frequency resolution needed to achieve time domain period, T={:.2e}'.format(t[-1]))
-            time = t
             eta = np.interp(t, time, eta)
-        return time, eta 
+            time = t
+        return time, eta , f_hz, theta
 
     def _is_symmetric(self, x, y):
         """
@@ -243,11 +248,11 @@ class PowerSpectrum(object):
             ff  : double side frequency vector
             pxx2: double side power spectral density (PSD) estimate, pxx2
         """
-        assert self.freq is not None and self.pxx is not None
-        f_hz, pxx = self.freq, self.pxx
+        assert self.f_hz is not None and self.pxx is not None
+        f_hz, pxx = self.f_hz, self.pxx
         ## sorting f_hz in ascending order
-        f_hz   = f_hz  [f_hz.argsort()]
-        pxx = pxx[f_hz.argsort()]
+        f_hz= f_hz[f_hz.argsort()]
+        pxx = pxx [f_hz.argsort()]
         assert f_hz[0] >= 0 and f_hz[-1] >0 # make sure frequency vector in positive range
         df  = np.mean(f_hz[1:]-f_hz[:-1], dtype=np.float64) # df is the average frequency difference
         N   = len(np.arange(f_hz[-1], 0, -df)) # does not include 0
@@ -280,7 +285,7 @@ class PowerSpectrum(object):
         if self.sides.lower() == 'double':
             raise NotImplementedError('Stay tuned')
         else:
-            psd_f, psd_pxx = self.freq, self.pxx
+            psd_f, psd_pxx = self.f_hz, self.pxx
             fmax, df = psd_f[-1]  , psd_f[1]-psd_f[0]
             tmax, dt = 0.5/df , 0.5/fmax
             N = int(tmax/dt)
