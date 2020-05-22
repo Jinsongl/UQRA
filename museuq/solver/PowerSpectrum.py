@@ -166,7 +166,7 @@ class PowerSpectrum(object):
             assert self._is_symmetric(self.f_hz, self.pxx)
             f_hz, pxx = self.f_hz, self.pxx
 
-        fmax, df = f_hz[-1]  , f_hz[1]-f_hz[0]
+        fmax, df = np.amax(abs(f_hz)) , f_hz[1]-f_hz[0]
         tmax, dt = 0.5/df , 0.5/fmax
         ntime_steps = f_hz.size//2 #int(fmax/df) same as number of frequencies
         time = np.arange(-ntime_steps,ntime_steps+1) * dt
@@ -179,7 +179,8 @@ class PowerSpectrum(object):
             theta = phase[:ntime_steps+1]
             theta = np.hstack((-np.flip(theta[1:]),theta)) # concatenation along the second axis
 
-        assert np.size(f_hz) == np.size(theta)
+        if np.size(f_hz) != np.size(theta):
+            raise ValueError('Number of frequency and phases mismatch, #(f)={:d}, #(theta)={:d}'.format(np.size(f_hz), np.size(theta)))
         ampf    = np.sqrt(pxx*df) # amplitude
         eta_fft_coeffs = ampf * np.exp(1j*theta)
         eta = np.fft.ifft(np.roll(eta_fft_coeffs,ntime_steps+1)) *(2*ntime_steps+1)
@@ -190,8 +191,8 @@ class PowerSpectrum(object):
         if t is not None:
             if t[1]-t[0] < time[1]-time[0]:
                 raise ValueError('Higher frequency needed to achieve time domain resolution dt={:.4f}'.format(t[1]-t[0]))
-            if t[-1] > time[-1]:
-                raise ValueError('Higher frequency resolution needed to achieve time domain period, T={:.2e}'.format(t[-1]))
+            # if t[-1] > time[-1]:
+                # raise ValueError('Interpolation Error: coordinate to evaluate the interpolated value exceed data points, {:.2f}>{:.2f}'.format(t[-1], time[-1]))
             eta = np.interp(t, time, eta)
             time = t
         return time, eta , f_hz, theta
