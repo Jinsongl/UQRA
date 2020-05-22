@@ -24,34 +24,35 @@ def main():
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
     pf          = [1e-4, 1e-5, 1e-6]
-    np.random.seed(100)
     ## ------------------------ Define solver ----------------------- ###
     random_seed = 100
-    out_responses = [1]
+    out_responses = [2]
     out_stats = ['absmax']
     m=1
-    c=0.02/np.pi
+    c=0.1/np.pi
     k=1.0/np.pi/np.pi
-    # m,c,k  = [stats.norm(m, 0.1*m), stats.norm(c, 0.1*c), stats.norm(k, 0.1*k)]
-    # environment = museuq.Environment([stats.uniform, stats.norm])
+    m,c,k  = [stats.norm(m, 0.05*m), stats.norm(c, 0.2*c), stats.norm(k, 0.1*k)]
+    # env    = museuq.Environment([stats.uniform, stats.norm])
+    env    = museuq.Environment([2,])
     environment = museuq.environment.Kvitebjorn.Kvitebjorn()
-    solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='JONSWAP', environment=environment,dt=0.1,
-            out_responses=out_responses, out_stats=out_stats, n_short_term=2)
+    solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='spec_test1', environment=env,t=1000,t_transit=10, dt=0.1,
+            out_responses=out_responses, out_stats=out_stats, n_short_term=10)
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
     simparams.solver     = solver
-    simparams.pce_degs   = np.array(range(2,16))
+    simparams.pce_degs   = np.array(range(2,20))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
-    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
     simparams.optimality = 'S'#'D', 'S', None
-    simparams.hem_type   = 'physicists'
-    # simparams.hem_type   = 'probabilists'
+    # simparams.hem_type   = 'physicists'
+    simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'OLS'
     simparams.n_splits   = 50
-    repeats              = 50 if simparams.optimality is None else 1
+    repeats              = 20 if simparams.optimality is None else 1
     # alphas               = np.arange(3,11)/10 
     alphas               = [1.1]
+    # alphas               = [-1]
     # simparams.num_samples=np.arange(21+1, 130, 5)
     simparams.update()
     simparams.info()
@@ -79,6 +80,7 @@ def main():
         print(' > Getting candidate data set...')
         u_cand = modeling.get_candidate_data()
         u_test, x_test, y_test = modeling.get_test_data(solver, pce_model,qoi=out_responses) 
+        y_test = np.mean(y_test, axis=0)
         print(museuq.metrics.mquantiles(y_test, 1-np.array(pf)))
         u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
         # assert np.array_equal(u_test, x_test)
@@ -113,6 +115,7 @@ def main():
                 ix_train = solver.map_domain(iu_train, pce_model.basis.dist_u)
                 # assert np.array_equal(iu_train, ix_train)
                 iy_train = solver.run(ix_train)
+                iy_train = np.mean(iy_train, axis=0)
                 ### Full model checking
                 assert len(pce_model.active_index) == pce_model.num_basis
                 ### ============ Build Surrogate Model ============
@@ -124,9 +127,6 @@ def main():
                     w_train = None
                     U_train = U_train[:, pce_model.active_index]
 
-                print(iu_train.shape)
-                print(iy_train.shape)
-                print(w_train.shape)
                 pce_model.fit(simparams.fit_method, iu_train, iy_train, w_train, n_splits=simparams.n_splits)
                 # pce_model.fit(simparams.fit_method, iu_train, y_train, w_train)
                 y_train_hat = pce_model.predict(iu_train)
