@@ -70,15 +70,17 @@ class BasicTestSuite(unittest.TestCase):
         nsim = 3
         out_stats = ['absmax']
         m=1
-        c=0.02/np.pi
+        c=0.1/np.pi
         k=1.0/np.pi/np.pi
-        # m,c,k  = [stats.norm(m, 0.1*m), stats.norm(c, 0.1*c), stats.norm(k, 0.1*k)]
+        m,c,k  = [stats.norm(m, 0.05*m), stats.norm(c, 0.2*c), stats.norm(k, 0.1*k)]
         # env    = museuq.Environment([stats.uniform, stats.norm])
-        solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='JONSWAP', environment=Kvitebjorn(),t=1000,
+        env    = museuq.Environment([2,])
+        # env    = Kvitebjorn()
+        solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='spec_test1', environment=env, t=1000, t_transit=10,
                 out_responses=out_responses, out_stats=out_stats)
-        samples= solver.generate_samples(1e5, seed=random_seed)
+        samples= solver.generate_samples(3)
         print(samples)
-        y = solver.run(samples)
+        y = solver.run(samples, return_all=True, random_seed=random_seed)
         print(y)
         np.save('y', np.array(y))
 
