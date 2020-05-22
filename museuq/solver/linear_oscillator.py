@@ -27,10 +27,10 @@ class linear_oscillator(SolverBase):
         m x'' + c x' + k x = f 
     =>    x'' + 2*zeta*omega_n x' + omega_n**2 x = 1/m * f
     where, omega_n = sqrt(k/m), zeta = c/(2*sqrt(m*k))
-    default value: omega_n = 1/pi Hz (2 rad/s), zeta = 0.01
+    default value: omega_n = 1/pi Hz (2 rad/s), zeta = 0.05
 
     """
-    def __init__(self, m=1, c=0.02/np.pi, k=1.0/np.pi/np.pi, excitation=None, environment=None,**kwargs):
+    def __init__(self, m=1, c=0.1/np.pi, k=1.0/np.pi/np.pi, excitation=None, environment=None,**kwargs):
         """
         excitation:
             1. None: free vibration case, equivalent to set excitation=0
@@ -63,10 +63,11 @@ class linear_oscillator(SolverBase):
         self.tmax       = kwargs.get('time_max', 100)
         self.tmax       = kwargs.get('tmax', 100)
         self.dt         = kwargs.get('dt', 0.01)
+        self.t_transit  = kwargs.get('t_transit', 0)
         self.out_stats  = kwargs.get('out_stats', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
         self.n_short_term= kwargs.get('n_short_term', 1)  ## number of short term simulations
         self.out_responses= kwargs.get('out_responses', 'ALL')
-        self.t          = np.arange(0,int(self.tmax/self.dt) +1) * self.dt
+        self.t          = np.arange(0,int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
         self.f_hz       = np.arange(len(self.t)+1) *0.5/self.t[-1]
 
     def __str__(self):
@@ -127,7 +128,7 @@ class linear_oscillator(SolverBase):
         spectrum_y = self.response_psd(params_mck, spectrum_x)
 
         np.random.seed(random_seed)
-        theta_x = np.random.uniform(-np.pi, np.pi, np.size(self.f_hz))
+        theta_x = np.random.uniform(-np.pi, np.pi, np.size(self.f_hz)*2)
         t0, x_t, f_hz_x, theta_x = spectrum_x.gen_process(t=self.t, phase=theta_x)
         omega   = 2*np.pi*f_hz_x
         A, B    = k - m * omega**2 , c * omega
@@ -136,6 +137,10 @@ class linear_oscillator(SolverBase):
         assert np.array_equal(t0,t1)
         assert np.array_equal(f_hz_x,f_hz_y)
         assert np.array_equal(self.t,t1)
+        t_transit_idx = int(self.t_transit/(t0[1]-t0[0]))
+        t0 = t0[t_transit_idx:]
+        x_t = x_t[t_transit_idx:]
+        y_t = y_t[t_transit_idx:]
 
         y_raw = np.vstack((t0, x_t, y_t)).T
         museuq.blockPrint()
