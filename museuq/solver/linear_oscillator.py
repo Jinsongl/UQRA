@@ -175,12 +175,14 @@ class linear_oscillator(SolverBase):
             except KeyError:
                 x_ = getattr(self, ikey) * np.ones((1,u_cdf.shape[1]))
                 x.append(x_)
-
         ### maping env values
-        try:
-            x_ = self.random_params['env'].ppf(u_cdf[i:])
-            x.append(x_)
-        except KeyError:
+        if len(u_cdf[i:]) != 0:
+            try:
+                x_ = self.random_params['env'].ppf(u_cdf[i:])
+                x.append(x_)
+            except KeyError:
+                pass
+        else:
             pass
         x = np.vstack(x)
         assert x.shape[0] == int(3) + self.ndim_env
@@ -232,13 +234,14 @@ class linear_oscillator(SolverBase):
         if self.environment is None:
             ndim = 0
             self.dist_name = 'None'
-        else:
-            assert isinstance(self.environment, museuq.EnvBase)
+        elif isinstance(self.environment, museuq.EnvBase):
             ndim = self.environment.ndim
             self.random_params['env'] = self.environment
             self.dist_name = '_'.join(self.environment.name)
-            for i in range(ndim):
-                self.params_is_rand.append(True)
+            for iname in self.environment.name:
+                self.params_is_rand.append(iname.lower()!='const')
+        else:
+            raise ValueError('SDOF: environment type {} not defined'.format(type(self.environment)))
         return ndim
 
     def generate_samples(self, n, random_seed=None):
