@@ -132,9 +132,13 @@ class Modeling(object):
         qoi     = kwargs.get('qoi' , [0,] )
         seed    = kwargs.get('random_seed', None)
         n       = int(n)
-        n_short_term = kwargs.get('n_short_term', 1)
+        n_short_term = kwargs.get('n_short_term', self.solver.n_short_term)
         assert solver.ndim == pce_model.ndim
         ndim = solver.ndim
+        try:
+            nparams = solver.nparams
+        except AttributeError:
+            nparams = ndim
         self.filename_test = '{:s}_{:d}{:s}_'.format(solver.nickname, ndim, pce_model.basis.nickname) + filename
         if self.params.doe_method.lower() == 'cls':
             self.filename_test = self.filename_test.replace('Mcs', 'Cls')
@@ -151,7 +155,7 @@ class Modeling(object):
                     assert data_set.shape[0] == 2*ndim+1
 
                 u_test_ = data_set[     :  ndim,:n] if n > 0 else data_set[     :  ndim, :]
-                x_test_ = data_set[ndim :2*ndim,:n] if n > 0 else data_set[ndim :2*ndim, :]
+                x_test_ = data_set[ndim :ndim+nparams,:n] if n > 0 else data_set[ndim :ndim+nparams, :]
 
                 if u_test is None:
                     u_test  = u_test_
@@ -163,7 +167,7 @@ class Modeling(object):
                 else:
                     assert np.array_equal(x_test_, x_test)
 
-                y_test_ = data_set[2*ndim: 2*ndim+n_short_term,:n] if n > 0 else data_set[2*ndim: 2*ndim+n_short_term, : ]
+                y_test_ = data_set[ndim+nparams: ndim+nparams+n_short_term,:n] if n > 0 else data_set[ndim+nparams: ndim+nparams+n_short_term, : ]
                 y_test.append(y_test_)
             if len(y_test) == 1:
                 y_test = y_test[0]
@@ -276,6 +280,8 @@ class Modeling(object):
 
         if precomputed:
             tqdm.write('   - {:<20s} : {:s}'.format('Precomputed File ', self.filename_optimality))
+        else:
+            precomputed_index = [None,] * repeats
 
         for r in tqdm(range(repeats), ascii=True,ncols=80, desc='   '):
             u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
