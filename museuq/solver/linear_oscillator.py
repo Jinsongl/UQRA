@@ -102,6 +102,10 @@ class linear_oscillator(SolverBase):
             ### If you want them to be lists, you can for instance use:
             y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=phase_seeds[ishort_term], out_responses=out_responses) for ix in pbar_x]))
             y_QoI.append(y_QoI_)
+            if np.size(y_QoI) > 1e8:
+                np.save('{:s}_yQoI_R{:d}.npy'.format(ishort_term), np.array(y_QoI))
+                y_QoI = []
+
             if return_all:
                 np.save('{:s}_raw{:d}'.format(self.nickname,ishort_term), np.array(y_raw_))
         y_QoI = np.array(y_QoI)
