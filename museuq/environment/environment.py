@@ -12,6 +12,7 @@
 import numpy as np
 import museuq
 from ._envbase import EnvBase
+import scipy.stats as stats
 
 class Environment(EnvBase):
     """
@@ -55,12 +56,16 @@ class Environment(EnvBase):
         marginals = []
         if isinstance(dists, list):
             for idist in dists:
-                if not museuq.isfromstats(idist):
-                    raise ValueError('Environment: marginal distribution must from scipy.stats')
-                else:
+                if museuq.isfromstats(idist):
                     marginals.append(idist)
+                elif np.ndim(idist) == 0 :
+                    marginals.append(stats.uniform(loc=idist, scale=0))
+                else:
+                    raise ValueError('Environment: marginal distribution must from scipy.stats')
         elif museuq.isfromstats(dists):
             marginals.append(dists)
+        elif np.ndim(dists) == 0 :
+            marginals.append(stats.uniform(loc=dists, scale=0))
         else:
             raise ValueError('Environment: marginal distribution must from scipy.stats')
         return marginals
