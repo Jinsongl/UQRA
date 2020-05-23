@@ -28,15 +28,18 @@ def main():
     random_seed = 100
     out_responses = [2]
     out_stats = ['absmax']
+    n_short_term = 20
     m=1
     c=0.1/np.pi
     k=1.0/np.pi/np.pi
     m,c,k  = [stats.norm(m, 0.05*m), stats.norm(c, 0.2*c), stats.norm(k, 0.1*k)]
     # env    = museuq.Environment([stats.uniform, stats.norm])
+    # env    = museuq.environment.Kvitebjorn.Kvitebjorn()
     env    = museuq.Environment([2,])
-    environment = museuq.environment.Kvitebjorn.Kvitebjorn()
+    np.random.seed(random_seed)
+    seeds_st = np.random.randint(0, int(2**31-1), size=n_short_term)
     solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='spec_test1', environment=env,t=1000,t_transit=10, dt=0.1,
-            out_responses=out_responses, out_stats=out_stats, n_short_term=10)
+            out_responses=out_responses, out_stats=out_stats, seeds_st=seeds_st)
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
     simparams.solver     = solver
@@ -44,7 +47,7 @@ def main():
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'S'#'D', 'S', None
+    simparams.optimality = None #'D', 'S', None
     # simparams.hem_type   = 'physicists'
     simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'OLS'
@@ -79,7 +82,7 @@ def main():
         ## ----------- Candidate and testing data set for DoE ----------- ###
         print(' > Getting candidate data set...')
         u_cand = modeling.get_candidate_data()
-        u_test, x_test, y_test = modeling.get_test_data(solver, pce_model,qoi=out_responses, random_seed=random_seed,n=1e5) 
+        u_test, x_test, y_test = modeling.get_test_data(solver, pce_model,qoi=out_responses,n=1e2) 
         y_test = np.mean(y_test, axis=0)
         print(museuq.metrics.mquantiles(y_test, 1-np.array(pf)))
         u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
