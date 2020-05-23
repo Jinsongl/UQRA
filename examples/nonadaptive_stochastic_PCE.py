@@ -40,7 +40,7 @@ def main():
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
     simparams.solver     = solver
-    simparams.pce_degs   = np.array(range(2,20))
+    simparams.pce_degs   = np.array(range(2,12))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
@@ -79,7 +79,7 @@ def main():
         ## ----------- Candidate and testing data set for DoE ----------- ###
         print(' > Getting candidate data set...')
         u_cand = modeling.get_candidate_data()
-        u_test, x_test, y_test = modeling.get_test_data(solver, pce_model,qoi=out_responses) 
+        u_test, x_test, y_test = modeling.get_test_data(solver, pce_model,qoi=out_responses, random_seed=random_seed,n=1e5) 
         y_test = np.mean(y_test, axis=0)
         print(museuq.metrics.mquantiles(y_test, 1-np.array(pf)))
         u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
@@ -114,7 +114,7 @@ def main():
 
                 ix_train = solver.map_domain(iu_train, pce_model.basis.dist_u)
                 # assert np.array_equal(iu_train, ix_train)
-                iy_train = solver.run(ix_train)
+                iy_train = solver.run(ix_train, random_seed=random_seed)
                 iy_train = np.mean(iy_train, axis=0)
                 ### Full model checking
                 assert len(pce_model.active_index) == pce_model.num_basis
