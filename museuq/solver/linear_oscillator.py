@@ -101,20 +101,23 @@ class linear_oscillator(SolverBase):
             pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(ishort_term, n_short_term))
             ### Note that xlist and ylist will be tuples (since zip will be unpacked). 
             ### If you want them to be lists, you can for instance use:
-            y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=seeds_st[ishort_term], out_responses=out_responses) for ix in pbar_x]))
-            y_QoI.append(y_QoI_)
+            if save_raw:
+                y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=seeds_st[ishort_term], out_responses=out_responses, ret_raw=True) for ix in pbar_x]))
+                filename = '{:s}_yRaw_R{:d}'.format(self.nickname,ishort_term)
+                np.save(os.path.join(data_dir, filename), np.array(y_raw_))
+            else:
+                y_QoI_ = [self._linear_oscillator(ix, random_seed=seeds_st[ishort_term], out_responses=out_responses, ret_raw=False) for ix in pbar_x]
 
             if save_qoi:
                 filename = '{:s}_yQoI_R{:d}'.format(self.nickname,ishort_term)
                 np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
                 y_QoI=[]
-            if save_raw:
-                filename = '{:s}_yRaw_R{:d}'.format(self.nickname,ishort_term)
-                np.save(os.path.join(data_dir, filename), np.array(y_raw_))
+
+            y_QoI.append(y_QoI_)
         y_QoI = np.array(y_QoI)
         return y_QoI
 
-    def _linear_oscillator(self, x, random_seed=None,out_responses='ALL'):
+    def _linear_oscillator(self, x, random_seed=None, ret_raw=False, out_responses='ALL'):
         """
         Solving linear oscillator in frequency domain
         m x'' + c x' + k x = f => 
@@ -153,7 +156,10 @@ class linear_oscillator(SolverBase):
         museuq.blockPrint()
         y_QoI = museuq.get_stats(y_raw, out_responses=out_responses, out_stats=self.out_stats, axis=0) 
         museuq.enablePrint()
-        return y_raw, y_QoI
+        if ret_raw:
+            return y_raw, y_QoI
+        else:
+            return y_QoI
             
     def map_domain(self, u, u_cdf, only_rand=False):
         """
