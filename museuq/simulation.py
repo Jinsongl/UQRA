@@ -58,7 +58,7 @@ class Modeling(object):
             # u_cand_p = p **0.5* u_cand if (doe_method.lower()=='cls' and self.model.basis.dist_name=='norm') else u_cand
             # _,u = get_train_data(n, u_cand_p, doe_method, optimality=optimality, sample_selected=sample_selected, basis=self.model.basis)
             # x = self.solver.map_domain(u, self.model.basis.dist_u)
-        y = self.solver.run(x, random_seed=random_state)
+        y = self.solver.run(x)
         # idx = []
         # for i, iqoi in enumerate(qoi):
             # if iqoi is None:
@@ -130,9 +130,8 @@ class Modeling(object):
 
         n       = kwargs.get('n'   , self.params.n_test)
         qoi     = kwargs.get('qoi' , [0,] )
-        seed    = kwargs.get('random_seed', None)
         n       = int(n)
-        n_short_term = kwargs.get('n_short_term', self.solver.n_short_term)
+        n_short_term = self.solver.n_short_term
         assert solver.ndim == pce_model.ndim
         ndim = solver.ndim
         try:
@@ -188,7 +187,7 @@ class Modeling(object):
                 x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
             else:
                 raise ValueError
-            y_test = solver.run(x_test, random_seed=seed,out_responses='ALL')
+            y_test = solver.run(x_test, out_responses='ALL', save_qoi=True, data_dir=data_dir_result)
 
             ### 2. Mapping MCS samples from X to u
             ###     dist_u is defined by pce_model

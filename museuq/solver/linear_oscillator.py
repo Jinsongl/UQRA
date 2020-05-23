@@ -65,7 +65,8 @@ class linear_oscillator(SolverBase):
         self.dt         = kwargs.get('dt', 0.01)
         self.t_transit  = kwargs.get('t_transit', 0)
         self.out_stats  = kwargs.get('out_stats', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
-        self.n_short_term= kwargs.get('n_short_term', 1)  ## number of short term simulations
+        self.seeds_st   = kwargs.get('seeds_st', [100,])
+        self.n_short_term= len(self.seeds_st) 
         self.out_responses= kwargs.get('out_responses', 'ALL')
         self.t          = np.arange(0,int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
         self.f_hz       = np.arange(len(self.t)+1) *0.5/self.t[-1]
@@ -83,31 +84,33 @@ class linear_oscillator(SolverBase):
         message = message1 + message2
         return message
 
-    def run(self, x, return_all=False, random_seed=None, **kwargs):
+    def run(self, x, save_raw=False, seeds_st=None, save_qoi=False,  **kwargs):
         """
         run linear_oscillator:
         Arguments:
             x, power spectrum parameters, ndarray of shape (n_parameters, nsamples)
 
         """
-        n_short_term    = kwargs.get('n_short_term', self.n_short_term)
-        out_responses    = kwargs.get('out_responses', self.out_responses)
+        seeds_st        = kwargs.get('seeds_st', self.seeds_st)
+        n_short_term    = len(seeds_st) 
+        out_responses   = kwargs.get('out_responses', self.out_responses)
+        data_dir        = kwargs.get('data_dir', os.getcwd())
         x = np.array(x.T, copy=False, ndmin=2)
-        np.random.seed(random_seed)
-        phase_seeds = np.random.randint(0, int(2**31-1), size=n_short_term) 
         y_QoI = []
         for ishort_term in range(n_short_term):
             pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(ishort_term, n_short_term))
             ### Note that xlist and ylist will be tuples (since zip will be unpacked). 
             ### If you want them to be lists, you can for instance use:
-            y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=phase_seeds[ishort_term], out_responses=out_responses) for ix in pbar_x]))
+            y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=seeds_st[ishort_term], out_responses=out_responses) for ix in pbar_x]))
             y_QoI.append(y_QoI_)
-            if np.size(y_QoI) > 1e8:
-                np.save('{:s}_yQoI_R{:d}.npy'.format(ishort_term), np.array(y_QoI))
-                y_QoI = []
 
-            if return_all:
-                np.save('{:s}_raw{:d}'.format(self.nickname,ishort_term), np.array(y_raw_))
+            if save_qoi:
+                filename = '{:s}_yQoI_R{:d}'.format(self.nickname,ishort_term)
+                np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
+                y_QoI=[]
+            if save_raw:
+                filename = '{:s}_yRaw_R{:d}'.format(self.nickname,ishort_term)
+                np.save(os.path.join(data_dir, filename), np.array(y_raw_))
         y_QoI = np.array(y_QoI)
         return y_QoI
 
