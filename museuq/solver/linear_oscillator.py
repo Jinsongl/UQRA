@@ -46,18 +46,12 @@ class linear_oscillator(SolverBase):
         super().__init__()
         self.name       = 'linear oscillator'
         self.nickname   = 'SDOF'
-        self.random_params = {}
-        self.m          = m
-        self.c          = c
-        self.k          = k
-        self.params_is_rand = []
-        self.ndim_sys   = self._validate_mck()
+        self.dict_rand_params = {}
+        self.is_param_rand = self._validate_mck(m,c,k)
         self.excitation = excitation
-        self.environment= environment
-        self.ndim_env   = self._validate_env()
-        self.ndim       = self.ndim_sys + self.ndim_env
-        assert self.ndim == sum(self.params_is_rand)
-        self.nparams    = np.size(self.params_is_rand)
+        self.environment= self._validate_env(environment)
+        self.ndim       = sum(self.is_param_rand)
+        self.nparams    = np.size(self.is_param_rand)
         self.dist_name  = 'None'
 
         self.tmax       = kwargs.get('time_max', 100)
@@ -73,9 +67,9 @@ class linear_oscillator(SolverBase):
 
     def __str__(self):
         message1 = 'Single Degree of Fredom Oscillator: \n'
-        keys   = list(self.random_params.keys())
+        keys   = list(self.dict_rand_params.keys())
         value_names = [] 
-        for ivalue in self.random_params.values():
+        for ivalue in self.dict_rand_params.values():
             try:
                 value_names.append(ivalue.name)
             except AttributeError:
@@ -84,17 +78,19 @@ class linear_oscillator(SolverBase):
         message = message1 + message2
         return message
 
-    def run(self, x, save_raw=False, seeds_st=None, save_qoi=False,  **kwargs):
+    def run(self, x, save_raw=False, save_qoi=False, seeds_st=None, out_responses=None, data_dir=None):
         """
         run linear_oscillator:
         Arguments:
             x, power spectrum parameters, ndarray of shape (n_parameters, nsamples)
 
         """
-        seeds_st        = kwargs.get('seeds_st', self.seeds_st)
-        n_short_term    = len(seeds_st) 
-        out_responses   = kwargs.get('out_responses', self.out_responses)
-        data_dir        = kwargs.get('data_dir', os.getcwd())
+        seeds_st        = self.seeds_st if seeds_st is None else seeds_st
+        seeds_st        = [seeds_st,] if np.ndim(seeds_st) == 0 else seeds_st
+        n_short_term    = np.size(seeds_st) 
+        out_responses   = self.out_responses if out_responses is None else out_responses
+        data_dir        = os.getcwd() if data_dir is None else data_dir
+
         x = np.array(x.T, copy=False, ndmin=2)
         y_QoI = []
         for ishort_term in range(n_short_term):
@@ -129,8 +125,8 @@ class linear_oscillator(SolverBase):
         args, tuple, oscillator arguments in order of (mass, damping, stiffness) 
         kwargs, dictionary, spectrum definitions for the input excitation functions
         """
-        ndim = int(3) + self.ndim_env
-        assert len(x) == ndim, "Expecting {:d} variables but {:d} given".format(ndim, len(x))
+        if len(x) != self.nparams:
+            raise ValueError("_linear_oscillator: Expecting {:d} parameters but {:d} given".format(self.nparams, len(x)))
         ##--------- oscillator properties -----------
         params_mck, params_env = x[:3], x[3:]
         m,c,k = params_mck 
@@ -178,80 +174,83 @@ class linear_oscillator(SolverBase):
         ### maping mck values
         for ikey in ['m', 'c', 'k']:
             try:
-                x_ = self.random_params[ikey].ppf(u_cdf[i])
+                x_ = self.dict_rand_params[ikey].ppf(u_cdf[i])
                 x.append(x_)
                 i += 1
             except KeyError:
                 x_ = getattr(self, ikey) * np.ones((1,u_cdf.shape[1]))
                 x.append(x_)
         ### maping env values
-        if len(u_cdf[i:]) != 0:
-            try:
-                x_ = self.random_params['env'].ppf(u_cdf[i:])
-                x.append(x_)
-            except KeyError:
+        try:
+            x_ = self.dict_rand_params['env'].ppf(u_cdf[i:])
+            if x_.shape[1] ==1:
+                x_ = np.repeat(x_, u_cdf.shape[1], axis=1)
+            elif x_.shape[1] == u_cdf.shape[1]:
                 pass
-        else:
+            else:
+                raise ValueError('map_domain: returned x shape not match u shape: {}!= {}'.format(x.shape, u.shape))
+            x.append(x_)
+        except KeyError:
+            ### env is None
             pass
         x = np.vstack(x)
-        assert x.shape[0] == int(3) + self.ndim_env
+        if x.shape[0] != self.nparams:
+            raise ValueError('map_domain: expecting {:d} parameters but only return {:d}'.format(self.nparams, x.shape[0]))
         return x
 
     # def random_params_mean
 
-    def _validate_mck(self):
+    def _validate_mck(self, m, c, k):
         """
         mck vould either be sclars or distributions from scipy.stats
         """
-        ndim = int(0)
 
-        if museuq.isfromstats(self.m):
-            ndim += int(1)
-            self.random_params['m'] = self.m
-            self.params_is_rand.append(True)
-        elif np.isscalar(self.m):
-            self.params_is_rand.append(False)
+        is_param_rand = []
+        if museuq.isfromstats(m):
+            self.dict_rand_params['m'] = m
+            is_param_rand.append(True)
+        elif np.isscalar(m):
+            is_param_rand.append(False)
         else:
             raise ValueError('SDOF: mass value type error: {}'.format(self.m))
 
-        if museuq.isfromstats(self.c):
-            ndim += int(1)
-            self.random_params['c'] = self.c
-            self.params_is_rand.append(True)
-        elif np.isscalar(self.c):
-            self.params_is_rand.append(False)
+        if museuq.isfromstats(c):
+            self.dict_rand_params['c'] = c
+            is_param_rand.append(True)
+        elif np.isscalar(c):
+            is_param_rand.append(False)
         else:
             raise ValueError('SDOF: dampling value type error: {}'.format(self.m))
 
-        if museuq.isfromstats(self.k):
-            ndim += int(1)
-            self.random_params['k'] = self.k
-            self.params_is_rand.append(True)
-        elif np.isscalar(self.k):
-            self.params_is_rand.append(False)
+        if museuq.isfromstats(k):
+            self.dict_rand_params['k'] = k
+            is_param_rand.append(True)
+        elif np.isscalar(k):
+            is_param_rand.append(False)
         else:
             raise ValueError('SDOF: stiffness value type error: {}'.format(self.m))
 
-        return ndim
+        self.m = m
+        self.c = c
+        self.k = k
+        return is_param_rand
 
-    def _validate_env(self):
+    def _validate_env(self, env):
         """
         env must be an object of museuq.Environemnt or None
         """
         # self.distributions= kwargs.get('environment', Kvitebjorn)
         # self.dist_name   = self.distributions.__name__.split('.')[-1]
-        if self.environment is None:
-            ndim = 0
+        if env is None:
             self.dist_name = 'None'
-        elif isinstance(self.environment, museuq.EnvBase):
-            ndim = self.environment.ndim
-            self.random_params['env'] = self.environment
-            self.dist_name = '_'.join(self.environment.name)
-            for iname in self.environment.name:
-                self.params_is_rand.append(iname.lower()!='const')
+        elif isinstance(env, museuq.EnvBase):
+            self.dict_rand_params['env'] = env 
+            self.dist_name = '_'.join(env.name)
+            for is_rand in env.is_arg_rand:
+                self.is_param_rand.append(is_rand)
         else:
             raise ValueError('SDOF: environment type {} not defined'.format(type(self.environment)))
-        return ndim
+        return env 
 
     def generate_samples(self, n, random_seed=None):
         n = int(n)
@@ -261,7 +260,7 @@ class linear_oscillator(SolverBase):
         i = 0
         for ikey in ['m', 'c', 'k']:
             try:
-                x_ = self.random_params[ikey].rvs(size=(1,n))
+                x_ = self.dict_rand_params[ikey].rvs(size=(1,n))
                 x.append(x_)
                 i += 1
             except KeyError:
@@ -270,7 +269,7 @@ class linear_oscillator(SolverBase):
 
         ### env samples 
         try:
-            x_ = self.random_params['env'].rvs(size=n)
+            x_ = self.dict_rand_params['env'].rvs(size=n)
             x_ = np.array(x_, ndmin=2)
             x.append(x_)
         except KeyError:
@@ -294,12 +293,10 @@ class linear_oscillator(SolverBase):
 
         if self.excitation is None:
             f = lambda t: t * 0 
-            self.ndim_env = 0
             raise ValueError('SDOF is sovled in frequency domain, None type external force need to be transformed into frequency domain first') 
 
         elif isinstance(self.excitation, (int, float, complex)) and not isinstance(x, bool):
             f = lambda t: t/t * self.excitation 
-            self.ndim_env = 0
             raise ValueError('SDOF is sovled in frequency domain, constant external force need to be transformed into frequency domain first') 
 
         elif isinstance(self.excitation, np.ndarray):
@@ -307,7 +304,6 @@ class linear_oscillator(SolverBase):
             assert self.excitation.shape[0] == 2
             t, y= self.excitation
             f   = sp.interpolate.interp1d(t, y,kind='cubic')
-            self.ndim_env= 0
             raise ValueError('SDOF is sovled in frequency domain, time series external force need to be transformed into frequency domain first') 
 
         elif isinstance(self.excitation, str):
