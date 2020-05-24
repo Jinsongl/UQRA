@@ -43,7 +43,7 @@ def main():
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
     simparams.solver     = solver
-    simparams.pce_degs   = np.array(range(19,21))
+    simparams.pce_degs   = np.array(range(2,3))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
@@ -82,7 +82,7 @@ def main():
         ## ----------- Candidate and testing data set for DoE ----------- ###
         print(' > Getting candidate data set...')
         u_cand = modeling.get_candidate_data()
-        u_test, x_test, y_test = modeling.get_test_data(solver, pce_model,qoi=out_responses,n=1e6) 
+        u_test, x_test, y_test = modeling.get_test_data(solver, pce_model, filename=r'DoE_McsE6R0.npy', qoi=out_responses,n=1e2) 
         y_test_mean = np.mean(y_test, axis=0)
         y_test_std  = np.std(y_test, axis=0)
         print(museuq.metrics.mquantiles(y_test.T, 1-np.array(pf), multioutput='raw_values'))

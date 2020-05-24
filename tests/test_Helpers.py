@@ -1,0 +1,218 @@
+# -*- coding: utf-8 -*-
+
+import museuq, unittest,warnings,os, sys 
+from tqdm import tqdm
+import numpy as np, scipy as sp 
+from museuq.solver.PowerSpectrum import PowerSpectrum
+from museuq.environment import Kvitebjorn as Kvitebjorn
+from sklearn import datasets
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import KFold
+import museuq.utilities.helpers as uqhelpers
+import pickle
+
+warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
+sys.stdout  = museuq.utilities.classes.Logger()
+
+data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
+class BasicTestSuite(unittest.TestCase):
+    """Basic test cases."""
+
+    def test_weighted_exceedance(self):
+        print('========================TESTING: Weighted Exceedance =======================')
+
+        # x = np.random.normal(size=1000).reshape(1,-1)
+        # res1 = stats.cumfreq(x) 
+
+        # cdf_x = res1.lowerlimit + np.linspace(0, res1.binsize*res1.cumcount.size, res1.cumcount.size)
+        # cdf_y = res1.cumcount/x.size
+        # ecdf_y = 1- cdf_y
+        # ecdf_x = cdf_x
+
+        # print(np.around(ecdf_x,2))
+        # print(np.around(ecdf_y,2))
+        # res2 = uqhelpers.get_weighted_exceedance(x)
+        # print(res2.shape)
+        # print(np.around(res2[0],2))
+        # print(np.around(res2[1],2))
+        
+        # orders = [4] ## mcs
+        orders  = range(3,10) ## quad
+        repeat  = range(10)
+
+        data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        for iorder in orders:
+            for r in repeat:
+                filename = 'DoE_IS_McRE6R{:d}_weight.npy'.format(r)
+                weights  = np.load(os.path.join(data_dir_out, filename))
+                ##>>> MCS results from true model
+                # filename = 'DoE_IS_McRE{:d}R{:d}_stats.npy'.format(iorder,r)
+                # data_out = np.load(os.path.join(data_dir_out, filename))
+                # y = np.squeeze(data_out[:,4,:]).T
+                filename = 'DoE_IS_QuadHem{:d}_PCE_pred_E6R{:d}.npy'.format(iorder, r)
+                data_out = np.load(os.path.join(data_dir_out, filename))
+                y = data_out
+                print(y.shape)
+
+                # filename = 'DoE_McRE{:d}R{:d}_stats.npy'.format(iorder, r)
+                # data_out = np.load(os.path.join(data_dir, filename))
+                # y = np.squeeze(data_out[:,4,:]).T
+                print(r'    - exceedance for y: {:s}'.format(filename))
+                for i, iy in enumerate(y):
+                    print('iy.shape = {}'.format(iy.shape))
+                    print('weights.shape = {}'.format(weights.shape))
+                    res = stats.cumfreq(iy,numbins=iy.size,  weights=weights)
+                    cdf_x = res.lowerlimit + np.linspace(0, res.binsize*res.cumcount.size, res.cumcount.size)
+                    cdf_y = res.cumcount/res.cumcount[-1]
+                    excd = np.array([cdf_x, cdf_y])
+                    np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf'.format(i)), excd)
+
+    def test_exceedance(self):
+        print('========================TESTING: Lienar Oscillator =======================')
+
+        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/SDOF/TestData' 
+        excd_prob= [1e-4]
+        print('Target exceedance prob : {}'.format(excd_prob))
+        y_excd = []
+        for iexcd_prob in excd_prob:
+            for r in range(9):
+                try:
+                    filename = 'SDOF_3Hem_DoE_ClsE6R{:d}_y2.npy'.format(r)
+                    print(r'    - exceedance for y: {:s}'.format(filename))
+                    data_set = np.load(os.path.join(data_dir, filename))
+                    print(data_set.shape)
+                    y_ecdf   = uqhelpers.ECDF(np.array(data_set[7]).T, alpha=iexcd_prob, is_expand=False)
+                    print(len(y_ecdf.x))
+                    print(len(y_ecdf.y))
+                    print(y_ecdf.n)
+                    filename = os.path.join(data_dir,filename[:-4]+'_ecdf.p')
+                    with open(filename, 'wb') as handle:
+                        pickle.dump(y_ecdf, handle)
+                except FileNotFoundError:
+                    pass
+
+        # y_excd = []
+        # for iexcd_prob in excd_prob:
+            # y = []
+            # for r in range(10):
+                # filename = 'DoE_McsE6R{:d}_PCE9_LASSOLARS.npy'.format(r)
+                # print(r'    - exceedance for y: {:s}'.format(filename))
+                # data_set = np.load(os.path.join(data_dir, filename))
+                # y.append(data_set)
+            # y_ecdf   = uqhelpers.ECDF(np.array(y).T, alpha=iexcd_prob, is_expand=False)
+            # filename = os.path.join(data_dir,'DoE_McsE6_PCE9_LASSOLARS_pf6_ecdf.pickle')
+            # with open(filename, 'wb') as handle:
+                # pickle.dump(y_ecdf, handle)
+
+
+        # y_excd = []
+        # for iexcd_prob in excd_prob:
+            # y = []
+            # for r in range(10):
+                # filename = 'DoE_McsE6R{:d}_PCE9_OLSLARS.npy'.format(r)
+                # print(r'    - exceedance for y: {:s}'.format(filename))
+                # data_set = np.load(os.path.join(data_dir, filename))
+                # y.append(data_set)
+            # y_ecdf   = uqhelpers.ECDF(np.array(y).T, alpha=iexcd_prob, is_expand=False)
+            # filename = os.path.join(data_dir,'DoE_McsE6_PCE9_OLSLARS_pf6_ecdf.pickle')
+            # with open(filename, 'wb') as handle:
+                # pickle.dump(y_ecdf, handle)
+
+        # print('Testing: 1D')
+        # a = np.random.randint(0,10,size=10)
+        # print(a)
+        # a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3)
+        # print('1D: return_index=False')
+        # print(a_excd)
+        # a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, return_index=True)
+        # print('1D: return_index=True')
+        # print(a_excd)
+
+        # print('Testing: 2D')
+        # a = np.random.randint(0,10,size=(2,10))
+        # print(a)
+        # a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3)
+        # print('2D: isExpand=False, return_index=False')
+        # print(a_excd)
+        # a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, return_index=True)
+        # print('2D: isExpand=False, return_index=True')
+        # print(a_excd)
+        # a_excd=uqhelpers.get_exceedance_data(a, prob=1e-3, isExpand=True, return_index=True)
+        # print('2D: isExpand=True, return_index=True')
+        # print(a_excd)
+
+        # # return_period= [1,5,10]
+        # # prob_fails   = [1/(p *365.25*24*3600/1000) for p in return_period]
+        # return_period= [1]
+        # prob_fails   = [1e-5]
+        # quad_orders  = range(3,10)
+        # mcs_orders   = [6]
+        # repeat       = range(10)
+        # orders       = mcs_orders
+        # # orders       = quad_orders 
+        # return_all   = False 
+
+        # data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        # data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
+        # # data_dir_out= '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data'
+        # # data_dir_in = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data'
+        # # data_dir_in = '/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA/linear_oscillator'
+        # for ipf, ip in zip(prob_fails, return_period):
+            # print('Target exceedance prob : {:.1e}'.format(ipf))
+            # for iorder in orders:
+                # for r in repeat:
+                    # ## input
+                    # filename = 'DoE_McRE6R{:d}.npy'.format(r)
+                    # # filename = 'DoE_McRE7R{:d}.npy'.format(r)
+                    # data_in  = np.load(os.path.join(data_dir_in, filename))  # [u1, u2,..., x1, x2...]
+                    # ##>>> MCS results from surrogate model
+
+                    # filename = 'DoE_QuadHem{:d}_GPR_pred_E6R{:d}.npy'.format(iorder, r)
+                    # filename = 'DoE_QuadHem{:d}R24_mPCE_Normal_pred_E7R{:d}.npy'.format(iorder, r)
+                    # filename = 'DoE_QuadHem{:d}_PCE_Normal_pred_E7R{:d}.npy'.format(iorder, r)
+                    # data_out = np.load(os.path.join(data_dir_out, filename))
+                    # y = data_out
+
+                    # ##>>> MCS results from true model
+                    # ## bench 4
+                    # # filename = 'DoE_McRE{:d}R{:d}_y_Normal.npy'.format(iorder,r)
+                    # # data_out = np.load(os.path.join(data_dir_out, filename))
+                    # # y = data_out.reshape(1,-1)
+
+                    # filename = 'DoE_McRE6R{:d}_stats.npy'.format(r)
+                    # data_out = np.load(os.path.join(data_dir_out, filename))
+                    # y = np.squeeze(data_out[:,4,:]).T
+
+                    # print(y.shape)
+
+                    # # filename = 'DoE_McRE{:d}R{:d}_stats.npy'.format(iorder, r)
+                    # # data_out = np.load(os.path.join(data_dir, filename))
+                    # # y = np.squeeze(data_out[:,4,:]).T
+
+                    # print(r'    - exceedance for y: {:s}'.format(filename))
+                    # for i, iy in enumerate(y):
+                        # data_ = np.vstack((iy.reshape(1,-1), data_in))
+                        # iexcd = uqhelpers.get_exceedance_data(data_, ipf, isExpand=True, return_all=return_all)
+                        # return_all_str = '_all' if return_all else '' 
+                        # np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf_P{:d}{}'.format(i, ip, return_all_str )), iexcd)
+
+        # data_dir = '/Users/jinsongliu/External/MUSE_UQ_DATA/BENCH4/Data' 
+        # p = 1e-5
+        # print('Target exceedance prob : {:.1e}'.format(p))
+        # # error_name = 'None'
+        # # error_name = 'Normal'
+        # error_name = 'Gumbel'
+        # for r in range(10):
+            # # filename = 'DoE_McRE7R{:d}_y_{:s}.npy'.format(r, error_name.capitalize())
+            # # filename = 'DoE_QuadHem5_PCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
+            # filename = 'DoE_QuadHem5R24_mPCE_{:s}_pred_r{:d}.npy'.format(error_name.capitalize(), r)
+            # data_set = np.load(os.path.join(data_dir, filename))
+            # y        = np.squeeze(data_set)
+            # print(r'    - exceedance for y: {:s}'.format(filename))
+            # y_excd=uqhelpers.get_exceedance_data(y, p)
+            # np.save(os.path.join(data_dir, filename[:-4]+'_ecdf_pf5.npy'), y_excd)
+
+
+if __name__ == '__main__':
+    unittest.main()

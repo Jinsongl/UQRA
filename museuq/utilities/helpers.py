@@ -103,6 +103,9 @@ def ECDF(x,**kwargs):
 
     Returns
         Empirical CDF as a step function.
+            ECDF.x: list of ecdf.x object
+            ECDF.y: list of ecdf.y object
+            ECDF.n: number of ecdf object
     """
     x = np.array(x)
     alpha       = kwargs.get('alpha', None)
@@ -132,7 +135,8 @@ def ECDF(x,**kwargs):
                 return x_ecdf
 
     else:
-        assert alpha is not None
+        if alpha is None:
+            raise ValueError('museuq.helpers.ECDF: alpha is none')
         if x.ndim == 1:
             x_ecdf = mECDF(x, side=side)
             idx = (np.abs(x_ecdf.y - (1-alpha))).argmin()
@@ -230,7 +234,7 @@ def get_exceedance_data(x,prob=1e-3,**kwargs):
                 result.append([_get_exceedance1d(irow, prob=iprob,return_all=return_all) for irow in x])
             return result
 
-def _get_exceedance1d(x,prob=1e-3,  return_all=False ):
+def _get_exceedance1d(x, prob=1e-3, return_all=False ):
     """
     return emperical cdf from dataset x
     Parameters:
@@ -246,11 +250,10 @@ def _get_exceedance1d(x,prob=1e-3,  return_all=False ):
     """
 
     assert np.array(x).ndim == 1
-    x_ecdf  = ECDF(x)
+    x_ecdf  = mECDF(x)
     x_ecdf.index = np.argsort(x)
-
     print(x_ecdf.n)
-    print(prob)
+
     if x_ecdf.n <= 1.0/prob:
         warnings.warn('\n Not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(x_ecdf.n, prob))
     else:
