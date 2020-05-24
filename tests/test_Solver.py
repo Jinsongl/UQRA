@@ -66,8 +66,9 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_linear_oscillator(self):
         random_seed = 100
-        out_responses = [1,2]
-        nsim = 3
+        np.random.seed(random_seed)
+        seeds_st = np.random.randint(0, int(2**31-1), size=20)
+        out_responses = [2]
         out_stats = ['absmax']
         m=1
         c=0.1/np.pi
@@ -78,12 +79,9 @@ class BasicTestSuite(unittest.TestCase):
         # env    = Kvitebjorn()
         solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='spec_test1', environment=env, t=1000, t_transit=10,
                 out_responses=out_responses, out_stats=out_stats)
-        samples= solver.generate_samples(3)
-        print(samples)
-        y = solver.run(samples, return_all=True, random_seed=random_seed)
-        print(y)
-        np.save('y', np.array(y))
-
+        samples= solver.generate_samples(100)
+        y = solver.run(samples, seeds_st=seeds_st[:5] )
+        print(y.shape)
 
         # for r in range(2):
             # # filename = r'DoE_McsE6R{:d}.npy'.format(r)
