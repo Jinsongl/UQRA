@@ -170,6 +170,8 @@ class linear_oscillator(SolverBase):
         if not isinstance(u_cdf, np.ndarray):
             u, dist_u = super().map_domain(u, u_cdf) ## check if dist from stats and change to list [dist,]
             u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+            u_cdf[u_cdf>0.99999] = 0.99999
+            u_cdf[u_cdf<0.00001] = 0.00001
 
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = []
