@@ -54,12 +54,15 @@ class linear_oscillator(SolverBase):
         self.nparams    = np.size(self.is_param_rand)
         self.dist_name  = 'None'
 
+        np.random.seed(100)
+        seeds_st        = np.random.randint(0, int(2**31-1), size=10000)
         self.tmax       = kwargs.get('time_max', 100)
         self.tmax       = kwargs.get('tmax', 100)
         self.dt         = kwargs.get('dt', 0.01)
         self.t_transit  = kwargs.get('t_transit', 0)
         self.out_stats  = kwargs.get('out_stats', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
-        self.seeds_st   = kwargs.get('seeds_st', [100,])
+        self.phase_seeds= kwargs.get('phase', 1)
+        self.seeds_st   = [seeds_st[idx] for idx in self.phase_seeds] 
         self.n_short_term= len(self.seeds_st) 
         self.out_responses= kwargs.get('out_responses', 'ALL')
         self.t          = np.arange(0,int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
