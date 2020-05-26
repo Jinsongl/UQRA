@@ -129,7 +129,7 @@ class Modeling(object):
             pass
 
         n       = kwargs.get('n'   , self.params.n_test)
-        qoi     = kwargs.get('qoi' , [0,] )
+        qoi     = kwargs.get('qoi' , solver.out_responses )
         n       = int(n)
         n_short_term = self.solver.n_short_term
         assert solver.ndim == pce_model.ndim
@@ -216,9 +216,19 @@ class Modeling(object):
                     for i, iqoi_test in enumerate(y_test.T):
                         data = np.vstack((u_test, x_test, iqoi_test.T))
                         np.save(os.path.join(data_dir_result, self.filename_test[:-4]+'_y{:d}.npy'.format(i)), data)
-                        y.append(iqoi_test[:n] if n > 0 else iqoi_test)
+                        if i in solver.out_responses:
+                            y.append(iqoi_test[:n].T if n > 0 else iqoi_test)
                     print('   > Saving test data to {} '.format(data_dir_result))
-                    y_test = y
+                    y_test = y[0] if len(y) == 1 else y
+                elif solver.nickname.lower() == 'duffing':
+                    y = []
+                    for i, iqoi_test in enumerate(y_test.T):
+                        data = np.vstack((u_test, x_test, iqoi_test.T))
+                        np.save(os.path.join(data_dir_result, self.filename_test[:-4]+'_y{:d}.npy'.format(i)), data)
+                        if i in solver.out_responses:
+                            y.append(iqoi_test[:n].T if n > 0 else iqoi_test)
+                    print('   > Saving test data to {} '.format(data_dir_result))
+                    y_test = y[0] if len(y) == 1 else y
                 else:
                     raise NotImplementedError
 
@@ -548,8 +558,10 @@ class Modeling(object):
                     u_std = 0.57
                 elif self.ndim == 3:
                     u_std = 0.50
+                elif self.ndim == 4:
+                    u_std = 0.447 
                 else:
-                    raise ValueError
+                    raise NotImplementedError 
             else:
                 raise ValueError
         else:
