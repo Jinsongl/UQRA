@@ -46,13 +46,13 @@ class linear_oscillator(SolverBase):
         super().__init__()
         self.name       = 'linear oscillator'
         self.nickname   = 'SDOF'
+        self.dist_name  = 'None'
         self.dict_rand_params = {}
         self.is_param_rand = self._validate_mck(m,c,k)
         self.excitation = excitation
         self.environment= self._validate_env(environment)
         self.ndim       = sum(self.is_param_rand)
         self.nparams    = np.size(self.is_param_rand)
-        self.dist_name  = 'None'
 
         np.random.seed(100)
         seeds_st        = np.random.randint(0, int(2**31-1), size=10000)
@@ -61,15 +61,21 @@ class linear_oscillator(SolverBase):
         self.dt         = kwargs.get('dt', 0.01)
         self.t_transit  = kwargs.get('t_transit', 0)
         self.out_stats  = kwargs.get('out_stats', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
-        self.phase_seeds= kwargs.get('phase', 1)
-        self.seeds_st   = [seeds_st[idx] for idx in self.phase_seeds] 
+        self.seeds_idx  = kwargs.get('phase', [0,])
+        self.seeds_st   = [seeds_st[idx] for idx in self.seeds_idx] 
         self.n_short_term= len(self.seeds_st) 
         self.out_responses= kwargs.get('out_responses', 'ALL')
         self.t          = np.arange(0,int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
         self.f_hz       = np.arange(len(self.t)+1) *0.5/self.t[-1]
 
     def __str__(self):
-        message1 = 'Single Degree of Fredom Oscillator: \n'
+        message1 = 'Single Degree of Fredom Oscillator: \n' +\
+                    '   - {:<25s} : {}\n'.format('tmax'  , self.tmax) +\
+                    '   - {:<25s} : {}\n'.format('dt'    , self.dt) +\
+                    '   - {:<25s} : {}\n'.format('n_short_term'  , self.n_short_term) +\
+                    '   - {:<25s} : {}\n'.format('out_responses'  , self.out_responses) +\
+                    '   - {:<25s} : {}\n'.format('out_stats'  , self.out_stats) 
+
         keys   = list(self.dict_rand_params.keys())
         value_names = [] 
         for ivalue in self.dict_rand_params.values():
@@ -88,33 +94,33 @@ class linear_oscillator(SolverBase):
             x, power spectrum parameters, ndarray of shape (n_parameters, nsamples)
 
         """
-        seeds_st        = self.seeds_st if seeds_st is None else seeds_st
-        seeds_st        = [seeds_st,] if np.ndim(seeds_st) == 0 else seeds_st
+        seeds_st = self.seeds_st if seeds_st is None else seeds_st
+        seeds_st = [seeds_st,] if np.ndim(seeds_st) == 0 else seeds_st
         n_short_term    = np.size(seeds_st) 
         out_responses   = self.out_responses if out_responses is None else out_responses
         data_dir        = os.getcwd() if data_dir is None else data_dir
 
         x = np.array(x.T, copy=False, ndmin=2)
         y_QoI = []
-        for ishort_term in range(n_short_term):
-            pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(ishort_term, n_short_term))
+        for iseed_idx, iseed in zip(self.seeds_idx, seeds_st):
+            pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(iseed_idx, n_short_term))
             ### Note that xlist and ylist will be tuples (since zip will be unpacked). 
             ### If you want them to be lists, you can for instance use:
             if save_raw:
-                y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=seeds_st[ishort_term], out_responses=out_responses, ret_raw=True) for ix in pbar_x]))
-                filename = '{:s}_yRaw_R{:d}'.format(self.nickname,ishort_term)
+                y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=iseed,
+                    out_responses=out_responses, ret_raw=True) for ix in pbar_x]))
+                filename = '{:s}_yRaw_nst{:d}'.format(self.nickname,iseed_idx)
                 np.save(os.path.join(data_dir, filename), np.array(y_raw_))
             else:
-                y_QoI_ = [self._linear_oscillator(ix, random_seed=seeds_st[ishort_term], out_responses=out_responses, ret_raw=False) for ix in pbar_x]
+                y_QoI_ = [self._linear_oscillator(ix, random_seed=iseed, 
+                    out_responses=out_responses, ret_raw=False) for ix in pbar_x]
 
             if save_qoi:
-                filename = '{:s}_yQoI_R{:d}'.format(self.nickname,ishort_term)
+                filename = '{:s}_yQoI_nst{:d}'.format(self.nickname,iseed_idx)
                 np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
-                y_QoI=[]
 
             y_QoI.append(y_QoI_)
-        y_QoI = np.array(y_QoI)
-        return y_QoI
+        return np.array(y_QoI)
 
     def _linear_oscillator(self, x, random_seed=None, ret_raw=False, out_responses='ALL'):
         """
@@ -160,7 +166,7 @@ class linear_oscillator(SolverBase):
         else:
             return y_QoI
             
-    def map_domain(self, u, u_cdf, only_rand=False):
+    def map_domain(self, u, u_cdf):
         """
         mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
         Argument:
