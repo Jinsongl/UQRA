@@ -348,7 +348,12 @@ def _get_stats(data, out_stats=['mean', 'std', 'skewness', 'kurtosis', 'absmax',
         out_stats = [out_stats,]
 
     for istats in out_stats:
-        if istats.lower()  in ['mean', 'mu']:
+        if istats == -1:
+            if axis==0:
+                res.append(data[-1,:])
+            elif axis==1:
+                res.append(data[:,-1])
+        elif istats.lower()  in ['mean', 'mu']:
             res.append(np.mean(data, axis=axis))
         elif istats.lower() in ['std', 'sigma']:
             res.append(np.std(data, axis=axis))
