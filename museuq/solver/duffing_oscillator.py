@@ -44,67 +44,118 @@ class duffing_oscillator(SolverBase):
     kwargs, dictionary, spectrum definitions for the input excitation functions
     """
 
-    def __init__(self, m=1, c=0.02/np.pi, k=1.0/np.pi/np.pi, s=0.2/np.pi**2, excitation=None, environment=None,**kwargs):
+    def __init__(self, m=1, c=0.1/np.pi, k=1.0/np.pi/np.pi, s=0.2/np.pi**2, excitation=None, environment=None,**kwargs):
         super().__init__()
-        self.name        = 'Duffing oscillator'
-        self.nickname    = 'Duffing'
-        self.random_params = {}
-        self.m          = m
-        self.c          = c
-        self.k          = k
-        self.s          = s
-        self.ndim_sys   = self._validate_mcks()
+        self.name       = 'Duffing oscillator'
+        self.nickname   = 'Duffing'
+        self.dist_name  = 'None'
+        self.dict_rand_params = {}
+        self.is_param_rand = self._validate_mcks(m,c,k,s)
         self.excitation = excitation
-        self.environment= environment
-        self.ndim_env   = self._validate_env()
-        self.ndim       = self.ndim_sys + self.ndim_env
+        self.environment= self._validate_env(environment)
+        self.ndim       = sum(self.is_param_rand)
+        self.nparams    = np.size(self.is_param_rand)
 
-        self.qoi2analysis= kwargs.get('qoi2analysis', 'ALL')
-        self.stats2cal   = kwargs.get('stats2cal', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
-        self.tmax        = kwargs.get('time_max', 1000 )
-        self.tmax        = kwargs.get('tmax'    , 1000 )
-        self.dt          = kwargs.get('dt'      , 0.01 )
-        self.y0          = kwargs.get('y0'      , [1,0]) ## initial condition
-        self.n_short_term= kwargs.get('n_short_term', 10)  ## number of short term simulations
-        self.method      = kwargs.get('method', 'RK45')
+        np.random.seed(100)
+        seeds_st        = np.random.randint(0, int(2**31-1), size=10000)
+        self.tmax       = kwargs.get('time_max'    , 100  )
+        self.tmax       = kwargs.get('tmax'        , 100  )
+        self.t_transit  = kwargs.get('t_transit', 0)
+        self.dt         = kwargs.get('dt'          , 0.01 )
+        self.y0         = kwargs.get('y0'          , [1,0]) ## initial condition
+        self.method     = kwargs.get('method'      , 'RK45')
+        self.seeds_idx  = kwargs.get('phase', [0,])
+        self.seeds_st   = [seeds_st[idx] for idx in self.seeds_idx] 
+        self.n_short_term= len(self.seeds_st) 
+        self.out_responses=kwargs.get('out_responses', 'ALL')
+        self.out_stats   = kwargs.get('out_stats'   , ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
+        self.t          = np.arange(0,int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
+        self.f_hz       = np.arange(len(self.t)+1) *0.5/self.t[-1]
 
     def __str__(self):
-        message1 = 'Duffing Oscillator: \n'    
-        keys   = list(self.random_params.keys())
-        value_names = [] 
-        for ivalue in self.random_params.values():
-            try:
-                value_names.append(ivalue.name)
-            except AttributeError:
-                value_names.append(ivalue.dist.name)
-        message2 = '   - {} : {}\n'.format(keys, value_names)
+        message1 =  '   > Duffing Oscillator: \n'     +\
+                    '   - {:<25s} : {}\n'.format('tmax'  , self.tmax) +\
+                    '   - {:<25s} : {}\n'.format('dt'    , self.dt) +\
+                    '   - {:<25s} : {}\n'.format('y0'    , self.y0) +\
+                    '   - {:<25s} : {}\n'.format('n_short_term'  , self.n_short_term) +\
+                    '   - {:<25s} : {}\n'.format('method'  , self.method) +\
+                    '   - {:<25s} : {}\n'.format('out_responses'  , self.out_responses) +\
+                    '   - {:<25s} : {}\n'.format('out_stats'  , self.out_stats) 
+
+        keys   = list(self.dict_rand_params.keys())
+        if len(keys) == 0:
+            message2 = ''
+        else:
+            value_names = [] 
+            for ivalue in self.dict_rand_params.values():
+                try:
+                    value_names.append(ivalue.name)
+                except AttributeError:
+                    value_names.append(ivalue.dist.name)
+            message2 = '   - {} : {}\n'.format(keys, value_names)
         message = message1 + message2
         return message
 
-    def run(self, x, return_all=False, random_seed=None, **kwargs):
+    def run(self, x, save_raw=False, save_qoi=False, seeds_st=None, out_responses=None, data_dir=None):
         """
         solving duffing equation:
         Arguments:
             x, power spectrum parameters, ndarray of shape (nsamples, n_parameters)
 
         """
-        n_short_term = kwargs.get('n_short_term', self.n_short_term)
-        qoi2analysis = kwargs.get('qoi2analysis', self.qoi2analysis)
+
+        seeds_st        = self.seeds_st if seeds_st is None else seeds_st
+        seeds_st        = [seeds_st,] if np.ndim(seeds_st) == 0 else seeds_st
+        n_short_term    = np.size(seeds_st) 
+        out_responses   = self.out_responses if out_responses is None else out_responses
+        data_dir        = os.getcwd() if data_dir is None else data_dir
+
         x = np.array(x.T, copy=False, ndmin=2)
-        np.random.seed(random_seed)
-        seeds = np.random.randint(0, int(2**32-1), size=n_short_term) 
         y_QoI = []
-        for ishort_term in range(n_short_term):
-            pbar_x  = tqdm(x, ascii=True, ncols=80,desc="    - {:d}/{:d} ".format(ishort_term, self.n_short_term))
-            y_raw_, y_QoI_ = map(list, zip(*[self._duffing_oscillator(ix, seed=seeds[ishort_term], qoi2analysis=qoi2analysis) for ix in pbar_x]))
+        for iseed_idx, iseed in zip(self.seeds_idx, seeds_st):
+            pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(iseed_idx, n_short_term))
+            if save_raw:
+                y_raw_, y_QoI_ = map(list, zip(*[self._duffing_oscillator(ix, random_seed=iseed, ret_raw=True, out_responses=out_responses) for ix in pbar_x]))
+                filename = '{:s}_yRaw_nst{:d}'.format(self.nickname,iseed_idx)
+                np.save(os.path.join(data_dir, filename), np.array(y_raw_))
+            else:
+                y_QoI_ = [self._duffing_oscillator(ix, random_seed=iseed, ret_raw=False, out_responses=out_responses) for ix in pbar_x]
+
+            if save_qoi:
+                filename = '{:s}_yQoI_nst{:d}'.format(self.nickname,iseed_idx)
+                np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
+
             y_QoI.append(y_QoI_)
-            if return_all:
-                np.save('{:s}_raw{:d}'.format(self.nickname,ishort_term), np.array(y_raw_))
+        y_QoI = np.array(y_QoI)
+        return y_QoI
 
-        return np.array(y_QoI)
+    def generate_samples(self, n, seed=None):
+        n = int(n)
+        x = []
+        np.random.seed(seed)
+        ### mck samples 
+        i = 0
+        for ikey in ['m', 'c', 'k', 's']:
+            try:
+                x_ = self.dict_rand_params[ikey].rvs(size=(1,n))
+                x.append(x_)
+                i += 1
+            except KeyError:
+                x_ = getattr(self, ikey) * np.ones((1,n))
+                x.append(x_)
 
+        ### env samples 
+        try:
+            x_ = self.dict_rand_params['env'].rvs(size=n)
+            x_ = np.array(x_, ndmin=2)
+            x.append(x_)
+        except KeyError:
+            pass
 
-    def map_domain(self, u, dist_u):
+        x= np.vstack(x)
+        return x 
+
+    def map_domain(self, u, u_cdf):
         """
         Mapping random variables u from distribution dist_u (default U(0,1)) to self.distributions 
         Argument:
@@ -113,6 +164,8 @@ class duffing_oscillator(SolverBase):
         if not isinstance(u_cdf, np.ndarray):
             u, dist_u = super().map_domain(u, u_cdf) ## check if dist from stats and change to list [dist,]
             u_cdf     = np.array([idist.cdf(iu) for iu, idist in zip(u, dist_u)])
+            u_cdf[u_cdf>0.99999] = 0.99999
+            u_cdf[u_cdf<0.00001] = 0.00001
 
         assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
         x = []
@@ -120,7 +173,7 @@ class duffing_oscillator(SolverBase):
         ### maping mck values
         for ikey in ['m', 'c', 'k', 's']:
             try:
-                x_ = self.random_params[ikey].ppf(u_cdf[i])
+                x_ = self.dict_rand_params[ikey].ppf(u_cdf[i])
                 x.append(x_)
                 i += 1
             except KeyError:
@@ -129,30 +182,56 @@ class duffing_oscillator(SolverBase):
 
         ### maping env values
         try:
-            x_ = self.random_params['env'].ppf(u_cdf[i:])
+            x_ = self.dict_rand_params['env'].ppf(u_cdf[i:])
+            if x_.shape[1] ==1:
+                x_ = np.repeat(x_, u_cdf.shape[1], axis=1)
+            elif x_.shape[1] == u_cdf.shape[1]:
+                pass
+            else:
+                raise ValueError('map_domain: returned x shape not match u shape: {}!= {}'.format(x.shape, u.shape))
             x.append(x_)
         except KeyError:
             pass
         x = np.vstack(x)
-        assert x.shape[0] == int(4) + self.ndim_env
+        if x.shape[0] != self.nparams:
+            raise ValueError('map_domain: expecting {:d} parameters but only return {:d}'.format(self.nparams, x.shape[0]))
         return x
 
-    def _duffing_oscillator(self, x, seed=None, qoi2analysis='ALL'):
+    def _duffing_oscillator(self, x, random_seed=None, ret_raw=False, out_responses='ALL'):
 
-        ndim = int(4) + self.ndim_env
-        assert len(x) == ndim, "Expecting {:d} variables but {:d} given".format(ndim, len(x))
-        t = np.arange(0,int(self.tmax/self.dt) +1) * self.dt
-        force_func = self._external_force_func(x, seed=seed)
-        x_t = force_func(t)
-        solution = sp.integrate.solve_ivp(self._rhs_odes, [0,self.tmax], self.y0, t_eval=t, args=[force_func,], method=self.method)
-        y_raw = np.vstack((t, x_t, solution.y)).T
+        if len(x) != self.nparams:
+            raise ValueError("_duffing_oscillator: Expecting {:d} parameters but {:d} given".format(ndim, len(x)))
+        ##--------- oscillator properties -----------
+        params_mcks, params_env = x[:4], x[4:]
+        m,c,k,s = params_mcks
+        force_func = self._external_force_func(x=params_env, random_seed=random_seed)
+        x_t = force_func(self.t)
+        t_span = (0,self.tmax)
+        args   = (force_func,params_mcks)
+        print(t_span)
+        print(self.t)
+        solution = sp.integrate.solve_ivp(self._rhs_odes, t_span, self.y0, t_eval=self.t, args=args, method=self.method)
+
+        print(solution.message)
+        t_transit_idx = int(self.t_transit/(self.t[1]-self.t[0]))
+        t   = self.t[t_transit_idx:]
+        x_t = x_t[t_transit_idx:]
+        y_t = solution.y[t_transit_idx:]
+
+        print(solution.t)
+        print(solution.success)
+        print(y_t.shape)
+        y_raw = np.vstack((t, x_t, y_t)).T
 
         museuq.blockPrint()
-        y_QoI = museuq.get_stats(y_raw, qoi2analysis=qoi2analysis, stats2cal=self.stats2cal, axis=0) 
+        y_QoI = museuq.get_stats(y_raw, out_responses=out_responses, out_stats=self.out_stats, axis=0)
         museuq.enablePrint()
-        return y_raw, y_QoI
+        if ret_raw:
+            return y_raw, y_QoI
+        else:
+            return y_QoI
 
-    def _rhs_odes(self, t, y, f):
+    def _rhs_odes(self, t, y, f, mcks):
         """
         Reformulate 2nd order ODE to a system of ODEs.
             dy / dt = f(t, y)
@@ -168,96 +247,100 @@ class duffing_oscillator(SolverBase):
             (u', v')
 
         """
+        m,c,k,s = mcks
         y0, y1 = y
-        vdot =1.0/self.m * (-self.c *y1 - self.k*y0 - self.s * y0**3 + f(t))
+        vdot =1.0/m * (-c *y1 - k*y0 - s * y0**3 + f(t))
         return y1, vdot 
 
-    def _external_force_func(self, x, seed=None):
+    def _external_force_func(self, x=None, random_seed=None):
         """
         Return the excitation function f on the right hand side 
 
         Returns:
             a function take scalar argument
-
         """
 
-        if self.excitation is not None:
-            f = lambda t: t * 0 
-            self.ndim_env = 0
-        elif isinstance(self.excitation, (int, float, complex)) and not isinstance(x, bool):
-            f = lambda t: t/t * self.excitation 
-            self.ndim_env = 0
+        if self.excitation is None:
+            func = lambda t: t * 0 
+
+        elif isinstance(self.excitation, (int, float, complex)) and not isinstance(self.excitation, bool):
+            func = lambda t: t/t * self.excitation 
 
         elif isinstance(self.excitation, np.ndarray):
             assert np.ndim(self.excitation) == 2
             assert self.excitation.shape[0] == 2
-            t, y= self.excitation
-            f   = sp.interpolate.interp1d(t, y,kind='cubic')
-            self.ndim_env= 0
+            t, y = self.excitation
+            func = sp.interpolate.interp1d(t, y,kind='cubic')
+
         elif isinstance(self.excitation, str):
-            t    = np.arange(0,int(1.10* self.tmax/self.dt)) * self.dt
-            tmax = t[-1]
-            df   = 0.5/tmax
-            freq = np.arange(len(t)+1) * df
-            psd_x = PowerSpectrum(self.spec_name, *x)
-            x_pxx = psd_x.get_pxx(freq)
-            t0, x_t = psd_x.gen_process(seed=seed)
-            f = sp.interpolate.interp1d(t0, x_t,kind='cubic')
+            psd_x= PowerSpectrum(self.excitation, *x)
+            density = psd_x.cal_density(self.f_hz)
+            np.random.seed(random_seed)
+            theta_x = np.random.uniform(-np.pi, np.pi, np.size(self.f_hz)*2)
+            t0, x_t, f_hz_x, theta_x = psd_x.gen_process(t=self.t, phase=theta_x)
+            func = sp.interpolate.interp1d(t0, x_t,kind='cubic')
         elif callable(self.excitation):
-            f = self.excitation
+            func = self.excitation
+
         else:
             ValueError('Duffing: Excitation function type error: {}'.format(self.excitation))
-        return f
 
-    def _validate_mcks(self):
+        return func
+
+    def _validate_mcks(self,m,c,k,s):
         """
         mck vould either be sclars or distributions from scipy.stats
         """
-        ndim = int(0)
-
-        if museuq.isfromstats(self.m):
-            ndim += int(1)
-            self.random_params['m'] = self.m
-        elif np.isscalar(self.m):
-            pass
+        is_param_rand = []
+        if museuq.isfromstats(m):
+            self.dict_rand_params['m'] = m
+            is_param_rand.append(True)
+        elif np.isscalar(m):
+            is_param_rand.append(False)
         else:
-            raise ValueError('SDOF: mass value type error: {}'.format(self.m))
+            raise ValueError('Duffing: mass value type error: {}'.format(m))
 
-        if museuq.isfromstats(self.c):
-            ndim += int(1)
-            self.random_params['c'] = self.c
-        elif np.isscalar(self.c):
-            pass
+        if museuq.isfromstats(c):
+            self.dict_rand_params['c'] = c
+            is_param_rand.append(True)
+        elif np.isscalar(c):
+            is_param_rand.append(False)
         else:
-            raise ValueError('SDOF: damping value type error: {}'.format(self.m))
+            raise ValueError('Duffing: damping value type error: {}'.format(c))
 
-        if museuq.isfromstats(self.k):
-            ndim += int(1)
-            self.random_params['k'] = self.k
-        elif np.isscalar(self.k):
-            pass
+        if museuq.isfromstats(k):
+            self.dict_rand_params['k'] = k
+            is_param_rand.append(True)
+        elif np.isscalar(k):
+            is_param_rand.append(False)
         else:
-            raise ValueError('SDOF: stiffness value type error: {}'.format(self.m))
+            raise ValueError('Duffing: stiffness value type error: {}'.format(k))
 
-        if museuq.isfromstats(self.s):
-            ndim += int(1)
-            self.random_params['s'] = self.s
-        elif np.isscalar(self.s):
-            pass
+        if museuq.isfromstats(s):
+            self.dict_rand_params['s'] = s
+            is_param_rand.append(True)
+        elif np.isscalar(s):
+            is_param_rand.append(False)
         else:
-            raise ValueError('SDOF: nonlinear damping value type error: {}'.format(self.m))
+            raise ValueError('Duffing: nonlinear damping value type error: {}'.format(s))
+        self.m = m
+        self.c = c
+        self.k = k
+        self.s = s
 
-        return ndim
+        return is_param_rand
 
-    def _validate_env(self):
+    def _validate_env(self, env):
         """
         env must be an object of museuq.Environemnt or None
         """
-        if self.environment is None:
-            ndim = 0
-
+        if env is None:
+            self.dist_name = 'None'
+        elif isinstance(env, museuq.EnvBase):
+            self.dict_rand_params['env'] = env 
+            self.dist_name = '_'.join(env.name)
+            for is_rand in env.is_arg_rand:
+                self.is_param_rand.append(is_rand)
         else:
-            assert isinstance(self.environment, museuq.EnvBase)
-            ndim = self.environment.ndim
-            self.random_params['env'] = self.environment
-        return ndim
+            raise ValueError('SDOF: environment type {} not defined'.format(type(self.environment)))
+        return env 
