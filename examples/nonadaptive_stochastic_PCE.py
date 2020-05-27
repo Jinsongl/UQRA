@@ -39,24 +39,6 @@ def main():
     env    = museuq.Environment([2,])
     solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='spec_test1', environment=env,
             t=1000,t_transit=10, dt=0.1, out_responses=out_responses, out_stats=out_stats, phase=range(n_short_term))
-    solver.nickname = 'SDOF_test'
-    print(solver)
-
-    # m=1
-    # c=0.1/np.pi
-    # k=1.0/np.pi/np.pi
-    # s=-0.5/np.pi**2
-    # m,c,k,s  = [stats.norm(m, 0.05*m), stats.norm(c, 0.2*c), stats.norm(k, 0.1*k), stats.norm(s, 0.1*abs(s))]
-    # # env    = museuq.Environment([stats.uniform, stats.norm])
-    # # env    = museuq.environment.Kvitebjorn.Kvitebjorn()
-    # env    = museuq.Environment([2,])
-    # # env    = None 
-    # solver = museuq.duffing_oscillator(m=m,c=c,k=k,s=s,excitation='spec_test1', environment=env,
-            # tmax=100,dt=0.1, out_responses=out_responses, out_stats=out_stats, phase=range(n_short_term))
-    # # solver = museuq.linear_oscillator(m=m,c=c,k=k,s=s,excitation='spec_test1', environment=env,
-            # # t=1000,t_transit=10, dt=0.1, out_responses=out_responses, out_stats=out_stats, phase=range(n_short_term))
-    # print(solver)
-
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
     simparams.solver     = solver
