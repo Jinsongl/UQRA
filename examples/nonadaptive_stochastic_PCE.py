@@ -28,7 +28,7 @@ def main():
     random_seed = 100
     out_responses = [2,]
     out_stats = ['absmax']
-    n_short_term = 20
+    n_short_term = 1
 
     m=1
     c=0.1/np.pi
@@ -36,10 +36,10 @@ def main():
     m,c,k  = [stats.norm(m, 0.05*m), stats.norm(c, 0.2*c), stats.norm(k, 0.1*k)]
     # env    = museuq.Environment([stats.uniform, stats.norm])
     # env    = museuq.environment.Kvitebjorn.Kvitebjorn()
-    env    = museuq.Environment([2,])
-    solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='spec_test1', environment=env,
+    env    = museuq.Environment('spec_test1', 2)
+    solver = museuq.linear_oscillator(m=m,c=c,k=k,environment=env,
             t=1000,t_transit=10, dt=0.1, out_responses=out_responses, out_stats=out_stats, phase=range(n_short_term))
-    solver.nickname = 'SDOF_ST'
+    solver.nickname = 'SDOF_test'
 
     print(solver)
 
