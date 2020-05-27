@@ -270,13 +270,13 @@ class surge_model(SolverBase):
 
     def _validate_ltf(self, trans_func):
         if isinstance(trans_func, np.ndarray):
-            spectrum_frc = PowerSpectrum('force') 
+            spectrum_frc = PowerSpectrum('ltf') 
             w_rad, trans_func_cval = trans_func
             pxx = abs(trans_func_cval)**2/(w_rad[1]-w_rad[0])
             spectrum_frc.set_density(w_rad, pxx)
             spectrum_frc.tf_cval = trans_func_cval
         elif trans_func is None:
-            spectrum_frc = PowerSpectrum('force') 
+            spectrum_frc = PowerSpectrum('ltf') 
             w_rad = self.w_rad
             trans_func_cval = w_rad/w_rad
             pxx = abs(trans_func_cval)**2/(w_rad[1]-w_rad[0])
