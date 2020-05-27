@@ -188,6 +188,7 @@ class Modeling(object):
             else:
                 raise ValueError
             y_test = solver.run(x_test, out_responses='ALL', save_qoi=True, data_dir=data_dir_result)
+            np.save('y_test.npy', np.array(y_test))
 
             ### 2. Mapping MCS samples from X to u
             ###     dist_u is defined by pce_model
@@ -211,7 +212,7 @@ class Modeling(object):
                 raise ValueError('Solver output format not understood: {}, expecting has {:d} in 1 dimensino'.format(n))
             elif y_test.ndim == 3:
                 ### (n_short_term, n, nqoi)
-                if solver.nickname.lower() == 'sdof':
+                if solver.name.lower() == 'linear oscillator':
                     y = []
                     for i, iqoi_test in enumerate(y_test.T):
                         data = np.vstack((u_test, x_test, iqoi_test.T))
@@ -220,7 +221,7 @@ class Modeling(object):
                             y.append(iqoi_test[:n].T if n > 0 else iqoi_test)
                     print('   > Saving test data to {} '.format(data_dir_result))
                     y_test = y[0] if len(y) == 1 else y
-                elif solver.nickname.lower() == 'duffing':
+                elif solver.name.lower() == 'duffing oscillator':
                     y = []
                     for i, iqoi_test in enumerate(y_test.T):
                         data = np.vstack((u_test, x_test, iqoi_test.T))
