@@ -188,6 +188,7 @@ class Modeling(object):
             else:
                 raise ValueError
             y_test = solver.run(x_test, out_responses='ALL', save_qoi=True, data_dir=data_dir_result)
+            np.save('y_test.npy', np.array(y_test))
 
             ### 2. Mapping MCS samples from X to u
             ###     dist_u is defined by pce_model

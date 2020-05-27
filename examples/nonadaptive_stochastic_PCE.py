@@ -24,12 +24,12 @@ def main():
     np.set_printoptions(threshold=1000)
     np.set_printoptions(suppress=True)
     pf = [1e-4, 1e-5, 1e-6]
+    test_filename = r'DoE_McsE6R8.npy'
     ## ------------------------ Define solver ----------------------- ###
     random_seed = 100
-    out_responses = [2,]
+    out_responses = [2]
     out_stats = ['absmax']
     n_short_term = 1
-
     m=1
     c=0.1/np.pi
     k=1.0/np.pi/np.pi
@@ -61,19 +61,19 @@ def main():
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = museuq.Parameters()
     simparams.solver     = solver
-    simparams.pce_degs   = np.array(range(2,19))
+    simparams.pce_degs   = np.array(range(10,11))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = None # 'D', 'S', None
+    simparams.optimality = 'S'#'D', 'S', None
     simparams.hem_type   = 'physicists'
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'OLS'
     simparams.n_splits   = 50
     repeats              = 1 if simparams.optimality is None else 1
     # alphas               = np.arange(3,11)/10 
-    # alphas               = [1.2]
-    alphas               = [-1]
+    alphas               = [1.2]
+    # alphas               = [-1]
     # simparams.num_samples=np.arange(21+1, 130, 5)
     simparams.update()
     simparams.info()
@@ -100,8 +100,7 @@ def main():
         ## ----------- Candidate and testing data set for DoE ----------- ###
         print(' > Getting candidate data set...')
         u_cand = modeling.get_candidate_data()
-        u_test, x_test, y_test = modeling.get_test_data(solver, pce_model,filename=r'DoE_McsE6R9.npy', qoi=out_responses,n=1e6) 
-        print(y_test.shape)
+        u_test, x_test, y_test = modeling.get_test_data(solver, pce_model, filename=test_filename, qoi=out_responses,n=1e6) 
         y_test_mean = np.mean(y_test, axis=0)
         y_test_std  = np.std(y_test, axis=0)
         print(museuq.metrics.mquantiles(y_test.T, 1-np.array(pf), multioutput='raw_values'))
@@ -157,10 +156,11 @@ def main():
 
                 pce_model.fit(simparams.fit_method,iu_train,iy_train.T,w_train,n_splits=simparams.n_splits)
                 y_test_hat  = pce_model.predict(u_test)
-
                 # y_pred = np.vstack((u_test, x_test, y_test_hat.reshape(1,-1)))
-                # filename = modeling.filename_test[:-4]+'_{:s}_{:s}_y2_pred.npy'.format(pce_model.tag,simparams.tag)
-                # np.save(os.path.join(simparams.data_dir_result,'TestData', filename), y_pred)
+                # print(u_test.shape)
+                # print(x_test.shape)
+                # print(y_test_hat.shape)
+                # np.save(os.path.join(simparams.data_dir_result,'TestData', modeling.filename_test[:-4]+'_y2_pred.npy'), y_pred)
                 
                 pce_model.fit(simparams.fit_method,iu_train,iy_train_mean,w_train,n_splits=simparams.n_splits)
                 y_test_mean_hat  = pce_model.predict(u_test)
@@ -208,7 +208,7 @@ def main():
                     tqdm.write('     - {:<15s} : {:.4f}'.format( 'kappa '    , kappa))
                     tqdm.write('     ----------------------------------------')
 
-    filename = '{:s}_{:s}_{:s}_reference'.format(solver.nickname, pce_model.tag, simparams.tag)
+    filename = '{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), np.array(data_poly_deg))
         np.savetxt(os.path.join(simparams.data_dir_result, 'outlist.txt'), outlist, delimiter=' ', fmt='%s') 
