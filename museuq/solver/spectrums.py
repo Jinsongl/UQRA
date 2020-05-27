@@ -11,30 +11,27 @@
 """
 import numpy as np
 
-def jonswap(f, Hs, Tp):
+def jonswap(w, Hs, Tp):
     """ JONSWAP wave spectrum, IEC 61400-3
-    f: frequencies to be sampled at, hz 
+    w: frequencies to be sampled at, hz 
     Hs: significant wave height, m
     Tp: wave peak period, sec
     """
 
     with np.errstate(divide='ignore'):
-        # print "sample frequency: \n", f
-        fp = 1.0/Tp
-        fr = f/fp
+        # print "sample frequency: \n", w
+        wp    = 2*np.pi/Tp
         gamma = 3.3 
-        sigma = 0.07 * np.ones(f.shape)
-        sigma[f > fp] = 0.09
-        # print "fp:", fp
+        sigma = 0.07 * np.ones(w.shape)
+        sigma[w > wp] = 0.09
+        # print "wp:", wp
         # print "sigma: ", sigma
         
-        assert f[0] >= 0 ,'Single side power spectrum start with frequency greater or eqaul to 0, f[0]={:4.2f}'.format(f[0])
+        assert w[0] >= 0 ,'Single side power spectrum start with frequency greater or eqaul to 0, w[0]={:4.2f}'.format(w[0])
 
-        # if fr[0] == 0:
-            # fr[0] = 1/np.inf
-        JS1 = 0.3125 * Hs**2 * Tp * fr**-5
-        JS2 = np.exp(-1.25*fr**-4) * (1-0.287*np.log(gamma))
-        JS3 = gamma**(np.exp(-0.5*(fr-1)**2/sigma**2))
+        JS1 = 5/16 * Hs**2 * wp**4 * w**-5
+        JS2 = np.exp(-1.25*(w/wp)**-4) * (1-0.287*np.log(gamma))
+        JS3 = gamma**(np.exp(-0.5*((w-wp)/sigma/wp)**2))
 
         JS1[np.isinf(JS1)] = 0
         JS2[np.isinf(JS2)] = 0
@@ -42,9 +39,9 @@ def jonswap(f, Hs, Tp):
         # print(np.isnan(JS1).any())
         JS = JS1 * JS2 * JS3
 
-    return f, JS
+    return w, JS
 
-def spec_test1(f, c=2):
+def spec_test1(w, c=2):
     """
     Test FFT and iFFT for spectrum and acf 
     F(w) = Fourier(f(t))
@@ -53,21 +50,21 @@ def spec_test1(f, c=2):
     f(t) = e^(-c|t|)
 
     Arguments:
-        f: frequencies to be evaluated at (Hz)
+        w: frequencies to be evaluated at (Hz)
         c: arbitrary real constant larger than 0
     Returns:
-        sf: psd value at specified f
-        sa: approximated area under psd curve with specified f
+        Sw: psd value at specified w
+        sa: approximated area under psd curve with specified w
         
     """
     # print('\t{:s} : c= {:.2f}'.format(spec_test1.__name__, c))
-    sf = 2*c/(c**2 + (2*np.pi*f)**2) 
-    df = f[1] - f[0]
-    sa = np.sum(sf*df) 
-    return f, sf
+    Sw = 2*c/(c**2 + w**2) 
+    dw = w[1] - w[0]
+    sa = np.sum(Sw*dw) 
+    return w, Sw
 
-def white_noise(f, F0=1,a=0,b=5):
-    sf = F0 
+def white_noise(w, F0=1,a=0,b=5):
+    Sw = F0 
     sa = abs(b-a) * F0
-    return f, sf
+    return w, Sw
 

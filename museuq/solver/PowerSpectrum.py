@@ -19,27 +19,25 @@ class PowerSpectrum(object):
     Definitions:
     - ACF: for a real, stationary signal x(t), its ACF R is defined as: R(tau) = E[x(t)x(t+tau)]
     - PSD: Fourier transform of R(tau) is called the Power spectral denstity (PSD), Sx/pxx
-    => Sx(f_hz) = \int R(tau) exp(-2*pi*j*f_hz*tau) d tau
+    => Sx(w_rad) = \int R(tau) exp(-2*pi*j*w_rad*tau) d tau
 
     Properties:
     1. since Sx is an average of the magnitude squared of the Fourier transform
-        Sx(f_hz) = lim T->inf 1/T E[|X_T(f_hz)|^2],
-        where X_T(f_hz) is the Fourier transform of x(t), X_T(f_hz) = int x(t) exp(-2*pi*j*f_hz*t) dt
+        Sx(w_rad) = lim T->inf 1/T E[|X_T(w_rad)|^2],
+        where X_T(w_rad) is the Fourier transform of x(t), X_T(w_rad) = int x(t) exp(-2*pi*j*w_rad*t) dt
 
-    2. Sx(-f_hz) = Sx(f_hz)
-    3. Dual relationship: R(tau) = int Sx(f_hz) exp(2*pi*j*f_hz*tau) d tau
-    4. At tau=0, R(0) = E[x(t)^2] = int Sx(f_hz) df, "variance" = Area under curve
+    2. Sx(-w_rad) = Sx(w_rad)
+    3. Dual relationship: R(tau) = int Sx(w_rad) exp(2*pi*j*w_rad*tau) d tau
+    4. At tau=0, R(0) = E[x(t)^2] = int Sx(w_rad) dw, "variance" = Area under curve
     5. Parseval's Identity:
         Assume x(t) ergodic in the autocorrelation, i.e. R(tau) = E[x(t) x(t+tau)] = \lim_{T->inf} 1/T \int_{-T/2} ^{T/2} x(t) x(t+tau) dt
         for any signal x(t):
-        lim_{T->inf} 1/T \int _{-T/2} ^{T/2} x(t)^2 dt = \int_{-inf} ^{inf} Sx(f_hz) df
+        lim_{T->inf} 1/T \int _{-T/2} ^{T/2} x(t)^2 dt = \int_{-inf} ^{inf} Sx(w_rad) dw
 
     """
 
     def __init__(self, name=None, *args):
         self.name   = name
-        # self.f_hz   = None 
-        # self.pxx    = None 
         self.sides  = 'single' 
         self.args   = args
         if self.name is None:
@@ -56,17 +54,19 @@ class PowerSpectrum(object):
         else:
             raise ValueError("'module 'museuq.solver.spectrums' has no attribute '{}'".format(self.name))
 
-    def set_density(self, f_hz, pxx, sides='single'):
-        assert f_hz.shape == pxx.shape, 'f_hz and pxx should have same shape. f_hz.shape={}, pxx.shape={}'.format(f_hz.shape, pxx.shape)
-        self.f_hz   = f_hz
+    def set_density(self, w_rad, pxx, sides='single'):
+        assert w_rad.shape == pxx.shape, 'w_rad and pxx should have same shape. w_rad.shape={}, pxx.shape={}'.format(w_rad.shape, pxx.shape)
+        self.w_rad  = w_rad
         self.pxx    = pxx
         self.sides  = sides
+        self.dw     = w_rad[1] -w_rad[0]
 
-    def cal_density(self, f_hz):
-        f_hz, pxx = self.density_func(f_hz, *self.args)
-        assert f_hz.shape == pxx.shape, 'f_hz and pxx should have same shape. f_hz.shape={}, pxx.shape={}'.format(f_hz.shape, pxx.shape)
-        self.f_hz = f_hz
+    def cal_density(self, w_rad):
+        w_rad, pxx = self.density_func(w_rad, *self.args)
+        assert w_rad.shape == pxx.shape, 'w_rad and pxx should have same shape. w_rad.shape={}, pxx.shape={}'.format(w_rad.shape, pxx.shape)
+        self.w_rad= w_rad
         self.pxx  = pxx
+        self.dw   = w_rad[1] - w_rad[0]
         return pxx
 
     def get_acf(self):
@@ -77,20 +77,20 @@ class PowerSpectrum(object):
         # ---------------------------------------------------------
         #                   |   Range       |   delta step
         # Time domain       | [-tmax, tmax] | dt = given
-        # Frequency domain  | [-fmax, fmax] | df = 1/(2(tmax))  
+        # Frequency domain  | [-fmax, fmax] | dw = 1/(2(tmax))  
         #                   | fmax = 1/(2*dt)
         # ---------------------------------------------------------
-        # for single side psd, transform to double side and return corresponding f_hz, pxx
-        # Transformation shouldn't change obj.f_hz, obj.pxx
-        if not self._is_symmetric(self.f_hz, self.pxx):
-            psd_f, psd_pxx = self.psd_single2double()
+        # for single side psd, transform to double side and return corresponding w_rad, pxx
+        # Transformation shouldn't change obj.w_rad, obj.pxx
+        if not self._is_symmetric(self.w_rad, self.pxx):
+            psd_w, psd_pxx = self.psd_single2double()
         else:
-            psd_f   = self.f_hz
+            psd_w   = self.w_rad
             psd_pxx = self.pxx
 
-        nfrequencies    = psd_f.size 
-        fmin, fmax, df  = self.f_hz[0], self.f_hz[-1], self.f_hz[1]-self.f_hz[0]
-        dt              = 1.0/(2*fmax)
+        nfrequencies    = psd_w.size 
+        w_min, w_max, dw= self.w_rad[0], self.w_rad[-1], self.w_rad[1]-self.w_rad[0]
+        dt              = 1.0*2*np.pi/(2*w_max)
         acf_ifft        = np.fft.ifft(psd_pxx) / dt
         acf             = np.sqrt(acf_ifft.real**2 + acf_ifft.imag**2)
         t               = np.arange(-nfrequencies//2, nfrequencies//2) * dt
@@ -108,45 +108,45 @@ class PowerSpectrum(object):
             acf: autocorrelation function or values at specified tau 
         Returns:
             Power spectral density function
-            psd_f, psd_pxx
+            psd_w, psd_pxx
         """
         
         t, acf_t= self._correct_acf_format(t, acf_t)
         dt      = t[1]-t[0]
         psd_pxx = np.fft.fft(acf_t).real * dt
-        psd_f   = np.fft.fftfreq(t.size,d=dt)
+        psd_w   = 2*np.pi*np.fft.fftfreq(t.size,d=dt)
         # Since we know acf function is even, fft of acf_tau should only contain real parts
         # psd_pxx = np.sqrt(acf_fft.real**2 + acf_fft.imag**2) * dtau
         
         # reorder frequency from negative to positive ascending order
-        psd_pxx = np.array([x for _,x in sorted(zip(psd_f,psd_pxx))])
-        psd_f   = np.array([x for _,x in sorted(zip(psd_f,psd_f))])
-        self.f_hz  = psd_f
+        psd_pxx = np.array([x for _,x in sorted(zip(psd_w,psd_pxx))])
+        psd_w   = np.array([x for _,x in sorted(zip(psd_w,psd_w))])
+        self.w_rad  = psd_w
         self.pxx= psd_pxx
         self.sides='double'
-        return psd_f, psd_pxx
+        return psd_w, psd_pxx
 
     def gen_process(self,t=None, phase=None, random_seed=None):
         """
         Generate Gaussian time series for given spectrum with IFFT method
         Note: For one side psd, one need to create IFFT coefficients for negative frequencies to use IFFT method. 
-            Single side psd need to be divide by 2 to create double side psd, S1(self.f_hz) = S1(-self.f_hz) = S2(self.f_hz)/2
-            Phase: theta(self.f_hz) = -theta(-self.f_hz) 
+            Single side psd need to be divide by 2 to create double side psd, S1(self.w_rad) = S1(-self.w_rad) = S2(self.w_rad)/2
+            Phase: theta(self.w_rad) = -theta(-self.w_rad) 
 
         Arguments:
-            self.f_hz: ndarry, frequency in Hz
-            pxx: pwd values corresponding to self.f_hz array. 
+            self.w_rad: ndarry, frequency in Hz
+            pxx: pwd values corresponding to self.w_rad array. 
         Return:
             t: time index, start 0 to tmax 
             etat: surface wave time series
-            psd_f: frequencies of spectral density 
+            psd_w: frequencies of spectral density 
             eta_fft_coeffs: surface wave power spectral denstiy
 
         Features need to add:
             1. douebl side psd
-            2. padding zero values for self.pxx when self.f_hz[0] < 0 and self.f_hz is not symmetric
+            2. padding zero values for self.pxx when self.w_rad[0] < 0 and self.w_rad is not symmetric
             3. gen_process arguments should be time, not frequency , sounds more reasonable.
-                if this feature need to be added, interpolation of self.f_hz may needed.
+                if this feature need to be added, interpolation of self.w_rad may needed.
 
         # numpy.fft.ifft(a, n=None, axis=-1, norm=None)
         #   The input should be ordered in the same way as is returned by fft, i.e.,
@@ -157,18 +157,18 @@ class PowerSpectrum(object):
         # ---------------------------------------------------------
         #                   |   Range       |   delta step
         # Time domain       | [-tmax, tmax] | dt = given
-        # Frequency domain  | [-fmax, fmax] | df = 1/(2(tmax))  
+        # Frequency domain  | [-fmax, fmax] | dw = 1/(2(tmax))  
         #                   | fmax = 1/(2*dt)
         # ---------------------------------------------------------
         if self.sides.lower() == 'single':
-            f_hz, pxx= self.psd_single2double()
+            w_rad, pxx= self.psd_single2double()
         else:
-            assert self._is_symmetric(self.f_hz, self.pxx)
-            f_hz, pxx = self.f_hz, self.pxx
+            assert self._is_symmetric(self.w_rad, self.pxx)
+            w_rad, pxx = self.w_rad, self.pxx
 
-        fmax, df = np.amax(abs(f_hz)) , f_hz[1]-f_hz[0]
-        tmax, dt = 0.5/df , 0.5/fmax
-        ntime_steps = f_hz.size//2 #int(fmax/df) same as number of frequencies
+        w_max, dw = np.amax(abs(w_rad)) , w_rad[1]-w_rad[0]
+        tmax, dt = 0.5*2*np.pi/dw , 0.5*2*np.pi/w_max
+        ntime_steps = w_rad.size//2 #int(w_max/dw) same as number of frequencies
         time = np.arange(-ntime_steps,ntime_steps+1) * dt
 
         if phase is None:
@@ -179,9 +179,9 @@ class PowerSpectrum(object):
             theta = phase[:ntime_steps+1]
             theta = np.hstack((-np.flip(theta[1:]),theta)) # concatenation along the second axis
 
-        if np.size(f_hz) != np.size(theta):
-            raise ValueError('Number of frequency and phases mismatch, #(f)={:d}, #(theta)={:d}'.format(np.size(f_hz), np.size(theta)))
-        ampf    = np.sqrt(pxx*df) # amplitude
+        if np.size(w_rad) != np.size(theta):
+            raise ValueError('Number of frequency and phases mismatch, #(f)={:d}, #(theta)={:d}'.format(np.size(w_rad), np.size(theta)))
+        ampf    = np.sqrt(pxx*dw) # amplitude
         eta_fft_coeffs = ampf * np.exp(1j*theta)
         eta = np.fft.ifft(np.roll(eta_fft_coeffs,ntime_steps+1)) *(2*ntime_steps+1)
         eta = np.roll(eta,ntime_steps).real # roll back to [-T, T], IFFT result should be real, imaginary part is very small ~10^-16
@@ -195,7 +195,7 @@ class PowerSpectrum(object):
                 # raise ValueError('Interpolation Error: coordinate to evaluate the interpolated value exceed data points, {:.2f}>{:.2f}'.format(t[-1], time[-1]))
             eta = np.interp(t, time, eta)
             time = t
-        return time, eta , f_hz, theta
+        return time, eta , w_rad, theta
 
     def _is_symmetric(self, x, y):
         """
@@ -241,67 +241,67 @@ class PowerSpectrum(object):
 
     def psd_single2double(self):
         """
-        Convert single side psd specified by (f_hz, pxx) to double side
+        Convert single side psd specified by (w_rad, pxx) to double side
         Arguments:
-            f_hz   : single side frequency vector, could start from arbitrary value 
+            w_rad   : single side frequency vector, could start from arbitrary value 
             pxx : single side power spectral density (PSD) estimate, pxx, 
         Returns:
-            ff  : double side frequency vector
+            ww_rad  : double side frequency vector
             pxx2: double side power spectral density (PSD) estimate, pxx2
         """
-        assert self.f_hz is not None and self.pxx is not None
-        f_hz, pxx = self.f_hz, self.pxx
-        ## sorting f_hz in ascending order
-        f_hz= f_hz[f_hz.argsort()]
-        pxx = pxx [f_hz.argsort()]
-        assert f_hz[0] >= 0 and f_hz[-1] >0 # make sure frequency vector in positive range
-        df  = np.mean(f_hz[1:]-f_hz[:-1], dtype=np.float64) # df is the average frequency difference
-        N   = len(np.arange(f_hz[-1], 0, -df)) # does not include 0
-        pxx2= np.zeros(2*N+1)
-        ff  = np.zeros(2*N+1)
-        # print(ff.shape, pxx2.shape)
+        assert self.w_rad is not None and self.pxx is not None
+        w_rad, pxx = self.w_rad, self.pxx
+        ## sorting w_rad in ascending order
+        w_rad= w_rad[w_rad.argsort()]
+        pxx = pxx [w_rad.argsort()]
+        assert w_rad[0] >= 0 and w_rad[-1] >0 # make sure frequency vector in positive range
+        dw      = np.mean(w_rad[1:]-w_rad[:-1], dtype=np.float64) # dw is the average frequency difference
+        N       = len(np.arange(w_rad[-1], 0, -dw)) # does not include 0
+        pxx2    = np.zeros(2*N+1)
+        ww_rad  = np.zeros(2*N+1)
+        # print(ww_rad.shape, pxx2.shape)
         # 
         # pxx2: [0,|1,2,...,N | N+1,...,2N+1] 
         #       [0,| positive |   negative  ]
 
         
-        ## padding psd from 0 to f_hz[0] with 0
+        ## padding psd from 0 to w_rad[0] with 0
         # first element of pxx2[0] is power at frequency 0. If pxx(0) is not given, 0 is padded
-        pxx2[0] = pxx[0] if f_hz[0]==0 else 0
+        pxx2[0] = pxx[0] if w_rad[0]==0 else 0
         # Positive frequencies part
         m = pxx.size
         pxx2[N+1-m:N+1] = pxx/2
         # Negative frequencies part
         pxx2[N+1:]  = np.flip(pxx2[1:N+1]) 
-        ff[1:N+1]   = np.flip(np.arange(f_hz[-1], 0, -df))
-        ff[N+1:]    = -np.arange(f_hz[-1], 0, -df)
+        ww_rad[1:N+1]   = np.flip(np.arange(w_rad[-1], 0, -dw))
+        ww_rad[N+1:]    = -np.arange(w_rad[-1], 0, -dw)
         
         ## Reorder psd to [-inf, negative, 0, positive, +inf] 
         pxx2= np.roll(pxx2, N)
-        ff  = np.roll(ff, N)
+        ww_rad  = np.roll(ww_rad, N)
 
-        return ff, pxx2
+        return ww_rad, pxx2
 
     def _gen_process_sum(self):
         if self.sides.lower() == 'double':
             raise NotImplementedError('Stay tuned')
         else:
-            psd_f, psd_pxx = self.f_hz, self.pxx
-            fmax, df = psd_f[-1]  , psd_f[1]-psd_f[0]
-            tmax, dt = 0.5/df , 0.5/fmax
+            psd_w, psd_pxx = self.w_rad, self.pxx
+            w_max, dw = psd_w[-1]  , psd_w[1]-psd_w[0]
+            tmax, dt = 0.5*2*np.pi/dw , 0.5/w_max
             N = int(tmax/dt)
             t = np.arange(-N,N+1) * dt
             # tmax = t[-1]
-            theta = np.random.uniform(-np.pi, np.pi, len(psd_f))
+            theta = np.random.uniform(-np.pi, np.pi, len(psd_w))
             # Direct sum with single side psd
-            ampf = np.sqrt(2*psd_pxx*(df)) # amplitude
+            ampf = np.sqrt(2*psd_pxx*(dw)) # amplitude
 
             # Reshape to matrix operation format
             ampf  = np.reshape(ampf,  (N+1,1))
-            psd_f = np.reshape(psd_f, (N+1,1))
+            psd_w = np.reshape(psd_w, (N+1,1))
             theta = np.reshape(theta, (N+1,1))
             t     = np.reshape(t,     (1, 2*N+1))
-            eta = np.sum(ampf * np.cos(2*np.pi*psd_f*t + theta),axis=0)
+            eta = np.sum(ampf * np.cos(2*np.pi*psd_w*t + theta),axis=0)
 
         return t, eta
 
