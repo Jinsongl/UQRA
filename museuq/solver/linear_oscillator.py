@@ -30,15 +30,8 @@ class linear_oscillator(SolverBase):
     default value: omega_n = 1/pi Hz (2 rad/s), zeta = 0.05
 
     """
-    def __init__(self, m=1, c=0.1/np.pi, k=1.0/np.pi/np.pi, excitation=None, environment=None,**kwargs):
+    def __init__(self, m=1, c=0.1/np.pi, k=1.0/np.pi/np.pi, environment=None,**kwargs):
         """
-        excitation:
-            1. None: free vibration case, equivalent to set excitation=0
-            2. np.scalar: constant external force
-            3. np.array of shape (2,): external force time series,[ t, f = excitation ], may need to interpolate
-            4. string   : name of spectrum to be used
-            5. callable() function
-            
         f0: part of external force
         kwargs, dictionary, spectrum definitions for the input excitation functions
 
@@ -49,7 +42,6 @@ class linear_oscillator(SolverBase):
         self.dist_name  = 'None'
         self.dict_rand_params = {}
         self.is_param_rand = self._validate_mck(m,c,k)
-        self.excitation = excitation
         self.environment= self._validate_env(environment)
         self.ndim       = sum(self.is_param_rand)
         self.nparams    = np.size(self.is_param_rand)
@@ -67,6 +59,7 @@ class linear_oscillator(SolverBase):
         self.out_responses= kwargs.get('out_responses', 'ALL')
         self.t          = np.arange(0,int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
         self.f_hz       = np.arange(len(self.t)+1) *0.5/self.t[-1]
+        self.w_rad      = 2* np.pi* self.f_hz
 
     def __str__(self):
         message1 = 'Single Degree of Fredom Oscillator: \n' +\
@@ -139,11 +132,11 @@ class linear_oscillator(SolverBase):
         ##--------- oscillator properties -----------
         params_mck, params_env = x[:3], x[3:]
         m,c,k = params_mck 
-        spectrum_x = self.external_force_psd(params_env, self.f_hz)
+        spectrum_x = self.external_force_psd(params_env, self.w_rad)
         spectrum_y = self.response_psd(params_mck, spectrum_x)
 
         np.random.seed(random_seed)
-        theta_x = np.random.uniform(-np.pi, np.pi, np.size(self.f_hz)*2)
+        theta_x = np.random.uniform(-np.pi, np.pi, np.size(self.w_rad)*2)
         t0, x_t, f_hz_x, theta_x = spectrum_x.gen_process(t=self.t, phase=theta_x)
         omega   = 2*np.pi*f_hz_x
         A, B    = k - m * omega**2 , c * omega
@@ -289,7 +282,7 @@ class linear_oscillator(SolverBase):
         x= np.vstack(x)
         return x 
 
-    def external_force_psd(self, x, f_hz):
+    def external_force_psd(self, x, w_rad):
         """
         Return the psd estimator of excitation function on the right hand side 
         parameters:
@@ -301,28 +294,36 @@ class linear_oscillator(SolverBase):
 
         """
 
-
-        if self.excitation is None:
-            f = lambda t: t * 0 
-            raise ValueError('SDOF is sovled in frequency domain, None type external force need to be transformed into frequency domain first') 
-
-        elif isinstance(self.excitation, (int, float, complex)) and not isinstance(x, bool):
-            f = lambda t: t/t * self.excitation 
-            raise ValueError('SDOF is sovled in frequency domain, constant external force need to be transformed into frequency domain first') 
-
-        elif isinstance(self.excitation, np.ndarray):
-            assert np.ndim(self.excitation) == 2
-            assert self.excitation.shape[0] == 2
-            t, y= self.excitation
-            f   = sp.interpolate.interp1d(t, y,kind='cubic')
-            raise ValueError('SDOF is sovled in frequency domain, time series external force need to be transformed into frequency domain first') 
-
-        elif isinstance(self.excitation, str):
-            spectrum= PowerSpectrum(self.excitation, *x)
-            density = spectrum.cal_density(f_hz)
-
+        if self.environment is not None:
+            try:
+                spectrum= PowerSpectrum(self.environment.spectrum, *x)
+                density = spectrum.cal_density(w_rad)
+            except AttributeError as e:
+                print('spectrum {:s} is not defined'.format(self.environment.spectrum))
         else:
             raise NotImplementedError
+
+        # if self.excitation is None:
+            # f = lambda t: t * 0 
+            # raise ValueError('SDOF is sovled in frequency domain, None type external force need to be transformed into frequency domain first') 
+
+        # elif isinstance(self.excitation, (int, float, complex)) and not isinstance(x, bool):
+            # f = lambda t: t/t * self.excitation 
+            # raise ValueError('SDOF is sovled in frequency domain, constant external force need to be transformed into frequency domain first') 
+
+        # elif isinstance(self.excitation, np.ndarray):
+            # assert np.ndim(self.excitation) == 2
+            # assert self.excitation.shape[0] == 2
+            # t, y= self.excitation
+            # f   = sp.interpolate.interp1d(t, y,kind='cubic')
+            # raise ValueError('SDOF is sovled in frequency domain, time series external force need to be transformed into frequency domain first') 
+
+        # elif isinstance(self.excitation, str):
+            # spectrum= PowerSpectrum(self.excitation, *x)
+            # density = spectrum.cal_density(f_hz)
+
+        # else:
+            # raise NotImplementedError
 
         return spectrum
 
@@ -336,10 +337,10 @@ class linear_oscillator(SolverBase):
         Returns:
             PowerSpectrum object of input and output signal
         """
-        m,c,k = mck
-        f_hz  = spectrum_x.f_hz  ## f_hz in Hz
-        H_square = 1.0/np.sqrt( (k-m*f_hz**2)**2 + (c*f_hz)**2)
-        psd_y = H_square * spectrum_x.pxx
+        m,c,k   = mck
+        w_rad   = spectrum_x.w_rad  ## frequency in rad/s
+        H_square= 1.0/np.sqrt( (k-m*w_rad**2)**2 + (c*w_rad)**2)
+        psd_y   = H_square * spectrum_x.pxx
         spectrum_y = PowerSpectrum()
-        spectrum_y.set_density(spectrum_x.f_hz, psd_y, sides=spectrum_x.sides)
+        spectrum_y.set_density(spectrum_x.w_rad, psd_y, sides=spectrum_x.sides)
         return spectrum_y 

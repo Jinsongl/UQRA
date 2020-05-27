@@ -19,7 +19,8 @@ class Environment(EnvBase):
     Environment class based on a list of iid marginal distributions
     """
 
-    def __init__(self, args):
+    def __init__(self, spectrum, *args):
+        self.spectrum   = spectrum
         self.is_arg_rand, self.name = self._check_args(args)
         self.rvs_args   = [idist for (idist, is_rand) in zip(self._dist_args, self.is_arg_rand) if is_rand]
         self.ndim       = np.size(self.rvs_args)
@@ -87,7 +88,7 @@ class Environment(EnvBase):
         self._dist_args = []
         is_arg_rand     = []
         names           = []
-        if isinstance(args, list):
+        if isinstance(args, (list, tuple)):
             for iarg in args:
                 if museuq.isfromstats(iarg):
                     self._dist_args.append(iarg)

@@ -25,7 +25,9 @@ class Kvitebjorn(EnvBase):
     Sequence of conditional distributions based on Rosenblatt transformation 
     """
 
-    def __init__(self):
+    def __init__(self, spectrum='jonswap'):
+        self.spectrum = spectrum
+        self.is_arg_rand = [True, True] 
         self.ndim = int(2)
         self.name = ['lognorm_weibull','lognorm']
 
