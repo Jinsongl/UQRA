@@ -20,7 +20,7 @@ sys.stdout  = museuq.utilities.classes.Logger()
 def main():
 
     ## ------------------------ Displaying set up ------------------- ###
-    np.set_printoptions(precision=4)
+    np.set_printoptions(precision=
     np.set_printoptions(threshold=1000)
     np.set_printoptions(suppress=True)
     pf = [1e-4, 1e-5, 1e-6]
