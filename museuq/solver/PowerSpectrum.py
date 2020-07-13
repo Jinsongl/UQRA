@@ -133,69 +133,66 @@ class PowerSpectrum(object):
             Single side psd need to be divide by 2 to create double side psd, S1(self.w_rad) = S1(-self.w_rad) = S2(self.w_rad)/2
             Phase: theta(self.w_rad) = -theta(-self.w_rad) 
 
-        Arguments:
-            self.w_rad: ndarry, frequency in Hz
-            pxx: pwd values corresponding to self.w_rad array. 
-        Return:
+        Arguments: optional
             t: time index, start 0 to tmax 
-            etat: surface wave time series
+            phase: phase uniformly between[-pi, pi]
+            random_seed: seed to generate phase if phase is not given
+        Return:
             psd_w: frequencies of spectral density 
             eta_fft_coeffs: surface wave power spectral denstiy
 
-        Features need to add:
-            1. douebl side psd
-            2. padding zero values for self.pxx when self.w_rad[0] < 0 and self.w_rad is not symmetric
-            3. gen_process arguments should be time, not frequency , sounds more reasonable.
-                if this feature need to be added, interpolation of self.w_rad may needed.
 
-        # numpy.fft.ifft(a, n=None, axis=-1, norm=None)
-        #   The input should be ordered in the same way as is returned by fft, i.e.,
-        #     - a[0] should contain the zero frequency term,
-        #     - a[1:n//2] should contain the positive-frequency terms,
-        #     - a[n//2 + 1:] should contain the negative-frequency terms, in increasing order starting from the most negative frequency.
         """
         # ---------------------------------------------------------
         #                   |   Range       |   delta step
-        # Time domain       | [-tmax, tmax] | dt = given
-        # Frequency domain  | [-fmax, fmax] | dw = 1/(2(tmax))  
+        # Time domain       | [0, tmax]     | dt = given
+        # Frequency domain  | [-fmax, fmax] | dw = 1/tmax  
         #                   | fmax = 1/(2*dt)
         # ---------------------------------------------------------
         if self.sides.lower() == 'single':
-            w_rad, pxx= self.psd_single2double()
+            psd_w, pxx= self.psd_single2double()
         else:
             assert self._is_symmetric(self.w_rad, self.pxx)
-            w_rad, pxx = self.w_rad, self.pxx
+            psd_w, pxx = self.w_rad, self.pxx
 
-        w_max, dw = np.amax(abs(w_rad)) , w_rad[1]-w_rad[0]
-        tmax, dt = 0.5*2*np.pi/dw , 0.5*2*np.pi/w_max
-        ntime_steps = w_rad.size//2 #int(w_max/dw) same as number of frequencies
-        time = np.arange(-ntime_steps,ntime_steps+1) * dt
+        psd_w_min, psd_w_max, psd_dw = np.amin(abs(psd_w)), np.amax(abs(psd_w)) , psd_w[1]-psd_w[0]
+        if t is None:
+            ### if t is not given, returned time series will be generated based on specified frequency values in psd_w
+            tmin, tmax, dt = 0, 2*np.pi/psd_dw, np.pi/psd_w_max
+            fft_freq_min, fft_freq_max, fft_freq_dw = 0, psd_w_max, psd_dw
+            fft_freq_pos = np.arange(int(round(fft_freq_max/fft_freq_dw) +1)) * fft_freq_dw
+            time = np.arnage(int(round(tmax/dt))) *dt  
+        else:
+            ### when a time index is given, sampling frequency need to be small enough to cover the period (tmax) and frequency window need to be large enough to have time resolution dt
+            tmax, tmin, dt = t[-1], t[0], t[1] - t[0]
+            fft_freq_min, fft_freq_max, fft_freq_dw = 0, max(np.pi/dt, psd_w_max), min(psd_dw, 2*np.pi/tmax) 
+            fft_freq_pos = np.arange(int(round(fft_freq_max/fft_freq_dw) +1)) * fft_freq_dw
+            tmin, tmax, dt = 0, 2*np.pi/fft_freq_dw, np.pi/fft_freq_max 
+            time = np.arnage(int(round(tmax/dt))) *dt  
 
+        # ntime_steps = psd_w.size//2 #int(w_max/dw) same as number of frequencies
+        # time = np.arange(-ntime_steps,ntime_steps+1) * dt
+
+        psd_w_idx = [int(round(psd_w_min/fft_freq_dw)),int(round(psd_w_max/fft_freq_dw))]
+        psd_w_= np.arange(psd_w_idx[0],psd_w_idx[1])*fft_freq_dw
+        pxx_  = self.cal_density(psd_w_) 
         if phase is None:
             np.random.seed(random_seed)
-            theta = np.random.uniform(-np.pi, np.pi, ntime_steps + 1)
-            theta = np.hstack((-np.flip(theta[1:]),theta)) # concatenation along the second axis
+            theta = np.random.uniform(-np.pi, np.pi, psd_w_.size)
         else:
-            theta = phase[:ntime_steps+1]
-            theta = np.hstack((-np.flip(theta[1:]),theta)) # concatenation along the second axis
-
-        if np.size(w_rad) != np.size(theta):
-            raise ValueError('Number of frequency and phases mismatch, #(f)={:d}, #(theta)={:d}'.format(np.size(w_rad), np.size(theta)))
-        ampf    = np.sqrt(pxx*dw) # amplitude
-        eta_fft_coeffs = ampf * np.exp(1j*theta)
-        eta = np.fft.ifft(np.roll(eta_fft_coeffs,ntime_steps+1)) *(2*ntime_steps+1)
-        eta = np.roll(eta,ntime_steps).real # roll back to [-T, T], IFFT result should be real, imaginary part is very small ~10^-16
-
-        time, eta = time[ntime_steps:2*ntime_steps+1], eta[ntime_steps:2*ntime_steps+1]
+            theta = phase[:psd_w_.size]
+        psd_A = np.sqrt(2.0*pxx_*fft_freq_dw)/2.0 * np.exp(-1j*theta) * (fft_freq_pos*2-1) # amplitude
+        fft_A = np.zeros(fft_freq_pos.size, dtype=complex)
+        fft_A[psd_w_idx[0]:psd_w_idx[1]] = psd_A
+        fft_A = np.append(fft_A, np.flip(np.conj(fft_A[1:])))
+        # eta = np.roll(eta,ntime_steps).real # roll back to [-T, T], IFFT result should be real, imaginary part is very small ~10^-16
+        eta = np.fft.ifft(fft_A).real
+        assert eta.size == time.size
 
         if t is not None:
-            if t[1]-t[0] < time[1]-time[0]:
-                raise ValueError('Higher frequency needed to achieve time domain resolution dt={:.4f}'.format(t[1]-t[0]))
-            # if t[-1] > time[-1]:
-                # raise ValueError('Interpolation Error: coordinate to evaluate the interpolated value exceed data points, {:.2f}>{:.2f}'.format(t[-1], time[-1]))
             eta = np.interp(t, time, eta)
             time = t
-        return time, eta , w_rad, theta
+        return time, eta , psd_w_, theta
 
     def _is_symmetric(self, x, y):
         """

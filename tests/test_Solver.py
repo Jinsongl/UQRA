@@ -81,7 +81,6 @@ class BasicTestSuite(unittest.TestCase):
                 out_responses=out_responses, out_stats=out_stats)
         samples= solver.generate_samples(100)
         y = solver.run(samples, seeds_st=seeds_st[:5] )
-        print(y.shape)
 
         # for r in range(2):
             # # filename = r'DoE_McsE6R{:d}.npy'.format(r)
@@ -94,6 +93,42 @@ class BasicTestSuite(unittest.TestCase):
             # # print(np.std(x, axis=1))
             # y_QoI = solver.run(samples, random_seed=random_seed) 
             # print(np.array(y_QoI).shape)
+        print(y.shape)
+
+    def test_surge(self):
+        random_seed = 100
+        out_responses = [2,3]
+        out_stats = ['absmax', 'mean']
+        m=1e8
+        k=280000
+        c=0.05*2*np.sqrt(k*m)
+        ltf = np.load('/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/solver/FPSO_ltf.npy')
+        qtf = np.load('/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/solver/FPSO_qtf.npy')
+        rao_= np.load('/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/solver/FPSO_RAO.npy')
+        print(ltf.shape)
+        print(qtf.shape)
+        print(rao_.shape)
+        # m,c,k  = [stats.norm(m, 0.05*m), stats.norm(c, 0.2*c), stats.norm(k, 0.1*k)]
+        # env    = museuq.Environment([stats.uniform, stats.norm])
+        # env    = museuq.Environment([2,])
+        env    = Kvitebjorn()
+        solver = museuq.surge_model(m=m,c=c,k=k, environment=env, t=4000, t_transit=100, dt=0.1, ltf=ltf[:2],
+                out_responses=out_responses, out_stats=out_stats)
+        samples= solver.generate_samples(10)
+        y = solver.run(samples)
+
+        # for r in range(2):
+            # # filename = r'DoE_McsE6R{:d}.npy'.format(r)
+            # # data_dir = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform/'
+            # # u        = np.load(os.path.join(data_dir, filename))[:solver.ndim,:]
+            # # x        = solver.map_domain(u, [stats.uniform(-1,2),] * solver.ndim) 
+            # # print(np.mean(u, axis=1))
+            # # print(np.std(u, axis=1))
+            # # print(np.mean(x, axis=1))
+            # # print(np.std(x, axis=1))
+            # y_QoI = solver.run(samples, random_seed=random_seed) 
+            # print(np.array(y_QoI).shape)
+        print(y.shape)
 
     def test_four_branch(self):
         np.random.seed(100)

@@ -44,30 +44,28 @@ class surge_model(SolverBase):
 
         """
         super().__init__()
-        self.name             = 'Surge Model'
-        self.nickname         = 'Surge'
-        self.params_dist_names= 'None'
-        self.dict_rand_params = {}
-        self.is_param_rand    = self._validate_mck(m,c,k)
-        self.environment      = self._validate_env(environment)
-        self.ltf              = self._validate_ltf(ltf) ## linear transfer function
-        self.qtf              = self._validate_qtf(qtf) ## quadratic transfer function
-        self.ndim             = sum(self.is_param_rand)
-        self.nparams          = np.size(self.is_param_rand)
-
         np.random.seed(100)
-        seeds_st        = np.random.randint(0, int(2**31-1), size=10000)
+        seeds_st_cand   = np.random.randint(0, int(2**31-1), size=1000000)
+        self.name       = 'Surge Model'
+        self.nickname   = 'Surge'
         self.tmax       = kwargs.get('time_max', 100)
         self.tmax       = kwargs.get('tmax', 100)
         self.dt         = kwargs.get('dt', 0.01)
         self.t_transit  = kwargs.get('t_transit', 0)
         self.out_stats  = kwargs.get('out_stats', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
         self.seeds_idx  = kwargs.get('phase', [0,])
-        self.seeds_st   = [seeds_st[idx] for idx in self.seeds_idx] 
+        self.seeds_st   = [seeds_st_cand[idx] for idx in self.seeds_idx] 
         self.n_short_term= len(self.seeds_st) 
         self.out_responses= kwargs.get('out_responses', 'ALL')
-        self.t          = np.arange(0,int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
-        self.w_rad      = 2 * np.pi *self.f_hz
+
+        self.dict_rand_params = {}
+        self.params_dist_names= 'None'
+        self.is_param_rand    = self._validate_mck(m,c,k)
+        self.environment      = self._validate_env(environment)
+        self.ltf_w, self.ltf_c= self._validate_ltf(ltf) ## linear transfer function
+        self.qtf_w, self.qtf_c= self._validate_qtf(qtf) ## quadratic transfer function
+        self.ndim             = sum(self.is_param_rand)
+        self.nparams          = np.size(self.is_param_rand)
 
     def __str__(self):
         message1 = 'Single Degree of Fredom Oscillator: \n' +\
@@ -102,26 +100,26 @@ class surge_model(SolverBase):
         data_dir        = os.getcwd() if data_dir is None else data_dir
 
         x = np.array(x.T, copy=False, ndmin=2)
-        y_QoI = []
+        y_stats = []
         for iseed_idx, iseed in zip(self.seeds_idx, seeds_st):
             pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(iseed_idx, n_short_term))
             ### Note that xlist and ylist will be tuples (since zip will be unpacked). 
             ### If you want them to be lists, you can for instance use:
             if save_raw:
-                y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=iseed,
+                y_raw_, y_stats_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=iseed,
                     out_responses=out_responses, ret_raw=True) for ix in pbar_x]))
                 filename = '{:s}_yRaw_nst{:d}'.format(self.nickname,iseed_idx)
                 np.save(os.path.join(data_dir, filename), np.array(y_raw_))
             else:
-                y_QoI_ = [self._linear_oscillator(ix, random_seed=iseed, 
+                y_stats_ = [self._linear_oscillator(ix, random_seed=iseed, 
                     out_responses=out_responses, ret_raw=False) for ix in pbar_x]
 
             if save_qoi:
                 filename = '{:s}_yQoI_nst{:d}'.format(self.nickname,iseed_idx)
-                np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
+                np.save(os.path.join(data_dir, filename), np.array(y_stats_))
 
-            y_QoI.append(y_QoI_)
-        return np.array(y_QoI)
+            y_stats.append(y_stats_)
+        return np.array(y_stats)
 
     def _linear_oscillator(self, x, random_seed=None, ret_raw=False, out_responses='ALL'):
         """
@@ -135,41 +133,117 @@ class surge_model(SolverBase):
         """
         if len(x) != self.nparams:
             raise ValueError("_linear_oscillator: Expecting {:d} parameters but {:d} given".format(self.nparams, len(x)))
+
+        ## output time index
+        time_out = np.arange(0, int(round((self.tmax + self.t_transit)/self.dt)+1)) * self.dt
+        tmin, tmax, dt = time_out[0], time_out[-1], time_out[1]-time_out[0]
+        ## frequency index
+        if self.ltf_w is None:
+            fft_freq_min, fft_freq_max, fft_freq_dw = 0, np.pi/dt, 2*np.pi/tmax 
+            fft_freq_pos= np.arange(int(round(fft_freq_max/fft_freq_dw) +1)) * fft_freq_dw
+            fft_tmin, fft_tmax, fft_dt = tmin, tmax, dt 
+            fft_time= np.arange(fft_freq_pos.size * 2 - 1) * fft_dt 
+            psd_w   = fft_freq_pos
+        else:
+            ltf_w_min, ltf_w_max, ltf_dw = self.ltf_w[0], self.ltf_w[-1], self.ltf_w[1] - self.ltf_w[0]
+            if 2*np.pi/ltf_dw < tmax:
+                raise ValueError('Surge Model: frequency step (dw) must smaller than 2*pi/T to return time series longer than T')
+            fft_freq_min, fft_freq_max, fft_freq_dw = 0, max(np.pi/dt, ltf_w_max), ltf_dw 
+            fft_freq_pos= np.arange(int(round(fft_freq_max/fft_freq_dw) +1)) * fft_freq_dw
+            fft_tmin, fft_tmax, fft_dt = 0, 2*np.pi/fft_freq_dw, np.pi/fft_freq_max 
+            fft_time= np.arange(fft_freq_pos.size * 2 - 1) * fft_dt 
+            psd_w   = self.ltf_w
+
         ##--------- oscillator properties -----------
         params_mck, params_env = x[:3], x[3:]
         m,c,k = params_mck 
         np.random.seed(random_seed)
-        Re, Im      = np.random.norm.rvs(0,1, size=(2, np.size(self.w_rad)))
-        spectrum_env= self.environment_psd(params_env, self.w_rad)
-        eta_gauss   = np.sqrt(spectrum_env.dw * spectrum_env.pxx) * (Re + 1j*Im)
-        H_sys       = self.k- self.m*self.w_rad**2 + 1j self.c* self.w_rad
-        RAO         = spectrum_frc.tf_cval / H_sys
+        theta       = stats.uniform.rvs(-np.pi, 2*np.pi, size=psd_w.size)
+        spectrum_env= self.environment_psd(params_env, psd_w)
+        env_A       = np.sqrt(2*spectrum_env.dw * spectrum_env.pxx)/2 * np.exp(-1j*theta) 
+        frc_lin_A   = env_A * self.ltf_c
+        H_sys       = k - m*psd_w**2 + 1j*c* psd_w 
+        RAO         = self.ltf_c / H_sys
+        response_A  = RAO * env_A
 
-        
-        spectrum_frc= self.force_psd() 
-        spectrum_response   = self.response_psd(params_mck, spectrum_frc)
+        time_start, time_end = int(round(self.t_transit/fft_dt)), int(round(tmax/fft_dt))
+        y_raw   = [] 
+        y_stats = [] 
 
-        t0, x_t, f_hz_x, theta_x = spectrum_frc.gen_process(t=self.t, phase=theta_x)
-        omega   = 2*np.pi*f_hz_x
-        A, B    = k - m * omega**2 , c * omega
-        theta_y =  np.arctan(-(A * np.tan(theta_x) + B) / (A - B * np.tan(theta_x)))
-        t1, y_t, f_hz_y, theta_y = spectrum_response.gen_process(t=self.t, phase=theta_y)
-        assert np.array_equal(t0,t1)
-        assert np.array_equal(f_hz_x,f_hz_y)
-        assert np.array_equal(self.t,t1)
-        t_transit_idx = int(self.t_transit/(t0[1]-t0[0]))
-        t0 = t0[t_transit_idx:]
-        x_t = x_t[t_transit_idx:]
-        y_t = y_t[t_transit_idx:]
-
-        y_raw = np.vstack((t0, x_t, y_t)).T
         museuq.blockPrint()
-        y_QoI = museuq.get_stats(y_raw, out_responses=out_responses, out_stats=self.out_stats, axis=0) 
+        if 0 in out_responses:
+            t0     = fft_time[time_start:time_end]
+            istats = museuq.get_stats(t0, out_stats=self.out_stats, axis=0)
+            y_stats.append(istats)
+            if ret_raw:
+                y_raw.append(time_out)
+
+        if 1 in out_responses:
+            #--------- environment time series -----------
+            fft_A   = np.zeros(fft_freq_pos.size, dtype=complex)
+            fft_A   = self._assign_value(fft_freq_pos, fft_A, psd_w, env_A)
+            fft_A   = np.append(fft_A, np.flip(np.conj(fft_A[1:])))
+            fft_eta = np.fft.ifft(fft_A * fft_A.size)
+            eta     = fft_eta[time_start:time_end]
+            istats  = museuq.get_stats(eta, out_stats=self.out_stats, axis=0)
+            y_stats.append(istats)
+            if ret_raw:
+                eta = np.interp(time_out, fft_time, fft_eta)
+                y_raw.append(eta)
+
+        if 2 in out_responses:
+            #--------- excitation time series -----------
+            fft_A   = np.zeros(fft_freq_pos.size, dtype=complex)
+            fft_A   = self._assign_value(fft_freq_pos, fft_A, psd_w, frc_lin_A)
+            fft_A   = np.append(fft_A, np.flip(np.conj(fft_A[1:])))
+            fft_frc = np.fft.ifft(fft_A * fft_A.size)
+            x_t     = fft_frc[time_start:time_end]
+            istats  = museuq.get_stats(x_t, out_stats=self.out_stats, axis=0)
+            y_stats.append(istats)
+            if ret_raw:
+                x_t = np.interp(time_out, fft_time, fft_frc)
+                y_raw.append(x_t)
+
+        if 3 in out_responses:
+            ##--------- response time series -----------
+            fft_A   = np.zeros(fft_freq_pos.size, dtype=complex)
+            fft_A   = self._assign_value(fft_freq_pos, fft_A, psd_w, response_A)
+            fft_A   = np.append(fft_A, np.flip(np.conj(fft_A[1:])))
+            fft_rsp = np.fft.ifft(fft_A * fft_A.size)
+            y_t     = fft_rsp[time_start:time_end]
+            istats  = museuq.get_stats(y_t, out_stats=self.out_stats, axis=0)
+            y_stats.append(istats)
+            if ret_raw:
+                y_t = np.interp(time_out, fft_time, fft_rsp)
+                y_raw.append(y_t)
+
         museuq.enablePrint()
+        # y_stats = museuq.get_stats(y_raw, out_responses=out_responses, out_stats=self.out_stats, axis=0) 
         if ret_raw:
-            return y_raw, y_QoI
+            y_raw = np.vstack(y_raw).T
+            return y_raw, y_stats
         else:
-            return y_QoI
+            return y_stats
+
+        # ampf    = np.sqrt(pxx*dw) # amplitude
+        # eta_fft_coeffs = ampf * np.exp(1j*theta)
+        # eta = np.fft.ifft(np.roll(eta_fft_coeffs,ntime_steps+1)) *(2*ntime_steps+1)
+        # eta = np.roll(eta,ntime_steps).real # roll back to [-T, T], IFFT result should be real, imaginary part is very small ~10^-16
+
+        # time, eta = time[ntime_steps:2*ntime_steps+1], eta[ntime_steps:2*ntime_steps+1]
+        
+        # spectrum_frc= self.force_psd() 
+        # spectrum_response   = self.response_psd(params_mck, spectrum_frc)
+
+        # t0, x_t, f_hz_x, theta_x = spectrum_frc.gen_process(t=self.t, phase=theta_x)
+        # omega   = 2*np.pi*f_hz_x
+        # A, B    = k - m * omega**2 , c * omega
+        # theta_y =  np.arctan(-(A * np.tan(theta_x) + B) / (A - B * np.tan(theta_x)))
+        # t1, y_t, f_hz_y, theta_y = spectrum_response.gen_process(t=self.t, phase=theta_y)
+        # assert np.array_equal(t0,t1)
+        # assert np.array_equal(f_hz_x,f_hz_y)
+        # assert np.array_equal(self.t,t1)
+
             
     def map_domain(self, u, u_cdf):
         """
@@ -255,10 +329,8 @@ class surge_model(SolverBase):
         """
         env must be an object of museuq.Environemnt or None
         """
-        # self.distributions= kwargs.get('environment', Kvitebjorn)
-        # self.params_dist_names   = self.distributions.__name__.split('.')[-1]
         if env is None:
-            self.params_dist_names = 'None'
+            self.params_dist_names = 'EnvNone'
         elif isinstance(env, museuq.EnvBase):
             self.dict_rand_params['env'] = env 
             self.params_dist_names = '_'.join(env.name)
@@ -268,23 +340,45 @@ class surge_model(SolverBase):
             raise ValueError('SDOF: environment type {} not defined'.format(type(self.environment)))
         return env 
 
-    def _validate_ltf(self, trans_func):
-        if isinstance(trans_func, np.ndarray):
-            spectrum_frc = PowerSpectrum('force') 
-            w_rad, trans_func_cval = trans_func
-            pxx = abs(trans_func_cval)**2/(w_rad[1]-w_rad[0])
-            spectrum_frc.set_density(w_rad, pxx)
-            spectrum_frc.tf_cval = trans_func_cval
-        elif trans_func is None:
-            spectrum_frc = PowerSpectrum('force') 
-            w_rad = self.w_rad
-            trans_func_cval = w_rad/w_rad
-            pxx = abs(trans_func_cval)**2/(w_rad[1]-w_rad[0])
-            spectrum_frc.set_density(w_rad, pxx)
-            spectrum_frc.tf_cval = trans_func_cval
+    def _validate_ltf(self, ltf):
+        if isinstance(ltf, np.ndarray):
+            w_rad, ltf_cval = ltf 
+            w_rad = np.abs(w_rad)
+        elif ltf is None:
+            w_rad, ltf_cval = None, 1
         else:
             raise NotImplementedError
-        return spectrum_frc
+        return w_rad, ltf_cval 
+
+    def _validate_qtf(self, qtf):
+        if isinstance(qtf, np.ndarray):
+            w_rad, qtf_cval = qtf 
+        elif qtf is None:
+            w_rad, qtf_cval = None, 1
+        else:
+            raise NotImplementedError
+        return w_rad, qtf_cval 
+
+    # def _validate_ltf(self, trans_func):
+        # if isinstance(trans_func, np.ndarray):
+            # spectrum_frc = PowerSpectrum('ltf') 
+            # w_rad, trans_func_cval = trans_func
+            # pxx = abs(trans_func_cval)**2/(w_rad[1]-w_rad[0])
+            # spectrum_frc.set_density(w_rad, pxx)
+            # spectrum_frc.tf_cval = trans_func_cval
+        # elif trans_func is None:
+            # spectrum_frc = PowerSpectrum('ltf') 
+            # spectrum_frc.tf_cval = 1 
+            # # w_rad = self.w_rad
+            # trans_func_cval = w_rad/w_rad
+            # pxx = abs(trans_func_cval)**2/(w_rad[1]-w_rad[0])
+            # spectrum_frc.set_density(w_rad, pxx)
+        # else:
+            # raise NotImplementedError
+        # return spectrum_frc
+
+
+
 
     def generate_samples(self, n, random_seed=None):
         n = int(n)
@@ -374,3 +468,15 @@ class surge_model(SolverBase):
         spectrum_response = PowerSpectrum()
         spectrum_response.set_density(spectrum_frc.f_hz, psd_y, sides=spectrum_frc.sides)
         return spectrum_response 
+
+
+    def _assign_value(self, fft_w, fft_A, w, Sw):
+
+        dw = fft_w[1]-fft_w[0]
+        for iw, iSw in zip(w, Sw):
+            idx = np.where(abs(fft_w -iw) < dw/100)
+            if idx[0].size > 0:
+                fft_A[idx[0][0]] = iSw
+            else:
+                raise ValueError('Frequency {} not found in FFT'.format(iw))
+        return fft_A
