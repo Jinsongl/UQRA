@@ -1,4 +1,4 @@
-#jjjj! /usr/bin/env python
+#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
@@ -131,10 +131,11 @@ class PolynomialChaosExpansion(SurrogateBase):
         n_splits= kwargs.get('n_splits', X.shape[0])
         n_splits= min(n_splits, X.shape[0])
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
+        cpu_count = kwargs.get('cpu_count', mp.cpu_count())
 
         ## calculate k-folder cross-validation error
-        model   = linear_model.LinearRegression(fit_intercept=False)
-        neg_mse = model_selection.cross_val_score(model, X, y, scoring = 'neg_mean_squared_error', cv=kf, n_jobs=mp.cpu_count())
+        model   = linear_model.LinearRegression()
+        neg_mse = model_selection.cross_val_score(model, X, y, scoring = 'neg_mean_squared_error', cv=kf, n_jobs=cpu_count)
         ## fit the model with all data 
         ## X has a column with ones, and want return coefficients to incldue that column
         model.fit(X, y, sample_weight=w)
@@ -173,9 +174,10 @@ class PolynomialChaosExpansion(SurrogateBase):
         n_splits= kwargs.get('n_splits', X.shape[0])
         n_splits= min(n_splits, X.shape[0])
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
+        cpu_count = kwargs.get('cpu_count', mp.cpu_count())
 
         ### 1. Perform variable selection first
-        model_lars       = linear_model.Lars(fit_intercept=False).fit(X,y)
+        model_lars       = linear_model.Lars().fit(X,y)
         ### 2. Perform linear regression on every set of first i basis 
         n_active_basis = min(len(model_lars.active_), X.shape[0]-1)
         for i in range(n_active_basis):
@@ -183,8 +185,8 @@ class PolynomialChaosExpansion(SurrogateBase):
             # active_indices = np.unique(np.array([0, *active_indices])) ## always has column of ones
             X_             = X[:, active_indices]
             ### Calculate loo error for each basis set
-            model          = linear_model.LinearRegression(fit_intercept=False)
-            neg_mse        = model_selection.cross_val_score(model, X_,y,scoring = 'neg_mean_squared_error', cv=kf, n_jobs=mp.cpu_count())
+            model          = linear_model.LinearRegression()
+            neg_mse        = model_selection.cross_val_score(model, X_,y,scoring = 'neg_mean_squared_error', cv=kf, n_jobs=cpu_count)
             error_loo      = -np.mean(neg_mse)
             ### Fitting with all samples
             model.fit(X_,y, sample_weight=w)
@@ -223,10 +225,11 @@ class PolynomialChaosExpansion(SurrogateBase):
         n_splits= min(n_splits, X.shape[0])
         max_iter= kwargs.get('max_iter', 500)
         epsilon = kwargs.get('epsilon', 1e-6)
+        cpu_count = kwargs.get('cpu_count', mp.cpu_count())
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
         try:    
-            model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=mp.cpu_count()).fit(X,y)
+            model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=cpu_count).fit(X,y)
         except ValueError as e:
             #### looks like a bug in KFold
             print(e)
@@ -234,7 +237,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.model    = model 
         self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
         self.coef     = model.coef_
-        self.coef[0]  = model.intercept_
+        # self.coef[0]  = model.intercept_
         self.active_index = [i for i, icoef in enumerate(model.coef_) if abs(icoef) > epsilon]
         self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
         self.sparsity = len(self.active_index)
