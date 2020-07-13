@@ -112,4 +112,9 @@ src/Data/
 *.pdf
 *.eps
 
+# Latex
+*.aux
+*.fls
+*.fdb_latexmk
+
 
