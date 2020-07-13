@@ -25,7 +25,6 @@ class Environment(EnvBase):
         self.rvs_args   = [idist for (idist, is_rand) in zip(self._dist_args, self.is_arg_rand) if is_rand]
         self.ndim       = np.size(self.rvs_args)
 
-
     def rvs(self, size=None):
         samples = np.array([idist.rvs(size=size) for idist in self._dist_args])
         return samples
@@ -64,7 +63,6 @@ class Environment(EnvBase):
         res = np.vstack(res)
         res = np.prod(res, axis=0)
         return res
-
 
     def ppf(self, u):
         u = np.array(u, copy=False, ndmin=2) ## empty array will return another empty array with shape (1,0) 
