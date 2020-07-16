@@ -10,11 +10,11 @@
 
 """
 import numpy as np, chaospy as cp, os, sys
-import museuq, warnings
+import uqra, warnings
 from tqdm import tqdm
-from museuq.environment import Kvitebjorn
+from uqra.environment import Kvitebjorn
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 import time
 import multiprocessing as mp
@@ -25,8 +25,8 @@ def main():
     n_samples   = 1E6
     dist_x      = cp.Iid(cp.Normal(),ndim) 
     dist_zeta   = cp.Iid(cp.Normal(),ndim) 
-    simparams   = museuq.simParameters('linear_oscillator', dist_zeta)
-    solver      = museuq.linear_oscillator()
+    simparams   = uqra.simParameters('linear_oscillator', dist_zeta)
+    solver      = uqra.linear_oscillator()
 
     n_eval      = 2
     plim        = (3,12)
@@ -37,7 +37,7 @@ def main():
 
     # ### 1. Random Design
     # for r in tqdm(range(10)):
-        # doe = museuq.RandomDesign('MCS', n_samples=n_samples, ndim=ndim, dist_names= ['uniform',]*ndim, dist_theta=[(-1,2),]*ndim)
+        # doe = uqra.RandomDesign('MCS', n_samples=n_samples, ndim=ndim, dist_names= ['uniform',]*ndim, dist_theta=[(-1,2),]*ndim)
         # u_doe = doe.samples()
         # x_doe = np.pi*(u_doe+1) - np.pi
         # y_doe = solver.run(x_doe)
@@ -47,7 +47,7 @@ def main():
 
     ## 2. Latin HyperCube Design
     # for r in tqdm(range(1)):
-        # doe = museuq.LHS(n_samples=195,dist_names=['normal']*ndim,ndim=ndim,dist_theta=[(0,1)]*ndim)
+        # doe = uqra.LHS(n_samples=195,dist_names=['normal']*ndim,ndim=ndim,dist_theta=[(0,1)]*ndim)
         # u_doe, x_doe = doe.samples() ## u in [0,1], x in N(0,1)
         # temp = x_doe
         # x_doe = Kvitebjorn.samples(u_doe)
@@ -77,7 +77,7 @@ def main():
         filename = np.save(os.path.join(data_dir, filename), y_train)
 
 
-        # doe = museuq.QuadratureDesign(iquad_orders, ndim = ndim, dist_names=['uniform', ] *ndim)
+        # doe = uqra.QuadratureDesign(iquad_orders, ndim = ndim, dist_names=['uniform', ] *ndim)
         # u_doe, w_doe = doe.samples()
         # x_doe = np.pi*(u_doe+1) - np.pi
         # y_doe = solver.run(x_doe)
@@ -115,14 +115,14 @@ def main():
     # # for ia in alpha:
     # #     print('   >> Oversampling rate : {:.2f}'.format(ia))
     # #     doe_size = min(int(len(basis)*ia), int(n_samples))
-    # #     doe = museuq.OptimalDesign('S', n_samples = doe_size )
+    # #     doe = uqra.OptimalDesign('S', n_samples = doe_size )
     # #     doe_index = doe.samples(design_matrix, is_orth=True)
     # #     data = np.concatenate((doe_index.reshape(1,-1),u_samples[:,doe_index],x_samples[:,doe_index], y_samples[:,doe_index]), axis=0)
     # #     filename = os.path.join(data_dir, 'DoE_McsE6R{:d}_q{:d}_OptS{:d}'.format(r,iquad_orders,doe_size))
     # #     np.save(filename, data)
 
     # start     = time.time()
-    # doe = museuq.OptimalDesign('D', n_samples = n_eval)
+    # doe = uqra.OptimalDesign('D', n_samples = n_eval)
     # doe_index = doe.samples(design_matrix, is_orth=True)
     # done      = time.time()
     # print('   >> OPT-D (n={:d}) time elapsed: {}'.format(n_eval, done - start))

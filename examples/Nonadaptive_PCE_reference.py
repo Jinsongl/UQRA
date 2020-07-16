@@ -9,14 +9,14 @@
 """
 
 """
-import museuq, warnings, random, math
+import uqra, warnings, random, math
 import numpy as np, os, sys
 import collections
 import scipy.stats as stats
 from scipy import sparse
 from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def main():
 
@@ -27,26 +27,26 @@ def main():
     pf          = [1e-4, 1e-5, 1e-6]
     np.random.seed(100)
     ## ------------------------ Define solver ----------------------- ###
-    # orth_poly   = museuq.Legendre(d=ndim, deg=p)
-    # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='physicists')
-    # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type='probabilists')
-    # solver      = museuq.SparsePoly(orth_poly, sparsity='full', seed=100)
+    # orth_poly   = uqra.Legendre(d=ndim, deg=p)
+    # orth_poly   = uqra.Hermite(d=ndim, deg=p, hem_type='physicists')
+    # orth_poly   = uqra.Hermite(d=ndim, deg=p, hem_type='probabilists')
+    # solver      = uqra.SparsePoly(orth_poly, sparsity='full', seed=100)
 
-    # solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
-    # solver      = museuq.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
-    # solver      = museuq.CornerPeak(stats.uniform(-1,2), d=2)
-    # solver      = museuq.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
-    # solver      = museuq.Franke()
-    # solver      = museuq.Ishigami()
+    # solver      = uqra.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
+    # solver      = uqra.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
+    # solver      = uqra.CornerPeak(stats.uniform(-1,2), d=2)
+    # solver      = uqra.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
+    # solver      = uqra.Franke()
+    # solver      = uqra.Ishigami()
 
-    # solver      = museuq.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
-    # solver      = museuq.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
-    # solver      = museuq.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
-    # solver      = museuq.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
-    # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
-    solver      = museuq.FourBranchSystem()
+    # solver      = uqra.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
+    # solver      = uqra.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
+    # solver      = uqra.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
+    # solver      = uqra.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
+    # solver      = uqra.ExpSum(stats.norm(0,1), d=3)
+    solver      = uqra.FourBranchSystem()
     ## ------------------------ Simulation Parameters ----------------- ###
-    simparams = museuq.Parameters(solver)
+    simparams = uqra.Parameters(solver)
     simparams.pce_degs   = np.array(range(2,21))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
@@ -74,12 +74,12 @@ def main():
         print('     - {:<23s} : {}'.format('Optimality '      , simparams.optimality))
         print('     - {:<23s} : {}'.format('Fitting method'   , simparams.fit_method))
         ## ----------- Define PCE  ----------- ###
-        # orth_poly= museuq.Legendre(d=solver.ndim, deg=p)
-        orth_poly= museuq.Hermite(d=solver.ndim, deg=p, hem_type=simparams.hem_type)
-        pce_model= museuq.PCE(orth_poly)
+        # orth_poly= uqra.Legendre(d=solver.ndim, deg=p)
+        orth_poly= uqra.Hermite(d=solver.ndim, deg=p, hem_type=simparams.hem_type)
+        pce_model= uqra.PCE(orth_poly)
         pce_model.info()
 
-        modeling = museuq.Modeling(solver, pce_model, simparams)
+        modeling = uqra.Modeling(solver, pce_model, simparams)
         # modeling.sample_selected=[]
 
         ## ----------- Candidate and testing data set for DoE ----------- ###
@@ -114,7 +114,7 @@ def main():
         u_train = [None,] * repeats
         for i, n in enumerate(simparams.num_samples):
             ### ============ Initialize pce_model for each n ============
-            pce_model= museuq.PCE(orth_poly)
+            pce_model= uqra.PCE(orth_poly)
             ### ============ Get training points ============
             u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
             # n = n - len(modeling.sample_selected)
@@ -156,8 +156,8 @@ def main():
 
 
                 # QoI_repeat.append(np.linalg.norm(solver.coef- pce_model.coef, np.inf) < 1e-2)
-                QoI_repeat.append(museuq.metrics.mquantiles(y_test_hat, 1-np.array(pf)))
-                test_err_repeat.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
+                QoI_repeat.append(uqra.metrics.mquantiles(y_test_hat, 1-np.array(pf)))
+                test_err_repeat.append(uqra.metrics.mean_squared_error(y_test, y_test_hat))
                 cond_num_repeat.append(kappa)
                 score_repeat.append(pce_model.score)
                 cv_err_repeat.append(pce_model.cv_error)

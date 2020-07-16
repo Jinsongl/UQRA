@@ -9,12 +9,12 @@
 """
 
 """
-import museuq, warnings, random, math
+import uqra, warnings, random, math
 import numpy as np, os, sys
 import collections
 import scipy.stats as stats
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def main():
 
@@ -27,11 +27,11 @@ def main():
 
     ## ------------------------ Define solver ----------------------- ###
     pf          = 1e-4
-    solver      = museuq.CornerPeak(stats.uniform(-1,2),d=2)
-    simparams   = museuq.Parameters(solver.nickname)
+    solver      = uqra.CornerPeak(stats.uniform(-1,2),d=2)
+    simparams   = uqra.Parameters(solver.nickname)
     # print(simparams.data_dir_result)
     ## ------------------------ Modeling parameters ----------------- ###
-    modeling = museuq.Modeling()
+    modeling = uqra.Modeling()
     modeling.n_cand     = int(1e5)
     modeling.n_test     = -1
     modeling.doe_method = 'CLS'
@@ -50,10 +50,10 @@ def main():
     print('     - {:<23s} : {}'.format('Fitting method'   , modeling.fit_method))
 
     ## ------------------------ Define PCE model --------------------- ###
-    orth_poly = museuq.Legendre(d=solver.ndim)
-    # orth_poly = museuq.Hermite(d=solver.ndim, hem_type='probabilists')
-    # orth_poly = museuq.Hermite(d=solver.ndim, hem_type='physicists')
-    pce_model = museuq.PCE(orth_poly)
+    orth_poly = uqra.Legendre(d=solver.ndim)
+    # orth_poly = uqra.Hermite(d=solver.ndim, hem_type='probabilists')
+    # orth_poly = uqra.Hermite(d=solver.ndim, hem_type='physicists')
+    pce_model = uqra.PCE(orth_poly)
     pce_model.info()
     modeling.set_dist_names(solver, pce_model)
 
@@ -61,7 +61,7 @@ def main():
     print(' > Getting candidate data set...')
     u_cand = modeling.get_candidate_data(simparams, orth_poly)
     u_test, x_test, y_test = modeling.get_test_data(simparams, solver, pce_model) 
-    qoi_test= museuq.metrics.mquantiles(y_test, 1-pf)[0]
+    qoi_test= uqra.metrics.mquantiles(y_test, 1-pf)[0]
     print('   * {:<25s} : {}'.format('Candidate', u_cand.shape))
     print('   * {:<25s} : {}'.format('Test'     , u_test.shape))
     print('   * {:<25s} : {}'.format('Target QoI [pf={:.2e}]'.format(pf),qoi_test))
@@ -108,7 +108,7 @@ def main():
         print(' >>> Iteration No. {:d}: '.format(i_iteration))
         ### ============ Update PCE model ============
         orth_poly.set_degree(p)
-        pce_model = museuq.PCE(orth_poly)
+        pce_model = uqra.PCE(orth_poly)
 
         ### ============ Build Surrogate Model ============
         if modeling.doe_method.lower().startswith('cls'):
@@ -123,7 +123,7 @@ def main():
         # print('u train max: {}'.format(np.max(u_train, axis=1)))
         # print('x train min: {}'.format(np.min(x_train, axis=1)))
         # print('x train max: {}'.format(np.max(x_train, axis=1)))
-        res = museuq.metrics.mean_squared_error(y_train, y_train_hat)
+        res = uqra.metrics.mean_squared_error(y_train, y_train_hat)
         tot = np.var(y_train)
         # print('MSE y train (res): {}'.format(res))
         # print('var y train (tot): {}'.format(tot))
@@ -142,7 +142,7 @@ def main():
         # print('u test mean: {}'.format(np.mean(u_test, axis=1)))
         # print('u test std: {}'.format(np.std(u_test, axis=1)))
         # print('y test max: {}'.format(np.max(y_test)))
-        # qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
+        # qoi = uqra.metrics.mquantiles(y_test_hat, 1-pf)
         # print('pf, y_test_hat: {}'.format(qoi))
         # print('y_test_hat max: {}'.format(max(y_test_hat)))
 
@@ -164,12 +164,12 @@ def main():
 
         score[p] = pce_model.score
         score_path.append(pce_model.score)
-        qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
+        qoi = uqra.metrics.mquantiles(y_test_hat, 1-pf)
         QoI[p] = qoi
         QoI_path.append(qoi)
 
-        test_error[p] = museuq.metrics.mean_squared_error(y_test, y_test_hat)
-        test_error_path.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
+        test_error[p] = uqra.metrics.mean_squared_error(y_test, y_test_hat)
+        test_error_path.append(uqra.metrics.mean_squared_error(y_test, y_test_hat))
 
         ### ============ Cheking Overfitting ============
         if simparams.check_overfitting(cv_error[plim[0]:p+1]):
@@ -194,7 +194,7 @@ def main():
         ### update candidate data set for this p degree, cls unbuounded
         u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
         orth_poly.set_degree(p)
-        pce_model = museuq.PCE(orth_poly)
+        pce_model = uqra.PCE(orth_poly)
         ### ============ Get training points ============
         n = math.ceil(sparsity[p] * new_samples_pct[p])
         if u_train.shape[1] + n < 2*sparsity[p]:

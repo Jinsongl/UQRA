@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
-import museuq, unittest,warnings,os, sys 
+import uqra, unittest,warnings,os, sys 
 from tqdm import tqdm
 import numpy as np, scipy as sp 
-from museuq.solver.PowerSpectrum import PowerSpectrum
-from museuq.environment import Kvitebjorn as Kvitebjorn
+from uqra.solver.PowerSpectrum import PowerSpectrum
+from uqra.environment import Kvitebjorn as Kvitebjorn
 from sklearn import datasets
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
-import museuq.utilities.helpers as uqhelpers
+import uqra.utilities.helpers as uqhelpers
 import pickle
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
-data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
+data_dir = '/Users/jinsongliu/BoxSync/MUSELab/uqra/examples/JupyterNotebook'
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 

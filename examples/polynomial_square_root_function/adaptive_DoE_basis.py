@@ -9,15 +9,15 @@
 """
 
 """
-import museuq
+import uqra
 import numpy as np, chaospy as cp, os, sys
 import warnings
 from tqdm import tqdm
-from museuq.utilities import helpers as uqhelpers
-from museuq.utilities import metrics_collections as uq_metrics
+from uqra.utilities import helpers as uqhelpers
+from uqra.utilities import metrics_collections as uq_metrics
 from sklearn.model_selection import KFold
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 
 def main():
@@ -25,8 +25,8 @@ def main():
     ndim        = 3
     dist_x      = cp.Iid(cp.Uniform(-np.pi, np.pi),ndim) 
     dist_zeta   = cp.Iid(cp.Uniform(-1, 1),ndim) 
-    simparams   = museuq.simParameters('Ishigami', dist_zeta)
-    solver      = museuq.Ishigami()
+    simparams   = uqra.simParameters('Ishigami', dist_zeta)
+    solver      = uqra.Ishigami()
     fit_method  = 'OLSLARS'
 
     ### ============ Adaptive parameters ============
@@ -67,7 +67,7 @@ def main():
         design_matrix = basis(*u_data).T
         print('   >> Candidate Design matrix shape: {}'.format(design_matrix.shape))
         
-        doe = museuq.OptimalDesign('D', n_samples=n_eval)
+        doe = uqra.OptimalDesign('D', n_samples=n_eval)
         doe_index = doe.adaptive(design_matrix, n_samples = n_eval, is_orth=True)
         print(len(doe_index))
         u_doe = u_data[:,doe_index]
@@ -81,7 +81,7 @@ def main():
         ### ============ Build Surrogate Model ============
         u_train   = np.concatenate((u_train, u_doe), axis=0)
         y_train   = np.concatenate((y_train, y_doe), axis=0)
-        pce_model = museuq.PCE(plim[1], dist_zeta)
+        pce_model = uqra.PCE(plim[1], dist_zeta)
         pce_model.fit(u_train, y_train, method=fit_method)
         y_pred    = pce_model.predict(u_train)
 

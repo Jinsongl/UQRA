@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import museuq, unittest,warnings,os, sys 
+import uqra, unittest,warnings,os, sys 
 from tqdm import tqdm
 import numpy as np, scipy as sp 
-from museuq.solver.PowerSpectrum import PowerSpectrum
-from museuq.environment.Kvitebjorn import Kvitebjorn as Kvitebjorn
+from uqra.solver.PowerSpectrum import PowerSpectrum
+from uqra.environment.Kvitebjorn import Kvitebjorn as Kvitebjorn
 from sklearn import datasets
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
@@ -12,9 +12,9 @@ import pickle
 import scipy.stats as stats
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
-data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
+data_dir = '/Users/jinsongliu/BoxSync/MUSELab/uqra/examples/JupyterNotebook'
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
@@ -22,10 +22,10 @@ class BasicTestSuite(unittest.TestCase):
         print('========================TESTING: sparse poly =======================')
         ndim = 1
         deg  = 4
-        poly = museuq.Legendre(d=ndim, deg=deg)
+        poly = uqra.Legendre(d=ndim, deg=deg)
         coef = [0,0,0,1,0]
 
-        solver = museuq.sparse_poly(poly, sparsity=4, coef=coef)
+        solver = uqra.sparse_poly(poly, sparsity=4, coef=coef)
         # x = np.random.normal(size=(ndim, 1000))
         x = np.arange(10)
         y = solver.run(x)
@@ -49,7 +49,7 @@ class BasicTestSuite(unittest.TestCase):
 
         # ### grid points
         # x           = np.linspace(-10,20,600).reshape((1,-1))
-        # solver      = museuq.Solver(model_name, x)
+        # solver      = uqra.Solver(model_name, x)
         # y           = solver.run()
         # res         = np.concatenate((x,y), axis=0)
         # np.save(os.path.join(data_dir,model_name.lower()), res)
@@ -60,7 +60,7 @@ class BasicTestSuite(unittest.TestCase):
             data_set = np.load(os.path.join(data_dir, filename))
             zeta     = data_set[0,:].reshape(1,-1)
             x        = data_set[1,:].reshape(1,-1)
-            solver   = museuq.Solver(model_name, x)
+            solver   = uqra.Solver(model_name, x)
             y        = solver.run()
             np.save(os.path.join(data_dir,'DoE_McRE6R{:d}_y_None.npy'.format(r)), y)
 
@@ -74,10 +74,10 @@ class BasicTestSuite(unittest.TestCase):
         c=0.1/np.pi
         k=1.0/np.pi/np.pi
         m,c,k  = [stats.norm(m, 0.05*m), stats.norm(c, 0.2*c), stats.norm(k, 0.1*k)]
-        # env    = museuq.Environment([stats.uniform, stats.norm])
-        env    = museuq.Environment([2,])
+        # env    = uqra.Environment([stats.uniform, stats.norm])
+        env    = uqra.Environment([2,])
         # env    = Kvitebjorn()
-        solver = museuq.linear_oscillator(m=m,c=c,k=k,excitation='spec_test1', environment=env, t=1000, t_transit=10,
+        solver = uqra.linear_oscillator(m=m,c=c,k=k,excitation='spec_test1', environment=env, t=1000, t_transit=10,
                 out_responses=out_responses, out_stats=out_stats)
         samples= solver.generate_samples(100)
         y = solver.run(samples, seeds_st=seeds_st[:5] )
@@ -102,17 +102,17 @@ class BasicTestSuite(unittest.TestCase):
         m=1e8
         k=280000
         c=0.05*2*np.sqrt(k*m)
-        ltf = np.load('/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/solver/FPSO_ltf.npy')
-        qtf = np.load('/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/solver/FPSO_qtf.npy')
-        rao_= np.load('/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/solver/FPSO_RAO.npy')
+        ltf = np.load('/Users/jinsongliu/BoxSync/MUSELab/uqra/uqra/solver/FPSO_ltf.npy')
+        qtf = np.load('/Users/jinsongliu/BoxSync/MUSELab/uqra/uqra/solver/FPSO_qtf.npy')
+        rao_= np.load('/Users/jinsongliu/BoxSync/MUSELab/uqra/uqra/solver/FPSO_RAO.npy')
         print(ltf.shape)
         print(qtf.shape)
         print(rao_.shape)
         # m,c,k  = [stats.norm(m, 0.05*m), stats.norm(c, 0.2*c), stats.norm(k, 0.1*k)]
-        # env    = museuq.Environment([stats.uniform, stats.norm])
-        # env    = museuq.Environment([2,])
+        # env    = uqra.Environment([stats.uniform, stats.norm])
+        # env    = uqra.Environment([2,])
         env    = Kvitebjorn()
-        solver = museuq.surge_model(m=m,c=c,k=k, environment=env, t=4000, t_transit=100, dt=0.1, ltf=ltf[:2],
+        solver = uqra.surge_model(m=m,c=c,k=k, environment=env, t=4000, t_transit=100, dt=0.1, ltf=ltf[:2],
                 out_responses=out_responses, out_stats=out_stats)
         samples= solver.generate_samples(10)
         y = solver.run(samples)
@@ -132,7 +132,7 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_four_branch(self):
         np.random.seed(100)
-        solver  = museuq.four_branch_system()
+        solver  = uqra.four_branch_system()
         data_dir_src    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Normal/'
         data_dir_destn  = r'/Volumes/External/MUSE_UQ_DATA/Four_branch_system/Data'
 
@@ -148,7 +148,7 @@ class BasicTestSuite(unittest.TestCase):
             
     def test_franke(self):
         np.random.seed(100)
-        solver  = museuq.franke()
+        solver  = uqra.franke()
         data_dir_src    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform/'
         data_dir_destn  = r'/Volumes/External/MUSE_UQ_DATA/Franke/Data'
 
@@ -170,9 +170,9 @@ class BasicTestSuite(unittest.TestCase):
         out_responses = [1,2]
         nsim = 1
         out_stats = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
-        # solver = museuq.duffing_oscillator(m=1,c=0.2*np.pi,k=4*np.pi**2,s=np.pi**2, out_responses=out_responses, out_stats=out_stats, tmax=18000, dt=dt,y0=[1,0])
+        # solver = uqra.duffing_oscillator(m=1,c=0.2*np.pi,k=4*np.pi**2,s=np.pi**2, out_responses=out_responses, out_stats=out_stats, tmax=18000, dt=dt,y0=[1,0])
         f = lambda t: 0.39 * np.cos(1.4 * t)
-        solver = museuq.duffing_oscillator(m=1,c=0.1,k=-1,s=1,excitation=f, out_responses=out_responses, out_stats=out_stats, tmax=18000, dt=dt,y0=[0,0])
+        solver = uqra.duffing_oscillator(m=1,c=0.1,k=-1,s=1,excitation=f, out_responses=out_responses, out_stats=out_stats, tmax=18000, dt=dt,y0=[0,0])
         x = solver.generate_samples(1)
         print(solver)
         print(x)
@@ -202,37 +202,37 @@ class BasicTestSuite(unittest.TestCase):
             print(np.array_equal(data1, data2))
     
         # x = np.arange(30).reshape(3,10)
-        # solver = museuq.Ishigami()
+        # solver = uqra.Ishigami()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
 
         # x = np.arange(30)
-        # solver = museuq.xsinx()
+        # solver = uqra.xsinx()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
 
         # x = np.arange(30)
-        # solver = museuq.poly4th()
+        # solver = uqra.poly4th()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
 
         # x = np.arange(30).reshape(2,15)
-        # solver = museuq.polynomial_square_root_function()
+        # solver = uqra.polynomial_square_root_function()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
 
         # x = np.arange(30).reshape(2,15)
-        # solver = museuq.four_branch_system()
+        # solver = uqra.four_branch_system()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
 
         # x = np.arange(30).reshape(2,15)
-        # solver = museuq.polynomial_product_function()
+        # solver = uqra.polynomial_product_function()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
@@ -254,7 +254,7 @@ class BasicTestSuite(unittest.TestCase):
         # k       = (omega_n/2/np.pi) **2 * m 
         # c       = zeta * 2 * np.sqrt(m * k)
         # mck     = (m,c,k)
-        # solver  = museuq.Solver(model_name, x)
+        # solver  = uqra.Solver(model_name, x)
         # y       = solver.run(**kwargs) 
 
         # data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
@@ -262,11 +262,11 @@ class BasicTestSuite(unittest.TestCase):
 
         # ## run solver for EC cases
         # P, nsim     = 10, 25
-        # data_dir    = '/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/environment'
+        # data_dir    = '/Users/jinsongliu/BoxSync/MUSELab/uqra/uqra/environment'
         # data_set    = np.load(os.path.join(data_dir, 'Kvitebjørn_EC_P{:d}.npy'.format(P)))
         # EC_x        = data_set[2:,:]
         # model_name  = 'linear_oscillator'
-        # solver      = museuq.Solver(model_name, EC_x)
+        # solver      = uqra.Solver(model_name, EC_x)
         # EC_y        = np.array([solver.run(doe_method = 'EC') for _ in range(nsim)])
 
         # data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
@@ -278,7 +278,7 @@ class BasicTestSuite(unittest.TestCase):
         # filename    = 'HsTp_grid118.npy'
         # data_set    = np.load(os.path.join(data_dir, filename))
         # model_name  = 'linear_oscillator'
-        # solver      = museuq.Solver(model_name, data_set)
+        # solver      = uqra.Solver(model_name, data_set)
         # grid_out    = np.array([solver.run(doe_method = 'GRID') for _ in range(nsim)])
         # np.save(os.path.join(data_dir,'HsTp_grid118_out'), grid_out)
 
@@ -286,17 +286,17 @@ class BasicTestSuite(unittest.TestCase):
         # x_samples = data_set[2:,:]
 
         # model_name  = 'linear_oscillator'
-        # solver      = museuq.Solver(model_name, x_samples)
+        # solver      = uqra.Solver(model_name, x_samples)
         # kwargs      = {'doe_method': 'MCS'}
         # samples_y   = solver.run(**kwargs )
         # np.save('test_linear_oscillator_y', samples_y)
         # # filename_tags = ['R0']
         # # filename_tags = [itag+'_y' for itag in filename_tags]
-        # # museuq_dataio.save_data(samples_y, 'test_linear_oscillator', os.getcwd(), filename_tags)
+        # # uqra_dataio.save_data(samples_y, 'test_linear_oscillator', os.getcwd(), filename_tags)
         # samples_y_stats = solver.get_stats()
         # np.save('test_linear_oscillator_y_stats', samples_y_stats)
         # # filename_tags = [itag+'_y_stats' for itag in filename_tags]
-        # # museuq_dataio.save_data(samples_y_stats, 'test_linear_oscillator', os.getcwd(), filename_tags)
+        # # uqra_dataio.save_data(samples_y_stats, 'test_linear_oscillator', os.getcwd(), filename_tags)
 
 
 if __name__ == '__main__':

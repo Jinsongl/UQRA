@@ -10,27 +10,27 @@
 
 """
 import context
-import museuq
+import uqra
 import numpy as np, chaospy as cp, os, sys
 import warnings
 from sklearn.gaussian_process.kernels import (RBF, Matern, RationalQuadratic,
                                               ExpSineSquared, DotProduct,
                                               ConstantKernel,WhiteKernel)
 from tqdm import tqdm
-from museuq.utilities import helpers as uqhelpers
-from museuq.utilities import metrics_collections as uq_metrics
-from museuq.utilities import dataIO 
-from museuq.environment import Kvitebjorn
+from uqra.utilities import helpers as uqhelpers
+from uqra.utilities import metrics_collections as uq_metrics
+from uqra.utilities import dataIO 
+from uqra.environment import Kvitebjorn
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
     ndim        = 3
     dist_x      = cp.Iid(cp.Uniform(-np.pi, np.pi),ndim) 
     dist_zeta   = cp.Iid(cp.Uniform(-1, 1),ndim) 
-    simparams   = museuq.simParameters('Ishigami', dist_zeta)
-    solver      = museuq.Ishigami()
+    simparams   = uqra.simParameters('Ishigami', dist_zeta)
+    solver      = uqra.Ishigami()
     # fit_method  = 'OLS'
 
     ### ============ Adaptive parameters ============
@@ -69,7 +69,7 @@ def main():
 
         # print('  > {:<10s}: {:s}'.format('filename', filename))
         ### ============ Build Surrogate Model ============
-        pce_model   = museuq.PCE(poly_order, dist_zeta)
+        pce_model   = uqra.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, w=w_train, method=fit_method)
         y_pred      = pce_model.predict(u_train)
 

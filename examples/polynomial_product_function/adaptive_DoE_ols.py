@@ -10,16 +10,16 @@
 
 """
 import context
-import museuq
+import uqra
 import numpy as np, chaospy as cp, os, sys
 import warnings
 from tqdm import tqdm
-from museuq.utilities import helpers as uqhelpers
-from museuq.utilities import metrics_collections as uq_metrics
+from uqra.utilities import helpers as uqhelpers
+from uqra.utilities import metrics_collections as uq_metrics
 from sklearn.model_selection import KFold
 import time
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 
 def main():
@@ -27,8 +27,8 @@ def main():
     ndim        = 5
     dist_x      = cp.Iid(cp.Normal(),ndim) 
     dist_zeta   = cp.Iid(cp.Normal(),ndim) 
-    simparams   = museuq.simParameters('polynomial_product_function', dist_zeta)
-    solver      = museuq.polynomial_product_function()
+    simparams   = uqra.simParameters('polynomial_product_function', dist_zeta)
+    solver      = uqra.polynomial_product_function()
 
     ### ============ Adaptive parameters ============
     plim        = (2,15)
@@ -64,7 +64,7 @@ def main():
         u_train = u_data[:,:n_eval]
         y_train = y_data[:n_eval]
         ### ============ Build Surrogate Model ============
-        pce_model   = museuq.PCE(poly_order, dist_zeta)
+        pce_model   = uqra.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, method=fit_method)
         y_train_hat = pce_model.predict(u_train)
 

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import museuq, unittest,warnings,os, sys 
+import uqra, unittest,warnings,os, sys 
 from tqdm import tqdm
 import numpy as np, scipy as sp 
-from museuq.solver.PowerSpectrum import PowerSpectrum
-from museuq.environment import Kvitebjorn as Kvitebjorn
+from uqra.solver.PowerSpectrum import PowerSpectrum
+from uqra.environment import Kvitebjorn as Kvitebjorn
 from sklearn import datasets
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
@@ -12,9 +12,9 @@ import pickle
 import scipy.stats as stats
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
-data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
+data_dir = '/Users/jinsongliu/BoxSync/MUSELab/uqra/examples/JupyterNotebook'
 
 def nextPowerOf2(n): 
 	count = 0; 
@@ -47,7 +47,7 @@ class BasicTestSuite(unittest.TestCase):
         print(freq)
 
         np.random.seed(100)
-        env = museuq.Environment('JONSWAP')
+        env = uqra.Environment('JONSWAP')
         x   = [2.8,13.4]
         w_rad   = np.arange(0.2, 1.4,0.001)
         dw      = w_rad[1] - w_rad[0]

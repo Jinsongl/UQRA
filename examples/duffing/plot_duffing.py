@@ -12,15 +12,15 @@
 import context
 import numpy as np
 
-from museuq.environment import environment
-from museuq.metaModel import metaModel
-from museuq.simParameters import simParameters
-from museuq.run_sim import run_sim
-from museuq.solver.dynamic_models import lin_oscillator
-from museuq.solver.dynamic_models import duffing_equation
-from museuq.solver.dynamic_models import duffing_oscillator
-from museuq.solver.benchmark import ishigami
-from museuq.solver.benchmark import bench1
+from uqra.environment import environment
+from uqra.metaModel import metaModel
+from uqra.simParameters import simParameters
+from uqra.run_sim import run_sim
+from uqra.solver.dynamic_models import lin_oscillator
+from uqra.solver.dynamic_models import duffing_equation
+from uqra.solver.dynamic_models import duffing_oscillator
+from uqra.solver.benchmark import ishigami
+from uqra.solver.benchmark import bench1
 
 
 import numpy as np

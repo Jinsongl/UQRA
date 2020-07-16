@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from .context import museuq
+from .context import uqra
 
 import unittest
 

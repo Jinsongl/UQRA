@@ -11,19 +11,19 @@
 """
 
 import context
-import museuq
+import uqra
 import numpy as np, chaospy as cp, os, sys
 import warnings
 from sklearn.gaussian_process.kernels import (RBF, Matern, RationalQuadratic,
                                               ExpSineSquared, DotProduct,
                                               ConstantKernel,WhiteKernel)
 from tqdm import tqdm
-from museuq.utilities import helpers as uqhelpers 
-from museuq.utilities import metrics_collections as museuq_metrics
-from museuq.utilities import dataIO as museuq_dataio 
-from museuq.environment import Kvitebjorn
+from uqra.utilities import helpers as uqhelpers 
+from uqra.utilities import metrics_collections as uqra_metrics
+from uqra.utilities import dataIO as uqra_dataio 
+from uqra.environment import Kvitebjorn
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
@@ -38,7 +38,7 @@ def main():
     ## 3. Define independent random variable in physical problems
     # dist_x = cp.Uniform(-np.pi, np.pi)
 
-    simparams = museuq.simParameters(model_name, dist_zeta)
+    simparams = uqra.simParameters(model_name, dist_zeta)
     # simparams.set_error()  # no observation error for sdof
     simparams.info()
 
@@ -69,7 +69,7 @@ def main():
         train_y  = data_set[6,:]
 
         ### ============ Get Surrogate Model for each QoI============
-        pce_model = museuq.PCE(poly_order, dist_zeta)
+        pce_model = uqra.PCE(poly_order, dist_zeta)
         # print(len(pce_model.basis[0]))
         # pce_model.fit(train_u, train_y, w=train_w, fit_method=pce_fit_method)
         pce_model.fit(train_u, train_eta, w=train_w, fit_method=pce_fit_method)
@@ -137,7 +137,7 @@ def main():
                 # train_y  = data_set[6  ,:] 
 
                 # ### ============ Get Surrogate Model for each QoI============
-                # pce_model = museuq.PCE(poly_order, dist_zeta)
+                # pce_model = uqra.PCE(poly_order, dist_zeta)
                 # # print(len(pce_model.basis[0]))
                 # # pce_model.fit(train_u, train_y, w=train_w, fit_method=pce_fit_method)
                 # pce_model.fit(train_u, train_eta, fit_method=pce_fit_method)

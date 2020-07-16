@@ -9,19 +9,19 @@
 """
 
 """
-import museuq, warnings
+import uqra, warnings
 import numpy as np, chaospy as cp, os, sys
 from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
     ndim        = 3
     dist_x      = cp.Iid(cp.Uniform(-np.pi, np.pi),ndim) 
     dist_zeta   = cp.Iid(cp.Uniform(-1, 1),ndim) 
-    simparams   = museuq.simParameters('Ishigami', dist_zeta)
-    solver      = museuq.Ishigami()
+    simparams   = uqra.simParameters('Ishigami', dist_zeta)
+    solver      = uqra.Ishigami()
 
     ### ============ Adaptive parameters ============
     plim        = (2,15)
@@ -50,7 +50,7 @@ def main():
             r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
         print(' > Adaptive simulation continue...')
         ### ============ Build Surrogate Model ============
-        pce_model   = museuq.PCE(poly_order, dist_zeta)
+        pce_model   = uqra.PCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, method=fit_method)
         y_train_hat = pce_model.predict(u_train)
 
@@ -62,8 +62,8 @@ def main():
         ### ============ updating parameters ============
 
         cv_error.append(pce_model.cv_error)
-        r2_score_adj.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
-        mquantiles.append(museuq.metrics.mquantiles(y_samples, 1-1e-4))
+        r2_score_adj.append(uqra.metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
+        mquantiles.append(uqra.metrics.mquantiles(y_samples, 1-1e-4))
         poly_order += 1
         if f_hat is None:
             f_hat  = pce_model
@@ -99,7 +99,7 @@ def main():
         u_samples= data_set[0:ndim,:]
         x_samples= data_set[ndim: 2*ndim,:]
         y_samples= f_hat.predict(u_samples)
-        mquantiles.append(museuq.metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
+        mquantiles.append(uqra.metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
         filename = 'DoE_McsE6R{:d}_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
         np.save(os.path.join(simparams.data_dir, filename), y_samples)
 

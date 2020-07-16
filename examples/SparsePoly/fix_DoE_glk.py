@@ -9,14 +9,14 @@
 """
 
 """
-import museuq
+import uqra
 import numpy as np, os, sys
 import scipy.stats as stats
 import warnings
 from tqdm import tqdm
-from museuq.environment import Kvitebjorn
+from uqra.environment import Kvitebjorn
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def cal_poly_limit(n_budget, ndim, start=2):
     """
@@ -80,9 +80,9 @@ def main():
     ndim, deg   = 2, 20
     # dist_x      = [stats.uniform(-np.pi, np.pi),] * ndim
     dist_zeta   = [stats.uniform(-1, 1),] * ndim
-    simparams   = museuq.simParameters('Sparse_poly', dist_zeta)
-    orth_poly   = museuq.Legendre(d=ndim, deg=deg)
-    solver      = museuq.sparse_poly(orth_poly)
+    simparams   = uqra.simParameters('Sparse_poly', dist_zeta)
+    orth_poly   = uqra.Legendre(d=ndim, deg=deg)
+    solver      = uqra.sparse_poly(orth_poly)
 
     ### ------------------------ Adaptive parameters ------------------------ 
     n_budget    = 5000
@@ -96,12 +96,12 @@ def main():
     quad_w = []
     quad_y = []
     for p in range(plim[0], plim[1]+1):
-        orth_poly = museuq.Legendre(d=ndim, deg=p)
-        idoe_u, idoe_w = museuq.QuadratureDesign(orth_poly).samples(p+1)
+        orth_poly = uqra.Legendre(d=ndim, deg=p)
+        idoe_u, idoe_w = uqra.QuadratureDesign(orth_poly).samples(p+1)
         quad_u.append(idoe_u)
         quad_w.append(idoe_w)
         quad_y.append(solver.run(idoe_u))
-    _, lhs_u = museuq.LHS(dist_zeta).samples(n_lhs)
+    _, lhs_u = uqra.LHS(dist_zeta).samples(n_lhs)
     lhs_y = solver.run(lhs_u)
 
     ### ----------------------- Initialization  -------------------- 
@@ -152,7 +152,7 @@ def main():
 
 
         ### ============ Build Surrogate Model ============
-        pce_model   = museuq.PCE(dist_zeta, poly_order)
+        pce_model   = uqra.PCE(dist_zeta, poly_order)
         pce_model.fit_quadrature(u_train, w_train, y_train)
         y_train_hat = pce_model.predict(u_train)
         # u_valid,x_valid,y_valid=get_validation_data(quad_order, plim, n_lhs, ndim, data_dir=simparams.data_dir)
@@ -164,13 +164,13 @@ def main():
         y_test = pce_model.predict(u_test)
 
         # ### ============ updating parameters ============
-        icv_error = museuq.metrics.mean_squared_error(y_valid, y_valid_hat)
+        icv_error = uqra.metrics.mean_squared_error(y_valid, y_valid_hat)
         print(icv_error)
         cv_error.append(icv_error)
-        ir2_score_adj = museuq.metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_))
+        ir2_score_adj = uqra.metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_))
         print(ir2_score_adj)
         r2_score_adj.append(ir2_score_adj)
-        mquantiles.append(museuq.metrics.mquantiles(y_test, 1-1e-4))
+        mquantiles.append(uqra.metrics.mquantiles(y_test, 1-1e-4))
         poly_order  += 1
         i += 1
         n_eval_curr += u_train.shape[1] 
@@ -205,7 +205,7 @@ def main():
         # u_test= data_set[0:ndim,:]
         # x_test= data_set[ndim: 2*ndim,:]
         # y_test= f_hat.predict(u_test)
-        # mquantiles.append(museuq.metrics.mquantiles(y_test, [1-1e-4, 1-1e-5, 1-1e-6]))
+        # mquantiles.append(uqra.metrics.mquantiles(y_test, [1-1e-4, 1-1e-5, 1-1e-6]))
         # filename = 'DoE_McsE6R{:d}_PCE{:d}_{:s}.npy'.format(r, poly_order, fit_method)
         # np.save(os.path.join(simparams.data_dir, filename), y_test)
 

@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 
-import context, museuq, unittest,warnings,os, sys 
+import context, uqra, unittest,warnings,os, sys 
 from tqdm import tqdm
 import numpy as np, chaospy as cp, scipy as sp 
-from museuq.solver.PowerSpectrum import PowerSpectrum
-from museuq.environment import Kvitebjorn as Kvitebjorn
+from uqra.solver.PowerSpectrum import PowerSpectrum
+from uqra.environment import Kvitebjorn as Kvitebjorn
 from sklearn import datasets
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
 import pickle
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
-data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
+data_dir = '/Users/jinsongliu/BoxSync/MUSELab/uqra/examples/JupyterNotebook'
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
@@ -25,11 +25,11 @@ class BasicTestSuite(unittest.TestCase):
         y =  np.squeeze(np.array([foo(x), foo(x)]).T)
         print(y.shape)
         # basis = cp.orth_ttr(5, dist)
-        foo_hat = museuq.PCE(5, dist) 
+        foo_hat = uqra.PCE(5, dist) 
         foo_hat.fit(x, y, method='OLS')
         y_pred = foo_hat.predict(x)
         print(y_pred.shape)
-        foo_hat = museuq.mPCE(5, dist)
+        foo_hat = uqra.mPCE(5, dist)
         foo_hat.fit(x, y, method='OLS')
         y_pred = foo_hat.predict(x)
         print(y_pred.shape)
@@ -46,7 +46,7 @@ class BasicTestSuite(unittest.TestCase):
             filename  = 'DoE_McsE6R{:d}.npy'.format(r)
             data_set  = np.load(os.path.join(data_dir, filename))
             y.append(data_set[-1,:])
-        moments  = museuq.metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
+        moments  = uqra.metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
         print(np.mean(moments, axis=1))
         print(np.std(moments, axis=1))
 
@@ -56,7 +56,7 @@ class BasicTestSuite(unittest.TestCase):
             filename  = 'DoE_McsE6R{:d}_PCE6_GLK.npy'.format(r)
             data_set  = np.load(os.path.join(data_dir, filename))
             y.append(data_set)
-        moments  = museuq.metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
+        moments  = uqra.metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
         print(np.mean(moments, axis=1))
         print(np.std(moments, axis=1))
 
@@ -66,7 +66,7 @@ class BasicTestSuite(unittest.TestCase):
             filename  = 'DoE_McsE6R{:d}_PCE9_OLS.npy'.format(r)
             data_set  = np.load(os.path.join(data_dir, filename))
             y.append(data_set)
-        moments  = museuq.metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
+        moments  = uqra.metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
         print(np.mean(moments, axis=1))
         print(np.std(moments, axis=1))
 
@@ -76,7 +76,7 @@ class BasicTestSuite(unittest.TestCase):
             filename  = 'DoE_McsE6R{:d}_PCE9_OLSLARS.npy'.format(r)
             data_set  = np.load(os.path.join(data_dir, filename))
             y.append(data_set)
-        moments  = museuq.metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
+        moments  = uqra.metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
         print(np.mean(moments, axis=1))
         print(np.std(moments, axis=1))
 
@@ -86,7 +86,7 @@ class BasicTestSuite(unittest.TestCase):
             filename  = 'DoE_McsE6R{:d}_PCE9_LASSOLARS.npy'.format(r)
             data_set  = np.load(os.path.join(data_dir, filename))
             y.append(data_set)
-        moments  = museuq.metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
+        moments  = uqra.metrics.moment(np.array(y),moment=[1,2,3,4], axis=1, multioutput='raw_values')
         print(np.mean(moments, axis=1))
         print(np.std(moments, axis=1))
 
@@ -132,7 +132,7 @@ class BasicTestSuite(unittest.TestCase):
             reg1.fit(X_train, y_train)
             y_pred = reg1.predict(X_test)
             residual.append(y_test[0] - y_pred[0])
-            # mse.append(museuq.metrics.mean_squared_error(y_test, y_pred))
+            # mse.append(uqra.metrics.mean_squared_error(y_test, y_pred))
         Q, R = np.linalg.qr(X)
         H = np.dot(Q, Q.T)
         h = np.diagonal(H)
@@ -143,20 +143,20 @@ class BasicTestSuite(unittest.TestCase):
         print(np.mean(np.array(residual)**2))
         print(np.mean(np.array(e)**2))
  
-        # print(museuq.metrics.leave_one_out_error(X,y,is_adjusted=False))
+        # print(uqra.metrics.leave_one_out_error(X,y,is_adjusted=False))
         # print(np.mean(mse))
         
     def test_QuadratureDesign(self):
         print('>>> 1D quadrature design:') 
 
         p   = 4
-        doe = museuq.QuadratureDesign(p, ndim=1, dist_names=['uniform',])
+        doe = uqra.QuadratureDesign(p, ndim=1, dist_names=['uniform',])
         doe.samples()
         print(' Legendre:')
         print('  {:<15s} : {}'.format('Abscissa', np.around(doe.u, 2)))
         print('  {:<15s} : {}'.format('Weights' , np.around(doe.w, 2)))
 
-        doe = museuq.QuadratureDesign(p, ndim=1, dist_names=['normal',])
+        doe = uqra.QuadratureDesign(p, ndim=1, dist_names=['normal',])
         doe.samples()
         print(' Hermite:')
         print('  {:<15s} : {}'.format('Abscissa', np.around(doe.u, 2)))
@@ -169,39 +169,39 @@ class BasicTestSuite(unittest.TestCase):
         scale = b - loc
         print(' Legendre ({},{})'.format(np.around(a,2), np.around(b,2)))
 
-        doe = museuq.QuadratureDesign(p, ndim=1, dist_names=['uniform',])
+        doe = uqra.QuadratureDesign(p, ndim=1, dist_names=['uniform',])
         doe.samples()
-        print(' From chaning inverval after museuq.doe:')
+        print(' From chaning inverval after uqra.doe:')
         print('  {:<15s} : {}'.format('Abscissa', np.around((b-a)/2*doe.u + (a+b)/2, 2)))
         print('  {:<15s} : {}'.format('Weights' , np.around((b-a)/2*doe.w, 2)))
         
-        doe = museuq.QuadratureDesign(p, ndim=1, dist_names=['uniform',], dist_theta=[(loc, scale)])
+        doe = uqra.QuadratureDesign(p, ndim=1, dist_names=['uniform',], dist_theta=[(loc, scale)])
         doe.samples()
-        print(' Directly from museuq.doe:')
+        print(' Directly from uqra.doe:')
         print('  {:<15s} : {}'.format('Abscissa', np.around(doe.u, 2)))
         print('  {:<15s} : {}'.format('Weights' , np.around(doe.w, 2)))
 
         print('>>> 2D quadrature design:') 
 
         p   = 4
-        doe = museuq.QuadratureDesign(p, ndim=2, dist_names=['uniform',])
+        doe = uqra.QuadratureDesign(p, ndim=2, dist_names=['uniform',])
         doe.samples()
         print(' Legendre:')
         print('  {:<15s} :\n {}'.format('Abscissa', np.around(doe.u, 2)))
         print('  {:<15s} :\n {}'.format('Weights' , np.around(doe.w, 2)))
 
-        doe = museuq.QuadratureDesign(p, ndim=2, dist_names=['normal',])
+        doe = uqra.QuadratureDesign(p, ndim=2, dist_names=['normal',])
         doe.samples()
         print(' Hermite:')
         print('  {:<15s} :\n {}'.format('Abscissa', np.around(doe.u, 2)))
         print('  {:<15s} :\n {}'.format('Weights' , np.around(doe.w, 2)))
 
     def test_RandomDesign(self):
-        doe = museuq.RandomDesign('MCS', n_samples=1e6, ndim=3, dist_names='uniform', dist_theta=[(-np.pi, 2*np.pi),]*3)
+        doe = uqra.RandomDesign('MCS', n_samples=1e6, ndim=3, dist_names='uniform', dist_theta=[(-np.pi, 2*np.pi),]*3)
         doe.samples()
 
     def test_LatinHyperCube(self):
-        doe = museuq.LHS(distributions=[sp.stats.norm,]*2)
+        doe = uqra.LHS(distributions=[sp.stats.norm,]*2)
         doe_u, doe_x = doe.samples(2000)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
@@ -209,7 +209,7 @@ class BasicTestSuite(unittest.TestCase):
         np.save('/Users/jinsongliu/BoxSync/PhD_UT/Working_Papers/AdaptiveSparsePCE_OED/Data/LHS_Normal_2000', doe_x)
 
 
-        # doe = museuq.LHS(n_samples=1e3,dist_names=['uniform', 'norm'],ndim=2,dist_theta=[(-1, 2*2), (2,1)])
+        # doe = uqra.LHS(n_samples=1e3,dist_names=['uniform', 'norm'],ndim=2,dist_theta=[(-1, 2*2), (2,1)])
         # doe.samples()
         # print(np.mean(doe.x, axis=1))
         # print(np.std(doe.x, axis=1))
@@ -229,7 +229,7 @@ class BasicTestSuite(unittest.TestCase):
         u_samples = dist_u.sample(100)
         basis = cp.orth_ttr(10,dist_u)
         X = basis(*u_samples).T
-        doe = museuq.OptimalDesign('D', n_samples=10)
+        doe = uqra.OptimalDesign('D', n_samples=10)
         doe_index = doe.samples(X, is_orth=True)
         doe_index = doe.adaptive(X, n_samples=10)
         print(doe_index)
@@ -261,7 +261,7 @@ class BasicTestSuite(unittest.TestCase):
                 # for ia in alpha:
                     # print('   >> Oversampling rate : {:.2f}'.format(ia))
                     # doe_size = min(int(len(basis)*ia), 10000)
-                    # doe = museuq.OptimalDesign('S', n_samples = doe_size )
+                    # doe = uqra.OptimalDesign('S', n_samples = doe_size )
                     # doe.samples(design_matrix, u=samples_u, is_orth=True)
                     # data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
                     # filename = os.path.join(data_dir, 'DoE_McsE6R{:d}_p{:d}_OptS{:d}'.format(r,iquad_orders,doe_size))
@@ -270,7 +270,7 @@ class BasicTestSuite(unittest.TestCase):
                 # for ia in alpha:
                     # print('   >> Oversampling rate : {:.2f}'.format(ia))
                     # doe_size = min(int(len(basis)*ia), 10000)
-                    # doe = museuq.OptimalDesign('D', n_samples = doe_size )
+                    # doe = uqra.OptimalDesign('D', n_samples = doe_size )
                     # doe.samples(design_matrix, u=samples_u, is_orth=True)
                     # data = np.concatenate((doe.I.reshape(1,-1),doe.u,samples_x[:,doe.I], samples_y[:,doe.I]), axis=0)
                     # filename = os.path.join(data_dir, 'DoE_McsE6R{:d}_p{:d}_OptD{:d}'.format(r,iquad_orders,doe_size))
@@ -290,11 +290,11 @@ class BasicTestSuite(unittest.TestCase):
         for idist2test, irule2test in zip(dists2test, rules2test):
             print('-'*50)
             print('>>> Gauss Quadrature with polynominal: {}'.format(const.DOE_RULE_FULL_NAMES[irule2test.lower()]))
-            museuq.blockPrint()
-            quad_doe = museuq.DoE('QUAD', irule2test, order2test, idist2test)
-            museuq_samples = quad_doe.get_samples()
+            uqra.blockPrint()
+            quad_doe = uqra.DoE('QUAD', irule2test, order2test, idist2test)
+            uqra_samples = quad_doe.get_samples()
             # quad_doe.disp()
-            museuq.enablePrint()
+            uqra.enablePrint()
             if irule2test == 'hem':
                 for i, iorder in enumerate(order2test):
                     print('>>> order : {}'.format(iorder))
@@ -302,20 +302,20 @@ class BasicTestSuite(unittest.TestCase):
                     print('{:<15s}: {}'.format('probabilist', np.around(coord1d_e,2)))
                     coord1d, weight1d = np.polynomial.hermite.hermgauss(iorder)
                     print('{:<15s}: {}'.format('physicist', np.around(coord1d,2)))
-                    print('{:<15s}: {}'.format('museuq', np.around(np.squeeze(museuq_samples[i][:-1,:]),2)))
+                    print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
 
             elif irule2test == 'leg':
                 for i, iorder in enumerate(order2test):
                     print('>>> order : {}'.format(iorder))
                     coord1d, weight1d = np.polynomial.legendre.leggauss(iorder)
                     print('{:<15s}: {}'.format('numpy ', np.around(coord1d,2)))
-                    print('{:<15s}: {}'.format('museuq', np.around(np.squeeze(museuq_samples[i][:-1,:]),2)))
+                    print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
             elif irule2test == 'lag':
                 for i, iorder in enumerate(order2test):
                     print('>>> order : {}'.format(iorder))
                     coord1d, weight1d = np.polynomial.laguerre.laggauss(iorder)
                     print('{:<15s}: {}'.format('numpy ', np.around(coord1d,2)))
-                    print('{:<15s}: {}'.format('museuq', np.around(np.squeeze(museuq_samples[i][:-1,:]),2)))
+                    print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
             elif irule2test == 'jacobi':
                 print('NOT TESTED YET')
 
@@ -335,28 +335,28 @@ class BasicTestSuite(unittest.TestCase):
             for ipoly_order in npoly_orders:
                 print('  Polynomial order: {:d}'.format(ipoly_order))
                 ## gPCE with hermite chaos
-                museuq.blockPrint()
-                quad_doe = museuq.DoE('QUAD', 'hem', [ipoly_order+1], dist_zeta0)
+                uqra.blockPrint()
+                quad_doe = uqra.DoE('QUAD', 'hem', [ipoly_order+1], dist_zeta0)
                 samples_zeta= quad_doe.get_samples()
                 zeta_cor, zeta_weight = samples_zeta[0]
                 zeta_cor = zeta_cor.reshape((len(dist_zeta0),-1))
                 x_cor = igpce_dist.inv(dist_zeta0.cdf(zeta_cor))
                 zeta_poly, zeta_norms = cp.orth_ttr(ipoly_order, dist_zeta0, retall=True)
                 x_hat,coeffs = cp.fit_quadrature(zeta_poly, zeta_cor, zeta_weight,np.squeeze(x_cor),retall=True)
-                museuq.enablePrint()
+                uqra.enablePrint()
 
                 print('\t Hermite: {}'.format( np.around(coeffs,4)))
 
                 ## gPCE with optimal chaos
-                museuq.blockPrint()
-                quad_doe = museuq.DoE('QUAD', gpce_opt_rule[i], [ipoly_order+1], dist_zeta1)
+                uqra.blockPrint()
+                quad_doe = uqra.DoE('QUAD', gpce_opt_rule[i], [ipoly_order+1], dist_zeta1)
                 samples_zeta= quad_doe.get_samples()
                 zeta_cor, zeta_weight = samples_zeta[0]
                 zeta_cor = zeta_cor.reshape((len(dist_zeta1),-1))
                 x_cor = igpce_dist.inv(dist_zeta1.cdf(zeta_cor))
                 zeta_poly, zeta_norms = cp.orth_ttr(ipoly_order, dist_zeta1, retall=True)
                 x_hat,coeffs = cp.fit_quadrature(zeta_poly, zeta_cor, zeta_weight, np.squeeze(x_cor), retall=True)
-                museuq.enablePrint()
+                uqra.enablePrint()
                 print('\t Optimal: {}'.format( np.around(coeffs,4)))
 
     def test_PowerSpectrum(self):
@@ -583,7 +583,7 @@ class BasicTestSuite(unittest.TestCase):
 
         # ### grid points
         # x           = np.linspace(-10,20,600).reshape((1,-1))
-        # solver      = museuq.Solver(model_name, x)
+        # solver      = uqra.Solver(model_name, x)
         # y           = solver.run()
         # res         = np.concatenate((x,y), axis=0)
         # np.save(os.path.join(data_dir,model_name.lower()), res)
@@ -594,7 +594,7 @@ class BasicTestSuite(unittest.TestCase):
             data_set = np.load(os.path.join(data_dir, filename))
             zeta     = data_set[0,:].reshape(1,-1)
             x        = data_set[1,:].reshape(1,-1)
-            solver   = museuq.Solver(model_name, x)
+            solver   = uqra.Solver(model_name, x)
             y        = solver.run()
             np.save(os.path.join(data_dir,'DoE_McRE6R{:d}_y_None.npy'.format(r)), y)
 
@@ -605,44 +605,44 @@ class BasicTestSuite(unittest.TestCase):
         np.random.seed(100)
         # x      = (Hs,Tp) = np.array((4, 12)).reshape(2,1)
         x      = (Hs,Tp) = np.arange(12).reshape(2,-1)
-        solver = museuq.linear_oscillator()
+        solver = uqra.linear_oscillator()
         print(solver)
         y_raw, y_QoI = solver.run(x)
         # print(y_raw.shape)
         # print(y_QoI.shape)
 
         # x = np.arange(30).reshape(3,10)
-        # solver = museuq.Ishigami()
+        # solver = uqra.Ishigami()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
 
         # x = np.arange(30)
-        # solver = museuq.xsinx()
+        # solver = uqra.xsinx()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
 
         # x = np.arange(30)
-        # solver = museuq.poly4th()
+        # solver = uqra.poly4th()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
 
         # x = np.arange(30).reshape(2,15)
-        # solver = museuq.polynomial_square_root_function()
+        # solver = uqra.polynomial_square_root_function()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
 
         # x = np.arange(30).reshape(2,15)
-        # solver = museuq.four_branch_system()
+        # solver = uqra.four_branch_system()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
 
         # x = np.arange(30).reshape(2,15)
-        # solver = museuq.polynomial_product_function()
+        # solver = uqra.polynomial_product_function()
         # solver.run(x)
         # print(solver)
         # print(solver.y.shape)
@@ -664,7 +664,7 @@ class BasicTestSuite(unittest.TestCase):
         # k       = (omega_n/2/np.pi) **2 * m 
         # c       = zeta * 2 * np.sqrt(m * k)
         # mck     = (m,c,k)
-        # solver  = museuq.Solver(model_name, x)
+        # solver  = uqra.Solver(model_name, x)
         # y       = solver.run(**kwargs) 
 
         # data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
@@ -672,11 +672,11 @@ class BasicTestSuite(unittest.TestCase):
 
         # ## run solver for EC cases
         # P, nsim     = 10, 25
-        # data_dir    = '/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/environment'
+        # data_dir    = '/Users/jinsongliu/BoxSync/MUSELab/uqra/uqra/environment'
         # data_set    = np.load(os.path.join(data_dir, 'Kvitebjørn_EC_P{:d}.npy'.format(P)))
         # EC_x        = data_set[2:,:]
         # model_name  = 'linear_oscillator'
-        # solver      = museuq.Solver(model_name, EC_x)
+        # solver      = uqra.Solver(model_name, EC_x)
         # EC_y        = np.array([solver.run(doe_method = 'EC') for _ in range(nsim)])
 
         # data_dir    = '/Users/jinsongliu/External/MUSE_UQ_DATA/linear_oscillator/Data'
@@ -688,7 +688,7 @@ class BasicTestSuite(unittest.TestCase):
         # filename    = 'HsTp_grid118.npy'
         # data_set    = np.load(os.path.join(data_dir, filename))
         # model_name  = 'linear_oscillator'
-        # solver      = museuq.Solver(model_name, data_set)
+        # solver      = uqra.Solver(model_name, data_set)
         # grid_out    = np.array([solver.run(doe_method = 'GRID') for _ in range(nsim)])
         # np.save(os.path.join(data_dir,'HsTp_grid118_out'), grid_out)
 
@@ -696,17 +696,17 @@ class BasicTestSuite(unittest.TestCase):
         # x_samples = data_set[2:,:]
 
         # model_name  = 'linear_oscillator'
-        # solver      = museuq.Solver(model_name, x_samples)
+        # solver      = uqra.Solver(model_name, x_samples)
         # kwargs      = {'doe_method': 'MCS'}
         # samples_y   = solver.run(**kwargs )
         # np.save('test_linear_oscillator_y', samples_y)
         # # filename_tags = ['R0']
         # # filename_tags = [itag+'_y' for itag in filename_tags]
-        # # museuq_dataio.save_data(samples_y, 'test_linear_oscillator', os.getcwd(), filename_tags)
+        # # uqra_dataio.save_data(samples_y, 'test_linear_oscillator', os.getcwd(), filename_tags)
         # samples_y_stats = solver.get_stats()
         # np.save('test_linear_oscillator_y_stats', samples_y_stats)
         # # filename_tags = [itag+'_y_stats' for itag in filename_tags]
-        # # museuq_dataio.save_data(samples_y_stats, 'test_linear_oscillator', os.getcwd(), filename_tags)
+        # # uqra_dataio.save_data(samples_y_stats, 'test_linear_oscillator', os.getcwd(), filename_tags)
 
     def test_surrogate_model(self):
         print('========================TESTING: SurrogateModel.fit(), ~Normal =======================')
@@ -734,22 +734,22 @@ class BasicTestSuite(unittest.TestCase):
         fit_method  = 'GLK'
         for isolver , isolver_str in zip(solvers2test, solver_strs):
             for ipoly_order in poly_orders:
-                # museuq.blockPrint()
-                doe = museuq.QuadratureDesign(ipoly_order+1, ndim = 1, dist_names=['normal'])
+                # uqra.blockPrint()
+                doe = uqra.QuadratureDesign(ipoly_order+1, ndim = 1, dist_names=['normal'])
                 doe.samples()
                 doe.x = doe.u
                 train_y = np.squeeze(isolver(doe.x))
                 train_y = np.array([train_y,train_y]).T
-                pce_model  = museuq.PCE(ipoly_order, dist_zeta)
+                pce_model  = uqra.PCE(ipoly_order, dist_zeta)
                 print(len(pce_model.basis[0]))
                 pce_model.fit(doe.u, train_y, w=doe.w, fit_method=fit_method)
                 pce_model.predict(doe.u, train_y, metrics=metrics2cal, prob=upper_tail_probs, moment=moment2cal, sample_weight=sample_weight, multioutput=multioutput)
                 # pce_model.fit(x_train, y_train, weight=x_weight)
-                # museuq.enablePrint()
+                # uqra.enablePrint()
                 # pce_model_scores = pce_model.score(x_train, y_train, metrics=metrics, moment=np.arange(1,5))
                 # print('Target: {}'.format(isolver_str))
                 # for i, ipoly_coeffs in enumerate(pce_model.poly_coeffs):
-                    # print('{:<6s}: {}'.format('museuq'*(i==0), np.around(ipoly_coeffs,4)))
+                    # print('{:<6s}: {}'.format('uqra'*(i==0), np.around(ipoly_coeffs,4)))
 
     def test_LassoLars(self):
         from sklearn import linear_model
@@ -764,7 +764,7 @@ class BasicTestSuite(unittest.TestCase):
         y_samples = solver3(u_samples)
         print('y mean: {}'.format(np.mean(y_samples)))
 
-        pce_model = museuq.PCE(10,dist_u)
+        pce_model = uqra.PCE(10,dist_u)
         pce_model.fit(u_samples, y_samples, method='LassoLars')
         # print(pce_model.active_)
         # print(pce_model.metamodels)
@@ -781,7 +781,7 @@ class BasicTestSuite(unittest.TestCase):
     def test_Kvitebjorn(self):
         print('========================TESTING: Kvitebjorn =======================')
 
-        data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/environment'
+        data_dir = '/Users/jinsongliu/BoxSync/MUSELab/uqra/uqra/environment'
         # hs1     = np.linspace(0,2.9,291)
         # hs2     = np.linspace(2.90,20, 1711)
         # hs      = np.hstack((hs1, hs2))
@@ -823,26 +823,26 @@ class BasicTestSuite(unittest.TestCase):
             # for ipoly_order in npoly_orders:
                 # print('  Polynomial order: {:d}'.format(ipoly_order))
                 # ## gPCE with hermite chaos
-                # museuq.blockPrint()
-                # quad_doe = museuq.DoE('QUAD', 'hem', [ipoly_order+1], dist_zeta0)
+                # uqra.blockPrint()
+                # quad_doe = uqra.DoE('QUAD', 'hem', [ipoly_order+1], dist_zeta0)
                 # samples_zeta= quad_doe.get_samples()
                 # zeta_cor, zeta_weight = samples_zeta[0]
                 # x_cor = igpce_dist.inv(dist_zeta0.cdf(zeta_cor))
                 # zeta_poly, zeta_norms = cp.orth_ttr(ipoly_order, dist_zeta0, retall=True)
                 # x_hat,coeffs = cp.fit_quadrature(zeta_poly, zeta_cor, zeta_weight, np.squeeze(x_cor), retall=True)
-                # museuq.enablePrint()
+                # uqra.enablePrint()
                 # print('\t Hermite: {}'.format( np.around(coeffs,4)))
 
 
                 # ## gPCE with optimal chaos
-                # museuq.blockPrint()
-                # quad_doe = museuq.DoE('QUAD', gpce_opt_rule[i], [ipoly_order+1], dist_zeta1)
+                # uqra.blockPrint()
+                # quad_doe = uqra.DoE('QUAD', gpce_opt_rule[i], [ipoly_order+1], dist_zeta1)
                 # samples_zeta= quad_doe.get_samples()
                 # zeta_cor, zeta_weight = samples_zeta[0]
                 # x_cor = igpce_dist.inv(dist_zeta1.cdf(zeta_cor))
                 # zeta_poly, zeta_norms = cp.orth_ttr(ipoly_order, dist_zeta1, retall=True)
                 # x_hat,coeffs = cp.fit_quadrature(zeta_poly, zeta_cor, zeta_weight, np.squeeze(x_cor), retall=True)
-                # museuq.enablePrint()
+                # uqra.enablePrint()
                 # print('\t Optimal: {}'.format( np.around(coeffs,4)))
     def test_surrogate_model_scores(self):
         print('========================TESTING: SurrogateModel.scores() =======================')

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-import museuq, unittest,warnings,os, sys, math
+import uqra, unittest,warnings,os, sys, math
 from tqdm import tqdm
 import time
 import numpy as np, scipy as sp 
 
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def cdf_chebyshev(x):
     """
@@ -17,21 +17,21 @@ class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
     def test_experimentBase(self):
-        doe = museuq.experiment._experimentbase.ExperimentBase()
+        doe = uqra.experiment._experimentbase.ExperimentBase()
         print(doe.ndim)
         print(doe.samplingfrom)
 
     def test_RandomDesign(self):
         print('Testing: Random Monte Carlo...')
         print('testing: d=1, theta: default')
-        doe = museuq.RandomDesign(sp.stats.norm, 'MCS')
+        doe = uqra.RandomDesign(sp.stats.norm, 'MCS')
         doe_x = doe.samples(n_samples=1e5)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
 
         print('testing: d=2, theta: default[0,1], same distribution')
-        doe = museuq.RandomDesign([sp.stats.norm,]*2, 'MCS')
+        doe = uqra.RandomDesign([sp.stats.norm,]*2, 'MCS')
         doe_x = doe.samples(n_samples=1e5)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
@@ -39,7 +39,7 @@ class BasicTestSuite(unittest.TestCase):
 
 
         print('testing: d=1, theta: default[[0,1]]')
-        doe = museuq.RandomDesign(sp.stats.norm, 'MCS')
+        doe = uqra.RandomDesign(sp.stats.norm, 'MCS')
         doe_x = doe.samples(n_samples=1e5, theta=[[0,1]])
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
@@ -47,14 +47,14 @@ class BasicTestSuite(unittest.TestCase):
 
 
         print('testing: d=2, theta: default[[0,1]]')
-        doe = museuq.RandomDesign([sp.stats.norm,]*2, 'MCS')
+        doe = uqra.RandomDesign([sp.stats.norm,]*2, 'MCS')
         doe_x = doe.samples(n_samples=1e5, theta=[[0,1]])
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
 
         print('testing: d=2, theta: default[[0,1], [2,3]]')
-        doe = museuq.RandomDesign([sp.stats.norm,]*2, 'MCS')
+        doe = uqra.RandomDesign([sp.stats.norm,]*2, 'MCS')
         doe_x = doe.samples(n_samples=1e5, theta=[[0,1], [2,3]])
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
@@ -62,8 +62,8 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_LatinHyperCube(self):
         print('Testing: Latin Hypercube...')
-        # doe = museuq.LHS([sp.stats.norm(0,1),]*2)
-        doe = museuq.LHS([sp.stats.uniform(-1,2),]*2)
+        # doe = uqra.LHS([sp.stats.norm(0,1),]*2)
+        doe = uqra.LHS([sp.stats.uniform(-1,2),]*2)
         doe_u, doe_x = doe.samples(256)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
@@ -88,7 +88,7 @@ class BasicTestSuite(unittest.TestCase):
 
         curr_set = []
         for p in np.array([10]):
-            orth_poly = museuq.Hermite(d=ndim,deg=p)
+            orth_poly = uqra.Hermite(d=ndim,deg=p)
             n_cand    = int(1e5)
             u_samples = data_set[0:ndim, :n_cand]
             design_matrix = orth_poly.vandermonde(u_samples)
@@ -97,7 +97,7 @@ class BasicTestSuite(unittest.TestCase):
             # n_budget  =  int(np.exp2(math.ceil(np.log2(design_matrix.shape[1]))))
             
             start    = time.time()
-            doe      = museuq.OptimalDesign('D', curr_set=curr_set)
+            doe      = uqra.OptimalDesign('D', curr_set=curr_set)
             doe_index= doe.samples(design_matrix, n_samples=n_budget, orth_basis=True)
             print(doe_index)
             done     = time.time()
@@ -108,7 +108,7 @@ class BasicTestSuite(unittest.TestCase):
 
         # print('Testing: Random Sampling from Pluripotential Equilibrium ...')
         # print('testing: d=1, theta: default')
-        # doe = museuq.RandomDesign(sp.stats.uniform, 'CLS')
+        # doe = uqra.RandomDesign(sp.stats.uniform, 'CLS')
         # doe_x = doe.get_samples(n_samples=1e5)
         # print(doe_x.shape)
         # print(np.mean(doe_x, axis=1))
@@ -119,7 +119,7 @@ class BasicTestSuite(unittest.TestCase):
 
         # print('Testing: Random Sampling from Pluripotential Equilibrium ...')
         # print('testing: d=2, theta: default')
-        # doe = museuq.RandomDesign( [sp.stats.uniform,] * 2, 'CLS')
+        # doe = uqra.RandomDesign( [sp.stats.uniform,] * 2, 'CLS')
         # doe_x = doe.samples(n_samples=1e5)
         # print(doe_x.shape)
         # print(np.mean(doe_x, axis=1))
@@ -130,7 +130,7 @@ class BasicTestSuite(unittest.TestCase):
         # print('Testing: Random Sampling from Pluripotential Equilibrium ...')
         # ndim = 1
         # print('testing: d={:d}, theta: default'.format(ndim))
-        # doe = museuq.RandomDesign( [sp.stats.norm,] *ndim, 'CLS')
+        # doe = uqra.RandomDesign( [sp.stats.norm,] *ndim, 'CLS')
         # doe_x = doe.get_samples(n_samples=1e5)
         # print(doe_x.shape)
         # print(np.mean(doe_x, axis=1))
@@ -143,7 +143,7 @@ class BasicTestSuite(unittest.TestCase):
         print('\nTesting: Random Sampling from Pluripotential Equilibrium ...')
         ndim = 3
         print('testing: d={:d}, theta: default'.format(ndim))
-        doe = museuq.RandomDesign( [sp.stats.norm,] *ndim, 'CLS')
+        doe = uqra.RandomDesign( [sp.stats.norm,] *ndim, 'CLS')
         doe_x = doe.get_samples(n_samples=1e7)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
@@ -164,7 +164,7 @@ class BasicTestSuite(unittest.TestCase):
         ndim = 4
         print('testing: d={:d}, theta: default'.format(ndim))
         for i in range(10):
-            doe = museuq.RandomDesign( [sp.stats.norm,] * ndim, 'CLS')
+            doe = uqra.RandomDesign( [sp.stats.norm,] * ndim, 'CLS')
             doe_x = doe.get_samples(n_samples=1e7)
             np.save('DoE_ClsE6d{:d}R{:d}.npy'.format(ndim,i), doe_x)
         print(doe_x.shape)
@@ -190,9 +190,9 @@ class BasicTestSuite(unittest.TestCase):
             mean_kappa = []
             for _ in range(1):
                 np.random.seed(100)
-                orth_poly = museuq.Legendre(d=ndim,deg=p)
-                # orth_poly = museuq.Hermite(d=ndim,deg=p, hem_type='physicists')
-                doe     = museuq.OptimalDesign('S', selected_index=[3284,])
+                orth_poly = uqra.Legendre(d=ndim,deg=p)
+                # orth_poly = uqra.Hermite(d=ndim,deg=p, hem_type='physicists')
+                doe     = uqra.OptimalDesign('S', selected_index=[3284,])
                 X       = orth_poly.vandermonde(x_cand)
                 idx     = doe.get_samples(X, n=math.ceil(1.2 * orth_poly.num_basis), orth_basis=True)
                 print('adding:')
@@ -220,11 +220,11 @@ class BasicTestSuite(unittest.TestCase):
         # for idist2test, irule2test in zip(dists2test, rules2test):
             # print('-'*50)
             # print('>>> Gauss Quadrature with polynominal: {}'.format(const.DOE_RULE_FULL_NAMES[irule2test.lower()]))
-            # museuq.blockPrint()
-            # quad_doe = museuq.DoE('QUAD', irule2test, order2test, idist2test)
-            # museuq_samples = quad_doe.get_samples()
+            # uqra.blockPrint()
+            # quad_doe = uqra.DoE('QUAD', irule2test, order2test, idist2test)
+            # uqra_samples = quad_doe.get_samples()
             # # quad_doe.disp()
-            # museuq.enablePrint()
+            # uqra.enablePrint()
             # if irule2test == 'hem':
                 # for i, iorder in enumerate(order2test):
                     # print('>>> order : {}'.format(iorder))
@@ -232,20 +232,20 @@ class BasicTestSuite(unittest.TestCase):
                     # print('{:<15s}: {}'.format('probabilist', np.around(coord1d_e,2)))
                     # coord1d, weight1d = np.polynomial.hermite.hermgauss(iorder)
                     # print('{:<15s}: {}'.format('physicist', np.around(coord1d,2)))
-                    # print('{:<15s}: {}'.format('museuq', np.around(np.squeeze(museuq_samples[i][:-1,:]),2)))
+                    # print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
 
             # elif irule2test == 'leg':
                 # for i, iorder in enumerate(order2test):
                     # print('>>> order : {}'.format(iorder))
                     # coord1d, weight1d = np.polynomial.legendre.leggauss(iorder)
                     # print('{:<15s}: {}'.format('numpy ', np.around(coord1d,2)))
-                    # print('{:<15s}: {}'.format('museuq', np.around(np.squeeze(museuq_samples[i][:-1,:]),2)))
+                    # print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
             # elif irule2test == 'lag':
                 # for i, iorder in enumerate(order2test):
                     # print('>>> order : {}'.format(iorder))
                     # coord1d, weight1d = np.polynomial.laguerre.laggauss(iorder)
                     # print('{:<15s}: {}'.format('numpy ', np.around(coord1d,2)))
-                    # print('{:<15s}: {}'.format('museuq', np.around(np.squeeze(museuq_samples[i][:-1,:]),2)))
+                    # print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
             # elif irule2test == 'jacobi':
                 # print('NOT TESTED YET')
 

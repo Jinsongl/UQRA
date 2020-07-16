@@ -11,19 +11,19 @@
 """
 
 import context
-import museuq
+import uqra
 import numpy as np, chaospy as cp, os, sys
 import warnings
 from sklearn.gaussian_process.kernels import (RBF, Matern, RationalQuadratic,
                                               ExpSineSquared, DotProduct,
                                               ConstantKernel,WhiteKernel)
 from tqdm import tqdm
-from museuq.utilities import helpers as museuq_helpers 
-from museuq.utilities import metrics_collections as museuq_metrics
-from museuq.utilities import dataIO 
-from museuq.environment import Kvitebjorn
+from uqra.utilities import helpers as uqra_helpers 
+from uqra.utilities import metrics_collections as uqra_metrics
+from uqra.utilities import dataIO 
+from uqra.environment import Kvitebjorn
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def main():
     ## ------------------------ Parameters set-up ----------------------- ###
@@ -38,7 +38,7 @@ def main():
     ## 3. Define independent random variable in physical problems
     # dist_x = cp.Uniform(-np.pi, np.pi)
 
-    simparams = museuq.simParameters(model_name, dist_zeta)
+    simparams = uqra.simParameters(model_name, dist_zeta)
     # simparams.set_error()  # no observation error for sdof
     simparams.info()
 
@@ -46,13 +46,13 @@ def main():
     #### --------------------------------------------------------------------- ###
     #### ------------------------ Validation Data Set   ---------------------- ###
     #### --------------------------------------------------------------------- ###
-    # doe = museuq.RandomDesign('MCS', 1e6, ['normal'],ndim=1)
+    # doe = uqra.RandomDesign('MCS', 1e6, ['normal'],ndim=1)
     # doe.samples()
     # print(doe)
     # print(doe.x.shape)
     # print(doe.filename)
     # dataIO.save_data(doe.x, doe.filename, simparams.data_dir)
-    # solver = museuq.Solver(model_name)
+    # solver = uqra.Solver(model_name)
     # solver.run(doe.x)
     # np.save(os.path.join(simparams.data_dir, doe.filename+'_y'), solver.y)
     valid_x = np.load(os.path.join(simparams.data_dir, 'DoE_McsE6.npy')) 
@@ -60,7 +60,7 @@ def main():
     plot_x  = np.linspace(-10,20, 1000).reshape(1,-1)
     plot_u  = (plot_x - 5.0)/5.0 
 
-    solver  = museuq.Solver(model_name)
+    solver  = uqra.Solver(model_name)
     solver.run(plot_x)
     plot_y  = solver.y 
     np.save(os.path.join(simparams.data_dir, 'DoE_plot_x'), plot_x)
@@ -81,7 +81,7 @@ def main():
 
     #### ------------------------------ Run DOE ----------------------------- ###
     for idoe_order in range(2,6):
-        doe = museuq.QuadratureDesign('hem', idoe_order, len(dist_zeta))
+        doe = uqra.QuadratureDesign('hem', idoe_order, len(dist_zeta))
         doe.samples()
         doe.x = doe.u * 5 + 5
         print(doe)
@@ -89,7 +89,7 @@ def main():
         dataIO.save_data(doe_data, doe.filename, simparams.data_dir)
 
     #### ----------------------------- Run Solver -------------------------- ###
-        solver = museuq.Solver(model_name)
+        solver = uqra.Solver(model_name)
         solver.run(doe.x)
         np.save(os.path.join(simparams.data_dir, doe.filename+'_y'), solver.y)
     #### ----------------------- Build PCE Surrogate Model -------------------- ###
@@ -103,7 +103,7 @@ def main():
         # print('Train w: {}'.format(train_w.shape))
 
         ### ============ Get Surrogate Model for each QoI============
-        pce_model = museuq.PCE(idoe_order-1, dist_zeta)
+        pce_model = uqra.PCE(idoe_order-1, dist_zeta)
         pce_model.fit(train_u, train_y, w=train_w, fit_method=pce_fit_method)
 
         # pce_model.fit(train_x, train_y,fit_method=pce_fit_method)
@@ -156,14 +156,14 @@ def main():
 
         # test_doe_method, test_doe_rule, test_doe_orders, test_repeat = 'MC', 'R', 1e6, 10
         # # print( [test_doe_orders]*test_repeat)
-        # test_doe = museuq.DoE(test_doe_method, test_doe_rule, [test_doe_orders]*test_repeat)
+        # test_doe = uqra.DoE(test_doe_method, test_doe_rule, [test_doe_orders]*test_repeat)
         # # pbar = tqdm(range(data_test_params[1]), ascii=True, desc="   - ")
 
         # mcs_filenames = [ 'DoE_McRE6R{:d}.npy'.format(r) for r in range(10)] 
         # pbar = tqdm(mcs_filenames, ascii=True, desc="   - ")
 
         # for itest_tag, ifilename in zip(test_doe.filename_tags, pbar):
-            # museuq_helpers.blockPrint()
+            # uqra_helpers.blockPrint()
             # ### >>> option1: regenerate MCS samples randomly
             # # dist_zeta   = y_pce_model.kwparams['dist_zeta']
             # # zeta_mcs    = dist_zeta.sample(test_doe_orders, rule=test_doe_rule).reshape(1,-1)
@@ -176,13 +176,13 @@ def main():
             # data_pred   = np.array([eta_pred_mcs, y_pred_mcs])
             # filename_   = doe.filename + '{:s}_{:s}_pred_{:s}.npy'.format(itag, metamodel_class, itest_tag)
             # np.save(os.path.join(simparams.data_dir, filename_), data_pred)
-            # museuq_helpers.enablePrint()
+            # uqra_helpers.enablePrint()
 
-            # # # museuq_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
+            # # # uqra_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
             # # # print(' > Calculating ECDF of MCS data and retrieve data to plot...')
-            # # # eta_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
+            # # # eta_pred_mcs_ecdf = uqra_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
             # # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_eta.npy'.format(itag,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
-            # # # y_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
+            # # # y_pred_mcs_ecdf = uqra_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
             # # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_y.npy'.format(itag,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
 
 

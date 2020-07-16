@@ -10,7 +10,7 @@
 
 """
 import numpy as np
-import museuq
+import uqra
 import os
 
 def main():
@@ -22,7 +22,7 @@ def main():
     nsim = 1
     out_stats = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
     method = 'LSODA'
-    solver = museuq.duffing_oscillator(m=1,c=0.02,k=1,s=5,out_responses=out_responses, excitation=f,out_stats=out_stats, tmax=18000, dt=dt,y0=[0,0], method=method)
+    solver = uqra.duffing_oscillator(m=1,c=0.02,k=1,s=5,out_responses=out_responses, excitation=f,out_stats=out_stats, tmax=18000, dt=dt,y0=[0,0], method=method)
     print(solver)
     data_dir_src    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal/'
     data_dir_destn  = r'/Volumes/External/MUSE_UQ_DATA/Duffing/Data/' 
@@ -44,7 +44,7 @@ def main():
     # np.random.seed(100)
     # out_responses = [1,2]
     # out_stats = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
-    # solver = museuq.linear_oscillator(out_responses=out_responses, out_stats=out_stats)
+    # solver = uqra.linear_oscillator(out_responses=out_responses, out_stats=out_stats)
     # print()
     # data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal/'
     # for r in range(10):

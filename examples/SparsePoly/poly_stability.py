@@ -9,14 +9,14 @@
 """
 
 """
-import museuq, warnings, random, math
+import uqra, warnings, random, math
 import numpy as np, os, sys
 import collections
 import scipy.stats as stats
 from scipy import sparse
 from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def sparse_poly_coef_error(solver, model, normord=np.inf):
     beta    = np.array(solver.coef, copy=True)
@@ -54,7 +54,7 @@ def main():
     np.random.seed(100)
     ndim = 2
     ## ------------------------ Simulation Parameters ----------------- ###
-    simparams = museuq.Parameters()
+    simparams = uqra.Parameters()
     simparams.pce_degs   = np.array(range(21,31))
     simparams.n_cand     = int(1e5)
     simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
@@ -74,17 +74,17 @@ def main():
     data_p = []
     for p in simparams.pce_degs:
         ## ------------------------ Define solver ----------------------- ###
-        orth_poly   = museuq.Legendre(d=ndim, deg=p)
-        # orth_poly   = museuq.Hermite(d=ndim, deg=p, hem_type=simparams.hem_type)
-        solver      = museuq.SparsePoly(orth_poly, sparsity='full', seed=100)
+        orth_poly   = uqra.Legendre(d=ndim, deg=p)
+        # orth_poly   = uqra.Hermite(d=ndim, deg=p, hem_type=simparams.hem_type)
+        solver      = uqra.SparsePoly(orth_poly, sparsity='full', seed=100)
         simparams.solver = solver
         simparams.update()
         simparams.info()
         ## ----------- Define PCE  ----------- ###
-        pce_model= museuq.PCE(orth_poly)
+        pce_model= uqra.PCE(orth_poly)
         pce_model.info()
 
-        modeling = museuq.Modeling(solver, pce_model, simparams)
+        modeling = uqra.Modeling(solver, pce_model, simparams)
         # modeling.sample_selected=[]
 
         print('\n================================================================================')
@@ -116,7 +116,7 @@ def main():
 
         for i, n in enumerate(simparams.num_samples):
             ### ============ Initialize pce_model for each n ============
-            pce_model= museuq.PCE(orth_poly)
+            pce_model= uqra.PCE(orth_poly)
             ### ============ Get training points ============
             u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
             # n = n - len(modeling.sample_selected)

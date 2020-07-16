@@ -9,13 +9,13 @@
 """
 
 """
-import museuq, warnings, random, math
+import uqra, warnings, random, math
 import numpy as np, os, sys
 import collections
 import scipy.stats as stats
 from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def main():
 
@@ -26,23 +26,23 @@ def main():
     pf          = [1e-4, 1e-5, 1e-6]
     np.random.seed(100)
     ## ------------------------ Define solver ----------------------- ###
-    # solver      = museuq.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
-    # solver      = museuq.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
-    # solver      = museuq.CornerPeak(stats.uniform(-1,2), d=2)
-    # solver      = museuq.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
-    # solver      = museuq.Franke()
-    # solver      = museuq.Ishigami()
+    # solver      = uqra.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
+    # solver      = uqra.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
+    # solver      = uqra.CornerPeak(stats.uniform(-1,2), d=2)
+    # solver      = uqra.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
+    # solver      = uqra.Franke()
+    # solver      = uqra.Ishigami()
 
-    # solver      = museuq.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
-    # solver      = museuq.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
-    # solver      = museuq.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
-    # solver      = museuq.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
-    # solver      = museuq.ExpSum(stats.norm(0,1), d=3)
-    # solver      = museuq.FourBranchSystem()
+    # solver      = uqra.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
+    # solver      = uqra.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
+    # solver      = uqra.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
+    # solver      = uqra.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
+    # solver      = uqra.ExpSum(stats.norm(0,1), d=3)
+    # solver      = uqra.FourBranchSystem()
 
 
     ## ------------------------ Simulation Parameters ----------------- ###
-    simparams = museuq.Parameters()
+    simparams = uqra.Parameters()
     # simparams.solver     = solver
     simparams.pce_degs   = np.array([20,23,25,30])
     simparams.n_cand     = int(1e5)
@@ -70,12 +70,12 @@ def main():
         # print('     - {:<23s} : {}'.format('Optimality '      , simparams.optimality))
         # print('     - {:<23s} : {}'.format('Fitting method'   , simparams.fit_method))
         ## ----------- Define PCE  ----------- ###
-        # orth_poly= museuq.Legendre(d=solver.ndim, deg=p)
-        orth_poly= museuq.Hermite(d=2, deg=p, hem_type=simparams.hem_type)
-        pce_model= museuq.PCE(orth_poly)
+        # orth_poly= uqra.Legendre(d=solver.ndim, deg=p)
+        orth_poly= uqra.Hermite(d=2, deg=p, hem_type=simparams.hem_type)
+        pce_model= uqra.PCE(orth_poly)
         # pce_model.info()
 
-        # modeling = museuq.Modeling(solver, pce_model, simparams)
+        # modeling = uqra.Modeling(solver, pce_model, simparams)
         # modeling.sample_selected=[]
 
         ## ----------- Candidate and testing data set for DoE ----------- ###
@@ -104,7 +104,7 @@ def main():
         data_nsample = []
         for i, n in enumerate(simparams.num_samples):
             ### ============ Initialize pce_model for each n ============
-            pce_model= museuq.PCE(orth_poly)
+            pce_model= uqra.PCE(orth_poly)
             ### ============ Get training points ============
             # _, u_train = modeling.get_train_data((repeats,n), u_cand_p, u_train=None, basis=pce_model.basis)
             u_train = stats.norm.rvs(0,1,size=(repeats, 2,n))

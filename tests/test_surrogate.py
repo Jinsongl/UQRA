@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import museuq, unittest,warnings,os, sys 
+import uqra, unittest,warnings,os, sys 
 from tqdm import tqdm
 import numpy as np, chaospy as cp, scipy as sp 
-from museuq.solver.PowerSpectrum import PowerSpectrum
-from museuq.environment import Kvitebjorn as Kvitebjorn
+from uqra.solver.PowerSpectrum import PowerSpectrum
+from uqra.environment import Kvitebjorn as Kvitebjorn
 from sklearn import datasets
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
@@ -12,7 +12,7 @@ import pickle
 import scipy.stats as stats
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
@@ -20,8 +20,8 @@ class BasicTestSuite(unittest.TestCase):
     def test_pce(self):
         print('========================TESTING: PCE.fit_quadrature(), ~Normal d=1=======================')
         d, p = 1, 10
-        solver1 = museuq.Hermite(d,p) 
-        doe_x, doe_w = museuq.QuadratureDesign(solver1).samples(11)
+        solver1 = uqra.Hermite(d,p) 
+        doe_x, doe_w = uqra.QuadratureDesign(solver1).samples(11)
         # x = np.linspace(-3,3,100)
         for i in range(solver1.num_basis):
             coef = np.zeros((solver1.num_basis,)) 
@@ -30,7 +30,7 @@ class BasicTestSuite(unittest.TestCase):
             solver1.set_coef(coef)
             y = solver1(doe_x)
             # print(y)
-            pce_model  = museuq.PCE([stats.norm,]*d, p)
+            pce_model  = uqra.PCE([stats.norm,]*d, p)
             pce_model.fit_quadrature(doe_x, doe_w, y)
             # print('>> Coefficients: ')
             # print('     True model: {}'.format(solver1))
@@ -45,8 +45,8 @@ class BasicTestSuite(unittest.TestCase):
 
         print('========================TESTING: PCE.fit_quadrature(), ~Normal d=2=======================')
         d, p = 2, 5
-        solver1 = museuq.Hermite(d,p) 
-        doe_x, doe_w = museuq.QuadratureDesign(solver1).samples(6)
+        solver1 = uqra.Hermite(d,p) 
+        doe_x, doe_w = uqra.QuadratureDesign(solver1).samples(6)
         # x = np.linspace(-3,3,100)
         for i in range(solver1.num_basis):
             coef = np.zeros((solver1.num_basis,)) 
@@ -55,7 +55,7 @@ class BasicTestSuite(unittest.TestCase):
             solver1.set_coef(coef)
             y = solver1(doe_x)
             # print(y)
-            pce_model  = museuq.PCE([stats.norm,]*d, p)
+            pce_model  = uqra.PCE([stats.norm,]*d, p)
             pce_model.fit_quadrature(doe_x, doe_w, y)
             # print('>> Coefficients: ')
             # print('     True model: {}'.format(solver1))
@@ -70,8 +70,8 @@ class BasicTestSuite(unittest.TestCase):
 
         print('===================TESTING: PCE.fit_quadrature(), ~Normal d=2, random coef==================')
         d, p = 2, 5
-        solver1 = museuq.Hermite(d,p) 
-        doe_x, doe_w = museuq.QuadratureDesign(solver1).samples(6)
+        solver1 = uqra.Hermite(d,p) 
+        doe_x, doe_w = uqra.QuadratureDesign(solver1).samples(6)
         # x = np.linspace(-3,3,100)
         for i in range(solver1.num_basis):
             coef = np.random.normal(size=(solver1.num_basis,)) 
@@ -79,7 +79,7 @@ class BasicTestSuite(unittest.TestCase):
             solver1.set_coef(coef)
             y = solver1(doe_x)
             # print(y)
-            pce_model  = museuq.PCE([stats.norm,]*d, p)
+            pce_model  = uqra.PCE([stats.norm,]*d, p)
             pce_model.fit_quadrature(doe_x, doe_w, y)
             print('>> Coefficients: ')
             print('     True model: {}'.format(solver1))
@@ -94,8 +94,8 @@ class BasicTestSuite(unittest.TestCase):
 
         print('========================TESTING: PCE.fit_quadrature(), ~Uniform(-1,1) d=1=======================')
         d, p = 1, 10
-        solver1 = museuq.Legendre(d,p) 
-        doe_x, doe_w = museuq.QuadratureDesign(solver1).samples(11)
+        solver1 = uqra.Legendre(d,p) 
+        doe_x, doe_w = uqra.QuadratureDesign(solver1).samples(11)
         # x = np.linspace(-3,3,100)
         for i in range(solver1.num_basis):
             coef = np.zeros((solver1.num_basis,)) 
@@ -104,7 +104,7 @@ class BasicTestSuite(unittest.TestCase):
             solver1.set_coef(coef)
             y = solver1(doe_x)
             # print(y)
-            pce_model  = museuq.PCE([stats.uniform(-1,1),]*d, p)
+            pce_model  = uqra.PCE([stats.uniform(-1,1),]*d, p)
             pce_model.fit_quadrature(doe_x, doe_w, y)
             print('>> Coefficients: ')
             print('     True model: {}'.format(solver1))
@@ -119,8 +119,8 @@ class BasicTestSuite(unittest.TestCase):
 
         print('========================TESTING: PCE.fit_quadrature(), ~Uniform(-1,1) d=2=======================')
         d, p = 2, 5
-        solver1 = museuq.Legendre(d,p) 
-        doe_x, doe_w = museuq.QuadratureDesign(solver1).samples(6)
+        solver1 = uqra.Legendre(d,p) 
+        doe_x, doe_w = uqra.QuadratureDesign(solver1).samples(6)
         # x = np.linspace(-3,3,100)
         for i in range(solver1.num_basis):
             coef = np.zeros((solver1.num_basis,)) 
@@ -129,7 +129,7 @@ class BasicTestSuite(unittest.TestCase):
             solver1.set_coef(coef)
             y = solver1(doe_x)
             # print(y)
-            pce_model  = museuq.PCE([stats.uniform(-1,2),]*d, p)
+            pce_model  = uqra.PCE([stats.uniform(-1,2),]*d, p)
             pce_model.fit_quadrature(doe_x, doe_w, y)
             print('>> Coefficients: ')
             print('     True model: {}'.format(solver1))
@@ -149,11 +149,11 @@ class BasicTestSuite(unittest.TestCase):
         y =  np.squeeze(np.array([foo(x), foo(x)]).T)
         print(y.shape)
         # basis = cp.orth_ttr(5, dist)
-        foo_hat = museuq.PCE(5, dist) 
+        foo_hat = uqra.PCE(5, dist) 
         foo_hat.fit(x, y, method='OLS')
         y_pred = foo_hat.predict(x)
         print(y_pred.shape)
-        foo_hat = museuq.mPCE(5, dist)
+        foo_hat = uqra.mPCE(5, dist)
         foo_hat.fit(x, y, method='OLS')
         y_pred = foo_hat.predict(x)
         print(y_pred.shape)
@@ -171,28 +171,28 @@ class BasicTestSuite(unittest.TestCase):
             for ipoly_order in npoly_orders:
                 print('  Polynomial order: {:d}'.format(ipoly_order))
                 ## gPCE with hermite chaos
-                museuq.blockPrint()
-                quad_doe = museuq.DoE('QUAD', 'hem', [ipoly_order+1], dist_zeta0)
+                uqra.blockPrint()
+                quad_doe = uqra.DoE('QUAD', 'hem', [ipoly_order+1], dist_zeta0)
                 samples_zeta= quad_doe.get_samples()
                 zeta_cor, zeta_weight = samples_zeta[0]
                 zeta_cor = zeta_cor.reshape((len(dist_zeta0),-1))
                 x_cor = igpce_dist.inv(dist_zeta0.cdf(zeta_cor))
                 zeta_poly, zeta_norms = cp.orth_ttr(ipoly_order, dist_zeta0, retall=True)
                 x_hat,coeffs = cp.fit_quadrature(zeta_poly, zeta_cor, zeta_weight,np.squeeze(x_cor),retall=True)
-                museuq.enablePrint()
+                uqra.enablePrint()
 
                 print('\t Hermite: {}'.format( np.around(coeffs,4)))
 
                 ## gPCE with optimal chaos
-                museuq.blockPrint()
-                quad_doe = museuq.DoE('QUAD', gpce_opt_rule[i], [ipoly_order+1], dist_zeta1)
+                uqra.blockPrint()
+                quad_doe = uqra.DoE('QUAD', gpce_opt_rule[i], [ipoly_order+1], dist_zeta1)
                 samples_zeta= quad_doe.get_samples()
                 zeta_cor, zeta_weight = samples_zeta[0]
                 zeta_cor = zeta_cor.reshape((len(dist_zeta1),-1))
                 x_cor = igpce_dist.inv(dist_zeta1.cdf(zeta_cor))
                 zeta_poly, zeta_norms = cp.orth_ttr(ipoly_order, dist_zeta1, retall=True)
                 x_hat,coeffs = cp.fit_quadrature(zeta_poly, zeta_cor, zeta_weight, np.squeeze(x_cor), retall=True)
-                museuq.enablePrint()
+                uqra.enablePrint()
                 print('\t Optimal: {}'.format( np.around(coeffs,4)))
 
     def test_surrogate_model(self):
@@ -217,15 +217,15 @@ class BasicTestSuite(unittest.TestCase):
         # dist_zeta   = cp.Normal()
         # dist_x      = cp.Normal()
 
-        # orth_poly   = museuq.Hermite(d=1)
+        # orth_poly   = uqra.Hermite(d=1)
         # for isolver , isolver_str in zip(solvers2test, solver_strs):
             # for ipoly_order in poly_orders:
-                # # museuq.blockPrint()
+                # # uqra.blockPrint()
                 # orth_poly.set_degree(ipoly_order)
-                # doe_x, doe_w = museuq.QuadratureDesign(orth_poly).samples(ipoly_order+1)
+                # doe_x, doe_w = uqra.QuadratureDesign(orth_poly).samples(ipoly_order+1)
                 # train_y = np.squeeze(isolver(doe_x))
                 # # train_y = np.array([train_y,train_y]).T
-                # pce_model  = museuq.PCE(stats.norm, ipoly_order)
+                # pce_model  = uqra.PCE(stats.norm, ipoly_order)
                 # # print(len(pce_model.basis[0]))
                 # pce_model.fit_quadrature(doe_x, doe_w, train_y)
                 # print(isolver_str)
@@ -245,7 +245,7 @@ class BasicTestSuite(unittest.TestCase):
         y_samples = solver3(u_samples)
         print('y mean: {}'.format(np.mean(y_samples)))
 
-        pce_model = museuq.PCE(10,dist_u)
+        pce_model = uqra.PCE(10,dist_u)
         pce_model.fit(u_samples, y_samples, method='LassoLars')
         # print(pce_model.active_)
         # print(pce_model.metamodels)

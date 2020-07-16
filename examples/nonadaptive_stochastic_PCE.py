@@ -9,13 +9,13 @@
 """
 
 """
-import museuq, warnings, random, math
+import uqra, warnings, random, math
 import numpy as np, os, sys
 import collections
 import scipy.stats as stats
 from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def main():
 
@@ -34,10 +34,10 @@ def main():
     c=0.1/np.pi
     k=1.0/np.pi/np.pi
     m,c,k  = [stats.norm(m, 0.05*m), stats.norm(c, 0.2*c), stats.norm(k, 0.1*k)]
-    # env    = museuq.Environment([stats.uniform, stats.norm])
-    # env    = museuq.environment.Kvitebjorn.Kvitebjorn()
-    env    = museuq.Environment('spec_test1', 2)
-    solver = museuq.linear_oscillator(m=m,c=c,k=k,environment=env,
+    # env    = uqra.Environment([stats.uniform, stats.norm])
+    # env    = uqra.environment.Kvitebjorn.Kvitebjorn()
+    env    = uqra.Environment('spec_test1', 2)
+    solver = uqra.linear_oscillator(m=m,c=c,k=k,environment=env,
             t=1000,t_transit=10, dt=0.1, out_responses=out_responses, out_stats=out_stats, phase=range(n_short_term))
     solver.nickname = 'SDOF_test'
     print(solver)
@@ -47,18 +47,18 @@ def main():
     # k=1.0/np.pi/np.pi
     # s=-0.5/np.pi**2
     # m,c,k,s  = [stats.norm(m, 0.05*m), stats.norm(c, 0.2*c), stats.norm(k, 0.1*k), stats.norm(s, 0.1*abs(s))]
-    # # env    = museuq.Environment([stats.uniform, stats.norm])
-    # # env    = museuq.environment.Kvitebjorn.Kvitebjorn()
-    # env    = museuq.Environment([2,])
+    # # env    = uqra.Environment([stats.uniform, stats.norm])
+    # # env    = uqra.environment.Kvitebjorn.Kvitebjorn()
+    # env    = uqra.Environment([2,])
     # # env    = None 
-    # solver = museuq.duffing_oscillator(m=m,c=c,k=k,s=s,excitation='spec_test1', environment=env,
+    # solver = uqra.duffing_oscillator(m=m,c=c,k=k,s=s,excitation='spec_test1', environment=env,
             # tmax=100,dt=0.1, out_responses=out_responses, out_stats=out_stats, phase=range(n_short_term))
-    # # solver = museuq.linear_oscillator(m=m,c=c,k=k,s=s,excitation='spec_test1', environment=env,
+    # # solver = uqra.linear_oscillator(m=m,c=c,k=k,s=s,excitation='spec_test1', environment=env,
             # # t=1000,t_transit=10, dt=0.1, out_responses=out_responses, out_stats=out_stats, phase=range(n_short_term))
     # print(solver)
 
     ## ------------------------ Simulation Parameters ----------------- ###
-    simparams = museuq.Parameters()
+    simparams = uqra.Parameters()
     simparams.solver     = solver
     simparams.pce_degs   = np.array(range(10,11))
     simparams.n_cand     = int(1e5)
@@ -88,12 +88,12 @@ def main():
         print('     - {:<23s} : {}'.format('Optimality '      , simparams.optimality))
         print('     - {:<23s} : {}'.format('Fitting method'   , simparams.fit_method))
         ## ----------- Define PCE  ----------- ###
-        # orth_poly= museuq.Legendre(d=solver.ndim, deg=p)
-        orth_poly= museuq.Hermite(d=solver.ndim, deg=p, hem_type=simparams.hem_type)
-        pce_model= museuq.PCE(orth_poly)
+        # orth_poly= uqra.Legendre(d=solver.ndim, deg=p)
+        orth_poly= uqra.Hermite(d=solver.ndim, deg=p, hem_type=simparams.hem_type)
+        pce_model= uqra.PCE(orth_poly)
         pce_model.info()
 
-        modeling = museuq.Modeling(solver, pce_model, simparams)
+        modeling = uqra.Modeling(solver, pce_model, simparams)
         # modeling.sample_selected=[]
 
         ## ----------- Candidate and testing data set for DoE ----------- ###
@@ -102,7 +102,7 @@ def main():
         u_test, x_test, y_test = modeling.get_test_data(solver, pce_model, filename=test_filename, qoi=out_responses,n=1e2) 
         y_test_mean = np.mean(y_test, axis=0)
         y_test_std  = np.std(y_test, axis=0)
-        print(museuq.metrics.mquantiles(y_test.T, 1-np.array(pf), multioutput='raw_values'))
+        print(uqra.metrics.mquantiles(y_test.T, 1-np.array(pf), multioutput='raw_values'))
         u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
         # assert np.array_equal(u_test, x_test)
         with np.printoptions(precision=2):
@@ -125,7 +125,7 @@ def main():
         data_nsample = []
         for i, n in enumerate(simparams.num_samples):
             ### ============ Initialize pce_model for each n ============
-            pce_model= museuq.PCE(orth_poly)
+            pce_model= uqra.PCE(orth_poly)
             ### ============ Get training points ============
             _, u_train = modeling.get_train_data((repeats,n), u_cand_p, u_train=None, basis=pce_model.basis)
             # print(modeling.sample_selected)
@@ -169,11 +169,11 @@ def main():
 
                 # y_pred = np.vstack((y_test_hat.reshape(-1,n_test), y_test_mean_hat.reshape(-1,n_test), y_test_std.reshape(-1,n_test)))
 
-                test_mse = museuq.metrics.mean_squared_error(y_test.T, y_test_hat,multioutput='raw_values')
-                test_mean_mse = museuq.metrics.mean_squared_error(y_test_mean, y_test_mean_hat)
-                test_std_mse = museuq.metrics.mean_squared_error(y_test_std, y_test_std_hat)
-                excd_vals = museuq.metrics.mquantiles(y_test_hat, 1-np.array(pf), multioutput='raw_values').reshape(len(pf), -1)
-                excd_mean_val = museuq.metrics.mquantiles(y_test_mean_hat, 1-np.array(pf), multioutput='raw_values')
+                test_mse = uqra.metrics.mean_squared_error(y_test.T, y_test_hat,multioutput='raw_values')
+                test_mean_mse = uqra.metrics.mean_squared_error(y_test_mean, y_test_mean_hat)
+                test_std_mse = uqra.metrics.mean_squared_error(y_test_std, y_test_std_hat)
+                excd_vals = uqra.metrics.mquantiles(y_test_hat, 1-np.array(pf), multioutput='raw_values').reshape(len(pf), -1)
+                excd_mean_val = uqra.metrics.mquantiles(y_test_mean_hat, 1-np.array(pf), multioutput='raw_values')
                 data = np.array([p, n, kappa, pce_model.score, pce_model.cv_error])
                 data = np.append(data, test_mse)
                 data = np.append(data, test_mean_mse)

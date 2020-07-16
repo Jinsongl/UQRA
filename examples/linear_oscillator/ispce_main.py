@@ -11,7 +11,7 @@
 """
 
 import context
-import museuq
+import uqra
 import numpy as np, chaospy as cp, os, sys
 import scipy.stats as stats
 import warnings
@@ -19,12 +19,12 @@ from sklearn.gaussian_process.kernels import (RBF, Matern, RationalQuadratic,
                                               ExpSineSquared, DotProduct,
                                               ConstantKernel,WhiteKernel)
 from tqdm import tqdm
-from museuq.utilities import helpers as museuq_helpers 
-from museuq.utilities import metrics_collections as museuq_metrics
-from museuq.utilities import dataIO as museuq_dataio 
-from museuq.environment import Kvitebjorn
+from uqra.utilities import helpers as uqra_helpers 
+from uqra.utilities import metrics_collections as uqra_metrics
+from uqra.utilities import dataIO as uqra_dataio 
+from uqra.environment import Kvitebjorn
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 
 def main():
@@ -46,7 +46,7 @@ def main():
     ## 3. Define independent random variable in physical problems
     # dist_x = cp.Uniform(-np.pi, np.pi)
 
-    simparams = museuq.simParameters(model_name, dist_zeta_J)
+    simparams = uqra.simParameters(model_name, dist_zeta_J)
     simparams.set_params(dist_zeta_M=dist_zeta_M)
     # simparams.set_error()  # no observation error for sdof
     simparams.info()
@@ -55,7 +55,7 @@ def main():
     nsim = 1
     # doe_method, doe_rule, doe_orders = 'QUAD', 'hem', range(3,10)
     doe_method, doe_rule, doe_orders = 'MC', 'R', sorted([1e6]*10)
-    doe  = museuq.DoE(doe_method, doe_rule, doe_orders, dist_zeta_J)
+    doe  = uqra.DoE(doe_method, doe_rule, doe_orders, dist_zeta_J)
     filename = doe.filename.split('_')
     doe.set_params(filename='_'.join([filename[0], 'IS', *filename[1:]]))
     print(doe.filename)
@@ -90,7 +90,7 @@ def main():
     #### --------------------------------------------------------------------------- ###
     #### -------------------------------- Run Solver ------------------------------- ###
     #### --------------------------------------------------------------------------- ###
-    # solver = museuq.Solver(model_name)
+    # solver = uqra.Solver(model_name)
     # # ###>>> option 1: run with input data
     # # solver.run(data = train_x, post_str='stats') 
     # # ###>>> option 2: run with input file names
@@ -117,7 +117,7 @@ def main():
 
         # ### ============ Get Surrogate Model for each QoI============
         # print('Surrogate Model for eta: ') 
-        # eta_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
+        # eta_pce_model = uqra.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
         # eta_pce_model.fit(train_zeta, train_eta, weight=train_w)
         # print(eta_pce_model.poly_coeffs)
         # print(eta_pce_model.basis_coeffs)
@@ -135,7 +135,7 @@ def main():
 
         # ### ============ Get Surrogate Model for each QoI============
         # print('Surrogate Model for SDOF response: ') 
-        # y_pce_model = museuq.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
+        # y_pce_model = uqra.SurrogateModel(metamodel_class, [iquad_order-1], **metamodel_params)
         # y_pce_model.fit(train_zeta, train_y, weight=train_w)
 
         # ### ============ Validating surrogate models at training points ============
@@ -167,14 +167,14 @@ def main():
 
         # test_doe_method, test_doe_rule, test_doe_orders, test_repeat = 'MC', 'R', 1e6, 10
         # # print( [test_doe_orders]*test_repeat)
-        # test_doe = museuq.DoE(test_doe_method, test_doe_rule, [test_doe_orders]*test_repeat)
+        # test_doe = uqra.DoE(test_doe_method, test_doe_rule, [test_doe_orders]*test_repeat)
         # # pbar = tqdm(range(data_test_params[1]), ascii=True, desc="   - ")
 
         # mcs_filenames = [ 'DoE_McRE6R{:d}.npy'.format(r) for r in range(test_repeat)] 
         # pbar = tqdm(mcs_filenames, ascii=True, desc="   - ")
 
         # for itest_tag, ifilename in zip(test_doe.filename_tags, pbar):
-            # museuq_helpers.blockPrint()
+            # uqra_helpers.blockPrint()
             # ### >>> option1: regenerate MCS samples randomly
             # # dist_zeta_J   = y_pce_model.kwparams['dist_zeta_J']
             # # zeta_mcs    = dist_zeta_J.sample(test_doe_orders, rule=test_doe_rule).reshape(1,-1)
@@ -187,13 +187,13 @@ def main():
             # data_pred   = np.array([eta_pred_mcs, y_pred_mcs])
             # filename_   = doe.filename + '{:s}_{:s}_pred_{:s}.npy'.format(itag, metamodel_class, itest_tag)
             # np.save(os.path.join(simparams.data_dir, filename_), data_pred)
-            # museuq_helpers.enablePrint()
+            # uqra_helpers.enablePrint()
 
-            # # # museuq_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
+            # # # uqra_helpers.upload2gdrive(fname_test_path+r'{:d}'.format(r),  y_pred_mcs, simparam.data_dir_id)
             # # # print(' > Calculating ECDF of MCS data and retrieve data to plot...')
-            # # eta_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
+            # # eta_pred_mcs_ecdf = uqra_helpers.get_exceedance_data(np.array(eta_pred_mcs), prob=simparams.prob_fails)
             # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_eta.npy'.format(itag,r,str(prob_fails)[-1])),eta_pred_mcs_ecdf)
-            # # y_pred_mcs_ecdf = museuq_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
+            # # y_pred_mcs_ecdf = uqra_helpers.get_exceedance_data(np.array(y_pred_mcs), prob=simparams.prob_fails)
             # # np.save(os.path.join(simparams.data_dir, 'DoE_QuadHem{:s}_pred_r{:d}_ecdf_pf{}_y.npy'.format(itag,r,str(prob_fails)[-1])),y_pred_mcs_ecdf)
 
 

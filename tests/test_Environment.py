@@ -1,22 +1,22 @@
 # -*- coding: utf-8 -*-
 
-import museuq, unittest,warnings,os, sys 
+import uqra, unittest,warnings,os, sys 
 from tqdm import tqdm
 import numpy as np, scipy as sp 
 import scipy.stats as stats
-from museuq.environment import Kvitebjorn as Kvitebjorn
+from uqra.environment import Kvitebjorn as Kvitebjorn
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
-data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/examples/JupyterNotebook'
+data_dir = '/Users/jinsongliu/BoxSync/MUSELab/uqra/examples/JupyterNotebook'
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
     def test_Kvitebjorn(self):
         print('========================TESTING: Kvitebjorn =======================')
 
-        # data_dir = '/Users/jinsongliu/BoxSync/MUSELab/museuq/museuq/environment'
+        # data_dir = '/Users/jinsongliu/BoxSync/MUSELab/uqra/uqra/environment'
         # hs1     = np.linspace(0,2.9,291)
         # hs2     = np.linspace(2.90,20, 1711)
         # hs      = np.hstack((hs1, hs2))

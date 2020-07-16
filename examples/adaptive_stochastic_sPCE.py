@@ -9,13 +9,13 @@
 """
 
 """
-import museuq, warnings, random, math
+import uqra, warnings, random, math
 import numpy as np, os, sys
 import collections
 import scipy.stats as stats
 from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def main():
 
@@ -30,13 +30,13 @@ def main():
 
     ## ------------------------ Define solver ----------------------- ###
     # out_responses= [2,] 
-    # solver      = museuq.linear_oscillator(out_responses=out_responses, out_stats='absmax',n_short_term=n_short_term) 
+    # solver      = uqra.linear_oscillator(out_responses=out_responses, out_stats='absmax',n_short_term=n_short_term) 
 
     out_responses= [2,] 
-    solver      = museuq.duffing_oscillator(out_responses=out_responses, out_stats='absmax',
+    solver      = uqra.duffing_oscillator(out_responses=out_responses, out_stats='absmax',
             n_short_term=n_short_term, spec_name='JONSWAP') 
     ## ------------------------ Simulation Parameters ----------------- ###
-    simparams = museuq.Parameters()
+    simparams = uqra.Parameters()
     simparams.solver     = solver
     # simparams.pce_degs   = np.array(range(2,16))
     simparams.n_cand     = int(1e5)
@@ -56,19 +56,19 @@ def main():
     simparams.info()
 
     ## ------------------------ Define Initial PCE model --------------------- ###
-    # orth_poly = museuq.Legendre(d=solver.ndim, deg=plim[0])
-    orth_poly = museuq.Hermite(d=solver.ndim, deg=plim[0], hem_type=simparams.hem_type)
-    pce_model = museuq.PCE(orth_poly)
+    # orth_poly = uqra.Legendre(d=solver.ndim, deg=plim[0])
+    orth_poly = uqra.Hermite(d=solver.ndim, deg=plim[0], hem_type=simparams.hem_type)
+    pce_model = uqra.PCE(orth_poly)
     pce_model.info()
 
-    modeling = museuq.Modeling(solver, pce_model, simparams)
+    modeling = uqra.Modeling(solver, pce_model, simparams)
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     u_cand = modeling.get_candidate_data()
     u_test, x_test, y_test = modeling.get_test_data(solver, pce_model, n=10000, 
             qoi=out_responses,n_short_term=n_short_term, random_seed=random_seed)
     y_test = np.mean(y_test, axis=0)
-    exceed_val_y_test = museuq.metrics.mquantiles(y_test, 1-pf)[0]
+    exceed_val_y_test = uqra.metrics.mquantiles(y_test, 1-pf)[0]
     with np.printoptions(precision=2):
         u_cand_mean_std = np.array((np.mean(u_cand[0]), np.std(u_cand[0])))
         u_test_mean_std = np.array((np.mean(u_test[0]), np.std(u_test[0])))
@@ -129,8 +129,8 @@ def main():
         print('     - {:<23s} : {}'.format('Fitting method'   , simparams.fit_method))
         ### ============ Update PCE model ============
         orth_poly.set_degree(p)
-        pce_model = museuq.PCE(orth_poly)
-        modeling  = museuq.Modeling(solver, pce_model, simparams)
+        pce_model = uqra.PCE(orth_poly)
+        modeling  = uqra.Modeling(solver, pce_model, simparams)
 
         ### ============ Estimate sparsity ============
         tqdm.write(' > {:<20s}: alpha = {:.2f}, # samples = {:d}'.format(
@@ -199,7 +199,7 @@ def main():
         # print('u test mean: {}'.format(np.mean(u_test, axis=1)))
         # print('u test std: {}'.format(np.std(u_test, axis=1)))
         # print('y test max: {}'.format(np.max(y_test)))
-        # qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
+        # qoi = uqra.metrics.mquantiles(y_test_hat, 1-pf)
         # print('pf, y_test_hat: {}'.format(qoi))
         # print('y_test_hat max: {}'.format(max(y_test_hat)))
 
@@ -217,12 +217,12 @@ def main():
 
         score[p] = pce_model.score
         score_path.append(pce_model.score)
-        qoi = museuq.metrics.mquantiles(y_test_hat, 1-pf)
+        qoi = uqra.metrics.mquantiles(y_test_hat, 1-pf)
         QoI[p] = qoi
         QoI_path.append(qoi)
 
-        test_error[p] = museuq.metrics.mean_squared_error(y_test, y_test_hat)
-        test_error_path.append(museuq.metrics.mean_squared_error(y_test, y_test_hat))
+        test_error[p] = uqra.metrics.mean_squared_error(y_test, y_test_hat)
+        test_error_path.append(uqra.metrics.mean_squared_error(y_test, y_test_hat))
 
         print(' > Summary:')
         print('   - {:<25s} : {}'.format('Polynomial order (p)', p))

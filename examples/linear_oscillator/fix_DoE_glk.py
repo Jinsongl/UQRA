@@ -10,11 +10,11 @@
 
 """
 import numpy as np, chaospy as cp, os, sys
-import museuq, warnings
+import uqra, warnings
 from tqdm import tqdm
-from museuq.environment import Kvitebjorn
+from uqra.environment import Kvitebjorn
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
-sys.stdout  = museuq.utilities.classes.Logger()
+sys.stdout  = uqra.utilities.classes.Logger()
 
 def get_validation_data(quad_order, plim, n_lhs, ndim, data_dir=os.getcwd):
     """
@@ -60,8 +60,8 @@ def main():
     nqoi        = 1 ## 1: eta, 2. y
     dist_x      = cp.Iid(cp.Normal(),ndim) 
     dist_zeta   = cp.Iid(cp.Normal(),ndim) 
-    simparams   = museuq.simParameters('linear_oscillator', dist_zeta)
-    solver      = museuq.linear_oscillator()
+    simparams   = uqra.simParameters('linear_oscillator', dist_zeta)
+    solver      = uqra.linear_oscillator()
     n_sim_short = 10 ## number of short-term simulations
 
     ### ============ Adaptive parameters ============
@@ -87,7 +87,7 @@ def main():
     mquantiles  = []
     r2_score_adj= []
     cv_error    = []
-    f_hat       = museuq.mPCE() 
+    f_hat       = uqra.mPCE() 
 
     while simparams.is_adaptive_continue(n_eval_next, poly_order=poly_order,
             r2_adj=r2_score_adj, mquantiles=mquantiles, cv_error=cv_error):
@@ -112,7 +112,7 @@ def main():
         y_train_mean = np.mean(y_trian, axis=1)
         y_train_diff = y_trian - y_train_mean
 
-        pce_mean = museuq.PCE(poly_order, dist_zeta) 
+        pce_mean = uqra.PCE(poly_order, dist_zeta) 
         pce_mean.fit(u_train, y_train_mean, w=w_train, method=fit_method)
 
         y_train_hat = pce_mean.predict(u_train)
@@ -123,7 +123,7 @@ def main():
 
 
 
-        pce_model   = museuq.mPCE(poly_order, dist_zeta)
+        pce_model   = uqra.mPCE(poly_order, dist_zeta)
         pce_model.fit(u_train, y_train, w=w_train, method=fit_method)
         y_train_hat = pce_model.predict(u_train)
         y_valid_hat = pce_model.predict(u_valid)
@@ -135,10 +135,10 @@ def main():
         y_samples= pce_model.predict(u_samples)
 
         ### ============ updating parameters ============
-        pce_model.cv_error = museuq.metrics.mean_squared_error(y_valid, y_valid_hat)
+        pce_model.cv_error = uqra.metrics.mean_squared_error(y_valid, y_valid_hat)
         cv_error.append(pce_model.cv_error)
-        r2_score_adj.append(museuq.metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
-        mquantiles.append(museuq.metrics.mquantiles(y_samples, 1-1e-4))
+        r2_score_adj.append(uqra.metrics.r2_score_adj(y_train, y_train_hat, len(pce_model.active_)))
+        mquantiles.append(uqra.metrics.mquantiles(y_samples, 1-1e-4))
         poly_order  += 1
         n_eval_curr += u_train.shape[1] 
         n_eval_next = n_eval_curr + (poly_order+1)**ndim
@@ -171,7 +171,7 @@ def main():
         u_samples= data_set[0:ndim,:]
         x_samples= data_set[ndim: 2*ndim,:]
         y_samples= f_hat.predict(u_samples)
-        mquantiles.append(museuq.metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
+        mquantiles.append(uqra.metrics.mquantiles(y_samples, [1-1e-4, 1-1e-5, 1-1e-6]))
         filename = 'DoE_McsE6R{:d}_QuadHem_PCE{:d}_{:s}.npy'.format(r, f_hat.poly_order, fit_method)
         np.save(os.path.join(simparams.data_dir, filename), y_samples)
 
