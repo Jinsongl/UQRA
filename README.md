@@ -1,3 +1,3 @@
 # Uncertainty Quantification for Risk Analysis (UQRA)
 
-# Jinsong Liu
+# UT Austin (MUSE)
