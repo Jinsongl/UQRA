@@ -63,7 +63,7 @@ def main():
     # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats              = 1 if simparams.optimality == 'D'  else 10
+    repeats              = 1 if simparams.optimality == 'D'  else 50
     ratio_sn             = np.linspace(0,1,21)[5:11]
     ratio_nP             = np.linspace(0,1,21)[15:]
     # psn_todo             = np.load('PhaseTransition_2Hem20_ClsS_todo.npy')

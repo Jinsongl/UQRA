@@ -158,13 +158,13 @@ def main():
                     coef_relerr_l2 =(sparse_poly_coef_error(solver, pce_model,2)/np.linalg.norm(solver.coef,2))
 
                     data_p.append([p,s,n,coef_abserr_inf,kappa,pce_model.score,pce_model.cv_error,coef_relerr_l2])
-                ### ============ calculating & updating metrics ============
-                # with np.printoptions(precision=4):
-                    # print('     - {:<15s} : {:.4f}'.format( '|coef|'    , np.mean(coef_err_repeat)))
-                    # print('     - {:<15s} : {:.4f}'.format( 'CV MSE'    , np.mean(cv_err_repeat)))
-                    # print('     - {:<15s} : {:.4f}'.format( 'Score '    , np.mean(score_repeat)))
-                    # print('     - {:<15s} : {:.4e}'.format( 'kappa '    , np.mean(cond_num_repeat)))
-                    # print('     ----------------------------------------')
+                ## ============ calculating & updating metrics ============
+                    with np.printoptions(precision=4):
+                        print('     - {:<15s} : {:.4f}'.format( '|coef|'    , np.mean(coef_err_repeat)))
+                        print('     - {:<15s} : {:.4f}'.format( 'CV MSE'    , np.mean(cv_err_repeat)))
+                        print('     - {:<15s} : {:.4f}'.format( 'Score '    , np.mean(score_repeat)))
+                        print('     - {:<15s} : {:.4e}'.format( 'kappa '    , np.mean(cond_num_repeat)))
+                        print('     ----------------------------------------')
 
     filename = '{:s}_Phase_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
     try:
