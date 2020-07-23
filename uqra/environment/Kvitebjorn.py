@@ -145,7 +145,7 @@ class Kvitebjorn(EnvBase):
         return res
 
 ## Environment Contour
-    def EC(self, P,T=1000,n=100):
+    def get_environment_contour(self, P,T=1000,n=100):
         """
         Return samples for Environment Contours method
         
@@ -153,19 +153,23 @@ class Kvitebjorn(EnvBase):
             P: return period in years
             T: simulation duration in seconds
             n: no. of samples on the contour
+
+        Returns:
+            ndarray of shape (4, n)
         """
         print(r'Calculating Environment Contour samples for Kvitebjørn:')
         print(r' - {:<25s}: {}'.format('Return period (years)', P))
         print(r' - {:<25s}: {}'.format('Simulation duration (s)', T))
-        p           = 1.0/(P * 365.25*24*3600/T)
-        beta        = stats.norm.ppf(1-p)
-        print(r' - {:<25s}: {:.2e}'.format('Failure probability', p))
+        prob_fail   = 1.0/(P * 365.25*24*3600/T)
+        beta        = stats.norm.ppf(1-prob_fail) ## reliability index
+        print(r' - {:<25s}: {:.2e}'.format('Failure probability', prob_fail))
         print(r' - {:<25s}: {:.2f}'.format('Reliability index', beta))
-        EC_normal   = self._make_circles(beta,n=n)
-        EC_norm_cdf = stats.norm.cdf(EC_normal)
-        EC_samples  = samples(EC_norm_cdf)
-        res         = np.vstack((EC_normal, EC_samples))
-        print(r' - {:<25s}: {}'.format('Results', res.shape))
+        U_samples   = self._make_circles(beta,n=n)
+        U_cdf       = stats.norm.cdf(U_samples)
+        Hs          = self.samples_hs_ppf(U_cdf[0])
+        Tp          = self.samples_tp(Hs, tp_cdf=U_cdf[1])
+        X_samples   = np.array([Hs, Tp])
+        res         = np.vstack((U_samples, EC_samples))
         return res 
 
 # Sequence of conditional distributions based on Rosenblatt transformation 
@@ -214,6 +218,16 @@ class Kvitebjorn(EnvBase):
         return np.squeeze(samples)
 
     def _make_circles(self, r,n=100):
+        """
+        return coordinates of points on a 2D circle with radius r
+
+        Parameters:
+            r: radius
+            n: number of points on circle
+        Return:
+            ndarray of shape(2,n)
+
+        """
         t = np.linspace(0, np.pi * 2.0, n)
         t = t.reshape((len(t), 1))
         x = r * np.cos(t)

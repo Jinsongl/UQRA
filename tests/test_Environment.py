@@ -23,13 +23,14 @@ class BasicTestSuite(unittest.TestCase):
         # hs_pdf  = Kvitebjorn.hs_pdf(hs) 
         # np.save(os.path.join(data_dir, 'Kvitebjorn_hs'), np.vstack((hs, hs_pdf)))
         for r in range(10):
-            data_dir    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Normal'
+            data_dir    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Norm'
             filename = 'DoE_McsE6R{:d}.npy'.format(r)
             mcs_sampels = np.load(os.path.join(data_dir, filename))
             mcs_sampels = stats.norm().cdf(mcs_sampels)
-            samples_x   = Kvitebjorn.samples(mcs_sampels[:2,:])
-            data_dir    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal'
-            np.save(os.path.join(data_dir, filename), samples_x)
+            print(dir(Kvitebjorn))
+            samples_x   = Kvitebjorn.ppf(mcs_sampels[:2,:])
+            data_dir    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Norm'
+            # np.save(os.path.join(data_dir, filename), samples_x)
 
         # return EC from Kvitebjorn
         # P = 10
