@@ -31,54 +31,6 @@ class Kvitebjorn(EnvBase):
         self.ndim = int(2)
         self.name = ['lognorm_weibull','lognorm']
 
-    def dist_Hs(self, x, key='value'):
-        """
-        Return Hs distribution based on x value
-        For Kvitebjorn, Hs distribution is a piecewise distribution 
-        connected at Hs = H0 or ppf_Hs = ppf_h0 (icdf_h0)
-
-        key = 'value'
-        dist_Hs = dist1 if x < h0
-                = dist2 if x > h0
-        or 
-
-        dist_hs = dist1 if cdf_x < ppf_h0
-                = dist2 if cdf_x > ppf_h0
-
-        key = 'ppf'
-           - value: physical value of Hs
-           - ppf: point percentile value of Hs
-        """
-        mu_Hs    = 0.77
-        sigma_Hs = 0.6565
-        dist1    = stats.lognorm(sigma_Hs, scale=np.exp(mu_Hs))
-        Hs_shape = 1.503
-        Hs_scale = 2.691
-        dist2    = stats.Weibull(Hs_shape, scale=Hs_scale)
-        h0       = 2.9
-        ppf_h0   = dist1.cdf(h0)
-
-        if key.lower() == 'value':
-            dist = dist1 if x <= h0 else dist2
-        elif key.lower() == 'ppf':
-            dist = dsit1 if x <= ppf_h0 else dist2
-
-        else:
-            raise ValueError('Key value: {} is not defined'.format(key))
-
-    def dist_Tp(self, Hs):
-        a1 = 1.134
-        a2 = 0.892
-        a3 = 0.225
-        b1 = 0.005
-        b2 = 0.120
-        b3 = 0.455
-        mu_tp = a1 + a2* Hs**a3 
-        sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*Hs))
-        return stats.lognorm(sigma_tp, scale=np.exp(mu_tp))
-
-#### Define methods 
-
     def pdf(self, x):
         """
         Return pdf values for given random variables x
@@ -144,7 +96,6 @@ class Kvitebjorn(EnvBase):
         res = np.array([hs, tp]).reshape(2,-1)
         return res
 
-## Environment Contour
     def get_environment_contour(self, P,T=1000,n=100):
         """
         Return samples for Environment Contours method
@@ -169,10 +120,56 @@ class Kvitebjorn(EnvBase):
         Hs          = self.samples_hs_ppf(U_cdf[0])
         Tp          = self.samples_tp(Hs, tp_cdf=U_cdf[1])
         X_samples   = np.array([Hs, Tp])
-        res         = np.vstack((U_samples, EC_samples))
+        res         = np.vstack((U_samples, X_samples))
         return res 
 
 # Sequence of conditional distributions based on Rosenblatt transformation 
+    def dist_Hs(self, x, key='value'):
+        """
+        Return Hs distribution based on x value
+        For Kvitebjorn, Hs distribution is a piecewise distribution 
+        connected at Hs = H0 or ppf_Hs = ppf_h0 (icdf_h0)
+
+        key = 'value'
+        dist_Hs = dist1 if x < h0
+                = dist2 if x > h0
+        or 
+
+        dist_hs = dist1 if cdf_x < ppf_h0
+                = dist2 if cdf_x > ppf_h0
+
+        key = 'ppf'
+           - value: physical value of Hs
+           - ppf: point percentile value of Hs
+        """
+        mu_Hs    = 0.77
+        sigma_Hs = 0.6565
+        dist1    = stats.lognorm(sigma_Hs, scale=np.exp(mu_Hs))
+        Hs_shape = 1.503
+        Hs_scale = 2.691
+        dist2    = stats.Weibull(Hs_shape, scale=Hs_scale)
+        h0       = 2.9
+        ppf_h0   = dist1.cdf(h0)
+
+        if key.lower() == 'value':
+            dist = dist1 if x <= h0 else dist2
+        elif key.lower() == 'ppf':
+            dist = dsit1 if x <= ppf_h0 else dist2
+
+        else:
+            raise ValueError('Key value: {} is not defined'.format(key))
+
+    def dist_Tp(self, Hs):
+        a1 = 1.134
+        a2 = 0.892
+        a3 = 0.225
+        b1 = 0.005
+        b2 = 0.120
+        b3 = 0.455
+        mu_tp = a1 + a2* Hs**a3 
+        sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*Hs))
+        return stats.lognorm(sigma_tp, scale=np.exp(mu_tp))
+
     def samples_hs_ppf(self, u):
         """
         Return Hs samples corresponding ppf values u
