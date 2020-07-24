@@ -117,4 +117,5 @@ src/Data/
 *.fls
 *.fdb_latexmk
 
-
+# MATLAB
+ *.mat
