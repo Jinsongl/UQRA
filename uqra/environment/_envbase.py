@@ -17,8 +17,13 @@ class EnvBase(object):
     def pdf(self):
         raise NotImplementedError
 
-    def samples(self, n):
+    def cdf(self):
         raise NotImplementedError
 
-    def iid_joint(self):
+    def ppf(self):
         raise NotImplementedError
+
+    
+    def rvs(self):
+        raise NotImplementedError
+
