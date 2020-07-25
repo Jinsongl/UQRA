@@ -29,6 +29,7 @@ from uqra.solver.duffing_oscillator import duffing_oscillator as duffing_oscilla
 from uqra.solver.surge_model import surge_model as surge_model
 from uqra.solver.static import * 
 from uqra.solver.ErrorClass import NullError, IidError, CovError
+from uqra.solver.fpso_sdof import FPSO
 
 from uqra.surrogates.polynomial_chaos_expansion import PolynomialChaosExpansion as PCE
 from uqra.surrogates.multiple_polynomial_chaos_expansion import mPCE 
