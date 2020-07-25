@@ -213,20 +213,21 @@ class PolynomialChaosExpansion(SurrogateBase):
         Returns:
 
         """
+        ## parameters for LassoLars 
         self.fit_method = 'LASSOLARS' 
         x = np.array(x, copy=False, ndmin=2)
         y = np.array(y, copy=False, ndmin=1)
-        X = self.basis.vandermonde(x)
-        if sample_weight is not None:
-            # Sample weight can be implemented via a simple rescaling.
-            X, y = self._rescale_data(X, y, sample_weight)
-        ## parameters for LassoLars 
-        n_splits= kwargs.get('n_splits', X.shape[0])
-        n_splits= min(n_splits, X.shape[0])
+        n_splits= kwargs.get('n_splits', x.shape[1])
+        n_splits= min(n_splits, x.shape[1])
         max_iter= kwargs.get('max_iter', 500)
         epsilon = kwargs.get('epsilon', 1e-6)
         cpu_count = kwargs.get('cpu_count', mp.cpu_count())
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
+
+        X = self.basis.vandermonde(x)
+        if sample_weight is not None:
+            # Sample weight can be implemented via a simple rescaling.
+            X, y = self._rescale_data(X, y, sample_weight)
 
         try:    
             model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=cpu_count).fit(X,y)
