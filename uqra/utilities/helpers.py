@@ -206,8 +206,8 @@ def get_exceedance_data(x,prob=1e-3,**kwargs):
                 return a list of (3,n) arrays
     """
     x = np.array(x)
-    is_expand    = kwargs.get('is_expand'     , False)
-    return_all  = kwargs.get('return_all'   , False) 
+    is_expand  = kwargs.get('is_expand'    , False)
+    return_all = kwargs.get('return_all'   , False) 
 
     if np.isscalar(prob):
         ##   If only one prob number is given, same prob will be applied to all rows
@@ -224,7 +224,7 @@ def get_exceedance_data(x,prob=1e-3,**kwargs):
     else:
         if is_expand:
             ## get sorting index with the first row
-            x_ecdf = _get_exceedance1d(x[0,:], prob=prob, return_all=return_all)
+            x_ecdf = _get_exceedance1d(x[0,:], prob=prob[0], return_all=return_all)
             x_ecdf.x = x[:, x_ecdf.index]
             return x_ecdf
         else:
@@ -252,7 +252,6 @@ def _get_exceedance1d(x, prob=1e-3, return_all=False ):
     assert np.array(x).ndim == 1
     x_ecdf  = mECDF(x)
     x_ecdf.index = np.argsort(x)
-    print(x_ecdf.n)
 
     if x_ecdf.n <= 1.0/prob:
         warnings.warn('\n Not enough samples to calculate failure probability. -> No. samples: {:d}, failure probability: {:f}'.format(x_ecdf.n, prob))
@@ -265,7 +264,7 @@ def _get_exceedance1d(x, prob=1e-3, return_all=False ):
             ### Usually, it is not necessary to use all data points to have a decent exceedance plots since large portion 
             ### of the data points will be located in the 'middle' region. Here we collapse data points to a reasonal number
 
-            prob_index = -int(prob * n)   # index of the result value at targeted exceedance prob
+            prob_index = -int(prob * x_ecdf.n)# index of the result value at targeted exceedance prob
             prob_value = x_ecdf.x[prob_index] # result x value
             _, index2return = np.unique(np.round(x_ecdf.x[:prob_index], decimals=2), return_index=True)
             # remove 'duplicate' values up to index prob_index, wish to have much smaller size of data when making plot
@@ -279,7 +278,7 @@ def _get_exceedance1d(x, prob=1e-3, return_all=False ):
             sort_idx2 = x_ecdf.index[prob_index:]
             x  = np.hstack((x1,x2))
             y  = np.hstack((y1,y2))
-            v  = np.hstack((sort_idx1, sort_idx2), dtype=np.int32) 
+            v  = np.hstack((sort_idx1, sort_idx2)) 
             x_ecdf.x = x
             x_ecdf.y = y
             x_ecdf.index = v

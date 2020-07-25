@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import context, uqra, unittest,warnings,os, sys 
+import uqra, unittest,warnings,os, sys 
 from tqdm import tqdm
-import numpy as np, chaospy as cp, scipy as sp 
+import numpy as np, scipy as sp 
 from uqra.solver.PowerSpectrum import PowerSpectrum
 from uqra.environment import Kvitebjorn as Kvitebjorn
 from sklearn import datasets
