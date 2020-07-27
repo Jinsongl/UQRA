@@ -941,6 +941,10 @@ class Parameters(object):
             self.tag = '{:s}_{:s}'.format(self.doe_method.capitalize(), self.fit_method.capitalize())
 
     def update_num_samples(self, P, **kwargs):
+        """
+        return array number of samples based on given oversampling ratio alphas or num_samples
+        alpha or num_samples = -1: 2 log(P) * P samples used as reference calculation
+        """
         try:
             alphas = kwargs['alphas']
             self.alphas = np.array(alphas, dtype=np.float64).flatten()
