@@ -37,9 +37,9 @@ class BasicTestSuite(unittest.TestCase):
         # return EC from Kvitebjorn
         envi_dist = Kvitebjorn.Kvitebjorn()
         P = 50
-        EC_samples = envi_dist.get_environment_contour(P,T=1800,n=1000)
+        EC_samples = envi_dist.get_environment_contour(P,T=1800,n=36)
         print(EC_samples.shape)
-        np.save(os.path.join(data_dir, 'Kvitebjorn_EC_P{:d}'.format(P)), EC_samples)
+        np.save(os.path.join(data_dir, 'Kvitebjorn_EC_T{:d}'.format(P)), EC_samples)
 
         ## test cdf method for Kvitebjørn
         # u = np.array([np.linspace(0,0.99999,11), np.linspace(0,0.99999,11)])
