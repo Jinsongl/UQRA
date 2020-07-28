@@ -15,7 +15,7 @@ from uqra.solver._solverbase import SolverBase
 import os, numpy as np, scipy as sp
 from tqdm import tqdm
 import scipy.io
-
+import multiprocessing as mp
 class FPSO(SolverBase):
     """
     Solving linear oscillator in frequency domain
@@ -102,8 +102,10 @@ class FPSO(SolverBase):
                 # filename = '{:s}_yRaw_nst{:d}'.format(self.nickname,iseed_idx)
                 # np.save(os.path.join(data_dir, filename), np.array(y_raw_))
             else:
-                y_QoI_ = [self._Glimitmax(ix, iseed) for ix in pbar_x]
-
+                with mp.Pool(processes=mp.cpu_count()) as p:
+                    # y_QoI_ = [self._Glimitmax(ix, iseed) for ix in pbar_x]
+                    y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, iseed) for ix in pbar_x]),ncols=80, total=x.shape[1])))
+                    # results = np.array(list(tqdm(p.starmap(self._Glimitmax, [(ix, iseed) for ix in pbar_x]), total=nsamples)))
             if save_qoi:
                 filename = '{:s}_yQoI_nst{:d}'.format(self.nickname,iseed_idx)
                 np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
@@ -163,13 +165,14 @@ class FPSO(SolverBase):
 
         self.Hx  = 1.0 / ( -self.w_LF**2 * self.M + 1j * self.w_LF * self.B + self.K )
 
-    def _Glimitmax(self,x, seed):
+    def _Glimitmax(self, args):
 
 
         # ------------------
         # Environmental data
         # ------------------
-        Hs, Tp = x
+        Hs, Tp = args[0]
+        seed = args[1]
 
         Snn=self._jonswap(Hs,Tp);
 
