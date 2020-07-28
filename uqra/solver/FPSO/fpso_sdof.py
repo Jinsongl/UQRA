@@ -59,7 +59,7 @@ class FPSO(SolverBase):
         # self.f_hz       = np.arange(len(self.t)+1) *0.5/self.t[-1]
         # self.w_rad      = 2 * np.pi * self.f_hz
 
-        self._load_freq_mat('/Users/jinsongliu/Documents/MUSELab/UQRA/uqra/solver/FPSO/freq_data.mat')
+        self._load_freq_mat('freq_data.mat')
         self._FD_FPSO_LF()
 
 
@@ -116,7 +116,7 @@ class FPSO(SolverBase):
         return y
 
     def _load_freq_mat(self, filename):
-        data = scipy.io.loadmat(filename)
+        data = scipy.io.loadmat(os.path.join(os.path.dirname(os.path.abspath(__file__)), filename))
         self.diag_surge = np.squeeze(data['Diag_surge'])
         self.diag_sway  = np.squeeze(data['Diag_sway'])
         self.dw         = np.squeeze(data['dw'])
