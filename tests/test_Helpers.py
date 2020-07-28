@@ -92,6 +92,14 @@ class BasicTestSuite(unittest.TestCase):
                 except FileNotFoundError:
                     pass
 
+    def test_bootstrap(self):
+        data = np.arange(12).reshape(3,4)
+        print(data)
+        boots_data = uqhelpers.bootstrapping(data, 3)
+        print(boots_data)
+        boots_data = uqhelpers.bootstrapping(data, 3, 5)
+        print(boots_data)
+        
         # y_excd = []
         # for iexcd_prob in excd_prob:
             # y = []
