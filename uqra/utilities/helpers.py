@@ -139,10 +139,10 @@ def ECDF(x,**kwargs):
             raise ValueError('uqra.helpers.ECDF: alpha is none')
         if x.ndim == 1:
             x_ecdf = mECDF(x, side=side)
-            idx = (np.abs(x_ecdf.y - (1-alpha))).argmin()
-            _, compressed_idx = np.unique(np.round(x_ecdf.x[:idx], decimals=2), return_index=True)
-            x_ecdf.x = np.concatenate((x_ecdf.x[compressed_idx], x_ecdf.x[idx:]), axis=-1)
-            x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[idx:]), axis=-1)
+            boots_idx = (np.abs(x_ecdf.y - (1-alpha))).argmin()
+            _, compressed_idx = np.unique(np.round(x_ecdf.x[:boots_idx], decimals=2), return_index=True)
+            x_ecdf.x = np.concatenate((x_ecdf.x[compressed_idx], x_ecdf.x[boots_idx:]), axis=-1)
+            x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[boots_idx:]), axis=-1)
             x_ecdf.n = len(x_ecdf.x)
             return x_ecdf
 
@@ -151,10 +151,10 @@ def ECDF(x,**kwargs):
                 x_ecdf = mECDF(x[:,0], side=side)
                 sort_idx = np.argsort(x[:,0])
                 x = x[sort_idx,:]
-                idx = (np.abs(x_ecdf.y - (1-alpha))).argmin()
-                _, compressed_idx = np.unique(np.round(x_ecdf.x[:idx], decimals=2), return_index=True)
-                x_ecdf.x = np.concatenate((x[compressed_idx,:], x[idx:,:]), axis=-1)
-                x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[idx:]), axis=-1)
+                boots_idx = (np.abs(x_ecdf.y - (1-alpha))).argmin()
+                _, compressed_idx = np.unique(np.round(x_ecdf.x[:boots_idx], decimals=2), return_index=True)
+                x_ecdf.x = np.concatenate((x[compressed_idx,:], x[boots_idx:,:]), axis=-1)
+                x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[boots_idx:]), axis=-1)
                 x_ecdf.n = len(x_ecdf.x)
                 return x_ecdf
 
@@ -165,10 +165,10 @@ def ECDF(x,**kwargs):
                 x_ecdf.n = []
                 for ix in x.T:
                     ix_ecdf = mECDF(ix, side=side)
-                    idx = (np.abs(ix_ecdf.y - (1-alpha))).argmin()
-                    _, compressed_idx = np.unique(np.round(ix_ecdf.x[:idx], decimals=2), return_index=True)
-                    x_ecdf.x.append(np.concatenate((ix_ecdf.x[compressed_idx], ix_ecdf.x[idx:]), axis=-1))
-                    x_ecdf.y.append(np.concatenate((ix_ecdf.y[compressed_idx], ix_ecdf.y[idx:]), axis=-1))
+                    boots_idx = (np.abs(ix_ecdf.y - (1-alpha))).argmin()
+                    _, compressed_idx = np.unique(np.round(ix_ecdf.x[:boots_idx], decimals=2), return_index=True)
+                    x_ecdf.x.append(np.concatenate((ix_ecdf.x[compressed_idx], ix_ecdf.x[boots_idx:]), axis=-1))
+                    x_ecdf.y.append(np.concatenate((ix_ecdf.y[compressed_idx], ix_ecdf.y[boots_idx:]), axis=-1))
                     x_ecdf.n.append(len(x_ecdf.x))
                 return x_ecdf
 
@@ -453,5 +453,40 @@ def _load_data_from_file(fname, data_dir=os.getcwd()):
         else:
             raise ValueError('FileNotFoundError, {:d} similar files exists'.format(len(similar_files)))
     return data
+
+
+def bootstrapping(data, num_bootstrap, bootstrap_size=None):
+    """
+    bootstrap sampling from given data set
+    bootstrap is performed along axis=0
+    i.e. for every sample (j column), boostrap samples are randomly chosen from its corresponding nobservations rows 
+    data: ndarray of shape(nobservations, nsamples)
+    
+
+    """
+    data = np.array(data, copy=False, ndmin=2)
+    pool_size, nsamples = data.shape
+    bootstrap_size = pool_size if bootstrap_size is None else bootstrap_size
+    res = [ _bootstrpping(data, bootstrap_size) for _ in range(int(num_bootstrap))]
+    res = np.array(res)
+    return res
+
+def _bootstrpping(data, bootstrap_size):
+    """
+    bootstrap sampling from given data set
+    bootstrap is performed along axis=0
+    i.e. for every sample (j column), boostrap samples are randomly chosen from its corresponding nobservations rows 
+    data: ndarray of shape(nobservations, nsamples)
+    
+
+    """
+    data = np.array(data, copy=False, ndmin=2)
+    pool_size, nsamples = data.shape
+    res = []
+    boots_idx = np.random.randint(0,pool_size,(bootstrap_size,nsamples))
+    for iboots in boots_idx:
+        res.append([data[i,j] for j,i in enumerate(iboots)])
+    res = np.array(res)
+    return res
 
 
