@@ -111,7 +111,7 @@ class FPSO(SolverBase):
                 np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
 
             y_QoI.append(y_QoI_)
-        return np.array(y_QoI)
+        return np.squeeze(y_QoI)
 
     def _run_FPSO(self, x, seed):
         y = self._Glimitmax(x)
