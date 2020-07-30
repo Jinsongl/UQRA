@@ -218,7 +218,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         ## parameters for LassoLars 
         self.fit_method = 'LASSOLARS' 
         x = np.array(x, copy=False, ndmin=2)
-        y = np.array(y, copy=False, ndmin=2)
+        y = np.array(y, copy=False, ndmin=1)
         n_splits= kwargs.get('n_splits', x.shape[1])
         n_splits= min(n_splits, x.shape[1])
         max_iter= kwargs.get('max_iter', 500)
@@ -232,7 +232,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             X, y = self._rescale_data(X, y, sample_weight)
 
         try:    
-            model         = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=cpu_count).fit(X,y)
+            model  = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=cpu_count).fit(X,y)
         except ValueError as e:
             #### looks like a bug in KFold
             print(e)
