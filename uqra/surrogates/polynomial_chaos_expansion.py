@@ -64,6 +64,8 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.deg       = self.basis.deg
             self.active_index = None if self.num_basis is None else range(self.num_basis)
             self.active_basis = None if self.basis.basis_degree is None else self.basis.basis_degree 
+            self.cv_error     = np.inf
+            self.tag          = '{:d}{:s}{:d}'.format(self.ndim, self.basis.nickname,self.deg)
     
     def fit(self, method, x, y, w=None, **kwargs):
         if method.lower().startswith('quad'):
@@ -216,7 +218,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         ## parameters for LassoLars 
         self.fit_method = 'LASSOLARS' 
         x = np.array(x, copy=False, ndmin=2)
-        y = np.array(y, copy=False, ndmin=1)
+        y = np.array(y, copy=False, ndmin=2)
         n_splits= kwargs.get('n_splits', x.shape[1])
         n_splits= min(n_splits, x.shape[1])
         max_iter= kwargs.get('max_iter', 500)
