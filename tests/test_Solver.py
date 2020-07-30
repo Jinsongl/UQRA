@@ -12,6 +12,7 @@ from sklearn.model_selection import KFold
 import pickle
 import scipy.stats as stats
 import scipy.io
+import multiprocessing as mp
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
@@ -194,6 +195,11 @@ class BasicTestSuite(unittest.TestCase):
             # np.save(os.path.join(data_dir_destn, filename), y_QoI)
 
     def test_FPSO(self):
+        try: 
+            cpu_count = mp.cpu_count()
+        except NotImplementedError:
+            cpu_count = 4
+
 
         ## ------------------------ Environmental Contour ----------------- ###
         # solver = uqra.FPSO(phase=list(range(0,20)))
@@ -247,12 +253,11 @@ class BasicTestSuite(unittest.TestCase):
         data  = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/CLS/Norm/DoE_ClsE6d2R0.npy') 
         mcs_u = data[:,:int(1e5)] 
         mcs_u = mcs_u + u_origin 
+
         mcs_u_cdf = stats.norm.cdf(mcs_u)
         print(np.mean(mcs_u, axis=1))
         print(np.amax(mcs_u_cdf))
         print(np.amin(mcs_u_cdf))
-        print(np.isnan(mcs_u_cdf).any())
-        print(np.isinf(mcs_u_cdf).any())
         env_obj = Kvitebjorn()
         mcs_x = env_obj.ppf(stats.norm.cdf(mcs_u))
         mcs_y = solver.run(mcs_x) 
