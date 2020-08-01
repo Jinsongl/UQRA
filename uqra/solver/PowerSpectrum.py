@@ -150,8 +150,10 @@ class PowerSpectrum(object):
         #                   | fmax = 1/(2*dt)
         # ---------------------------------------------------------
         if self.sides.lower() == 'single':
-            psd_w, pxx= self.psd_single2double()
+            psd_w, pxx = self.w_rad , self.pxx
+            # psd_w, pxx= self.psd_single2double()
         else:
+            raise NotImplementedError
             assert self._is_symmetric(self.w_rad, self.pxx)
             psd_w, pxx = self.w_rad, self.pxx
 
@@ -161,38 +163,42 @@ class PowerSpectrum(object):
             tmin, tmax, dt = 0, 2*np.pi/psd_dw, np.pi/psd_w_max
             fft_freq_min, fft_freq_max, fft_freq_dw = 0, psd_w_max, psd_dw
             fft_freq_pos = np.arange(int(round(fft_freq_max/fft_freq_dw) +1)) * fft_freq_dw
-            time = np.arnage(int(round(tmax/dt))) *dt  
+            time = np.arange(int(round(tmax/dt))+1) *dt  
         else:
             ### when a time index is given, sampling frequency need to be small enough to cover the period (tmax) and frequency window need to be large enough to have time resolution dt
             tmax, tmin, dt = t[-1], t[0], t[1] - t[0]
             fft_freq_min, fft_freq_max, fft_freq_dw = 0, max(np.pi/dt, psd_w_max), min(psd_dw, 2*np.pi/tmax) 
             fft_freq_pos = np.arange(int(round(fft_freq_max/fft_freq_dw) +1)) * fft_freq_dw
             tmin, tmax, dt = 0, 2*np.pi/fft_freq_dw, np.pi/fft_freq_max 
-            time = np.arnage(int(round(tmax/dt))) *dt  
+            time = np.arange(int(round(tmax/dt))+1) *dt  
 
         # ntime_steps = psd_w.size//2 #int(w_max/dw) same as number of frequencies
         # time = np.arange(-ntime_steps,ntime_steps+1) * dt
 
         psd_w_idx = [int(round(psd_w_min/fft_freq_dw)),int(round(psd_w_max/fft_freq_dw))]
-        psd_w_= np.arange(psd_w_idx[0],psd_w_idx[1])*fft_freq_dw
-        pxx_  = self.cal_density(psd_w_) 
+        # psd_w= np.arange(psd_w_idx[0],psd_w_idx[1])*fft_freq_dw
+        # pxx  = self.cal_density(psd_w) 
         if phase is None:
             np.random.seed(random_seed)
-            theta = np.random.uniform(-np.pi, np.pi, psd_w_.size)
+            theta = np.random.uniform(-np.pi, np.pi, psd_w.size)
         else:
-            theta = phase[:psd_w_.size]
-        psd_A = np.sqrt(2.0*pxx_*fft_freq_dw)/2.0 * np.exp(-1j*theta) * (fft_freq_pos*2-1) # amplitude
-        fft_A = np.zeros(fft_freq_pos.size, dtype=complex)
-        fft_A[psd_w_idx[0]:psd_w_idx[1]] = psd_A
+            theta = phase[:psd_w.size]
+
+        psd_A = np.sqrt(2.0*pxx*fft_freq_dw)/2.0 * np.exp(-1j*theta) *  (pxx.size*2-1) #(fft_freq_pos*2-1) # amplitude
+        # fft_A = np.zeros(fft_freq_pos.size, dtype=complex)
+        # fft_A = np.zeros(pxx.size, dtype=complex)
+        # fft_A[psd_w_idx[0]:psd_w_idx[1]] = psd_A
+        fft_A = psd_A
         fft_A = np.append(fft_A, np.flip(np.conj(fft_A[1:])))
         # eta = np.roll(eta,ntime_steps).real # roll back to [-T, T], IFFT result should be real, imaginary part is very small ~10^-16
         eta = np.fft.ifft(fft_A).real
-        assert eta.size == time.size
+        if eta.size != time.size:
+            raise ValueError(' len(eta)= {:d}, but len(time) = {:d}'.format(eta.size, time.size))
 
         if t is not None:
             eta = np.interp(t, time, eta)
             time = t
-        return time, eta , psd_w_, theta
+        return time, eta , psd_w, theta
 
     def _is_symmetric(self, x, y):
         """
