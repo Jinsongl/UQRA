@@ -13,19 +13,17 @@ import numpy as np
 
 def jonswap(w, Hs, Tp):
     """ JONSWAP wave spectrum, IEC 61400-3
-    w: frequencies to be sampled at, hz 
+    w: ndarray of shape (n,), frequencies to be sampled at, rad/s
     Hs: significant wave height, m
     Tp: wave peak period, sec
     """
 
+    w = np.squeeze(w)
     with np.errstate(divide='ignore'):
-        # print "sample frequency: \n", w
         wp    = 2*np.pi/Tp
         gamma = 3.3 
         sigma = 0.07 * np.ones(w.shape)
         sigma[w > wp] = 0.09
-        # print "wp:", wp
-        # print "sigma: ", sigma
         
         assert w[0] >= 0 ,'Single side power spectrum start with frequency greater or eqaul to 0, w[0]={:4.2f}'.format(w[0])
 
@@ -36,7 +34,6 @@ def jonswap(w, Hs, Tp):
         JS1[np.isinf(JS1)] = 0
         JS2[np.isinf(JS2)] = 0
         JS3[np.isinf(JS3)] = 0
-        # print(np.isnan(JS1).any())
         JS = JS1 * JS2 * JS3
 
     return w, JS
