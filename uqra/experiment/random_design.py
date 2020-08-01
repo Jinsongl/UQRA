@@ -57,7 +57,17 @@ class RandomDesign(ExperimentBase):
             u = np.array([idist.rvs(size=self.n_samples, loc=iloc, scale=iscale) for idist, iloc, iscale in zip(self.distributions, self.loc, self.scale)])
             return  u 
             
-        elif self.method.upper() in ['CHRISTOFFEL', 'CLS']:
+        ### Chirstoffel sampling, ref Table [2],   A CHRISTOFFEL FUNCTION WEIGHTED LEAST SQUARES ALGORITHM FOR COLLOCATION APPROXIMATIONS
+            #   Domain D    |  Orthogonality weight w   | Sampling density domain       | Sampling density v(y) 
+            ## -------------------------------------------------------------------------------------
+            #  CLS1: [−1, 1]^d   | Any admissible weight     | [−1, 1]^d 􏰧                   | Chebyshev   
+            #  CLS2:     B^d     | Any admissible weight     |   B^d 􏰱                       |
+            #  CLS3:     T^d     | Any admissible weight     |   T^d 􏰱                       |
+            #  CSL4:     R^d     | exp(-|z|^2)               | sqrt(2)B^d 
+            #  CLS5:  0,∞)^d
+              
+
+        elif self.method.upper() in ['CHRISTOFFEL1', 'CLS1']:
             """
             Sampling from the pluripoential equilibrium corresponding to distributions specified in self.distributions.
             
@@ -67,33 +77,39 @@ class RandomDesign(ExperimentBase):
 
 
             """
+            u = stats.uniform.rvs(0,np.pi,size=(self.ndim, self.n_samples))
+            x = np.cos(u)
+        elif self.method.upper() in ['CHRISTOFFEL2', 'CLS2']:
+            ###  Acceptance and rejection sampling 
+            ## 1. Sampling 
+            ## 2. Accept and reject samples 
+            ## Method to sample uniformly inside a d-dimensional ball
+            ## 1. z ~ normal(0,1), z <- z/|z|, then z ~ uniformally on d-ball sphere  
+            ## 2. u ~ uniform(0,1) 
+            ## 3. z * u^{1/d}
+            n = int(self.n_samples)
+            z = stats.norm.rvs(0,1,size=(self.ndim, n))
+            z = z/np.linalg.norm(z, axis=0)
+            u = np.cos(stats.uniform.rvs(0,np.pi,size=(self.ndim, self.n_samples)))
+            x = z * u 
 
-            ## Assuming all distributions in self.distributions are same
-            idist = self.distributions[0]
-            try:
-                dist_name = idist.name
-            except AttributeError:
-                dist_name = idist.dist.name
+        elif self.method.upper() in ['CHRISTOFFEL3', 'CLS3']:
+            raise NotImplementedError
 
-            if dist_name == 'uniform':
-                u = stats.uniform.rvs(0,np.pi,size=(self.ndim, self.n_samples))
-                x = np.cos(u)
+        elif self.method.upper() in ['CHRISTOFFEL4', 'CLS4']:
+            #### Sampling from Ball with radius sqrt(2). 
+            ## 1. z ~ normal(0,1), z / norm(z): uniformly sampling on Ball^d sphere
+            ## 2. u ~ uniform(0,1 )
 
-            elif dist_name in ['norm', 'normal']:
-                #### Sampling from Ball with radius sqrt(2). 
-                ## 1. z ~ normal(0,1), z / norm(z)
-                ## 2. u ~ uniform(0,1 )
+            n = int(self.n_samples)
+            z = stats.norm.rvs(0,1,size=(self.ndim, n))
+            z = z/np.linalg.norm(z, axis=0)
+            u = stats.beta.rvs(self.ndim/2.0,self.ndim/2.0 + 1,size=n)
+            u = np.sqrt(2 * u) 
+            x = z * u 
+        elif self.method.upper() in ['CHRISTOFFEL5', 'CLS5']:
+            raise NotImplementedError
 
-                n = int(self.n_samples)
-                z = stats.norm.rvs(0,1,size=(self.ndim, n))
-                z = z/np.linalg.norm(z, axis=0)
-                u = stats.beta.rvs(self.ndim/2.0,self.ndim/2.0 + 1,size=n)
-                u = np.sqrt(2 * u) 
-                x = z * u 
-            else:
-                raise NotImplementedError
-
-            return  x
 
         elif self.method.upper() in ['HALTON', 'HAL', 'H']:
             raise NotImplementedError 
@@ -103,4 +119,5 @@ class RandomDesign(ExperimentBase):
 
         else:
             raise NotImplementedError 
+        return  x
 
