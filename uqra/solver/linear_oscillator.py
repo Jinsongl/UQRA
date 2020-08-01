@@ -333,8 +333,8 @@ class linear_oscillator(SolverBase):
         Return the psd estimator of both input and output signals at frequency f for specified PowerSpectrum with given parameters x
 
         Arguments:
-            f: frequency in rad/s
-            x: PowerSpectrum parameters
+            w_rad: frequency in rad/s
+            x    : PowerSpectrum parameters
         Returns:
             PowerSpectrum object of input and output signal
         """
