@@ -83,14 +83,14 @@ class FPSO(SolverBase):
         return message
 
     def run(self, x, save_raw=False, save_qoi=False, seeds_st=None, out_responses=None, data_dir=None):
-        seeds_st = self.seeds_st if seeds_st is None else seeds_st
-        seeds_st = [seeds_st,] if np.ndim(seeds_st) == 0 else seeds_st
+        seeds_st        = self.seeds_st if seeds_st is None else seeds_st
+        seeds_st        = [seeds_st,] if np.ndim(seeds_st) == 0 else seeds_st
         n_short_term    = np.size(seeds_st) 
         out_responses   = self.out_responses if out_responses is None else out_responses
         data_dir        = os.getcwd() if data_dir is None else data_dir
 
         x = np.array(x.T, copy=False, ndmin=2)
-        y_QoI = []
+        y = []
         for iseed_idx, iseed in zip(self.seeds_idx, seeds_st):
             pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(iseed_idx, n_short_term))
             ### Note that xlist and ylist will be tuples (since zip will be unpacked). 
@@ -110,10 +110,10 @@ class FPSO(SolverBase):
                 filename = '{:s}_yQoI_nst{:d}'.format(self.nickname,iseed_idx)
                 np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
 
-            y_QoI.append(y_QoI_)
-        return np.squeeze(y_QoI)
+            y.append(y_QoI_)
+        return np.squeeze(y)
 
-    def _run_FPSO(self, x, seed):
+    def _run_FPSO(self, x, random_seed):
         y = self._Glimitmax(x)
         return y
 
@@ -172,7 +172,7 @@ class FPSO(SolverBase):
         # Environmental data
         # ------------------
         Hs, Tp = args[0]
-        seed = args[1]
+        random_seed = args[1]
 
         Snn=self._jonswap(Hs,Tp);
 
@@ -183,15 +183,15 @@ class FPSO(SolverBase):
         # Parameters
         # ----------
 
-        np.random.seed(seed)
+        np.random.seed(random_seed)
         x_rand= np.random.normal(loc=0,scale=1.0, size=(1,2*N))
         Re    = x_rand[0,:N];
         Im    = x_rand[0,N:];
         # print(x_rand[:10])
-        A=(Re+1j*Im)*np.sqrt(self.dw*Snn);
+        A=(Re+1j*Im)*np.sqrt(self.dw*Snn)
         # print(A.shape)
-        # X_0 =-Nt*np.real(np.fft.ifft(A,Nt));
-        # print(' Hs: {:.2f}, 4*sigma: {:.2f}'.format(Hs, 4*np.std(X_0)))
+        # X_0 =-Nt*np.real(np.fft.ifft(A,Nt))
+        # print(' Hs: {:.2f}, 4*sigma: {:.2f}'.format(Hs, 4*np.std(X_0[:41888])))
         # -----------
         # WF response
         # -----------
@@ -211,6 +211,32 @@ class FPSO(SolverBase):
             X1[i] = self.Hx[i] * np.sum( 0.5 * (self.diag_surge[:N-i] + self.diag_surge[i:N]) * A_Aconj)
 
         Z [:len(X1)] = Z[:len(X1)] + 2 * X1
+
+
+
+        # dt = np.pi/(self.dw * Nt)
+        # t  = np.arange(0,2000,dt)
+        # w_rad = np.arange(Nt+1) * self.dw 
+
+        # spectrum_x = uqra.solver.PowerSpectrum.PowerSpectrum()
+        # _, psd_x = uqra.solver.spectrums.jonswap(w_rad, Hs, Tp)
+        # spectrum_x.set_density(w_rad, psd_x)
+        # t0, x_t, w_rad_x, theta_x = spectrum_x.gen_process(t, random_seed=random_seed)
+        # if abs(4*np.std(x_t[int(200/dt):]) - Hs) > 0.2* Hs:
+            # raise ValueError('Hs != 4*sigma')
+
+        # spectrum_y = uqra.solver.PowerSpectrum.PowerSpectrum()
+        # psd_y = np.zeros((Nt+1,), dtype=complex)
+        # psd_y[:len(Z)] = Z
+        # spectrum_y.set_density(w_rad, psd_y)
+
+        # t0, y_t, w_rad_x, theta_x = spectrum_y.gen_process(t, random_seed=random_seed)
+        # print(t0)
+        # print(y_t)
+        # print(w_rad_x)
+        # print(theta_x)
+        # Gmax = np.max(y_t[int(200/dt):])
+
         X = -Nt * np.real(np.fft.ifft(Z, Nt)) 
         Gmax = np.max(X[:41888]) 
         return Gmax
