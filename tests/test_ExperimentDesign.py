@@ -106,17 +106,30 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_CLS(self):
 
-        # print('Testing: Random Sampling from Pluripotential Equilibrium ...')
-        # print('testing: d=1, theta: default')
-        # doe = uqra.RandomDesign(sp.stats.uniform, 'CLS')
-        # doe_x = doe.get_samples(n_samples=1e5)
-        # print(doe_x.shape)
-        # print(np.mean(doe_x, axis=1))
-        # print(np.std(doe_x, axis=1))
-        # print(np.min(doe_x, axis=1))
-        # print(np.max(doe_x, axis=1))
+        print('Testing: Random Sampling from Pluripotential Equilibrium ...')
+        print('testing: d=1, theta: default')
+        d = 2
+        for i in range(1,6):
+            try:
+                doe = uqra.RandomDesign([sp.stats.uniform,]*d, 'CLS{:d}'.format(i))
+                doe_x = doe.get_samples(n_samples=1e5)
+                print('CLS{:d}'.format(i))
+                print('x shape: {}'.format(doe_x.shape))
+                print('x mean: {}'.format(np.mean(doe_x, axis=1)))
+                print('x std : {}'.format(np.std(doe_x, axis=1)))
+                print('x min : {}'.format(np.min(doe_x, axis=1)))
+                print('x max : {}'.format(np.max(doe_x, axis=1)))
+            except NotImplementedError:
+                pass
+
+        for d in range(2,3):
+            print('CLS4, d={:d}'.format(d))
+            doe = uqra.RandomDesign([sp.stats.uniform,]*d, 'CLS4')
+            doe_x = doe.get_samples(n_samples=1e7)
+            np.save('DoE_Cls4d{:d}E7R0.npy'.format(d), doe_x)
 
 
+        
         # print('Testing: Random Sampling from Pluripotential Equilibrium ...')
         # print('testing: d=2, theta: default')
         # doe = uqra.RandomDesign( [sp.stats.uniform,] * 2, 'CLS')
@@ -140,38 +153,38 @@ class BasicTestSuite(unittest.TestCase):
         # # np.save('cls_norm_d2', doe_x)
 
 
-        print('\nTesting: Random Sampling from Pluripotential Equilibrium ...')
-        ndim = 3
-        print('testing: d={:d}, theta: default'.format(ndim))
-        doe = uqra.RandomDesign( [sp.stats.norm,] *ndim, 'CLS')
-        doe_x = doe.get_samples(n_samples=1e7)
-        print(doe_x.shape)
-        print(np.mean(doe_x, axis=1))
-        print(np.std(doe_x, axis=1))
-        print(np.min(doe_x, axis=1))
-        print(np.max(doe_x, axis=1))
-        # np.save('cls_norm_d2', doe_x)
+        # print('\nTesting: Random Sampling from Pluripotential Equilibrium ...')
+        # ndim = 3
+        # print('testing: d={:d}, theta: default'.format(ndim))
+        # doe = uqra.RandomDesign( [sp.stats.norm,] *ndim, 'CLS')
+        # doe_x = doe.get_samples(n_samples=1e7)
+        # print(doe_x.shape)
+        # print(np.mean(doe_x, axis=1))
+        # print(np.std(doe_x, axis=1))
+        # print(np.min(doe_x, axis=1))
+        # print(np.max(doe_x, axis=1))
+        # # np.save('cls_norm_d2', doe_x)
 
-        data = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/CLS/Norm/DoE_ClsE6d3R0.npy')
-        print(data.shape)
-        print(np.mean(data, axis=1))
-        print(np.std(data, axis=1))
-        print(np.min(data, axis=1))
-        print(np.max(data, axis=1))
+        # data = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/CLS/Norm/DoE_ClsE6d3R0.npy')
+        # print(data.shape)
+        # print(np.mean(data, axis=1))
+        # print(np.std(data, axis=1))
+        # print(np.min(data, axis=1))
+        # print(np.max(data, axis=1))
 
 
-        print('\nTesting: Random Sampling from Pluripotential Equilibrium ...')
-        ndim = 4
-        print('testing: d={:d}, theta: default'.format(ndim))
-        for i in range(10):
-            doe = uqra.RandomDesign( [sp.stats.norm,] * ndim, 'CLS')
-            doe_x = doe.get_samples(n_samples=1e7)
-            np.save('DoE_ClsE6d{:d}R{:d}.npy'.format(ndim,i), doe_x)
-        print(doe_x.shape)
-        print(np.mean(doe_x, axis=1))
-        print(np.std(doe_x, axis=1))
-        print(np.min(doe_x, axis=1))
-        print(np.max(doe_x, axis=1))
+        # print('\nTesting: Random Sampling from Pluripotential Equilibrium ...')
+        # ndim = 4
+        # print('testing: d={:d}, theta: default'.format(ndim))
+        # for i in range(10):
+            # doe = uqra.RandomDesign( [sp.stats.norm,] * ndim, 'CLS')
+            # doe_x = doe.get_samples(n_samples=1e7)
+            # np.save('DoE_ClsE6d{:d}R{:d}.npy'.format(ndim,i), doe_x)
+        # print(doe_x.shape)
+        # print(np.mean(doe_x, axis=1))
+        # print(np.std(doe_x, axis=1))
+        # print(np.min(doe_x, axis=1))
+        # print(np.max(doe_x, axis=1))
 
 
 
