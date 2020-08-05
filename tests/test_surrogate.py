@@ -2,7 +2,7 @@
 
 import uqra, unittest,warnings,os, sys 
 from tqdm import tqdm
-import numpy as np, chaospy as cp, scipy as sp 
+import numpy as np, scipy as sp 
 from uqra.solver.PowerSpectrum import PowerSpectrum
 from uqra.environment import Kvitebjorn as Kvitebjorn
 from sklearn import datasets
@@ -238,25 +238,32 @@ class BasicTestSuite(unittest.TestCase):
         from sklearn import datasets
 
         solver3 = lambda x: x**4 + x**2 + 3 
+        solver4 = lambda x: x**9 + 1.5*x**5 + 10
 
         np.random.seed(100)
-        dist_u = cp.Normal()
-        u_samples = dist_u.sample(1000)
-        y_samples = solver3(u_samples)
+        u_samples = stats.norm.rvs(size=1000)
+        y_samples = np.array([solver3(u_samples), solver4(u_samples)])
+        u_samples = u_samples.reshape(1,-1)
         print('y mean: {}'.format(np.mean(y_samples)))
 
-        pce_model = uqra.PCE(10,dist_u)
-        pce_model.fit(u_samples, y_samples, method='LassoLars')
+        orth_poly= uqra.Hermite(1, 10)
+        pce_model = uqra.PCE(orth_poly)
+        print(u_samples.shape)
+        print(y_samples.shape)
+        pce_model.fit('LassoLars', u_samples, y_samples )
         # print(pce_model.active_)
         # print(pce_model.metamodels)
-        y_pred = pce_model.predict(u_samples.reshape(1,-1))
-        print(y_pred[:4])
+        y_pred = pce_model.predict(u_samples)
+        print(pce_model.score)
+        print(pce_model.cv_error)
+        print(np.amax(abs(y_pred[0] - y_samples[0])))
+        print(np.amax(abs(y_pred[1] - y_samples[1])))
 
-        pce_model.fit(u_samples, y_samples, method='OlsLars')
+        # pce_model.fit('OlsLars', u_samples, y_samples)
         # print(pce_model.active_)
         # print(pce_model.metamodels)
-        y_pred = pce_model.predict(u_samples.reshape(1,-1))
-        print(y_pred[:4])
+        # y_pred = pce_model.predict(u_samples)
+        # print(y_pred[:4])
 
 if __name__ == '__main__':
     unittest.main()
