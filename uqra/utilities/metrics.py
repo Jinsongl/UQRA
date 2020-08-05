@@ -95,7 +95,7 @@ def mquantiles(a, prob=[0.25, 0.5, 0.75],axis=0,limit=(),multioutput='uniform_av
             raise ValueError('Input data, as a sequence or array of dimension at most 2.')
         # print('{:s} :{}'.format('mquantiles', res.shape))
     elif multioutput.lower() == 'raw_values':
-        res = res
+        res = np.squeeze(res)
     else:
         raise NotImplementedError
     return res
@@ -174,7 +174,5 @@ def leave_one_out_error(X,y, is_adjusted=True):
         correcting_factor =  n/(n-P) * (1+ np.trace(np.linalg.inv(C))/n)
         error_loo =  error_loo * correcting_factor
     return error_loo
-
-
 
 
