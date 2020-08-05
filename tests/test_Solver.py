@@ -195,10 +195,10 @@ class BasicTestSuite(unittest.TestCase):
             # np.save(os.path.join(data_dir_destn, filename), y_QoI)
 
     def test_FPSO(self):
-        try: 
-            cpu_count = mp.cpu_count()
-        except NotImplementedError:
-            cpu_count = 4
+        data_dir_samples= '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
+        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data' 
+        Kvitebjorn      = uqra.environment.Kvitebjorn()
+        cpu_count = mp.cpu_count()
 
         # solver = uqra.FPSO(phase=list(range(0,4)))
         # x = np.array([2,4]).reshape(2,-1)
@@ -221,53 +221,59 @@ class BasicTestSuite(unittest.TestCase):
 
 
         ## ------------------------ Environmental Contour Bootstrap ----------------- ###
-        EC2D_data = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_EC2D_T50.npy')
-        EC2D_y_data = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_EC2D_T50_y.npy')
-        EC2D_y_boots= uqra.bootstrapping(EC2D_y_data, 100) 
-        print(EC2D_y_boots.shape)
-        EC2D_boots_median = np.median(EC2D_y_boots, axis=1)
-        print(EC2D_boots_median.shape)
-        y50_EC_boots_idx  = np.argmax(EC2D_boots_median, axis=-1)
-        y50_EC_boots_state= np.array([EC2D_data[:-1,i] for i in y50_EC_boots_idx]).T
-        print(y50_EC_boots_state.shape)
-        y50_EC_boots_y    = np.max(EC2D_boots_median,axis=-1) 
-        y50_EC_boots      = np.concatenate((y50_EC_boots_state, y50_EC_boots_y.reshape(1,-1)), axis=0)
-        print('Extreme reponse from EC (Bootstrapping):')
-        print('   Mean: {:.2f}, Std: {:.2f}'.format(np.mean(y50_EC_boots_y), np.std(y50_EC_boots_y)))
-        print('   min(u1): {:.2f}, max(u2):{:.2f}'.format(np.min(y50_EC_boots[0]), np.max(y50_EC_boots[1]) ))
+        # EC2D_data = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_EC2D_T50.npy')
+        # EC2D_y_data = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_EC2D_T50_y.npy')
+        # EC2D_y_boots= uqra.bootstrapping(EC2D_y_data, 100) 
+        # print(EC2D_y_boots.shape)
+        # EC2D_boots_median = np.median(EC2D_y_boots, axis=1)
+        # print(EC2D_boots_median.shape)
+        # y50_EC_boots_idx  = np.argmax(EC2D_boots_median, axis=-1)
+        # y50_EC_boots_state= np.array([EC2D_data[:-1,i] for i in y50_EC_boots_idx]).T
+        # print(y50_EC_boots_state.shape)
+        # y50_EC_boots_y    = np.max(EC2D_boots_median,axis=-1) 
+        # y50_EC_boots      = np.concatenate((y50_EC_boots_state, y50_EC_boots_y.reshape(1,-1)), axis=0)
+        # print('Extreme reponse from EC (Bootstrapping):')
+        # print('   Mean: {:.2f}, Std: {:.2f}'.format(np.mean(y50_EC_boots_y), np.std(y50_EC_boots_y)))
+        # print('   min(u1): {:.2f}, max(u2):{:.2f}'.format(np.min(y50_EC_boots[0]), np.max(y50_EC_boots[1]) ))
 
-        u_origin = np.array([np.min(y50_EC_boots[0]), np.max(y50_EC_boots[1])]).reshape(-1,1)
-        EC2D_y_data = np.save('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_EC2D_T50_bootstrap.npy', y50_EC_boots)
-
-        # y50_EC_boots = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_EC2D_T50_bootstrap.npy')
         # u_origin = np.array([np.min(y50_EC_boots[0]), np.max(y50_EC_boots[1])]).reshape(-1,1)
-        # x_origin = np.array([np.min(y50_EC_boots[2]), np.max(y50_EC_boots[3])]).reshape(-1,1)
-        # print(' > Extreme reponse from EC (Bootstrapping):')
-        # print('   - y: [mean, std]= [{:.2f}, {:.2f}]'.format(np.mean(y50_EC_boots[-1]), np.std(y50_EC_boots[-1])))
-        # print('   - u: min(u1): {:.2f}, max(u2): {:.2f}'.format(u_origin[0,0], u_origin[1,0] ))
-        # print('   - x: min(Hs): {:.2f}, max(Tp): {:.2f}'.format(x_origin[0,0], x_origin[1,0] ))
+        # EC2D_y_data = np.save('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_EC2D_T50_bootstrap.npy', y50_EC_boots)
 
-        # random_seed = list(range(4))
-        # solver = uqra.FPSO(phase=random_seed)
+        ## ------------------------ Validation Dataset with shifted center ----------------- ###
+        filename    = 'FPSO_DoE_EC2D_T50_bootstrap.npy' 
+        y50_EC_boots_data = np.load(os.path.join(data_dir_result, filename))
+        y50_EC_boots      = np.mean(y50_EC_boots_data, axis=1)
+        y50_EC_boots_std  = np.std (y50_EC_boots_data, axis=1)
+        print(' > Extreme reponse from EC (Bootstrap (n={:d})):'.format(y50_EC_boots_data.shape[1]))
+        print('   - Data set: {}'.format(y50_EC_boots_data.shape))
+        print('   - y: [mean, std]= [{:.2f}, {:.2f}]'.format(y50_EC_boots[-1],y50_EC_boots_std[-1]))
+        print('   - State: u: {}, x: {}'.format(np.around(y50_EC_boots[:2],2),np.around(y50_EC_boots[2:4],2)))
+
+        u_center = y50_EC_boots[ :2]
+        x_center = y50_EC_boots[2:4]
+        cut_radius = 3
+
+        random_seed_short_term = list(range(21))
+        solver = uqra.FPSO(phase=random_seed_short_term)
         # data  = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Norm/DoE_McsE7R0.npy') 
-        # # data  = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/CLS/Norm/DoE_ClsE6d2R0.npy') 
-        # mcs_u = data[:2,:int(1e4)] 
-        # # mcs_u = mcs_u + u_origin 
-        # env_obj = Kvitebjorn()
-        # mcs_x = env_obj.ppf(stats.norm.cdf(mcs_u))
+        # mcs_u = data[:solver.ndim,:int(1e5)]
+        data  = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/CLS/DoE_Cls2E7d2R0.npy') 
+        mcs_u = data[:solver.ndim,:int(1e5)] *  cut_radius
 
-        # print('--------------------------------------------------')
-        # print('>>> Running MCS ')
-        # print('--------------------------------------------------')
+        mcs_u = mcs_u + u_center.reshape(solver.ndim,-1)
+        mcs_x = Kvitebjorn.ppf(stats.norm.cdf(mcs_u))
+        print('--------------------------------------------------')
+        print('>>> Running MCS ')
+        print('--------------------------------------------------')
+        print('  - u samples {}: mean [{}], std [{}] '.format(mcs_u.shape, np.around(np.mean(mcs_u, axis=1), 2), np.around(np.std(mcs_u, axis=1), 2)))
+        print('  - x samples {}: mean [{}], std [{}] '.format(mcs_x.shape, np.around(np.mean(mcs_x, axis=1), 2), np.around(np.std(mcs_x, axis=1), 2)))
+        mcs_y = solver.run(mcs_x) 
+        print(mcs_y.shape)
+        mcs_data = np.concatenate((mcs_u, mcs_x, mcs_y.reshape(len(random_seed_short_term),-1)), axis=0)
+        print(mcs_data.shape)
 
-        # print('  - u samples {}: mean [{}], std [{}] '.format(mcs_u.shape, np.around(np.mean(mcs_u, axis=1), 2), np.around(np.std(mcs_u, axis=1), 2)))
-        # print('  - x samples {}: mean [{}], std [{}] '.format(mcs_x.shape, np.around(np.mean(mcs_x, axis=1), 2), np.around(np.std(mcs_x, axis=1), 2)))
-        # mcs_y = solver.run(mcs_x) 
-        # print(mcs_y.shape)
-        # mcs_data = np.concatenate((mcs_u, mcs_x, mcs_y.reshape(len(random_seed),-1)), axis=0)
-
-        # np.save('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_McsE4R0.npy', mcs_data)
-        # np.save('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_ClsE5R0.npy', mcs_data)
+        # np.save('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_McsE5R0.npy', mcs_data)
+        np.save('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_Cls2E5R0.npy', mcs_data)
 
 
         # data_dir = ''
