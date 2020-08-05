@@ -48,8 +48,10 @@ def main(ST):
     np.set_printoptions(suppress=True)
     pf       = 0.5/(50*365.25*24)
     radius_surrogate= 3
-    data_dir_samples= '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
-    data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data' 
+    # data_dir_samples= '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
+    # data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data' 
+    data_dir_result = r'G:\My Drive\MUSE_UQ_DATA\FPSO_SDOF\Data'
+    data_dir_samples = r'G:\My Drive\MUSE_UQ_DATA\Samples'
     Kvitebjorn      = uqra.environment.Kvitebjorn()
     short_term_seeds_applied = np.setdiff1d(np.arange(11), np.array([]))
 
@@ -125,10 +127,10 @@ def main(ST):
     simparams.pce_degs   = np.array(range(2,21))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
-    simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = None # 'D', 'S', None
-    simparams.poly_type  = 'heme'
-    # simparams.poly_type  = 'hem'
+    simparams.doe_method = 'CLS2' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
+    simparams.optimality = 'S' # 'D', 'S', None
+    # simparams.poly_type  = 'heme'
+    simparams.poly_type  = 'hem'
     if simparams.poly_type.lower().startswith('hem'):
         if simparams.doe_method.lower().startswith('cls'):
             assert simparams.poly_type.lower() == 'hem'
