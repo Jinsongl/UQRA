@@ -14,6 +14,7 @@ import scipy.stats as stats
 import multiprocessing as mp
 from sklearn import linear_model
 from sklearn import model_selection
+from sklearn.exceptions import ConvergenceWarning
 from ._surrogatebase import SurrogateBase
 import uqra, math
 from scipy import sparse
@@ -43,9 +44,9 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.active_basis = None if self.basis.basis_degree is None else self.basis.basis_degree 
             self.cv_error   = np.inf
             if self.deg is None:
-                self.tag        = '{:d}{:s}0'.format(self.ndim, self.basis.nickname)
+                self.tag        = '{:d}{:s}0'.format(self.ndim, self.basis.nickname[:3])
             else:
-                self.tag        = '{:d}{:s}{:d}'.format(self.ndim, self.basis.nickname,self.deg)
+                self.tag        = '{:d}{:s}{:d}'.format(self.ndim, self.basis.nickname[:3],self.deg)
 
     def info(self):
         print(r'   - {:<25s} : {:<20s}'.format('Surrogate Model Name', self.name))
@@ -218,7 +219,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         ## parameters for LassoLars 
         self.fit_method = 'LASSOLARS' 
         x = np.array(x, copy=False, ndmin=2)
-        y = np.array(y, copy=False, ndmin=1)
+        y = np.squeeze(np.array(y, copy=False, ndmin=1))
         n_splits= kwargs.get('n_splits', x.shape[1])
         n_splits= min(n_splits, x.shape[1])
         max_iter= kwargs.get('max_iter', 500)
@@ -227,25 +228,67 @@ class PolynomialChaosExpansion(SurrogateBase):
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
         X = self.basis.vandermonde(x)
-        if sample_weight is not None:
-            # Sample weight can be implemented via a simple rescaling.
-            X, y = self._rescale_data(X, y, sample_weight)
 
-        try:    
-            model  = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=cpu_count).fit(X,y)
-        except ValueError as e:
-            #### looks like a bug in KFold
-            print(e)
-            return
-        self.model    = model 
-        self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
-        self.coef     = model.coef_
-        # self.coef[0]  = model.intercept_
-        self.active_index = [i for i, icoef in enumerate(model.coef_) if abs(icoef) > epsilon]
-        self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
-        self.sparsity = len(self.active_index)
-        self.score    = model.score(X, y)
-        self._least_ns_ratio()
+        if y.ndim == 1:
+            if sample_weight is not None:
+                # Sample weight can be implemented via a simple rescaling.
+                X, y = self._rescale_data(X, y, sample_weight)
+
+            try:    
+                model  = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=cpu_count).fit(X,y)
+            except ValueError as e:
+                #### looks like a bug in KFold
+                print(e)
+                return
+            self.model    = model 
+            self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
+            self.coef     = model.coef_
+            # self.coef[0]  = model.intercept_
+            self.active_index = [i for i, icoef in enumerate(model.coef_) if abs(icoef) > epsilon]
+            self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
+            self.sparsity = len(self.active_index)
+            self.score    = model.score(X, y)
+            self._least_ns_ratio()
+        elif y.ndim == 2:
+            raise NotImplementedError
+            model_ls      = []
+            cv_error_ls   = []
+            coef_ls       = []
+            active_index_ls = []
+            active_basis_ls = []
+            sparsity_ls   = []
+            score_ls      = []
+            for iy in y.T:
+                if sample_weight is not None:
+                    # Sample weight can be implemented via a simple rescaling.
+                    X, iy = self._rescale_data(X, iy, sample_weight)
+
+                try:    
+                    model  = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=cpu_count).fit(X,iy)
+                except ValueError as e:
+                    #### looks like a bug in KFold
+                    print(e)
+                    return
+                except ConvergenceWarning:
+                    print('ConvergenceWarning: ')
+                    print(X.shape)
+                    print(iy.shape)
+
+                model_ls.append(model)
+                cv_error_ls.append(np.min(np.mean(model.mse_path_, axis=1)))
+                coef_ls.append(model.coef_)
+                active_index_ls.append([i for i, icoef in enumerate(model.coef_) if abs(icoef) > epsilon])
+                active_basis_ls.append([self.basis.basis_degree[i] for i in active_index_ls[-1]])
+                sparsity_ls.append(len(active_index_ls[-1]))
+                score_ls.append(model.score(X,iy))
+
+            self.model      = model_ls
+            self.cv_error   = np.array(cv_error_ls)
+            self.coef       = np.array(coef_ls)
+            self.active_index=active_index_ls
+            self.active_basis=active_basis_ls
+            self.sparsity   = np.array(sparsity_ls)
+            self.score      = np.array(score_ls)
 
     def mean(self):
         return self.coef[0]
@@ -295,7 +338,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                     y_      = self.model.predict(X_)
                     y      += list(y_)
                 y = np.array(y) 
-        elif self.fit_method in ['OLSLARS','LASSOLARS']:
+        elif self.fit_method in ['OLSLARS']:
             size_of_array_4gb = 1e8/2.0
             if x.shape[1] * self.num_basis < size_of_array_4gb:
                 X = self.basis.vandermonde(x)
@@ -311,6 +354,38 @@ class PolynomialChaosExpansion(SurrogateBase):
                     y_      = self.model.predict(X_)
                     y      += list(y_)
                 y = np.array(y) 
+        elif self.fit_method in ['LASSOLARS']:
+            size_of_array_4gb = 1e8/2.0
+            if x.shape[1] * self.num_basis < size_of_array_4gb:
+                X = self.basis.vandermonde(x)
+                try: 
+                    y = self.model.predict(X)
+                except:
+                    y = np.array([imodel.predict(X) for imodel in self.model])
+            else:
+                batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
+                try:
+                    y = []
+                    for i in range(math.ceil(x.shape[1]/batch_size)):
+                        idx_beg = i*batch_size
+                        idx_end = min((i+1) * batch_size, x.shape[1])
+                        x_      = x[:,idx_beg:idx_end]
+                        X_      = self.basis.vandermonde(x_)
+                        y_      = self.model.predict(X_)
+                        y      += list(y_)
+                except:
+                    y = [[] for _ in self.model]
+                    for i in range(math.ceil(x.shape[1]/batch_size)):
+                        idx_beg = i*batch_size
+                        idx_end = min((i+1) * batch_size, x.shape[1])
+                        x_      = x[:,idx_beg:idx_end]
+                        X_      = self.basis.vandermonde(x_)
+                        for j, imodel in enumerate(self.model):
+                            y_      = imodel.predict(X_)
+                            y[j]   += list(y_)
+
+                y = np.array(y) 
+
 
         return y
 
