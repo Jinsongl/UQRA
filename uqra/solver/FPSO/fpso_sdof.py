@@ -82,7 +82,7 @@ class FPSO(SolverBase):
         message = message1 + message2
         return message
 
-    def run(self, x, save_raw=False, save_qoi=False, seeds_st=None, out_responses=None, data_dir=None):
+    def run(self, x, save_raw=False, save_qoi=False, seeds_st=None, out_responses=None, data_dir=None, verbose=False):
         seeds_st        = self.seeds_st if seeds_st is None else seeds_st
         seeds_st        = [seeds_st,] if np.ndim(seeds_st) == 0 else seeds_st
         n_short_term    = np.size(seeds_st) 
@@ -92,20 +92,26 @@ class FPSO(SolverBase):
         x = np.array(x.T, copy=False, ndmin=2)
         y = []
         for iseed_idx, iseed in zip(self.seeds_idx, seeds_st):
-            pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(iseed_idx, n_short_term))
-            ### Note that xlist and ylist will be tuples (since zip will be unpacked). 
-            ### If you want them to be lists, you can for instance use:
-            if save_raw:
-                raise NotImplementedError
-                # y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=iseed,
-                    # out_responses=out_responses, ret_raw=True) for ix in pbar_x]))
-                # filename = '{:s}_yRaw_nst{:d}'.format(self.nickname,iseed_idx)
-                # np.save(os.path.join(data_dir, filename), np.array(y_raw_))
+            if verbose: 
+                pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(iseed_idx, n_short_term))
+                if save_raw:
+                    raise NotImplementedError
+                    ### Note that xlist and ylist will be tuples (since zip will be unpacked). 
+                    ### If you want them to be lists, you can for instance use:
+                    # y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=iseed,
+                        # out_responses=out_responses, ret_raw=True) for ix in pbar_x]))
+                    # filename = '{:s}_yRaw_nst{:d}'.format(self.nickname,iseed_idx)
+                    # np.save(os.path.join(data_dir, filename), np.array(y_raw_))
+                else:
+                    with mp.Pool(processes=mp.cpu_count()) as p:
+                        y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, iseed) for ix in pbar_x]),ncols=80, total=x.shape[1])))
             else:
-                with mp.Pool(processes=mp.cpu_count()) as p:
-                    # y_QoI_ = [self._Glimitmax(ix, iseed) for ix in pbar_x]
-                    y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, iseed) for ix in pbar_x]),ncols=80, total=x.shape[1])))
-                    # results = np.array(list(tqdm(p.starmap(self._Glimitmax, [(ix, iseed) for ix in pbar_x]), total=nsamples)))
+                if save_raw:
+                    raise NotImplementedError
+                else:
+                    with mp.Pool(processes=mp.cpu_count()) as p:
+                        y_QoI_ = np.array(list(p.imap(self._Glimitmax , [(ix, iseed) for ix in x])))
+
             if save_qoi:
                 filename = '{:s}_yQoI_nst{:d}'.format(self.nickname,iseed_idx)
                 np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
