@@ -128,7 +128,7 @@ def main(ST):
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS2' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = 'S' # 'D', 'S', None
+    simparams.optimality = None # 'D', 'S', None
     # simparams.poly_type  = 'heme'
     simparams.poly_type  = 'hem'
     if simparams.poly_type.lower().startswith('hem'):
@@ -154,7 +154,7 @@ def main(ST):
     data_vald = np.load(os.path.join(data_dir_result, filename_validate)) 
     u_vald    = data_vald[             :  solver.ndim]
     x_vald    = data_vald[solver.ndim  :2*solver.ndim]
-    y_vald    = data_vald[2*solver.ndim+short_term_seeds,:]
+    y_vald    = np.squeeze(data_vald[2*solver.ndim+short_term_seeds,:])
     # y_vald    = np.mean(y_vald, axis=0).reshape(1,-1)
     print('   - {:<25s} : {}, {}, {}'.format('Validation Dataset (U,X,Y)',u_vald.shape, x_vald.shape, y_vald.shape ))
     print('   - {:<25s} : [{}, {}]'.format('Validation U[mean, std]',np.mean(u_vald, axis=1),np.std (u_vald, axis=1)))
@@ -167,8 +167,8 @@ def main(ST):
     filename    = 'DoE_McsE7R0.npy'
     u_test      = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', filename))[:solver.ndim,:]
     x_test      = Kvitebjorn.ppf(stats.norm().cdf(u_test))
-    y_test      = -np.inf * np.ones((y_vald.shape[0], u_test.shape[1]))
-    data_test   = np.concatenate((u_test, x_test, y_test))
+    y_test      = np.zeros((u_test.shape[1],))
+    data_test   = np.concatenate((u_test, x_test, y_test.reshape(1,-1)))
     idx_in_circle   = np.arange(u_test.shape[1])[np.linalg.norm(u_test-u_center, axis=0) < radius_surrogate]
     u_test_in_circle= u_test[:,idx_in_circle]
     x_test_in_circle= x_test[:,idx_in_circle]
@@ -188,6 +188,7 @@ def main(ST):
         u_cand= np.load(os.path.join(data_dir_samples, 'CLS', 'DoE_Cls2E7d2R0.npy'))[:solver.ndim, :simparams.n_cand]
     elif simparams.doe_method.lower().startswith('mcs'):
         u_cand= np.load(os.path.join(data_dir_samples, 'MCS','Norm','DoE_McsE6R0.npy'))[:solver.ndim, :simparams.n_cand]
+    u_cand= u_cand  * radius_surrogate
     # u_cand    = pce_deg ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     # u_cand    = 2** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     ### ============ Initial Values ============
@@ -196,7 +197,6 @@ def main(ST):
     data_test_in_circle = []
 
     for pce_deg in simparams.pce_degs:
-
         print('\n================================================================================')
         # simparams.info()
         print('   - Sampling and Fitting:')
@@ -236,7 +236,7 @@ def main(ST):
         ### ============ Build Surrogate Model ============
         u_train = u_cand[:, doe_idx_u_cand[:n_train]]
         x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train + u_center)) 
-        y_train = np.array(solver.run(x_train), ndmin=2)
+        y_train = solver.run(x_train)
         U_train = pce_model.basis.vandermonde(u_train)
         if simparams.doe_method.lower().startswith('cls'):
             w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.active_index)
@@ -261,34 +261,28 @@ def main(ST):
         y_vald_hat  = pce_model.predict(u_vald-u_center)
         vald_mse    = uqra.metrics.mean_squared_error(y_vald.T, y_vald_hat.T,multioutput='raw_values')
 
-        y_test_in_circle          = pce_model.predict(u_test_in_circle - u_center)
-        y_test[:, idx_in_circle]  = y_test_in_circle
-        data_test[2*solver.ndim:] = y_test
+        y_test_in_circle      = pce_model.predict(u_test_in_circle - u_center)
+        y_test[idx_in_circle] = y_test_in_circle
+        data_test[-1]         = y_test
 
         data_test_in_circle.append([pce_deg, n_train, 
-            np.concatenate((u_test_in_circle, x_test_in_circle, y_test_in_circle.reshape(y_test.shape[0], -1)), axis=0)])
+            np.concatenate((u_test_in_circle, x_test_in_circle, y_test_in_circle.reshape(1, -1)), axis=0)])
 
-        for i, iy_test in enumerate(tqdm(y_test, desc=' > [nTargets]',ascii=True,ncols=80)): 
-            y50_pce_y   = uqra.metrics.mquantiles(iy_test, 1-pf)
-            y50_pce_idx = np.array(abs(iy_test - y50_pce_y)).argmin()
-            y50_pce_uxy = np.concatenate((u_test[:,y50_pce_idx], x_test[:, y50_pce_idx], y50_pce_y)) 
-            try:
-                res = [pce_deg, n_train, pce_model.cv_error[i], vald_mse[i]]
-            except IndexError:
-                res = [pce_deg, n_train, pce_model.cv_error, vald_mse[i]]
-
-            for item in y50_pce_uxy:
-                res.append(item)
-            res_pce_deg.append(res)
+        y50_pce_y   = uqra.metrics.mquantiles(y_test, 1-pf)
+        y50_pce_idx = np.array(abs(y_test - y50_pce_y)).argmin()
+        y50_pce_uxy = np.concatenate((u_test[:,y50_pce_idx], x_test[:, y50_pce_idx], y50_pce_y)) 
+        res = [pce_deg, n_train, pce_model.cv_error, vald_mse[0]]
+        for item in y50_pce_uxy:
+            res.append(item)
+        res_pce_deg.append(res)
 
         ### ============ calculating & updating metrics ============
         tqdm.write(' > Summary')
-        i = 1 if i == 0 else i 
         with np.printoptions(precision=4):
-            tqdm.write('     - {:<15s} : {}'.format( 'y50_pce_y' , np.array(res_pce_deg)[-i:,-1]))
-            tqdm.write('     - {:<15s} : {}'.format( 'Test MSE ' , np.array(res_pce_deg)[-i:, 3]))
-            tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(res_pce_deg)[-i:, 2]))
-            tqdm.write('     - {:<15s} : {}'.format( 'Design state', np.array(res_pce_deg)[-i:,6:8]))
+            tqdm.write('     - {:<15s} : {}'.format( 'y50_pce_y' , np.array(res_pce_deg)[-1:,-1]))
+            tqdm.write('     - {:<15s} : {}'.format( 'Test MSE ' , np.array(res_pce_deg)[-1:, 3]))
+            tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(res_pce_deg)[-1:, 2]))
+            tqdm.write('     - {:<15s} : {}'.format( 'Design state', np.array(res_pce_deg)[-1:,6:8]))
             tqdm.write('     ----------------------------------------')
             # tqdm.write('     - {:<15s} : {:.4f}'.format( 'kappa '    , kappa))
 
