@@ -71,26 +71,65 @@ class BasicTestSuite(unittest.TestCase):
     def test_exceedance(self):
         print('========================TESTING: Lienar Oscillator =======================')
 
-        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/SDOF/TestData' 
-        excd_prob= [1e-4]
+        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data' 
+        excd_prob       = 0.5/365.25/24/50
+        radius_surrogate= 3
+        short_term_seeds= np.arange(11)
         print('Target exceedance prob : {}'.format(excd_prob))
-        y_excd = []
-        for iexcd_prob in excd_prob:
-            for r in range(9):
-                try:
-                    filename = 'SDOF_3Hem_DoE_ClsE6R{:d}_y2.npy'.format(r)
-                    print(r'    - exceedance for y: {:s}'.format(filename))
-                    data_set = np.load(os.path.join(data_dir, filename))
-                    print(data_set.shape)
-                    y_ecdf   = uqhelpers.ECDF(np.array(data_set[7]).T, alpha=iexcd_prob, is_expand=False)
-                    print(len(y_ecdf.x))
-                    print(len(y_ecdf.y))
-                    print(y_ecdf.n)
-                    filename = os.path.join(data_dir,filename[:-4]+'_ecdf.p')
-                    with open(filename, 'wb') as handle:
-                        pickle.dump(y_ecdf, handle)
-                except FileNotFoundError:
-                    pass
+
+        y50_EC_boots_data = np.load(os.path.join(data_dir_result, 'FPSO_DoE_EC2D_T50_bootstrap.npy'))
+        y50_EC_boots = np.mean(y50_EC_boots_data, axis=1)
+        y50_EC_boots_std  = np.std(y50_EC_boots_data, axis=1)
+        print('\n')
+        print(' > Extreme reponse from EC (Bootstrap (n={:d})):'.format(y50_EC_boots_data.shape[1]))
+        print('   - Data set: {}'.format(y50_EC_boots_data.shape))
+        print('   - y: [mean, std]= [{:.2f}, {:.2f}]'.format(y50_EC_boots[-1],y50_EC_boots_std[-1]))
+        print('   - State: u: {}, x: {}'.format(np.around(y50_EC_boots[:2],2),np.around(y50_EC_boots[2:4],2)))
+
+        u_center = y50_EC_boots[ :2].reshape(-1, 1)
+        x_center = y50_EC_boots[2:4].reshape(-1, 1)
+
+        filename    = 'DoE_McsE7R0.npy'
+        mcs_data    = np.load(os.path.join(data_dir_result, filename))
+        u_test      = mcs_data[:2]
+        x_test      = mcs_data[2:4]
+        y_test      = np.zeros((1, u_test.shape[1]))
+        data_test   = np.concatenate((u_test, x_test, y_test))
+        idx_in_circle   = np.arange(u_test.shape[1])[np.linalg.norm(u_test-u_center, axis=0) < radius_surrogate]
+        print(mcs_data.shape)
+
+
+        for iseed in short_term_seeds:
+            filename = 'FPSO_SDOF_2Hem20_MCS_Lassolars_Alpha3_ST{:d}_test.npy'.format(iseed)
+            data  = np.load(os.path.join(data_dir_result, filename), allow_pickle=True)
+            data_ecdf = []
+            for p, n, idata in tqdm(data,desc='ST{:d}'.format(iseed), ncols=80):
+                assert data_test.shape[0] == 5
+                assert idata.shape[0] == 5
+                ecdf_ = [p,n]
+                data_test[:, idx_in_circle] = idata
+                ecdf_ = uqra.utilities.helpers.ECDF(data_test.T, hinge=-1,alpha=excd_prob, compress=True)
+                data_ecdf.append([p,n,ecdf_])
+            data_ecdf = np.array(data_ecdf, dtype=object)
+            np.save(os.path.join(data_dir_result, filename[:-8]+'ecdf.npy'), data_ecdf, allow_pickle=True)
+
+
+        # for iexcd_prob in excd_prob:
+            # for r in range(9):
+                # try:
+                    # filename = 'SDOF_3Hem_DoE_ClsE6R{:d}_y2.npy'.format(r)
+                    # print(r'    - exceedance for y: {:s}'.format(filename))
+                    # data_set = np.load(os.path.join(data_dir, filename))
+                    # print(data_set.shape)
+                    # y_ecdf   = uqhelpers.ECDF(np.array(data_set[7]).T, alpha=iexcd_prob, is_expand=False)
+                    # print(len(y_ecdf.x))
+                    # print(len(y_ecdf.y))
+                    # print(y_ecdf.n)
+                    # filename = os.path.join(data_dir,filename[:-4]+'_ecdf.p')
+                    # with open(filename, 'wb') as handle:
+                        # pickle.dump(y_ecdf, handle)
+                # except FileNotFoundError:
+                    # pass
 
     def test_bootstrap(self):
         data = np.arange(12).reshape(3,4)

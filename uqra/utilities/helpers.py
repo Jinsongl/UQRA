@@ -92,85 +92,76 @@ def ECDF(x,**kwargs):
     """
     Extend the functionality of statsmodels.distributions.empirical_distribution.ECDF
     Parameters
-        x: array-like of shape(n_observations, n_features)
+        x    : array-like of shape(n_observations, n_features)
         alpha: exceedance probability, optional
         side{‘left’, ‘right’}, optional, Default is ‘right’. Defines the shape of the intervals constituting the steps. ‘right’ correspond to [a, b) intervals and ‘left’ to (a, b].
-        is_expand: boolean, default False. 
-            False: perform ECDF on ecah columns of x, (each feature)
-            True: only perform ECDF on the first column and the rest are sorted based on the sorted index of first column
-        return_all: boolean, defautl False
+        hinge : column index used to perform ECDF upon 
+            default: np.inf, perform ECDF on ecah columns of x, (each feature)
+            else,only perform ECDF on the 'hinge'th column and the rest are sorted based on the sorted index of the 'hinge'th column
+        compress: boolean, defautl False
             False: when number of samples is large and the purpose for applying ECDF is to get the exceedance plot, return ALL data samples will lead to large plot files. 
 
     Returns
-        Empirical CDF as a step function.
-            ECDF.x: list of ecdf.x object
-            ECDF.y: list of ecdf.y object
-            ECDF.n: number of ecdf object
+        Empirical CDF or a list of Empirical CDF as a step function.
     """
     x = np.array(x)
-    alpha       = kwargs.get('alpha', None)
-    side        = kwargs.get('side', 'right')
-    is_expand   = kwargs.get('is_expand' , False)
-    return_all  = kwargs.get('return_all', False) 
+    alpha    = kwargs.get('alpha', None)
+    side     = kwargs.get('side', 'right')
+    hinge    = kwargs.get('hinge' , np.inf)
+    compress = kwargs.get('compress', False) 
 
-    if return_all:
+    if not compress:
         if x.ndim == 1:
             return mECDF(x, side=side)
         else:
-            if is_expand:
-                x_ecdf = mECDF(x[:,0], side=side)
-                sort_idx = np.argsort(x[:,0])
+            if hinge is not np.inf:
+                x_ecdf = mECDF(x[:,hinge], side=side)
+                sort_idx = np.argsort(x[:,hinge])
                 x_ecdf.x = x[sort_idx, :] 
                 return x_ecdf
             else:
-                x_ecdf = mECDF([3, 3, 1, 4]) ## just initialize
-                x_ecdf.x = []
-                x_ecdf.y = []
-                x_ecdf.n = []
-                for ix in x.T:
-                    ix_ecdf = mECDF(ix, side=side)
-                    x_ecdf.x.append(ix_ecdf.x)
-                    x_ecdf.y.append(ix_ecdf.y)
-                    x_ecdf.n.append(ix_ecdf.n)
+                x_ecdf = [mECDF(ix, side=side) for ix in x.T]
                 return x_ecdf
 
-    else:
+    elif compress:
+
         if alpha is None:
-            raise ValueError('uqra.helpers.ECDF: alpha is none')
+            raise ValueError('uqra.helpers.ECDF: exceedance probability (alpha) is none')
+
         if x.ndim == 1:
-            x_ecdf = mECDF(x, side=side)
-            boots_idx = (np.abs(x_ecdf.y - (1-alpha))).argmin()
+            x_ecdf   = mECDF(x, side=side)
+            boots_idx= (np.abs(x_ecdf.y - (1-alpha))).argmin()
             _, compressed_idx = np.unique(np.round(x_ecdf.x[:boots_idx], decimals=2), return_index=True)
-            x_ecdf.x = np.concatenate((x_ecdf.x[compressed_idx], x_ecdf.x[boots_idx:]), axis=-1)
-            x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[boots_idx:]), axis=-1)
+            x_ecdf.x = np.concatenate((x_ecdf.x[compressed_idx], x_ecdf.x[boots_idx:]))
+            x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[boots_idx:]))
             x_ecdf.n = len(x_ecdf.x)
             return x_ecdf
 
         else:
-            if is_expand:
-                x_ecdf = mECDF(x[:,0], side=side)
-                sort_idx = np.argsort(x[:,0])
-                x = x[sort_idx,:]
+            if hinge is not np.inf:
+                x_ecdf    = mECDF(x[:,hinge], side=side)
+                sort_idx  = np.argsort(x[:,hinge])
+                x         = x[sort_idx,:]
                 boots_idx = (np.abs(x_ecdf.y - (1-alpha))).argmin()
                 _, compressed_idx = np.unique(np.round(x_ecdf.x[:boots_idx], decimals=2), return_index=True)
-                x_ecdf.x = np.concatenate((x[compressed_idx,:], x[boots_idx:,:]), axis=-1)
-                x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[boots_idx:]), axis=-1)
+                x_ecdf.x = np.concatenate((x[compressed_idx,:], x[boots_idx:,:]), axis=0).T
+                x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[boots_idx:]), axis=0).T
                 x_ecdf.n = len(x_ecdf.x)
                 return x_ecdf
 
             else:
-                x_ecdf = mECDF([3, 3, 1, 4]) ## just initialize
-                x_ecdf.x = []
-                x_ecdf.y = []
-                x_ecdf.n = []
+                x_ecdf = [] 
                 for ix in x.T:
-                    ix_ecdf = mECDF(ix, side=side)
+                    ix_ecdf   = mECDF(ix, side=side)
                     boots_idx = (np.abs(ix_ecdf.y - (1-alpha))).argmin()
                     _, compressed_idx = np.unique(np.round(ix_ecdf.x[:boots_idx], decimals=2), return_index=True)
-                    x_ecdf.x.append(np.concatenate((ix_ecdf.x[compressed_idx], ix_ecdf.x[boots_idx:]), axis=-1))
-                    x_ecdf.y.append(np.concatenate((ix_ecdf.y[compressed_idx], ix_ecdf.y[boots_idx:]), axis=-1))
-                    x_ecdf.n.append(len(x_ecdf.x))
+                    ix_ecdf.x = np.concatenate((ix_ecdf.x[compressed_idx], ix_ecdf.x[boots_idx:]))
+                    ix_ecdf.y = np.concatenate((ix_ecdf.y[compressed_idx], ix_ecdf.y[boots_idx:]))
+                    ix_ecdf.n = len(x_ecdf.x)
+                    x_ecdf.append(ix_ecdf)
                 return x_ecdf
+    else:
+        raise ValueError("Undefined value for 'compress' in uqra.helpers.ECDF")
 
 
 def isfromstats(a):
@@ -197,13 +188,7 @@ def get_exceedance_data(x,prob=1e-3,**kwargs):
           if True: retrieve exceedance data for 1st row, and sort the rest rows based on first row  
           if False: retrieve exceeance data for each row 
     Return:
-        if x.ndim == 1, return [ecdf.x, ecdf.y [,ecdf_index]],
-            np.ndarray of shape (2,k) or (3,k), k: number of exceedance samples to plot easily
-        else
-            if is_expand:
-                return (m, k)
-            else:
-                return a list of (3,n) arrays
+        statsmodels.ECDF object or list of startswith.ECDF object for each row
     """
     x = np.array(x)
     is_expand  = kwargs.get('is_expand'    , False)
@@ -219,7 +204,7 @@ def get_exceedance_data(x,prob=1e-3,**kwargs):
         assert (len(prob) == x.shape[0]), "Length of target probability should either be 1 or equal to number of rows in x, but len(prob)={:d}, x.shape[0]={:d}".format(len(prob), x.shape[0])
 
     if x.ndim == 1 or np.squeeze(x).ndim == 1:
-        x_ecdf = _get_exceedance1d(np.squeeze(x), prob=prob, return_all=return_all)
+        x_ecdf = _get_exceedance1d(np.squeeze(x), prob=prob[0], return_all=return_all)
         return x_ecdf
     else:
         if is_expand:
@@ -230,8 +215,9 @@ def get_exceedance_data(x,prob=1e-3,**kwargs):
         else:
             ## Geting exceedance for each row of x
             result = []
-            for iprob in prob:
-                result.append([_get_exceedance1d(irow, prob=iprob,return_all=return_all) for irow in x])
+            for i, iprob in enumerate(prob):
+                result.append(_get_exceedance1d(x[i], prob=iprob, return_all=return_all))
+                # result.append([_get_exceedance1d(irow, prob=iprob,return_all=return_all) for irow in x])
             return result
 
 def _get_exceedance1d(x, prob=1e-3, return_all=False ):
