@@ -42,6 +42,8 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.deg        = self.basis.deg
             self.active_index = None if self.num_basis is None else range(self.num_basis)
             self.active_basis = None if self.basis.basis_degree is None else self.basis.basis_degree 
+            self.var_pct_basis= self.active_basis
+            self.var_basis_index=self.active_index
             self.cv_error   = np.inf
             if self.deg is None:
                 self.tag        = '{:d}{:s}0'.format(self.ndim, self.basis.nickname[:3])
