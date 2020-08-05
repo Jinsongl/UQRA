@@ -125,10 +125,10 @@ def main(ST):
     simparams.pce_degs   = np.array(range(2,11))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
-    simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = 'S'# 'D', 'S', None
-    simparams.poly_type  = 'heme'
-    # simparams.poly_type  = 'hem'
+    simparams.doe_method = 'CLS2' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
+    simparams.optimality = 'D'# 'D', 'S', None
+    # simparams.poly_type  = 'heme'
+    simparams.poly_type  = 'hem'
     if simparams.poly_type.lower().startswith('hem'):
         if simparams.doe_method.lower().startswith('cls'):
             assert simparams.poly_type.lower() == 'hem'
@@ -140,7 +140,7 @@ def main(ST):
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     repeats              = 1 #if simparams.optimality is None else 1
-    alphas               = 1.5
+    alphas               = 1.2
     # # simparams.num_samples=np.arange(21+1, 130, 5)
     simparams.update()
     simparams.info()
@@ -186,6 +186,7 @@ def main(ST):
         u_cand= np.load(os.path.join(data_dir_samples, 'CLS', 'DoE_Cls2E7d2R0.npy'))[:solver.ndim, :simparams.n_cand]
     elif simparams.doe_method.lower().startswith('mcs'):
         u_cand= np.load(os.path.join(data_dir_samples, 'MCS','Norm','DoE_McsE6R0.npy'))[:solver.ndim, :simparams.n_cand]
+    u_cand = u_cand * radius_surrogate
     # u_cand    = pce_deg ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     # u_cand    = 2** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     ### ============ Initial Values ============
@@ -194,7 +195,6 @@ def main(ST):
     data_test_in_circle = []
 
     for pce_deg in simparams.pce_degs:
-
         print('\n================================================================================')
         # simparams.info()
         print('   - Sampling and Fitting:')
@@ -237,7 +237,7 @@ def main(ST):
             y_train = np.array(solver.run(x_train), ndmin=2)
             U_train = pce_model.basis.vandermonde(u_train)
             if simparams.doe_method.lower().startswith('cls'):
-                w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_pct_basis)
+                w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_basis_index)
                 U_train = modeling.rescale_data(U_train, w_train) 
             else:
                 w_train = None
@@ -255,12 +255,11 @@ def main(ST):
             ### surrogate model for each short term simulation
 
             while u_train.shape[1] < n_train:
-                n_new_train = min(5,n_train - u_train.shape[1])
 
                 ### ============ Estimate sparsity ============
                 U_train = pce_model.basis.vandermonde(u_train)
                 if simparams.doe_method.lower().startswith('cls'):
-                    w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_pct_basis)
+                    w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_basis_index)
                     U_train = modeling.rescale_data(U_train, w_train) 
                 else:
                     w_train = None
@@ -270,6 +269,7 @@ def main(ST):
                 pce_model.var(0.95)
 
                 print('     > 2. Getting new training data ...')
+                n_new_train = min(len(pce_model.var_pct_basis),n_train - u_train.shape[1])
 
                 tqdm.write(' > {:<20s}: Optimality-> {}; Basis-> {}/{}; # new samples = {:d}'.format(
                     'New samples', simparams.optimality, len(pce_model.var_pct_basis), pce_model.num_basis, n_new_train ))
@@ -284,7 +284,7 @@ def main(ST):
                 ### ============ Build 2nd Surrogate Model ============
                 # print(bias_weight)
                 if simparams.doe_method.lower().startswith('cls'):
-                    w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_pct_basis)
+                    w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_basis_index)
                     U_train = modeling.rescale_data(U_train, w_train) 
                 else:
                     w_train = None
@@ -336,8 +336,6 @@ def main(ST):
             tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(res_pce_deg)[-i:, 2]))
             tqdm.write('     - {:<15s} : {}'.format( 'Design state', np.array(res_pce_deg)[-i:,6:8]))
             tqdm.write('     ----------------------------------------')
-            # tqdm.write('     - {:<15s} : {:.4f}'.format( 'kappa '    , kappa))
-
 
     res_pce_deg = np.array(res_pce_deg)
     data_test_in_circle = np.array(data_test_in_circle, dtype=object)
