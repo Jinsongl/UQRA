@@ -90,7 +90,7 @@ class RandomDesign(ExperimentBase):
             n = int(self.n_samples)
             z = stats.norm.rvs(0,1,size=(self.ndim, n))
             z = z/np.linalg.norm(z, axis=0)
-            u = np.cos(stats.uniform.rvs(0,np.pi,size=(self.ndim, self.n_samples)))
+            u = np.cos(stats.uniform.rvs(0,np.pi/2,size=(1, self.n_samples)))
             x = z * u 
 
         elif self.method.upper() in ['CHRISTOFFEL3', 'CLS3']:
