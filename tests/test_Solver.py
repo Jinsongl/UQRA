@@ -197,6 +197,8 @@ class BasicTestSuite(unittest.TestCase):
     def test_FPSO(self):
         data_dir_samples= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
         data_dir_result = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data' 
+        data_dir_samples= r'/home/jinsong/Documents/MUSE_UQ_DATA/Samples'
+        data_dir_result = r'/home/jinsong/Documents/MUSE_UQ_DATA/FPSO_SDOF'
         Kvitebjorn      = uqra.environment.Kvitebjorn()
         cpu_count       = mp.cpu_count()
         radius_surrogate= 3
@@ -266,10 +268,12 @@ class BasicTestSuite(unittest.TestCase):
 
         random_seed_short_term = np.arange(21)
         solver = uqra.FPSO(phase=random_seed_short_term)
-        # data  = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Norm/DoE_McsE7R0.npy') 
-        # mcs_u = data[:solver.ndim,:int(1e5)]
-        data  = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/CLS/DoE_Cls2E7d2R0.npy') 
-        mcs_u = data[:solver.ndim,:int(1e5)] *  radius_surrogate
+        data  = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R0.npy' )) 
+        data  = data[:solver.ndim, np.linalg.norm(data[:2], axis=0)<radius_surrogate]
+        mcs_u = data[:solver.ndim,:int(1e5)]
+
+        # data  = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/CLS/DoE_Cls2E7d2R0.npy') 
+        # mcs_u = data[:solver.ndim,:int(1e5)] *  radius_surrogate
 
         mcs_u = mcs_u + u_center
         mcs_x = Kvitebjorn.ppf(stats.norm.cdf(mcs_u))
@@ -283,8 +287,8 @@ class BasicTestSuite(unittest.TestCase):
         mcs_data = np.concatenate((mcs_u, mcs_x, mcs_y.reshape(len(random_seed_short_term),-1)), axis=0)
         print(mcs_data.shape)
 
-        # np.save('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_McsE5R0.npy', mcs_data)
-        np.save('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_DoE_Cls2E5R0.npy', mcs_data)
+        np.save(os.path.join(data_dir_result, 'FPSO_DoE_McsE5R0.npy'), mcs_data)
+        np.save(os.path.join(data_dir_result, 'FPSO_DoE_Cls2E5R0.npy'), mcs_data)
 
 
     def test_samples_same(self):
