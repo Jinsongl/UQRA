@@ -26,10 +26,7 @@ class RandomDesign(ExperimentBase):
             "R": pseudo random sampling, brute force Monte Carlo 
             "Halton": Halton quasi-Monte Carlo
             'Sobol': Sobol sequence quasi-Monte Carlo
-        n: int, number of samples 
-        ndim: 
         dist_names: str or list of str
-        params: list of params set for each distributions, set is given in tuple
         """
         super().__init__(samplingfrom=distributions)
         self.method   = method 
@@ -51,7 +48,7 @@ class RandomDesign(ExperimentBase):
             Experiment samples of shape(ndim, n_samples)
         """
 
-        super().samples(n_samples, theta)
+        super()._update_parameters(n_samples, theta)
 
         if self.method.upper() in ['R', 'MC', 'MCS']:
             u = np.array([idist.rvs(size=self.n_samples, loc=iloc, scale=iscale) for idist, iloc, iscale in zip(self.distributions, self.loc, self.scale)])
