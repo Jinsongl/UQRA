@@ -362,7 +362,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                 X = self.basis.vandermonde(x)
                 try: 
                     y = self.model.predict(X)
-                except:
+                except AttributeError:
                     y = np.array([imodel.predict(X) for imodel in self.model])
             else:
                 batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
