@@ -20,7 +20,6 @@ warnings.filterwarnings(action="ignore", module="scipy", message="^internal gels
 sys.stdout  = uqra.utilities.classes.Logger()
 
 def get_basis(ndim, deg, poly_type):
-
     if poly_type.lower() == 'leg':
         print(' Legendre polynomial')
         basis = uqra.Legendre(d=ndim,deg=deg)
@@ -48,19 +47,44 @@ def main(ST):
     np.set_printoptions(suppress=True)
     pf       = 0.5/(50*365.25*24)
     radius_surrogate= 3
-    data_dir_samples= '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
-    data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data' 
-    # data_dir_result = r'G:\My Drive\MUSE_UQ_DATA\FPSO_SDOF\Data'
-    # data_dir_samples = r'G:\My Drive\MUSE_UQ_DATA\Samples'
     Kvitebjorn      = uqra.environment.Kvitebjorn()
     short_term_seeds_applied = np.setdiff1d(np.arange(11), np.array([]))
+
+    ## ------------------------ Simulation Parameters ----------------- ###
+    short_term_seeds = np.arange(ST,ST+1)
+    assert short_term_seeds.size == 1
+    solver    = uqra.FPSO(phase=short_term_seeds)
+    simparams = uqra.Parameters()
+    simparams.solver     = solver
+    simparams.pce_degs   = np.array(range(2,21))
+    simparams.n_cand     = int(1e5)
+    simparams.n_test     = -1
+    simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
+    simparams.optimality = 'D'# 'D', 'S', None
+    simparams.poly_type  = 'heme'
+    # simparams.poly_type  = 'hem'
+    if simparams.poly_type.lower().startswith('hem'):
+        if simparams.doe_method.lower().startswith('cls'):
+            assert simparams.poly_type.lower() == 'hem'
+        elif simparams.doe_method.lower().startswith('mcs'):
+            assert simparams.poly_type.lower() == 'heme'
+        else:
+            raise ValueError
+
+    simparams.fit_method = 'LASSOLARS'
+    simparams.n_splits   = 50
+    repeats              = 1 #if simparams.optimality is None else 1
+    alphas               = 1.2
+    # # simparams.num_samples=np.arange(21+1, 130, 5)
+    simparams.update()
+    simparams.info()
 
     ## ------------------------ MCS Benchmark ----------------- ###
     print('------------------------------------------------------------')
     print('>>> Monte Carlo Sampling for Model: FPSO                   ')
     print('------------------------------------------------------------')
     filename = 'DoE_McsE7R0.npy'
-    mcs_data = np.load(os.path.join(data_dir_result, filename))
+    mcs_data = np.load(os.path.join(simparams.data_dir_result, filename))
     mcs_data_ux, mcs_data_y = mcs_data[:4], mcs_data[4+short_term_seeds_applied,:]
     y50_MCS  = uqra.metrics.mquantiles(mcs_data_y.T, 1-pf, multioutput='raw_values')
     y50_MCS_mean  = np.mean(y50_MCS)
@@ -84,9 +108,9 @@ def main(ST):
     print('>>> Environmental Contour for Model: FPSO                   ')
     print('------------------------------------------------------------')
     filename    = 'FPSO_DoE_EC2D_T50_y.npy' 
-    EC2D_data_y = np.load(os.path.join(data_dir_result, filename))[short_term_seeds_applied,:] 
+    EC2D_data_y = np.load(os.path.join(simparams.data_dir_result, filename))[short_term_seeds_applied,:] 
     filename    = 'FPSO_DoE_EC2D_T50.npy' 
-    EC2D_data_ux= np.load(os.path.join(data_dir_result, filename))[:4]
+    EC2D_data_ux= np.load(os.path.join(simparams.data_dir_result, filename))[:4]
 
     EC2D_median = np.median(EC2D_data_y, axis=0)
     EC2D_data   = np.concatenate((EC2D_data_ux,EC2D_median.reshape(1,-1)), axis=0)
@@ -118,40 +142,12 @@ def main(ST):
     print('   - {:<25s} : {}'.format('Center X', np.squeeze(x_center)))
     print('================================================================================')
 
-    ## ------------------------ Simulation Parameters ----------------- ###
-    short_term_seeds = np.arange(ST,ST+1)
-    assert short_term_seeds.size == 1
-    solver    = uqra.FPSO(phase=short_term_seeds)
-    simparams = uqra.Parameters()
-    simparams.solver     = solver
-    simparams.pce_degs   = np.array(range(2,21))
-    simparams.n_cand     = int(1e5)
-    simparams.n_test     = -1
-    simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = None # 'D', 'S', None
-    simparams.poly_type  = 'heme'
-    # simparams.poly_type  = 'hem'
-    if simparams.poly_type.lower().startswith('hem'):
-        if simparams.doe_method.lower().startswith('cls'):
-            assert simparams.poly_type.lower() == 'hem'
-        elif simparams.doe_method.lower().startswith('mcs'):
-            assert simparams.poly_type.lower() == 'heme'
-        else:
-            raise ValueError
-
-    simparams.fit_method = 'LASSOLARS'
-    simparams.n_splits   = 50
-    repeats              = 1 #if simparams.optimality is None else 1
-    alphas               = 1.2
-    # # simparams.num_samples=np.arange(21+1, 130, 5)
-    simparams.update()
-    simparams.info()
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     ## ----- validation data set centered around y50_EC
     print(' > Getting validation data set...')
     filename_validate  = 'FPSO_DoE_{:s}E5R0.npy'.format(simparams.doe_method.capitalize())
-    data_vald = np.load(os.path.join(data_dir_result, filename_validate)) 
+    data_vald = np.load(os.path.join(simparams.data_dir_result, filename_validate)) 
     u_vald    = data_vald[             :  solver.ndim]
     x_vald    = data_vald[solver.ndim  :2*solver.ndim]
     y_vald    = np.squeeze(data_vald[2*solver.ndim+short_term_seeds,:])
@@ -165,7 +161,7 @@ def main(ST):
     ## ----- Testing data set centered around (0,0)
     print(' > Getting Testing data set...')
     filename    = 'DoE_McsE7R0.npy'
-    u_test      = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', filename))[:solver.ndim,:]
+    u_test      = np.load(os.path.join(simparams.data_dir_sample, 'MCS', 'Norm', filename))[:solver.ndim,:]
     x_test      = Kvitebjorn.ppf(stats.norm().cdf(u_test))
     y_test      = np.zeros((u_test.shape[1],))
     data_test   = np.concatenate((u_test, x_test, y_test.reshape(1,-1)))
@@ -185,10 +181,12 @@ def main(ST):
     # u_cand = modeling.get_candidate_data()
 
     if simparams.doe_method.lower().startswith('cls2'):
-        u_cand= np.load(os.path.join(data_dir_samples, 'CLS', 'DoE_Cls2E7d2R0.npy'))[:solver.ndim, :simparams.n_cand]
-        u_cand= u_cand  * radius_surrogate
+        u_cand = np.load(os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls2E7d2R0.npy'))[:solver.ndim, :simparams.n_cand]
+        u_cand = u_cand  * radius_surrogate
     elif simparams.doe_method.lower().startswith('mcs'):
-        u_cand= np.load(os.path.join(data_dir_samples, 'MCS','Norm','DoE_McsE6R0.npy'))[:solver.ndim, :simparams.n_cand]
+        u_cand = np.load(os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE6R0.npy'))
+        u_cand = u_cand[:solver.ndim, np.linalg.norm(u_cand[:2], axis=0)<radius_surrogate]
+        u_cand = u_cand[:, :simparams.n_cand]
     # u_cand    = pce_deg ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     # u_cand    = 2** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     ### ============ Initial Values ============
@@ -224,13 +222,9 @@ def main(ST):
             doe_idx_u_cand = np.arange(simparams.n_cand) 
             filename= 'Random index'
         else:
-            if simparams.doe_method.lower().startswith('cls'):
-                filename = 'DoE_{:s}E5R0_{:s}_{:s}r{:d}.npy'.format(
+            filename = 'DoE_{:s}E5R0_{:s}_{:s}r{:d}.npy'.format(
                         simparams.doe_method.capitalize(), pce_model.tag, simparams.optimality, radius_surrogate)
-            elif simparams.doe_method.lower().startswith('mcs'):
-                filename = 'DoE_{:s}E5R0_{:s}_{:s}.npy'.format(
-                        simparams.doe_method.capitalize(), pce_model.tag, simparams.optimality)
-            doe_idx_u_cand = np.load(os.path.join(data_dir_samples, 'OED', filename))
+            doe_idx_u_cand = np.load(os.path.join(simparams.data_dir_sample, 'OED', filename))
             doe_idx_u_cand = np.array(doe_idx_u_cand, ndmin=2)[0]
 
         ### ============ Build Surrogate Model ============
