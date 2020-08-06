@@ -157,7 +157,7 @@ def ECDF(x,**kwargs):
                     _, compressed_idx = np.unique(np.round(ix_ecdf.x[:boots_idx], decimals=2), return_index=True)
                     ix_ecdf.x = np.concatenate((ix_ecdf.x[compressed_idx], ix_ecdf.x[boots_idx:]))
                     ix_ecdf.y = np.concatenate((ix_ecdf.y[compressed_idx], ix_ecdf.y[boots_idx:]))
-                    ix_ecdf.n = len(x_ecdf.x)
+                    ix_ecdf.n = len(ix_ecdf.x)
                     x_ecdf.append(ix_ecdf)
                 return x_ecdf
     else:
