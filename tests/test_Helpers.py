@@ -71,26 +71,56 @@ class BasicTestSuite(unittest.TestCase):
     def test_exceedance(self):
         print('========================TESTING: Lienar Oscillator =======================')
 
-        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data' 
+        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF' 
+        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/NonAdap_PCE'  
         excd_prob       = 0.5/365.25/24/50
         radius_surrogate= 3
         short_term_seeds= np.arange(11)
+        short_term_seeds_applied = np.setdiff1d(np.arange(11), np.array([]))
         print('Target exceedance prob : {}'.format(excd_prob))
 
-        y50_EC_boots_data = np.load(os.path.join(data_dir_result, 'FPSO_DoE_EC2D_T50_bootstrap.npy'))
-        y50_EC_boots = np.mean(y50_EC_boots_data, axis=1)
-        y50_EC_boots_std  = np.std(y50_EC_boots_data, axis=1)
-        print('\n')
-        print(' > Extreme reponse from EC (Bootstrap (n={:d})):'.format(y50_EC_boots_data.shape[1]))
-        print('   - Data set: {}'.format(y50_EC_boots_data.shape))
-        print('   - y: [mean, std]= [{:.2f}, {:.2f}]'.format(y50_EC_boots[-1],y50_EC_boots_std[-1]))
-        print('   - State: u: {}, x: {}'.format(np.around(y50_EC_boots[:2],2),np.around(y50_EC_boots[2:4],2)))
+        print('------------------------------------------------------------')
+        print('>>> Environmental Contour for Model: FPSO                   ')
+        print('------------------------------------------------------------')
+        filename    = 'FPSO_DoE_EC2D_T50_y.npy' 
+        EC2D_data_y = np.load(os.path.join(data_dir, filename))[short_term_seeds_applied,:] 
+        filename    = 'FPSO_DoE_EC2D_T50.npy' 
+        EC2D_data_ux= np.load(os.path.join(data_dir, filename))[:4]
 
-        u_center = y50_EC_boots[ :2].reshape(-1, 1)
-        x_center = y50_EC_boots[2:4].reshape(-1, 1)
+        EC2D_median = np.median(EC2D_data_y, axis=0)
+        EC2D_data   = np.concatenate((EC2D_data_ux,EC2D_median.reshape(1,-1)), axis=0)
+        y50_EC      = EC2D_data[:,np.argmax(EC2D_median)]
+
+        print(' > Extreme reponse from EC:')
+        print('   - {:<25s} : {}'.format('EC data set', EC2D_data_y.shape))
+        print('   - {:<25s} : {}'.format('y0', np.array(y50_EC[-1])))
+        print('   - {:<25s} : {}'.format('Design state (u,x)', y50_EC[:4]))
+
+        np.random.seed(100)
+        EC2D_y_boots      = uqra.bootstrapping(EC2D_data_y, 100) 
+        EC2D_boots_median = np.median(EC2D_y_boots, axis=1)
+        y50_EC_boots_idx  = np.argmax(EC2D_boots_median, axis=-1)
+        y50_EC_boots_ux   = np.array([EC2D_data_ux[:,i] for i in y50_EC_boots_idx]).T
+        y50_EC_boots_y    = np.max(EC2D_boots_median,axis=-1) 
+        y50_EC_boots      = np.concatenate((y50_EC_boots_ux, y50_EC_boots_y.reshape(1,-1)), axis=0)
+        y50_EC_boots_mean = np.mean(y50_EC_boots, axis=1)
+        y50_EC_boots_std  = np.std(y50_EC_boots, axis=1)
+        print(' > Extreme reponse from EC (Bootstrap (n={:d})):'.format(EC2D_y_boots.shape[0]))
+        print('   - {:<25s} : {}'.format('Bootstrap data set', EC2D_y_boots.shape))
+        print('   - {:<25s} : [{:.2f}, {:.2f}]'.format('y50[mean, std]',y50_EC_boots_mean[-1], y50_EC_boots_std[-1]))
+        print('   - {:<25s} : {}'.format('Design state (u,x)', y50_EC_boots_mean[:4]))
+
+        u_center = y50_EC_boots_mean[ :2].reshape(-1, 1)
+        x_center = y50_EC_boots_mean[2:4].reshape(-1, 1)
+        print(' > Important Region based on EC(boots):')
+        print('   - {:<25s} : {}'.format('Radius', radius_surrogate))
+        print('   - {:<25s} : {}'.format('Center U', np.squeeze(u_center)))
+        print('   - {:<25s} : {}'.format('Center X', np.squeeze(x_center)))
+        print('================================================================================')
+
 
         filename    = 'DoE_McsE7R0.npy'
-        mcs_data    = np.load(os.path.join(data_dir_result, filename))
+        mcs_data    = np.load(os.path.join(data_dir, filename))
         u_test      = mcs_data[:2]
         x_test      = mcs_data[2:4]
         y_test      = np.zeros((1, u_test.shape[1]))
@@ -98,9 +128,8 @@ class BasicTestSuite(unittest.TestCase):
         idx_in_circle   = np.arange(u_test.shape[1])[np.linalg.norm(u_test-u_center, axis=0) < radius_surrogate]
         print(mcs_data.shape)
 
-
-        for iseed in short_term_seeds:
-            filename = 'FPSO_SDOF_2Hem20_MCS_Lassolars_Alpha3_ST{:d}_test.npy'.format(iseed)
+        for iseed in short_term_seeds_applied:
+            filename = 'FPSO_SDOF_2Hem20_Cls2S_Lassolars_Alpha1.2_ST{:d}_test.npy'.format(iseed)
             data  = np.load(os.path.join(data_dir_result, filename), allow_pickle=True)
             data_ecdf = []
             for p, n, idata in tqdm(data,desc='ST{:d}'.format(iseed), ncols=80):
