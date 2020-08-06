@@ -122,7 +122,7 @@ def main(ST):
     solver    = uqra.FPSO(phase=random_seed_short_term)
     simparams = uqra.Parameters()
     simparams.solver     = solver
-    simparams.pce_degs   = np.array(range(2,11))
+    simparams.pce_degs   = np.array(range(2,21))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.doe_method = 'CLS2' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
@@ -184,9 +184,9 @@ def main(ST):
 
     if simparams.doe_method.lower().startswith('cls2'):
         u_cand= np.load(os.path.join(data_dir_samples, 'CLS', 'DoE_Cls2E7d2R0.npy'))[:solver.ndim, :simparams.n_cand]
+        u_cand = u_cand * radius_surrogate
     elif simparams.doe_method.lower().startswith('mcs'):
         u_cand= np.load(os.path.join(data_dir_samples, 'MCS','Norm','DoE_McsE6R0.npy'))[:solver.ndim, :simparams.n_cand]
-    u_cand = u_cand * radius_surrogate
     # u_cand    = pce_deg ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     # u_cand    = 2** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     ### ============ Initial Values ============
