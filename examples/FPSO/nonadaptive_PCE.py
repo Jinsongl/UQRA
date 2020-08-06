@@ -121,6 +121,7 @@ def main(ST):
     print('   - {:<25s} : {}'.format('y0', np.array(y50_EC[-1])))
     print('   - {:<25s} : {}'.format('Design state (u,x)', y50_EC[:4]))
 
+    np.random.seed(100)
     EC2D_y_boots      = uqra.bootstrapping(EC2D_data_y, 100) 
     EC2D_boots_median = np.median(EC2D_y_boots, axis=1)
     y50_EC_boots_idx  = np.argmax(EC2D_boots_median, axis=-1)
