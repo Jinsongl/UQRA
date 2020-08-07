@@ -290,7 +290,7 @@ def main(ST):
 
     ### Saving test data in circle
     filename = '{:s}_{:s}_{:s}_Alpha{}_ST{}_test'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, alphas, short_term_seeds[-1])
+            simparams.tag, str(alphas).replace('.', 'pt'), short_term_seeds[-1])
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), data_test_in_circle)
     except:
@@ -299,7 +299,7 @@ def main(ST):
 
     ### Saving QoI data  
     filename = '{:s}_{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, alphas, short_term_seeds[-1])
+            simparams.tag, str(alphas).replace('.', 'pt'), short_term_seeds[-1])
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), res_pce_deg)
     except:
