@@ -39,6 +39,9 @@ def get_basis(ndim, deg, poly_type):
 
 
 def main(ST):
+    print('------------------------------------------------------------')
+    print('>>> Model: FPSO, Short-term simulation (n={:d})  '.format(ST))
+    print('------------------------------------------------------------')
 
     ## ------------------------ Displaying set up ------------------- ###
     np.random.seed(100)
@@ -81,7 +84,7 @@ def main(ST):
 
     ## ------------------------ MCS Benchmark ----------------- ###
     print('------------------------------------------------------------')
-    print('>>> Monte Carlo Sampling for Model: FPSO                   ')
+    print('>>> Monte Carlo Sampling for Model: FPSO                    ')
     print('------------------------------------------------------------')
     filename = 'DoE_McsE7R0.npy'
     mcs_data = np.load(os.path.join(simparams.data_dir_result, filename))
@@ -146,35 +149,42 @@ def main(ST):
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     ## ----- validation data set centered around y50_EC
-    print(' > Getting validation data set...')
-    filename_validate  = 'FPSO_DoE_{:s}E5R0.npy'.format(simparams.doe_method.capitalize())
-    data_vald = np.load(os.path.join(simparams.data_dir_result, filename_validate)) 
-    u_vald    = data_vald[             :  solver.ndim]
-    x_vald    = data_vald[solver.ndim  :2*solver.ndim]
-    y_vald    = np.squeeze(data_vald[2*solver.ndim+short_term_seeds,:])
-    # y_vald    = np.mean(y_vald, axis=0).reshape(1,-1)
-    print('   - {:<25s} : {}, {}, {}'.format('Validation Dataset (U,X,Y)',u_vald.shape, x_vald.shape, y_vald.shape ))
-    print('   - {:<25s} : [{}, {}]'.format('Validation U[mean, std]',np.mean(u_vald, axis=1),np.std (u_vald, axis=1)))
-    print('   - {:<25s} : [{}]'.format('Validation max(U)[U1, U2]',np.amax(abs(u_vald), axis=1)))
-    print('   - {:<25s} : [{}]'.format('Validatoin [min(Y), max(Y)]',np.array([np.amin(y_vald),np.amax(y_vald)])))
+    # print(' > Getting validation data set...')
+    # filename_validate  = 'FPSO_DoE_{:s}E5R0.npy'.format(simparams.doe_method.capitalize())
+    # data_vald = np.load(os.path.join(simparams.data_dir_result, filename_validate)) 
+    # u_vald    = data_vald[             :  solver.ndim]
+    # x_vald    = data_vald[solver.ndim  :2*solver.ndim]
+    # y_vald    = np.squeeze(data_vald[2*solver.ndim+short_term_seeds,:])
+    # # y_vald    = np.mean(y_vald, axis=0).reshape(1,-1)
+    # print('   - {:<25s} : {}, {}, {}'.format('Validation Dataset (U,X,Y)',u_vald.shape, x_vald.shape, y_vald.shape ))
+    # print('   - {:<25s} : [{}, {}]'.format('Validation U[mean, std]',np.mean(u_vald, axis=1),np.std (u_vald, axis=1)))
+    # print('   - {:<25s} : [{}]'.format('Validation max(U)[U1, U2]',np.amax(abs(u_vald), axis=1)))
+    # print('   - {:<25s} : [{}]'.format('Validatoin [min(Y), max(Y)]',np.array([np.amin(y_vald),np.amax(y_vald)])))
 
 
     ## ----- Testing data set centered around (0,0)
     print(' > Getting Testing data set...')
-    filename    = 'DoE_McsE7R0.npy'
-    u_test      = np.load(os.path.join(simparams.data_dir_sample, 'MCS', 'Norm', filename))[:solver.ndim,:]
-    x_test      = Kvitebjorn.ppf(stats.norm().cdf(u_test))
-    y_test      = np.zeros((u_test.shape[1],))
-    data_test   = np.concatenate((u_test, x_test, y_test.reshape(1,-1)))
-    idx_in_circle   = np.arange(u_test.shape[1])[np.linalg.norm(u_test-u_center, axis=0) < radius_surrogate]
-    u_test_in_circle= u_test[:,idx_in_circle]
-    x_test_in_circle= x_test[:,idx_in_circle]
+    filename    = 'FPSO_DoE_McsE7R0_Test_Radius3.npy'
+    data_test   = np.load(os.path.join(simparams.data_dir_result, filename))
+    u_test      = data_test[:solver.ndim, :]
+    x_test      = data_test[solver.ndim:2*solver.ndim, :]
+    y_test      = np.squeeze(data_test[2*solver.ndim+short_term_seeds,:])
+    
+    # filename    = 'DoE_McsE7R0.npy'
+    # u_test      = np.load(os.path.join(simparams.data_dir_sample, 'MCS', 'Norm', filename))[:solver.ndim,:]
+    # x_test      = Kvitebjorn.ppf(stats.norm().cdf(u_test))
+    # y_test      = -np.inf* np.ones((u_test.shape[1],))
+    # idx_in_circle   = np.arange(u_test.shape[1])[np.linalg.norm(u_test-u_center, axis=0) < radius_surrogate]
+    # u_test_in_circle= u_test[:,idx_in_circle]
+    # x_test_in_circle= x_test[:,idx_in_circle]
+    # y_test_in_circle= solver.run(x_test_in_circle, verbose=True)
+    # np.save(os.path.join(simparams.data_dir_result, 'y_test_in_circle.npy'), y_test_in_circle)
 
     print('   - {:<25s} : {}, {}, {}'.format('Test Dataset (U,X,Y)',u_test.shape, x_test.shape, y_test.shape ))
-    print('   - {:<25s} : [{}, {}]'.format('Test U[mean, std]',np.mean(u_test, axis=1),np.std (u_test, axis=1)))
+    # print('   - {:<25s} : [{}, {}]'.format('Test U[mean, std]',np.mean(u_test, axis=1),np.std (u_test, axis=1)))
     print('   - {:<25s} : [{}]'.format('Test max(U)[U1, U2]',np.amax(abs(u_test), axis=1)))
-    print('   - {:<25s} : [{}]'.format('Teest [min(Y), max(Y)]',np.array([np.amin(y_test),np.amax(y_test)])))
-    print('   - {:<25s} : {}'.format('# Test data in Circle({:.2f})'.format(radius_surrogate),u_test_in_circle.shape))
+    print('   - {:<25s} : [{}]'.format('Test [min(Y), max(Y)]',np.array([np.amin(y_test),np.amax(y_test)])))
+    # print('   - {:<25s} : {}'.format('# Test data in Circle({:.2f})'.format(radius_surrogate),u_test_in_circle.shape))
 
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
@@ -193,7 +203,7 @@ def main(ST):
     ### ============ Initial Values ============
 
     res_pce_deg = []
-    data_test_in_circle = []
+    data_test = []
 
     for pce_deg in simparams.pce_degs:
         print('\n================================================================================')
@@ -253,20 +263,18 @@ def main(ST):
         print('   - {:<25s} : [{}]'.format('Train [min(Y), max(Y)]',np.array([np.amin(y_train),np.amax(y_train)])))
 
         y_train_hat = pce_model.predict(u_train)
-        y_vald_hat  = pce_model.predict(u_vald-u_center)
-        vald_mse    = uqra.metrics.mean_squared_error(y_vald.T, y_vald_hat.T,multioutput='raw_values')
+        # y_vald_hat  = pce_model.predict(u_vald-u_center)
+        # vald_mse    = uqra.metrics.mean_squared_error(y_vald.T, y_vald_hat.T,multioutput='raw_values')
 
-        y_test_in_circle      = pce_model.predict(u_test_in_circle - u_center)
-        y_test[idx_in_circle] = y_test_in_circle
-        data_test[-1]         = y_test
+        y_test_hat = pce_model.predict(u_test - u_center)
+        test_error = uqra.metrics.mean_squared_error(y_test, y_test_hat,multioutput='raw_values')
+        data_test.append([pce_deg, n_train, y_test_hat])
 
-        data_test_in_circle.append([pce_deg, n_train, 
-            np.concatenate((u_test_in_circle, x_test_in_circle, y_test_in_circle.reshape(1, -1)), axis=0)])
-
-        y50_pce_y   = uqra.metrics.mquantiles(y_test, 1-pf)
-        y50_pce_idx = np.array(abs(y_test - y50_pce_y)).argmin()
+        alpha = (pf * 1e7) / y_test.size
+        y50_pce_y   = uqra.metrics.mquantiles(y_test_hat, 1-alpha)
+        y50_pce_idx = np.array(abs(y_test_hat - y50_pce_y)).argmin()
         y50_pce_uxy = np.concatenate((u_test[:,y50_pce_idx], x_test[:, y50_pce_idx], y50_pce_y)) 
-        res = [pce_deg, n_train, pce_model.cv_error, vald_mse[0]]
+        res = [pce_deg, n_train, pce_model.cv_error, test_error[0]]
         for item in y50_pce_uxy:
             res.append(item)
         res_pce_deg.append(res)
@@ -283,19 +291,19 @@ def main(ST):
 
 
     res_pce_deg = np.array(res_pce_deg)
-    data_test_in_circle = np.array(data_test_in_circle, dtype=object)
+    data_test = np.array(data_test, dtype=object)
 
     with open(os.path.join(simparams.data_dir_result, 'outlist_name.txt'), "w") as text_file:
-        text_file.write('\n'.join(['pce_deg', 'n_train', 'cv_error', 'vald_mse', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
+        text_file.write('\n'.join(['pce_deg', 'n_train', 'cv_error', 'test mse', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
 
     ### Saving test data in circle
     filename = '{:s}_{:s}_{:s}_Alpha{}_ST{}_test'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(alphas).replace('.', 'pt'), short_term_seeds[-1])
     try:
-        np.save(os.path.join(simparams.data_dir_result, filename), data_test_in_circle)
+        np.save(os.path.join(simparams.data_dir_result, filename), data_test)
     except:
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        np.save(os.path.join(os.getcwd(), filename), data_test_in_circle)
+        np.save(os.path.join(os.getcwd(), filename), data_test)
 
     ### Saving QoI data  
     filename = '{:s}_{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
@@ -309,7 +317,4 @@ def main(ST):
 
 if __name__ == '__main__':
     for s in range(11):
-        print('==============================================')
-        print('   Short-Term: n={}'.format(s))
-        print('==============================================')
         main(s)
