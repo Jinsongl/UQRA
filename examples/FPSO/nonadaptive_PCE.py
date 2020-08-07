@@ -48,7 +48,7 @@ def main(ST):
     np.set_printoptions(precision=4)
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
-    pf       = 0.5/(50*365.25*24)
+    pf = 0.5/(50*365.25*24)
     radius_surrogate= 3
     Kvitebjorn      = uqra.environment.Kvitebjorn()
     short_term_seeds_applied = np.setdiff1d(np.arange(11), np.array([]))
@@ -164,7 +164,7 @@ def main(ST):
 
     ## ----- Testing data set centered around (0,0)
     print(' > Getting Testing data set...')
-    filename    = 'FPSO_DoE_McsE7R0_Test_Radius3.npy'
+    filename    = 'FPSO_Test_McsE7R0.npy'
     data_test   = np.load(os.path.join(simparams.data_dir_result, filename))
     u_test      = data_test[:solver.ndim, :]
     x_test      = data_test[solver.ndim:2*solver.ndim, :]
@@ -172,10 +172,11 @@ def main(ST):
 
     u_pred      = mcs_data_ux[ :2,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
     x_pred      = mcs_data_ux[-2:,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
+
     # filename    = 'DoE_McsE7R0.npy'
     # u_test      = np.load(os.path.join(simparams.data_dir_sample, 'MCS', 'Norm', filename))[:solver.ndim,:]
     # x_test      = Kvitebjorn.ppf(stats.norm().cdf(u_test))
-    # y_test      = -np.inf* np.ones((u_test.shape[1],))
+    # y_test      = -np.inf * np.ones((u_test.shape[1],))
     # idx_in_circle   = np.arange(u_test.shape[1])[np.linalg.norm(u_test-u_center, axis=0) < radius_surrogate]
     # u_test_in_circle= u_test[:,idx_in_circle]
     # x_test_in_circle= x_test[:,idx_in_circle]
@@ -196,7 +197,7 @@ def main(ST):
 
     if simparams.doe_method.lower().startswith('cls2'):
         u_cand = np.load(os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls2E7d2R0.npy'))[:solver.ndim, :simparams.n_cand]
-        u_cand = u_cand  * radius_surrogate
+        u_cand = u_cand * radius_surrogate
     elif simparams.doe_method.lower().startswith('mcs'):
         u_cand = np.load(os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE6R0.npy'))
         u_cand = u_cand[:solver.ndim, np.linalg.norm(u_cand[:2], axis=0)<radius_surrogate]
