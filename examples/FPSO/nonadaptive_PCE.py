@@ -268,12 +268,15 @@ def main(ST):
 
         y_test_hat = pce_model.predict(u_test - u_center)
         test_error = uqra.metrics.mean_squared_error(y_test, y_test_hat,multioutput='raw_values')
-        data_test.append([pce_deg, n_train, y_test_hat])
 
-        alpha = (pf * 1e7) / y_test.size
-        y50_pce_y   = uqra.metrics.mquantiles(y_test_hat, 1-alpha)
-        y50_pce_idx = np.array(abs(y_test_hat - y50_pce_y)).argmin()
-        y50_pce_uxy = np.concatenate((u_test[:,y50_pce_idx], x_test[:, y50_pce_idx], y50_pce_y)) 
+        mcs_u_in_circle = mcs_data_ux[ :2,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
+        mcs_x_in_circle = mcs_data_ux[-2:,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
+        mcs_y_in_circle_hat = pce_model.predict(mcs_u_in_circle - u_center)
+        alpha = (pf * mcs_data_ux.shape[1]) / mcs_y_in_circle_hat.size
+        y50_pce_y   = uqra.metrics.mquantiles(mcs_y_in_circle_hat, 1-alpha)
+        y50_pce_idx = np.array(abs(mcs_y_in_circle_hat - y50_pce_y)).argmin()
+        y50_pce_uxy = np.concatenate((mcs_u_in_circle[:,y50_pce_idx], mcs_x_in_circle[:, y50_pce_idx], y50_pce_y)) 
+        data_test.append([pce_deg, n_train, mcs_y_in_circle_hat])
         res = [pce_deg, n_train, pce_model.cv_error, test_error[0]]
         for item in y50_pce_uxy:
             res.append(item)
