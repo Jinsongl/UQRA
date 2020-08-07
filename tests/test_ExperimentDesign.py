@@ -106,27 +106,29 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_CLS(self):
 
-        print('Testing: Random Sampling from Pluripotential Equilibrium ...')
-        print('testing: d=1, theta: default')
-        d = 2
-        for i in range(1,6):
-            try:
-                doe = uqra.RandomDesign([sp.stats.uniform,]*d, 'CLS{:d}'.format(i))
-                doe_x = doe.get_samples(n_samples=1e5)
-                print('CLS{:d}'.format(i))
-                print('x shape: {}'.format(doe_x.shape))
-                print('x mean: {}'.format(np.mean(doe_x, axis=1)))
-                print('x std : {}'.format(np.std(doe_x, axis=1)))
-                print('x min : {}'.format(np.min(doe_x, axis=1)))
-                print('x max : {}'.format(np.max(doe_x, axis=1)))
-            except NotImplementedError:
-                pass
+        # d = 2
+        # print('Testing: Random Sampling from Pluripotential Equilibrium ...')
+        # print('testing: d={:d}, theta: default'.format(d))
+        # for i in range(1,6):
+            # try:
+                # doe = uqra.RandomDesign([sp.stats.uniform,]*d, 'CLS{:d}'.format(i))
+                # doe_x = doe.get_samples(n_samples=1e5)
+                # print('CLS{:d}'.format(i))
+                # print('x shape: {}'.format(doe_x.shape))
+                # print('x mean: {}'.format(np.mean(doe_x, axis=1)))
+                # print('x std : {}'.format(np.std(doe_x, axis=1)))
+                # print('x min : {}'.format(np.min(doe_x, axis=1)))
+                # print('x max : {}'.format(np.max(doe_x, axis=1)))
+            # except NotImplementedError:
+                # pass
 
-        for d in range(2,3):
-            print('CLS4, d={:d}'.format(d))
-            doe = uqra.RandomDesign([sp.stats.uniform,]*d, 'CLS4')
+        ndim = 2
+        doe_method = 'CLS2'
+        print('{:s}, d={:d}'.format(doe_method, ndim))
+        doe = uqra.RandomDesign([sp.stats.uniform,]*ndim, doe_method)
+        for r in range(10):
             doe_x = doe.get_samples(n_samples=1e7)
-            np.save('DoE_Cls4d{:d}E7R0.npy'.format(d), doe_x)
+            np.save('DoE_{:s}E7d{:d}R{:d}.npy'.format(doe_method.capitalize(), ndim, r), doe_x)
 
 
         
@@ -221,49 +223,46 @@ class BasicTestSuite(unittest.TestCase):
                 print('mean condition number: {}'.format(np.mean(mean_kappa)))
 
 
-    # def test_gauss_quadrature(self):
-        # """
-        # https://keisan.casio.com/exec/system/1329114617
-        # """
+    def test_gauss_quadrature(self):
+        """
+        https://keisan.casio.com/exec/system/1329114617
+        """
 
-        # print('========================TESTING: 1D GAUSS QUADRATURE=======================')
-        # dists2test = [cp.Uniform(-1,1), cp.Normal(), cp.Gamma(1,1), cp.Beta(1,1)]
-        # rules2test = ['leg', 'hem', 'lag', 'jacobi']
-        # order2test = [2,3,4,5,6,7,8]
-        # for idist2test, irule2test in zip(dists2test, rules2test):
-            # print('-'*50)
-            # print('>>> Gauss Quadrature with polynominal: {}'.format(const.DOE_RULE_FULL_NAMES[irule2test.lower()]))
-            # uqra.blockPrint()
-            # quad_doe = uqra.DoE('QUAD', irule2test, order2test, idist2test)
-            # uqra_samples = quad_doe.get_samples()
-            # # quad_doe.disp()
-            # uqra.enablePrint()
-            # if irule2test == 'hem':
-                # for i, iorder in enumerate(order2test):
-                    # print('>>> order : {}'.format(iorder))
-                    # coord1d_e, weight1d_e = np.polynomial.hermite_e.hermegauss(iorder)
-                    # print('{:<15s}: {}'.format('probabilist', np.around(coord1d_e,2)))
-                    # coord1d, weight1d = np.polynomial.hermite.hermgauss(iorder)
-                    # print('{:<15s}: {}'.format('physicist', np.around(coord1d,2)))
-                    # print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
+        print('========================TESTING: 1D GAUSS QUADRATURE=======================')
+        dists2test = [cp.Uniform(-1,1), cp.Normal(), cp.Gamma(1,1), cp.Beta(1,1)]
+        rules2test = ['leg', 'hem', 'lag', 'jacobi']
+        order2test = [2,3,4,5,6,7,8]
+        for idist2test, irule2test in zip(dists2test, rules2test):
+            print('-'*50)
+            print('>>> Gauss Quadrature with polynominal: {}'.format(const.DOE_RULE_FULL_NAMES[irule2test.lower()]))
+            uqra.blockPrint()
+            quad_doe = uqra.DoE('QUAD', irule2test, order2test, idist2test)
+            uqra_samples = quad_doe.get_samples()
+            # quad_doe.disp()
+            uqra.enablePrint()
+            if irule2test == 'hem':
+                for i, iorder in enumerate(order2test):
+                    print('>>> order : {}'.format(iorder))
+                    coord1d_e, weight1d_e = np.polynomial.hermite_e.hermegauss(iorder)
+                    print('{:<15s}: {}'.format('probabilist', np.around(coord1d_e,2)))
+                    coord1d, weight1d = np.polynomial.hermite.hermgauss(iorder)
+                    print('{:<15s}: {}'.format('physicist', np.around(coord1d,2)))
+                    print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
 
-            # elif irule2test == 'leg':
-                # for i, iorder in enumerate(order2test):
-                    # print('>>> order : {}'.format(iorder))
-                    # coord1d, weight1d = np.polynomial.legendre.leggauss(iorder)
-                    # print('{:<15s}: {}'.format('numpy ', np.around(coord1d,2)))
-                    # print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
-            # elif irule2test == 'lag':
-                # for i, iorder in enumerate(order2test):
-                    # print('>>> order : {}'.format(iorder))
-                    # coord1d, weight1d = np.polynomial.laguerre.laggauss(iorder)
-                    # print('{:<15s}: {}'.format('numpy ', np.around(coord1d,2)))
-                    # print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
-            # elif irule2test == 'jacobi':
-                # print('NOT TESTED YET')
-
-
-        # print('Compared results here: https://keisan.casio.com/exec/system/1329114617')
+            elif irule2test == 'leg':
+                for i, iorder in enumerate(order2test):
+                    print('>>> order : {}'.format(iorder))
+                    coord1d, weight1d = np.polynomial.legendre.leggauss(iorder)
+                    print('{:<15s}: {}'.format('numpy ', np.around(coord1d,2)))
+                    print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
+            elif irule2test == 'lag':
+                for i, iorder in enumerate(order2test):
+                    print('>>> order : {}'.format(iorder))
+                    coord1d, weight1d = np.polynomial.laguerre.laggauss(iorder)
+                    print('{:<15s}: {}'.format('numpy ', np.around(coord1d,2)))
+                    print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
+            elif irule2test == 'jacobi':
+                print('NOT TESTED YET')
 
 
 if __name__ == '__main__':
