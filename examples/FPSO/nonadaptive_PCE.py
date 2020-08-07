@@ -169,7 +169,9 @@ def main(ST):
     u_test      = data_test[:solver.ndim, :]
     x_test      = data_test[solver.ndim:2*solver.ndim, :]
     y_test      = np.squeeze(data_test[2*solver.ndim+short_term_seeds,:])
-    
+
+    u_pred      = mcs_data_ux[ :2,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
+    x_pred      = mcs_data_ux[-2:,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
     # filename    = 'DoE_McsE7R0.npy'
     # u_test      = np.load(os.path.join(simparams.data_dir_sample, 'MCS', 'Norm', filename))[:solver.ndim,:]
     # x_test      = Kvitebjorn.ppf(stats.norm().cdf(u_test))
@@ -184,6 +186,7 @@ def main(ST):
     # print('   - {:<25s} : [{}, {}]'.format('Test U[mean, std]',np.mean(u_test, axis=1),np.std (u_test, axis=1)))
     print('   - {:<25s} : [{}]'.format('Test max(U)[U1, U2]',np.amax(abs(u_test), axis=1)))
     print('   - {:<25s} : [{}]'.format('Test [min(Y), max(Y)]',np.array([np.amin(y_test),np.amax(y_test)])))
+    print('   - {:<25s} : {}, {}'.format('Prediction Dataset (U,X)',u_pred.shape, x_pred.shape))
     # print('   - {:<25s} : {}'.format('# Test data in Circle({:.2f})'.format(radius_surrogate),u_test_in_circle.shape))
 
 
@@ -207,7 +210,6 @@ def main(ST):
 
     for pce_deg in simparams.pce_degs:
         print('\n================================================================================')
-        # simparams.info()
         print('   - Sampling and Fitting:')
         print('     - {:<23s} : {}'.format('Sampling method'  , simparams.doe_method))
         print('     - {:<23s} : {}'.format('Optimality '      , simparams.optimality))
@@ -269,14 +271,12 @@ def main(ST):
         y_test_hat = pce_model.predict(u_test - u_center)
         test_error = uqra.metrics.mean_squared_error(y_test, y_test_hat,multioutput='raw_values')
 
-        mcs_u_in_circle = mcs_data_ux[ :2,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
-        mcs_x_in_circle = mcs_data_ux[-2:,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
-        mcs_y_in_circle_hat = pce_model.predict(mcs_u_in_circle - u_center)
-        alpha = (pf * mcs_data_ux.shape[1]) / mcs_y_in_circle_hat.size
-        y50_pce_y   = uqra.metrics.mquantiles(mcs_y_in_circle_hat, 1-alpha)
-        y50_pce_idx = np.array(abs(mcs_y_in_circle_hat - y50_pce_y)).argmin()
-        y50_pce_uxy = np.concatenate((mcs_u_in_circle[:,y50_pce_idx], mcs_x_in_circle[:, y50_pce_idx], y50_pce_y)) 
-        data_test.append([pce_deg, n_train, mcs_y_in_circle_hat])
+        y_pred = pce_model.predict(u_pred - u_center)
+        alpha  = (pf * mcs_data_ux.shape[1]) / y_pred.size
+        y50_pce_y   = uqra.metrics.mquantiles(y_pred, 1-alpha)
+        y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
+        y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
+        data_test.append([pce_deg, n_train, y_pred])
         res = [pce_deg, n_train, pce_model.cv_error, test_error[0]]
         for item in y50_pce_uxy:
             res.append(item)
