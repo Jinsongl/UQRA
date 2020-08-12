@@ -123,7 +123,7 @@ class BasicTestSuite(unittest.TestCase):
                 # pass
 
         ndim = 2
-        doe_method = 'CLS2'
+        doe_method = 'CLS4'
         print('{:s}, d={:d}'.format(doe_method, ndim))
         doe = uqra.RandomDesign([sp.stats.uniform,]*ndim, doe_method)
         for r in range(10):

@@ -72,12 +72,12 @@ class BasicTestSuite(unittest.TestCase):
         print('========================TESTING: Lienar Oscillator =======================')
 
         data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF' 
-        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/NonAdap_PCE'  
-        excd_prob       = 0.5/365.25/24/50
+        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/PCE_AdapSampling'  
+        pf       = 0.5/365.25/24/50
         radius_surrogate= 3
         short_term_seeds= np.arange(11)
         short_term_seeds_applied = np.setdiff1d(np.arange(11), np.array([]))
-        print('Target exceedance prob : {}'.format(excd_prob))
+        print('Target exceedance prob : {}'.format(pf))
 
         print('------------------------------------------------------------')
         print('>>> Environmental Contour for Model: FPSO                   ')
@@ -118,26 +118,23 @@ class BasicTestSuite(unittest.TestCase):
         print('   - {:<25s} : {}'.format('Center X', np.squeeze(x_center)))
         print('================================================================================')
 
-
         filename    = 'DoE_McsE7R0.npy'
         mcs_data    = np.load(os.path.join(data_dir, filename))
-        u_test      = mcs_data[:2]
-        x_test      = mcs_data[2:4]
-        y_test      = np.zeros((1, u_test.shape[1]))
-        data_test   = np.concatenate((u_test, x_test, y_test))
-        idx_in_circle   = np.arange(u_test.shape[1])[np.linalg.norm(u_test-u_center, axis=0) < radius_surrogate]
+        mcs_data_ux, mcs_data_y = mcs_data[:4], mcs_data[4+short_term_seeds_applied,:]
+        idx_in_circle = np.arange(mcs_data_ux.shape[1])[np.linalg.norm(mcs_data_ux[:2]-u_center, axis=0) < radius_surrogate]
+
+        mcs_data_y_pred = np.zeros((1, mcs_data_ux.shape[1]))
+        mcs_data_pred   = np.concatenate((mcs_data_ux, mcs_data_y_pred))
         print(mcs_data.shape)
 
         for iseed in short_term_seeds_applied:
-            filename = 'FPSO_SDOF_2Hem20_McsD_Lassolars_Alpha1.2_ST{:d}_test.npy'.format(iseed)
+            filename = 'FPSO_SDOF_2Hem20_AdapMCSS_Lassolars_Alpha1pt2_ST{:d}_test.npy'.format(iseed)
             data  = np.load(os.path.join(data_dir_result, filename), allow_pickle=True)
             data_ecdf = []
-            for p, n, idata in tqdm(data,desc='ST{:d}'.format(iseed), ncols=80):
-                assert data_test.shape[0] == 5
-                assert idata.shape[0] == 5
+            for p, n, iy_pred in tqdm(data,desc='ST{:d}'.format(iseed), ncols=80):
                 ecdf_ = [p,n]
-                data_test[:, idx_in_circle] = idata
-                ecdf_ = uqra.utilities.helpers.ECDF(data_test.T, hinge=-1,alpha=excd_prob, compress=True)
+                mcs_data_pred[-1, idx_in_circle] = iy_pred
+                ecdf_ = uqra.utilities.helpers.ECDF(mcs_data_pred.T, hinge=-1, alpha=pf, compress=True)
                 data_ecdf.append([p,n,ecdf_])
             data_ecdf = np.array(data_ecdf, dtype=object)
             np.save(os.path.join(data_dir_result, filename[:-8]+'ecdf.npy'), data_ecdf, allow_pickle=True)
