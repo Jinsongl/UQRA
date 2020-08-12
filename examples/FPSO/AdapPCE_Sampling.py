@@ -311,7 +311,7 @@ def main(ST):
         text_file.write('\n'.join(['pce_deg', 'n_train', 'cv_error', 'test mse', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
 
     ### Saving test data in circle
-    filename = '{:s}_Adap{:s}_Adap{:s}_Alpha{}_ST{}_test'.format(solver.nickname, pce_model.tag, 
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_test'.format(solver.nickname, pce_model.tag, 
             simparams.tag, alphas, short_term_seeds[-1])
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), data_test)
@@ -320,7 +320,7 @@ def main(ST):
         np.save(os.path.join(os.getcwd(), filename), data_test)
 
     ### Saving QoI data  
-    filename = '{:s}_Adap{:s}_Adap{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
             simparams.tag, alphas, short_term_seeds[-1])
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), res_pce_deg)
