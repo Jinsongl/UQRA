@@ -9,74 +9,86 @@
 """
 
 """
-from uqra.experiment._experimentbase import ExperimentBase
+from ._experimentbase import ExperimentBase
 import numpy as np
-import scipy
-import itertools
 import scipy.stats as stats
+from uqra.utilities.helpers import num2print
 
-class RandomDesign(ExperimentBase):
-    """ Experimental Design with random sampling methods"""
-
-    def __init__(self, distributions, method):
+class MCS(ExperimentBase):
+    def __init__(self, distributions=None):
         """
-        "Random"/Quasi random sampling design, dist_names are independent 
-        Arguments:
-        method:
-            "R": pseudo random sampling, brute force Monte Carlo 
-            "Halton": Halton quasi-Monte Carlo
-            'Sobol': Sobol sequence quasi-Monte Carlo
-        dist_names: str or list of str
+        Random sampling based on scipy.stats distributions 
         """
-        super().__init__(samplingfrom=distributions)
-        self.method   = method 
-        self.filename = '_'.join(['DoE', self.method.capitalize() ])
+        self.ndim, self.distributions = super()._set_distributions(distributions)
+        self.filename = 'DoE_Mcs'
 
     def __str__(self):
-        dist_names = [idist.dist.name for idist in self.distributions]
-        message = 'Random Design with method: {:s}, Distributions: {}'.format(self.method, dist_names)
+        if self.distributions is None:
+            message = 'Random samples, no distribution has been set yet }'
+
+        else:
+            dist_names = []
+            for idist in self.distributions:
+                try:
+                    dist_names.append(idist.name)
+                except:
+                    dist_names.append(idist.dist.name)
+            message = 'Random samples from: {}'.format(dist_names)
+
         return message
 
-    def get_samples(self, n_samples, theta=[0,1]):
+    def samples(self, loc=0, scale=1, size=1):
         """
-        Random sampling from distributions with specified method
-        Arguments:
-            n_samples: int, number of samples 
-            theta: list of [loc, scale] parameters for distributions
-            For those distributions not specified with (loc, scale), the default value (0,1) will be applied
-        Return:
-            Experiment samples of shape(ndim, n_samples)
+        Generating random variables of shape 'size'
         """
+        size = super()._check_int(size)
+        if self.distributions is None:
+            raise ValueError('Distributions must be specified first before sampling')
 
-        super()._update_parameters(n_samples, theta)
+        locs, scales = super()._set_parameters(loc, scale)
+        u_samples = []
 
-        if self.method.upper() in ['R', 'MC', 'MCS']:
-            u = np.array([idist.rvs(size=self.n_samples, loc=iloc, scale=iscale) for idist, iloc, iscale in zip(self.distributions, self.loc, self.scale)])
-            return  u 
-            
-        ### Chirstoffel sampling, ref Table [2],   A CHRISTOFFEL FUNCTION WEIGHTED LEAST SQUARES ALGORITHM FOR COLLOCATION APPROXIMATIONS
-            #   Domain D    |  Orthogonality weight w   | Sampling density domain       | Sampling density v(y) 
-            ## -------------------------------------------------------------------------------------
-            #  CLS1: [−1, 1]^d   | Any admissible weight     | [−1, 1]^d 􏰧                   | Chebyshev   
-            #  CLS2:     B^d     | Any admissible weight     |   B^d 􏰱                       |
-            #  CLS3:     T^d     | Any admissible weight     |   T^d 􏰱                       |
-            #  CSL4:     R^d     | exp(-|z|^2)               | sqrt(2)B^d 
-            #  CLS5:  0,∞)^d
-              
+        for idist, iloc, iscale in zip(self.distributions, locs, scales):
+            u_samples.append(idist.rvs(loc=iloc, scale=iscale, size=size))
+        ## udpate filename 
+        self.filename = self.filename + num2print(np.array(size, ndmin=2).shape[-1])
+        return np.array(u_samples)
 
-        elif self.method.upper() in ['CHRISTOFFEL1', 'CLS1']:
+class CLS(ExperimentBase):
+
+    def __init__(self, cls_type, d):
+        """
+        Sampling based on Pluripotential distributions used in Christoffel least square 
+        """
+        self.ndim     = int(d)
+        self.cls_type = cls_type.upper()
+        self.filename = 'DoE_' + self.cls_type.capitalize()
+
+    def __str__(self):
+
+        if self.distributions is None:
+            message = '{:d}d-{:s}sampling}'.format(self.ndim, self.cls_type)
+        return message
+
+    def samples(self, loc=0, scale=1, size=1):
+        """
+        Generating CLS variables of shape 'size'
+        """
+        size = super()._check_int(size)
+        locs, scales = super()._set_parameters(loc, scale)
+
+        if self.cls_type.upper() in ['CHRISTOFFEL1', 'CLS1']:
             """
-            Sampling from the pluripoential equilibrium corresponding to distributions specified in self.distributions.
-            
-            Ref: Table 2 of "A Christoffel function weighted least squares algorithm for collocation approximations, Akil Harayan, John D. Jakeman, and Tao Zhou"
+            Ref: Table 2 of "A Christoffel function weighted least squares algorithm for collocation approximations, 
+            Akil Harayan, John D. Jakeman, and Tao Zhou"
             Domain D    | Sampling density domain   |     Sampling density v(y) |
             [-1,1]^d    |   [1,1]^d                 |   1/(pi ^d \prod _{i=1} ^ d sqrt(1-x_i^2)) 
-
-
             """
-            u = stats.uniform.rvs(0,np.pi,size=(self.ndim, self.n_samples))
+
+            u = stats.uniform.rvs(0,np.pi,size=(self.ndim, size))
             x = np.cos(u)
-        elif self.method.upper() in ['CHRISTOFFEL2', 'CLS2']:
+
+        elif self.cls_type.upper() in ['CHRISTOFFEL2', 'CLS2']:
             ###  Acceptance and rejection sampling 
             ## 1. Sampling 
             ## 2. Accept and reject samples 
@@ -84,37 +96,74 @@ class RandomDesign(ExperimentBase):
             ## 1. z ~ normal(0,1), z <- z/|z|, then z ~ uniformally on d-ball sphere  
             ## 2. u ~ uniform(0,1) 
             ## 3. z * u^{1/d}
-            n = int(self.n_samples)
-            z = stats.norm.rvs(0,1,size=(self.ndim, n))
+            z = stats.norm.rvs(0,1,size=(self.ndim, size))
             z = z/np.linalg.norm(z, axis=0)
-            u = np.cos(stats.uniform.rvs(0,np.pi/2,size=(1, self.n_samples)))
+            u = np.cos(stats.uniform.rvs(0,np.pi/2,size=(1, size)))
             x = z * u 
 
-        elif self.method.upper() in ['CHRISTOFFEL3', 'CLS3']:
+        elif self.cls_type.upper() in ['CHRISTOFFEL3', 'CLS3']:
             raise NotImplementedError
 
-        elif self.method.upper() in ['CHRISTOFFEL4', 'CLS4']:
+        elif self.cls_type.upper() in ['CHRISTOFFEL4', 'CLS4']:
             #### Sampling from Ball with radius sqrt(2). 
             ## 1. z ~ normal(0,1), z / norm(z): uniformly sampling on Ball^d sphere
             ## 2. u ~ uniform(0,1 )
 
-            n = int(self.n_samples)
-            z = stats.norm.rvs(0,1,size=(self.ndim, n))
+            z = stats.norm.rvs(0,1,size=(self.ndim, size))
             z = z/np.linalg.norm(z, axis=0)
-            u = stats.beta.rvs(self.ndim/2.0,self.ndim/2.0 + 1,size=n)
+            u = stats.beta.rvs(self.ndim/2.0,self.ndim/2.0 + 1,size=size)
             u = np.sqrt(2 * u) 
             x = z * u 
-        elif self.method.upper() in ['CHRISTOFFEL5', 'CLS5']:
+
+        elif self.cls_type.upper() in ['CHRISTOFFEL5', 'CLS5']:
             raise NotImplementedError
 
+        u = np.array(x)
+        assert u.shape[0] == self.ndim
 
-        elif self.method.upper() in ['HALTON', 'HAL', 'H']:
-            raise NotImplementedError 
+        for i in range(self.ndim):
+            u[i] = u[i] * scales[i] + locs[i]
 
-        elif self.method.upper() in ['SOBOL', 'SOB', 'S']:
-            raise NotImplementedError 
+        ## udpate filename 
+        self.filename = self.filename + num2print(np.array(size, ndmin=2).shape[-1])
+        return u
 
-        else:
-            raise NotImplementedError 
-        return  x
+                
+class QuasiMCS(ExperimentBase):
+
+    """
+    Quasi random sampling based on low-discrepency sequences 
+    """
+    def __init__(self, quasi_type=None):
+        raise NotImplementedError 
+
+    def __str__(self):
+
+        raise NotImplementedError 
+        # if self.distributions is None:
+            # message = 'Random samples, no distribution has been set yet }'
+
+        # else:
+            # dist_names = []
+            # for idist in self.distributions:
+                # try:
+                    # dist_names.append(idist.name)
+                # except:
+                    # dist_names.append(idist.dist.name)
+            # message = 'Random samples from: {}'.format(dist_names)
+
+        # return message
+
+    def samples(self, loc=0, scale=1, size=1):
+        """
+        Generating random variables of shape 'size'
+        """
+        raise NotImplementedError 
+
+        # if self.method.upper() in ['HALTON', 'HAL', 'H']:
+            # raise NotImplementedError 
+
+        # elif self.method.upper() in ['SOBOL', 'SOB', 'S']:
+            # raise NotImplementedError 
+
 

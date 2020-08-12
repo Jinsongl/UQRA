@@ -11,9 +11,9 @@
 """
 import numpy as np
 import scipy as sp
-from uqra.utilities.helpers import num2print
-from uqra.polynomial._polybase import PolyBase
-from uqra.utilities.helpers import isfromstats
+from ..utilities.helpers import num2print
+from ..utilities.helpers import isfromstats
+from ..polynomial._polybase import PolyBase
 
 class ExperimentBase(object):
     """
@@ -95,6 +95,53 @@ class ExperimentBase(object):
         raise NotImplementedError
 
 
+    def _set_distributions(self, distributions):
+        if distributions is None:
+            dists = None
+            ndim = 0
+        else:
+            try:
+                dists = distributions
+                ndim = len(dists)
+            except TypeError:
+                dists = [distributions,]
+                ndim = len(dists)
+        return ndim, dists
 
+    def _set_parameters(self, loc, scale):
+
+        if np.ndim(loc) == 0: ## scalor
+            locs = [loc] * self.ndim
+        else: ## list/tuple, with 1 or more elements
+            if np.size(loc) == 1:
+                locs = loc * self.ndim
+            else:
+                locs = loc
+                if len(locs) != self.ndim:
+                    raise ValueError('Expecting {:d} location parameters but {:d} given'.format(self.ndim, len(loc)))
+
+        if np.ndim(scale) == 0:
+            scales = [scale] * self.ndim
+        else:
+            if np.size(scale) == 1:
+                scales = scale * self.ndim
+            else:
+                scales = scale
+                if len(scales) != self.ndim:
+                    raise ValueError('Expecting {:d} location parameters but {:d} given'.format(self.ndim, len(scale)))
+
+        return locs, scales
+
+    def _check_int(self, size):
+        """
+        checking if the size parameter is int or tuple of int
+        If not, convert 
+        """
+
+        if np.ndim(size) == 0:
+            size = (int(size),)
+        else:
+            size = tuple(map(int, i) for i in size)
+        return size
 
 

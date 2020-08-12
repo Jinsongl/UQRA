@@ -16,62 +16,63 @@ def cdf_chebyshev(x):
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
+    np.set_printoptions(2)
     def test_experimentBase(self):
         doe = uqra.experiment._experimentbase.ExperimentBase()
         print(doe.ndim)
         print(doe.samplingfrom)
 
-    def test_RandomDesign(self):
+    def test_MCS(self):
         print('Testing: Random Monte Carlo...')
         print('testing: d=1, theta: default')
-        doe = uqra.RandomDesign(sp.stats.norm, 'MCS')
-        doe_x = doe.samples(n_samples=1e5)
+        doe = uqra.MCS(sp.stats.norm)
+        doe_x = doe.samples(size=1e5)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
 
         print('testing: d=2, theta: default[0,1], same distribution')
-        doe = uqra.RandomDesign([sp.stats.norm,]*2, 'MCS')
-        doe_x = doe.samples(n_samples=1e5)
+        doe = uqra.MCS([sp.stats.norm,]*2)
+        doe_x = doe.samples(size=1e5)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
 
 
         print('testing: d=1, theta: default[[0,1]]')
-        doe = uqra.RandomDesign(sp.stats.norm, 'MCS')
-        doe_x = doe.samples(n_samples=1e5, theta=[[0,1]])
+        doe = uqra.MCS(sp.stats.norm)
+        doe_x = doe.samples(size=1e5, loc=[0], scale=[1,])
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
 
 
         print('testing: d=2, theta: default[[0,1]]')
-        doe = uqra.RandomDesign([sp.stats.norm,]*2, 'MCS')
-        doe_x = doe.samples(n_samples=1e5, theta=[[0,1]])
+        doe = uqra.MCS([sp.stats.norm,]*2)
+        doe_x = doe.samples(size=1e5, loc=[0,], scale=[1,])
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
 
         print('testing: d=2, theta: default[[0,1], [2,3]]')
-        doe = uqra.RandomDesign([sp.stats.norm,]*2, 'MCS')
-        doe_x = doe.samples(n_samples=1e5, theta=[[0,1], [2,3]])
+        doe = uqra.MCS([sp.stats.norm,]*2)
+        doe_x = doe.samples(size=1e5, loc=[0,1],scale=[2,3])
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
 
-    def test_LatinHyperCube(self):
+    def test_LHS(self):
         print('Testing: Latin Hypercube...')
-        # doe = uqra.LHS([sp.stats.norm(0,1),]*2)
-        doe = uqra.LHS([sp.stats.uniform(-1,2),]*2)
-        doe_u, doe_x = doe.samples(256)
+        doe = uqra.LHS([sp.stats.norm(0,1),]*2)
+        # doe = uqra.LHS([sp.stats.uniform(),]*2)
+        doe_x = doe.samples(size=256)
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
         print(np.min(doe_x, axis=1))
         print(np.max(doe_x, axis=1))
 
-        np.save('DoE_Lhs_d2_Uniform256.npy', doe_x)
+        # np.save('DoE_Lhs_d2_Uniform256.npy', doe_x)
 
     def test_Doptimality(self):
         """
@@ -123,11 +124,11 @@ class BasicTestSuite(unittest.TestCase):
                 # pass
 
         ndim = 2
-        doe_method = 'CLS4'
+        doe_method = 'CLS1'
         print('{:s}, d={:d}'.format(doe_method, ndim))
-        doe = uqra.RandomDesign([sp.stats.uniform,]*ndim, doe_method)
+        doe = uqra.CLS(doe_method,ndim)
         for r in range(10):
-            doe_x = doe.get_samples(n_samples=1e7)
+            doe_x = doe.samples(size=1e7)
             np.save('DoE_{:s}E7d{:d}R{:d}.npy'.format(doe_method.capitalize(), ndim, r), doe_x)
 
 

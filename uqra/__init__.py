@@ -19,7 +19,7 @@ from uqra.environment.environment import Environment as Environment
 # from uqra.environment import *
 
 from uqra.experiment.quadrature import QuadratureDesign
-from uqra.experiment.random_design import RandomDesign
+from uqra.experiment.random_design import * 
 from uqra.experiment.lhs import LatinHyperCube as LHS
 from uqra.experiment.optimal_design import OptimalDesign 
 

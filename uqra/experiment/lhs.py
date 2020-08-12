@@ -36,23 +36,27 @@ class LatinHyperCube(ExperimentBase):
                - “centermaximin” or “cm”: same as “maximin”, but centered within the intervals
                - “correlation” or “corr”: minimize the maximum correlation coefficient
         """
-        super().__init__(samplingfrom=distributions)
+        self.ndim, self.distributions = super()._set_distributions(distributions)
         self.criterion = kwargs.get('criterion', 'maximin')
         self.iterations= kwargs.get('iterations', 5)
         self.filename = '_'.join(['DoE', 'Lhs'])
 
     def __str__(self):
-        dist_names = []
-        for idist in self.distributions:
-            try:
-                dist_name = idist.name
-            except AttributeError:
-                dist_name = idist.dist.name
-            dist_names.append(dist_name)
-        message = 'LHS Design with criterion: {:s}, distributions: {}'.format(self.criterion, dist_names)
+        if self.distributions is None:
+            message = 'Random samples, no distribution has been set yet }'
+
+        else:
+            dist_names = []
+            for idist in self.distributions:
+                try:
+                    dist_names.append(idist.name)
+                except:
+                    dist_names.append(idist.dist.name)
+            message = 'Random samples from: {}'.format(dist_names)
+
         return message
 
-    def get_samples(self, n_samples, theta=[0,1], random_state=None):
+    def samples(self, size=1,loc=0, scale=1,  random_state=None):
         """
         LHS sampling from distributions 
         Arguments:
@@ -63,11 +67,18 @@ class LatinHyperCube(ExperimentBase):
             Experiment samples of shape(ndim, n_samples)
         """
 
-        super().samples(n_samples, theta)
-        lhs_u   = pyDOE2.lhs(self.ndim, samples=self.n_samples, criterion=self.criterion, iterations=self.iterations,random_state=random_state)
-        lhs_u   = lhs_u.reshape(self.ndim, n_samples)
-        lhs_x   = np.array([idist.ppf(ilhs_u) for idist, ilhs_u in zip(self.distributions, lhs_u)])
-        return lhs_u, lhs_x
+        size = super()._check_int(size)
+        locs, scales = super()._set_parameters(loc, scale)
+
+        lhs_u = []
+        for isize in size:
+            u = pyDOE2.lhs(self.ndim, samples=isize, 
+                    criterion=self.criterion, iterations=self.iterations,random_state=random_state).T
+            lhs_u.append(u)
+        lhs_u = np.squeeze(lhs_u)
+        lhs_u = np.array([idist.ppf(iu) for iu, idist in zip(lhs_u, self.distributions)])
+        lhs_u = np.array([iu * iscale + iloc for iu, iloc, iscale in zip(lhs_u, locs, scales)])
+        return lhs_u
 
 
 
