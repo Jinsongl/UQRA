@@ -138,7 +138,7 @@ class FPSO(SolverBase):
         self.wmin       = np.squeeze(data['wmin'])
 
     def _FD_FPSO_LF(self):
-        fac1=0.585809078570351
+        fac1=0.22
         fac2=1
 
         self.diag_surge  = self.diag_surge*fac1   #0.255554093091961
@@ -160,7 +160,7 @@ class FPSO(SolverBase):
         # Damping matrix
         # --------------
 
-        self.DR=.05 
+        self.DR=.1
         self.B = self.DR*2*np.sqrt(self.K*self.M) 
 
         # -----------
