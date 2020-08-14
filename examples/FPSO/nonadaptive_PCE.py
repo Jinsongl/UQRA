@@ -75,7 +75,7 @@ def main(ST):
         else:
             raise ValueError
 
-    simparams.fit_method = 'OLS'
+    simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     repeats              = 1 #if simparams.optimality is None else 1
     alphas               = 10
@@ -311,5 +311,5 @@ def main(ST):
         np.save(os.path.join(os.getcwd(), filename), data_pred)
 
 if __name__ == '__main__':
-    for s in range(3,10):
+    for s in range(3):
         main(s)
