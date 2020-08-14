@@ -211,13 +211,26 @@ class BasicTestSuite(unittest.TestCase):
         # print('Hs = {}, Tp={}'.format(np.around(x[0]), np.around(x[1])))
 
         ## ------------------------ MCS  ----------------- ###
-        solver = uqra.FPSO(phase=np.arange(1))
-        data_mcs_u = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R0.npy'))[:solver.ndim, :int(1e5)]
-        data_mcs_x = Kvitebjorn.ppf(stats.norm.cdf(data_mcs_u))
-        y = solver.run(data_mcs_x) 
-        data = np.concatenate((data_mcs_u, data_mcs_x, y.reshape(1,-1)))
-        np.save(os.path.join(data_dir_result, 'DoE_McsE5R0.npy'), data)
+        # ### MCS for DoE_McsE7R0
+        # solver = uqra.FPSO(phase=np.arange(1))
+        # data_mcs_u = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R0.npy'))[:solver.ndim, :int(1e5)]
+        # data_mcs_x = Kvitebjorn.ppf(stats.norm.cdf(data_mcs_u))
+        # y = solver.run(data_mcs_x) 
+        # data = np.concatenate((data_mcs_u, data_mcs_x, y.reshape(1,-1)))
+        # np.save(os.path.join(data_dir_result, 'DoE_McsE5R0.npy'), data)
         # print('Hs = {}, Tp={}'.format(np.around(x[0]), np.around(x[1])))
+
+        
+        data = []
+        for s in range(10):
+            solver = uqra.FPSO(phase=np.arange(s,s+1))
+            data_mcs_u = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R{:d}.npy'.format(s)))
+            data_mcs_u = data_mcs_u[:, :int(1e5)]
+            data_mcs_x = Kvitebjorn.ppf(stats.norm.cdf(data_mcs_u))
+            y = solver.run(data_mcs_x, verbose=True) 
+            data.append(np.concatenate((data_mcs_u, data_mcs_x, y.reshape(1,-1))))
+        data = np.array(data)
+        np.save(os.path.join(data_dir_result, 'FPSO_SDOF_DoE_McsE5.npy'), data)
 
         ## ------------------------ Environmental Contour ----------------- ###
         # solver = uqra.FPSO(phase=np.arange(21))
@@ -233,6 +246,18 @@ class BasicTestSuite(unittest.TestCase):
         # np.save(os.path.join(data_dir_result, 'FPSO_DoE_EC2D_T50.npy'  ), EC2D_data)
         # np.save(os.path.join(data_dir_result, 'FPSO_DoE_EC2D_T50_y.npy'), EC_y)
 
+
+        ## ------------------------ Environmental Contour ----------------- ###
+        # solver  = uqra.FPSO(phase=np.arange(21))
+        # dataset = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_Test_McsE7R0.npy')
+        # u, x    = dataset[:2], dataset[2:4]
+        # y       = solver.run(x, verbose=True) 
+        # try:
+            # data    = np.concatenate((u,x,y), axis=0)
+        # except ValueError:
+            # data    = np.concatenate((u,x,y.reshape(1,-1)), axis=0)
+
+        # np.save(os.path.join(data_dir_result, 'FPSO_Test_McsE7R0.npy'  ), data)
 
         ## ------------------------ Environmental Contour Bootstrap ----------------- ###
         # print('------------------------------------------------------------')
