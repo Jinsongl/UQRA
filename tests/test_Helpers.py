@@ -69,9 +69,8 @@ class BasicTestSuite(unittest.TestCase):
                     np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf'.format(i)), excd)
 
     def test_exceedance(self):
-        # print('========================TESTING: Lienar Oscillator =======================')
-
         data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF' 
+        # print('========================TESTING: Lienar Oscillator =======================')
         # pf       = 0.5/365.25/24/50
         # radius_surrogate= 3
         # short_term_seeds= np.arange(11)
@@ -138,22 +137,28 @@ class BasicTestSuite(unittest.TestCase):
             # data_ecdf = np.array(data_ecdf, dtype=object)
             # np.save(os.path.join(data_dir_result, filename[:-8]+'ecdf.npy'), data_ecdf, allow_pickle=True)
 
+        # pf = 1e-5
+        # data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/NonAdap_PCE'  
+        # for iseed in range(10):
+            # filename = 'FPSO_SDOF_2Hem10_McsS_Lassolars_Alpha10_ST{:d}_pred.npy'.format(iseed)
+            # data  = np.load(os.path.join(data_dir_result, filename), allow_pickle=True)
+            # data_ecdf = []
+            # for p, n, iy_pred in tqdm(data,desc='ST{:d}'.format(iseed), ncols=80):
+                # ecdf_ = [p,n]
+                # ecdf_ = uqra.utilities.helpers.ECDF(iy_pred, alpha=pf, compress=True, hinge=-1)
+                # data_ecdf.append([p,n,ecdf_])
+            # data_ecdf = np.array(data_ecdf, dtype=object)
+            # np.save(os.path.join(data_dir_result, filename[:-8]+'_ecdf.npy'), data_ecdf, allow_pickle=True)
+
         pf = 1e-5
-        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/NonAdap_PCE'  
+        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data'  
         for iseed in range(10):
-            filename = 'FPSO_SDOF_2Hem10_Mcs_Ols_Alpha10_ST{:d}_pred.npy'.format(iseed)
+            filename = 'FPSO_SDOF_DoE_McsE5R{:d}.npy'.format(iseed)
+            print(filename)
             data  = np.load(os.path.join(data_dir_result, filename), allow_pickle=True)
-            data_ecdf = []
-            for p, n, iy_pred in tqdm(data,desc='ST{:d}'.format(iseed), ncols=80):
-                ecdf_ = [p,n]
-                ecdf_ = uqra.utilities.helpers.ECDF(iy_pred, alpha=pf, compress=True)
-                data_ecdf.append([p,n,ecdf_])
-            data_ecdf = np.array(data_ecdf, dtype=object)
-            np.save(os.path.join(data_dir_result, filename[:-8]+'ecdf.npy'), data_ecdf, allow_pickle=True)
-
-
-
-
+            ecdf_ = uqra.utilities.helpers.ECDF(data, alpha=pf, compress=True, hinge=-1)
+            data_ecdf = np.array(ecdf_, dtype=object)
+            np.save(os.path.join(data_dir_result, filename[:-4]+'_ecdf.npy'), data_ecdf)
     def test_bootstrap(self):
         data = np.arange(12).reshape(3,4)
         print(data)

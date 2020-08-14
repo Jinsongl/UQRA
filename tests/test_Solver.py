@@ -222,13 +222,13 @@ class BasicTestSuite(unittest.TestCase):
 
         
         for s in range(10):
-            solver = uqra.FPSO(phase=np.arange(s,s+1))
-            data_mcs_u = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R{:d}.npy'.format(s)))
-            data_mcs_u = data_mcs_u[:, :int(1e5)]
+            solver = uqra.FPSO(phase=[s,])
+            # data_mcs_u = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R{:d}.npy'.format(s)))
+            data_mcs_u = stats.norm.rvs(loc=0,scale=1,size=(solver.ndim, int(1e5)))
             data_mcs_x = Kvitebjorn.ppf(stats.norm.cdf(data_mcs_u))
             y = solver.run(data_mcs_x, verbose=True) 
             data = np.concatenate((data_mcs_u, data_mcs_x, y.reshape(1,-1)))
-            np.save(os.path.join(data_dir_result, 'FPSO_SDOF_DoE_McsE5R{:d}.npy'.format(s)), data)
+            np.save(os.path.join(data_dir_result, 'FPSO_SDOF_McsE5R{:d}.npy'.format(s)), data)
 
         ## ------------------------ Environmental Contour ----------------- ###
         # solver = uqra.FPSO(phase=np.arange(21))
