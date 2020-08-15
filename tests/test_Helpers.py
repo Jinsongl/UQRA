@@ -137,28 +137,30 @@ class BasicTestSuite(unittest.TestCase):
             # data_ecdf = np.array(data_ecdf, dtype=object)
             # np.save(os.path.join(data_dir_result, filename[:-8]+'ecdf.npy'), data_ecdf, allow_pickle=True)
 
+        pf = 1e-5
+        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/NonAdap_PCE'  
+        for iseed in range(10):
+            filename = 'FPSO_SDOF_2Hem10_Mcs_Ols_Alpha10_ST{:d}_pred.npy'.format(iseed)
+            data  = np.load(os.path.join(data_dir_result, filename), allow_pickle=True)
+            print(data.shape)
+            data_ecdf = []
+            for p, n, iy_pred in tqdm(data,desc='ST{:d}'.format(iseed), ncols=80):
+                ecdf_ = uqra.utilities.helpers.ECDF(iy_pred, alpha=pf, compress=True)
+                data_ecdf.append([p,n,ecdf_])
+            data_ecdf = np.array(data_ecdf, dtype=object)
+            np.save(os.path.join(data_dir_result, filename[:-8]+'ecdf.npy'), data_ecdf, allow_pickle=True)
+
         # pf = 1e-5
         # data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/NonAdap_PCE'  
         # for iseed in range(10):
-            # filename = 'FPSO_SDOF_2Hem10_McsS_Lassolars_Alpha10_ST{:d}_pred.npy'.format(iseed)
+            # filename = 'FPSO_SDOF_2Hem10_Mcs_Lassolars_Alpha1pt2_ST{:d}_pred.npy'.format(iseed)
+            # print(filename)
             # data  = np.load(os.path.join(data_dir_result, filename), allow_pickle=True)
-            # data_ecdf = []
-            # for p, n, iy_pred in tqdm(data,desc='ST{:d}'.format(iseed), ncols=80):
-                # ecdf_ = [p,n]
-                # ecdf_ = uqra.utilities.helpers.ECDF(iy_pred, alpha=pf, compress=True, hinge=-1)
-                # data_ecdf.append([p,n,ecdf_])
-            # data_ecdf = np.array(data_ecdf, dtype=object)
-            # np.save(os.path.join(data_dir_result, filename[:-8]+'_ecdf.npy'), data_ecdf, allow_pickle=True)
+            # print(data.shape)
+            # ecdf_ = uqra.utilities.helpers.ECDF(data, alpha=pf, compress=True, hinge=-1)
+            # data_ecdf = np.array(ecdf_, dtype=object)
+            # np.save(os.path.join(data_dir_result, filename[:-8]+'_ecdf.npy'), data_ecdf)
 
-        pf = 1e-5
-        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data'  
-        for iseed in range(10):
-            filename = 'FPSO_SDOF_DoE_McsE5R{:d}.npy'.format(iseed)
-            print(filename)
-            data  = np.load(os.path.join(data_dir_result, filename), allow_pickle=True)
-            ecdf_ = uqra.utilities.helpers.ECDF(data, alpha=pf, compress=True, hinge=-1)
-            data_ecdf = np.array(ecdf_, dtype=object)
-            np.save(os.path.join(data_dir_result, filename[:-4]+'_ecdf.npy'), data_ecdf)
     def test_bootstrap(self):
         data = np.arange(12).reshape(3,4)
         print(data)

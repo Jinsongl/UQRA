@@ -20,7 +20,6 @@ warnings.filterwarnings(action="ignore", module="scipy", message="^internal gels
 sys.stdout  = uqra.utilities.classes.Logger()
 
 def get_basis(deg, simparams, solver):
-
     if simparams.doe_method.lower().startswith('mcs'):
         if simparams.poly_type.lower() == 'leg':
             print(' Legendre polynomial')
@@ -47,7 +46,6 @@ def get_basis(deg, simparams, solver):
 
     return basis 
 
-
 def main(theta):
     print('------------------------------------------------------------')
     print('>>> Model: FPSO, Short-term simulation (Theta: {:d})  '.format(theta))
@@ -61,7 +59,7 @@ def main(theta):
     pf = 1e-5 #0.5/(50*365.25*24)
     radius_surrogate= 5
     Kvitebjorn      = uqra.environment.Kvitebjorn()
-    short_term_seeds_applied = np.setdiff1d(np.arange(10), np.array([]))
+    # short_term_seeds_applied = np.setdiff1d(np.arange(10), np.array([]))
 
     ## ------------------------ Simulation Parameters ----------------- ###
     # short_term_seeds = np.arange(theta,theta+1)
@@ -72,22 +70,20 @@ def main(theta):
     simparams.pce_degs   = np.array(range(2,11))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
-    simparams.n_pred     = int(1e5)
+    simparams.n_pred     = int(1e6)
     simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = 'D'# 'D', 'S', None
+    simparams.optimality = 'S'# 'D', 'S', None
     simparams.poly_type  = 'hem'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     repeats              = 1 #if simparams.optimality is None else 1
-    alphas               = 1.2
-    # # simparams.num_samples=np.arange(21+1, 130, 5)
+    alphas               = 1
     simparams.update()
     simparams.info()
 
 
     u_center = np.array([0,0]).reshape(-1,1)
     x_center = np.array([0,0]).reshape(-1,1)
-
 
     ## ----------- Test data set ----------- ###
     ## ----- Testing data set centered around u_center, first 100000
@@ -119,9 +115,9 @@ def main(theta):
 
     elif simparams.doe_method.lower().startswith('mcs'):
         filename = os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R{:d}.npy'.format(theta))
-        u_cand = np.load(filename)
-        u_cand = u_cand[:solver.ndim, np.linalg.norm(u_cand[:2], axis=0)<radius_surrogate]
-        u_cand = u_cand[:, :simparams.n_cand]
+        u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
+        # u_cand = u_cand[:solver.ndim, np.linalg.norm(u_cand[:2], axis=0)<radius_surrogate]
+        # u_cand = u_cand[:, :simparams.n_cand]
     # u_cand    = deg ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     # u_cand    = 2** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     ### ============ Initial Values ============
@@ -166,7 +162,10 @@ def main(theta):
         pce_model.var(0.95)
         pce_model_sparsity = len(pce_model.var_pct_basis)
         print('     > 2. Getting new training data ...')
-        n_train_new = max(pce_model_sparsity, 2*pce_model_sparsity - u_train.shape[1])
+        n_train_new = max(pce_model_sparsity, 
+                2*pce_model_sparsity - u_train.shape[1],
+                int(alphas * pce_model.num_basis) - u_train.shape[1])
+
         tqdm.write('    > {}:{}; Basis: {}/{}; #samples = {:d}'.format(
             'Sampling', simparams.optimality, pce_model_sparsity, pce_model.num_basis, n_train_new ))
         u_train_new, _ = modeling.get_train_data(n_train_new, u_cand, u_train, basis=pce_model.basis, 
@@ -195,18 +194,19 @@ def main(theta):
         print('   - {:<25s} : [{}]'.format('Train max(U)[U1, U2]',np.amax(abs(u_train), axis=1)))
         print('   - {:<25s} : [{}]'.format('Train [min(Y), max(Y)]',np.array([np.amin(y_train),np.amax(y_train)])))
 
-        y_train_hat = pce_model.predict(u_train)
-
+        y_train_hat= pce_model.predict(u_train)
         y_test_hat = pce_model.predict(u_test - u_center)
         test_error = uqra.metrics.mean_squared_error(y_test, y_test_hat,multioutput='raw_values')
 
-        u_pred = stats.norm.rvs(loc=0,scale=1,size=(solver.ndim, int(1e5)))
+        np.random.seed()
+        u_pred = stats.norm.rvs(loc=0,scale=1,size=(solver.ndim, simparams.n_pred))
         x_pred = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
-        y_pred = pce_model.predict(u_pred + u_center)
+        y_pred = pce_model.predict(u_pred - u_center)
         y50_pce_y   = uqra.metrics.mquantiles(y_pred, 1-pf)
         y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
         y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
-        pred_uxy_each_deg.append([deg, u_train.shape[1],u_pred, x_pred, y_pred])
+        pred_uxy_each_deg.append([deg, u_train.shape[1], y_pred])
+
         res = [deg, u_train.shape[1], pce_model.cv_error, test_error[0]]
         for item in y50_pce_uxy:
             res.append(item)
@@ -226,7 +226,7 @@ def main(theta):
     with open(os.path.join(simparams.data_dir_result, 'outlist_name.txt'), "w") as text_file:
         text_file.write('\n'.join(['deg', 'n_train', 'cv_error', 'test mse', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
 
-    filename = '{:s}_{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(alphas).replace('.', 'pt'), theta)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), metrics_each_deg)
@@ -234,10 +234,9 @@ def main(theta):
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
         np.save(os.path.join(os.getcwd(), filename), metrics_each_deg)
 
-
     ### ============ Saving Predict data ============
     pred_uxy_each_deg = np.array(pred_uxy_each_deg, dtype=object)
-    filename = '{:s}_{:s}_{:s}_Alpha{}_ST{}_pred'.format(solver.nickname, pce_model.tag, 
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_pred'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(alphas).replace('.', 'pt'), theta)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), pred_uxy_each_deg)
@@ -245,7 +244,6 @@ def main(theta):
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
         np.save(os.path.join(os.getcwd(), filename), pred_uxy_each_deg)
 
-
 if __name__ == '__main__':
-    for s in range(1):
+    for s in range(5,10):
         main(s)
