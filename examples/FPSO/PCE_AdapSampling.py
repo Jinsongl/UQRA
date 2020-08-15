@@ -203,17 +203,13 @@ def main(theta):
                 y_train = np.hstack((y_train, y_train_new)) 
 
                 ### ============ Build 2nd Surrogate Model ============
-                # print(bias_weight)
-                U_train = pce_model.basis.vandermonde(u_train)
                 if simparams.doe_method.lower().startswith('cls'):
                     w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_basis_index)
-                    U_train = modeling.rescale_data(U_train, w_train) 
                 else:
                     w_train = None
-                    U_train = U_train[:, pce_model.var_basis_index]
 
-                pce_model.fit(simparams.fit_method, u_train, y_train.T, w_train, n_splits=simparams.n_splits)
-
+                pce_model.fit('OLS', u_train, y_train.T, w_train, 
+                        n_splits=simparams.n_splits, active_basis=pce_model.var_pct_basis)
 
         print('   - {:<25s} : {:s}'.format('File', filename))
         print('   - {:<25s} : {}, {}, {}'.format('Train Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
@@ -277,7 +273,7 @@ def main(theta):
 
     ### ============ Saving Predict data ============
     pred_uxy_each_deg = np.array(pred_uxy_each_deg, dtype=object)
-    filename = '{:s}_{:s}_Adap{:s}_Alpha{}_ST{}_test'.format(solver.nickname, pce_model.tag, 
+    filename = '{:s}_{:s}_Adap{:s}_Alpha{}_ST{}_pred'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(alphas).replace('.', 'pt'), theta)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), pred_uxy_each_deg)
