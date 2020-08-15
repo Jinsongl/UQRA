@@ -145,7 +145,7 @@ def ECDF(x,**kwargs):
                 boots_idx = (np.abs(x_ecdf.y - (1-alpha))).argmin()
                 _, compressed_idx = np.unique(np.round(x_ecdf.x[:boots_idx], decimals=2), return_index=True)
                 x_ecdf.x = np.concatenate((x[compressed_idx,:], x[boots_idx:,:]), axis=0).T
-                x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[boots_idx:]), axis=0).T
+                x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[boots_idx:-1]), axis=0).T
                 x_ecdf.n = len(x_ecdf.x)
                 return x_ecdf
 
