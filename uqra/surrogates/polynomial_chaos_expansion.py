@@ -245,7 +245,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.model    = model 
             self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
             self.coef     = model.coef_
-            # self.coef[0]  = model.intercept_
+            self.coef[0]  = model.intercept_
             self.active_index = [i for i, icoef in enumerate(model.coef_) if abs(icoef) > epsilon]
             self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
             self.sparsity = len(self.active_index)
