@@ -69,11 +69,11 @@ def main(theta):
     simparams = uqra.Parameters()
     simparams.solver     = solver
     simparams.pce_degs   = np.array(range(2,11))
-    simparams.n_cand     = int(1e5)
+    simparams.n_cand     = int(1e6)
     simparams.n_test     = -1
     simparams.n_pred     = int(1e6)
     simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = 'D'# 'D', 'S', None
+    simparams.optimality = 'S'# 'D', 'S', None
     simparams.poly_type  = 'hem'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
@@ -81,7 +81,7 @@ def main(theta):
     # # simparams.num_samples=np.arange(21+1, 130, 5)
     simparams.update()
     simparams.info()
-
+    n_lhs = 20
     u_center = np.array([0,0]).reshape(-1,1)
     x_center = np.array([0,0]).reshape(-1,1)
 
@@ -103,8 +103,11 @@ def main(theta):
 
     ## ----------- Predict data set ----------- ###
     ## ----- Prediction data set centered around u_center, all  
-    # u_pred      = mcs_data_ux[ :2,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
-    # x_pred      = mcs_data_ux[-2:,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
+    filename= 'DoE_McsE7R{:d}.npy'.format(theta)
+    mcs_data= np.load(os.path.join(simparams.data_dir_sample,'MCS', 'Norm', filename))
+    u_pred  = mcs_data[:solver.ndim, :simparams.n_pred] 
+    x_pred  = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
+    # x_pred  = mcs_data_ux[-2:,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
@@ -118,12 +121,12 @@ def main(theta):
     elif simparams.doe_method.lower().startswith('mcs'):
         filename = os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R{:d}.npy'.format(theta))
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
-        # u_cand = np.load(os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE6R0.npy'))
+        # u_cand = np.load(os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R0.npy'))
         # u_cand = u_cand[:solver.ndim, np.linalg.norm(u_cand[:2], axis=0)<radius_surrogate]
         # u_cand = u_cand[:, :simparams.n_cand]
     # u_cand    = deg ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     # u_cand    = 2** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
-    ### ============ Initial Values ============
+
 
     metrics_each_deg  = []
     pred_uxy_each_deg = []
@@ -145,71 +148,63 @@ def main(theta):
         ### ----------- Oversampling ratio ----------- ###
         simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
         print(' > Oversampling ratio: {}'.format(np.around(simparams.alphas,2)))
-        n_train  = int(alphas * pce_model.num_basis)  
+        n_train  = int(alphas * pce_model.num_basis) + n_lhs
 
-        print(' > Getting Train data set...')
-        if simparams.optimality is None:
-            doe_idx_u_cand = np.arange(simparams.n_cand) 
-            filename= 'Random index'
+        ### ============ Initial Values ============
+        doe     = uqra.LHS([stats.norm(),]*solver.ndim)
+        u_train = doe.samples(size=n_lhs, loc=0, scale=1, random_state=100)
+        x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train)) 
+        y_train = solver.run(x_train)
+
+        print('   - {:<25s} : {}, {}, {}'.format('LHS Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
+        print('   - {:<25s} : [{}, {}]'.format('LHS U[mean, std]',np.mean(u_train, axis=1),np.std (u_train, axis=1)))
+        print('   - {:<25s} : [{}]'.format('LHS max(U)[U1, U2]',np.amax(abs(u_train), axis=1)))
+        print('   - {:<25s} : [{}]'.format('LHS [min(Y), max(Y)]',np.array([np.amin(y_train),np.amax(y_train)])))
+
+        ### ============ Estimate sparsity ============
+        print('     > 1. Sparsity estimation ...')
+        if simparams.doe_method.lower().startswith('cls'):
+            w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.active_index)
         else:
-            filename = 'DoE_{:s}E5R0_{:s}_{:s}r{:d}.npy'.format(
-                        simparams.doe_method.capitalize(), pce_model.tag, simparams.optimality, radius_surrogate)
-            doe_idx_u_cand = np.load(os.path.join(simparams.data_dir_sample, 'OED', filename))
-            doe_idx_u_cand = np.array(doe_idx_u_cand, ndmin=2)[0]
+            w_train = None
 
-        ### ============ Build Surrogate Model ============
-        if simparams.optimality is None:
-            u_train = u_cand[:, doe_idx_u_cand[:n_train]]
-            x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train + u_center)) 
-            y_train = solver.run(x_train)
-            if simparams.doe_method.lower().startswith('cls'):
-                w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_basis_index)
-            else:
-                w_train = None
+        pce_model.fit('LASSOLARS', u_train, y_train.T, w=w_train, 
+                n_splits=simparams.n_splits, epsilon=1e-3)
 
-            pce_model.fit(simparams.fit_method, u_train, y_train.T, w=w_train, n_splits=simparams.n_splits)
+        while u_train.shape[1] < n_train:
 
+            print('     > 2. Getting n training data ...')
+            pce_model_sparsity = pce_model.sparsity
+            n_train_new = max(2*pce_model_sparsity, n_train-u_train.shape[1])
+            print(pce_model.sparsity)
+            print(n_train)
+            print(u_train.shape)
+
+            ### ============ Build Surrogate Model ============
+            # u_train = u_cand[:, doe_idx_u_cand[:int(n_train*0.75)]]
+            # x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train + u_center)) 
+            # y_train = solver.run(x_train)
+            # curr_doe_idx = list(doe_idx_u_cand[:int(n_train*0.75)])
+            # ### surrogate model for each short term simulation
+
+            tqdm.write(' > {}:{}; Basis: {}/{}; # samples = {:d}'.format(
+                'New samples', simparams.optimality, pce_model_sparsity, pce_model.num_basis, n_train_new ))
+            u_train_new, _ = modeling.get_train_data(n_train_new, u_cand, u_train, 
+                    basis=pce_model.basis, active_basis=pce_model.active_basis)
+            x_train_new = Kvitebjorn.ppf(stats.norm.cdf(u_train_new))
+            y_train_new = solver.run(x_train_new)
+            u_train = np.hstack((u_train, u_train_new)) 
+            x_train = np.hstack((x_train, x_train_new)) 
+            y_train = np.hstack((y_train, y_train_new)) 
+
+        ### ============ Build 2nd Surrogate Model ============
+        if simparams.doe_method.lower().startswith('cls'):
+            w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.active_index)
         else:
-            print('     > 1. Sparsity estimation ...')
-            u_train = u_cand[:, doe_idx_u_cand[:int(n_train*0.75)]]
-            x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train + u_center)) 
-            y_train = solver.run(x_train)
-            curr_doe_idx = list(doe_idx_u_cand[:int(n_train*0.75)])
+            w_train = None
 
-            ### surrogate model for each short term simulation
-
-            while u_train.shape[1] < n_train:
-
-                ### ============ Estimate sparsity ============
-                if simparams.doe_method.lower().startswith('cls'):
-                    w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_basis_index)
-                else:
-                    w_train = None
-
-                pce_model.fit(simparams.fit_method, u_train, y_train.T, w=w_train, n_splits=simparams.n_splits)
-                pce_model.var(0.95)
-
-                print('     > 2. Getting new training data ...')
-                n_new_train = min(len(pce_model.var_pct_basis),n_train - u_train.shape[1])
-
-                tqdm.write(' > {}:{}; Basis: {}/{}; # samples = {:d}'.format(
-                    'New samples', simparams.optimality, len(pce_model.var_pct_basis), pce_model.num_basis, n_new_train ))
-                u_train_new, _ = modeling.get_train_data(n_new_train, u_cand, u_train, 
-                        basis=pce_model.basis, active_basis=pce_model.var_pct_basis)
-                x_train_new = Kvitebjorn.ppf(stats.norm.cdf(u_train_new + u_center))
-                y_train_new = solver.run(x_train_new)
-                u_train = np.hstack((u_train, u_train_new.reshape(solver.ndim,-1))) 
-                x_train = np.hstack((x_train, x_train_new.reshape(solver.ndim,-1))) 
-                y_train = np.hstack((y_train, y_train_new)) 
-
-                ### ============ Build 2nd Surrogate Model ============
-                if simparams.doe_method.lower().startswith('cls'):
-                    w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_basis_index)
-                else:
-                    w_train = None
-
-                pce_model.fit('OLS', u_train, y_train.T, w_train, 
-                        n_splits=simparams.n_splits, active_basis=pce_model.var_pct_basis)
+        pce_model.fit('OLS', u_train, y_train.T, w_train, 
+                n_splits=simparams.n_splits, active_basis=pce_model.active_basis)
 
         print('   - {:<25s} : {:s}'.format('File', filename))
         print('   - {:<25s} : {}, {}, {}'.format('Train Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
@@ -234,9 +229,9 @@ def main(theta):
         # y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
         # pred_uxy_each_deg.append([deg, n_train, y_pred])
 
-        np.random.seed()
-        u_pred = stats.norm.rvs(size=(solver.ndim,simparams.n_pred))
-        x_pred = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
+        # np.random.seed()
+        # u_pred = stats.norm.rvs(size=(solver.ndim,simparams.n_pred))
+        # x_pred = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
         y_pred = pce_model.predict(u_pred - u_center)
         y50_pce_y   = uqra.metrics.mquantiles(y_pred, 1-pf)
         y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
