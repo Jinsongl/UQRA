@@ -147,10 +147,10 @@ def main(theta):
 
         ### ----------- Oversampling ratio ----------- ###
         simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
-        print(' > Oversampling ratio: {}'.format(np.around(simparams.alphas,2)))
-        n_train  = int(alphas * pce_model.num_basis) + n_lhs
+        n_train  = int(alphas * pce_model.num_basis)
 
         ### ============ Initial Values ============
+        n_lhs   = max(20, int(0.8 * pce_model.num_basis))
         doe     = uqra.LHS([stats.norm(),]*solver.ndim)
         u_train = doe.samples(size=n_lhs, loc=0, scale=1, random_state=100)
         x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train)) 
@@ -161,24 +161,20 @@ def main(theta):
         print('   - {:<25s} : [{}]'.format('LHS max(U)[U1, U2]',np.amax(abs(u_train), axis=1)))
         print('   - {:<25s} : [{}]'.format('LHS [min(Y), max(Y)]',np.array([np.amin(y_train),np.amax(y_train)])))
 
-        ### ============ Estimate sparsity ============
-        print('     > 1. Sparsity estimation ...')
-        if simparams.doe_method.lower().startswith('cls'):
-            w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.active_index)
-        else:
-            w_train = None
+        while True:
+            ### ============ Estimate sparsity ============
+            print('     > 1. Sparsity estimation ...')
+            if simparams.doe_method.lower().startswith('cls'):
+                w_train = modeling.cal_cls_weight(u_train, pce_model.basis)
+            else:
+                w_train = None
 
-        pce_model.fit('LASSOLARS', u_train, y_train.T, w=w_train, 
-                n_splits=simparams.n_splits, epsilon=1e-3)
-
-        while u_train.shape[1] < n_train:
+            pce_model.fit('LASSOLARS', u_train, y_train.T, w=w_train, 
+                    n_splits=simparams.n_splits, epsilon=1e-3)
 
             print('     > 2. Getting n training data ...')
             pce_model_sparsity = pce_model.sparsity
-            n_train_new = max(2*pce_model_sparsity, n_train-u_train.shape[1])
-            print(pce_model.sparsity)
-            print(n_train)
-            print(u_train.shape)
+            n_train_new = pce_model_sparsity
 
             ### ============ Build Surrogate Model ============
             # u_train = u_cand[:, doe_idx_u_cand[:int(n_train*0.75)]]
@@ -196,6 +192,10 @@ def main(theta):
             u_train = np.hstack((u_train, u_train_new)) 
             x_train = np.hstack((x_train, x_train_new)) 
             y_train = np.hstack((y_train, y_train_new)) 
+
+            if u_train.shape[1] > n_train:
+                print(' > Oversampling ratio: {}'.format(np.around(u_train.shape[1]/pce_model.num_basis,2)))
+                break
 
         ### ============ Build 2nd Surrogate Model ============
         if simparams.doe_method.lower().startswith('cls'):
@@ -236,9 +236,9 @@ def main(theta):
         y50_pce_y   = uqra.metrics.mquantiles(y_pred, 1-pf)
         y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
         y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
-        pred_uxy_each_deg.append([deg, n_train, y_pred])
+        pred_uxy_each_deg.append([deg, u_train.shape[1], y_pred])
 
-        res = [deg, n_train, pce_model.cv_error, test_error[0]]
+        res = [deg, u_train.shape[1], pce_model.cv_error, test_error[0]]
         for item in y50_pce_uxy:
             res.append(item)
         metrics_each_deg.append(res)
@@ -251,7 +251,6 @@ def main(theta):
             tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(metrics_each_deg)[-1:, 2]))
             tqdm.write('     - {:<15s} : {}'.format( 'Design state', np.array(metrics_each_deg)[-1:,6:8]))
             tqdm.write('     ----------------------------------------')
-
 
     ### ============ Saving QoIs ============
     metrics_each_deg = np.array(metrics_each_deg)
