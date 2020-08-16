@@ -126,7 +126,6 @@ def main(theta):
     pred_uxy_each_deg = []
 
     ## Initialize u_train with 20 samples based on LHS 
-    u_train = []
     doe     = uqra.LHS([stats.norm(),]*solver.ndim)
     u_train = doe.samples(size=20, loc=0, scale=1)
     x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train + u_center)) 
