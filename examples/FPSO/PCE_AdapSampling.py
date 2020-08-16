@@ -69,11 +69,11 @@ def main(theta):
     simparams = uqra.Parameters()
     simparams.solver     = solver
     simparams.pce_degs   = np.array(range(2,11))
-    simparams.n_cand     = int(1e6)
+    simparams.n_cand     = int(1e5)
     simparams.n_test     = -1
     simparams.n_pred     = int(1e6)
-    simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = 'S'# 'D', 'S', None
+    simparams.doe_method = 'CLS4' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
+    simparams.optimality = 'D'# 'D', 'S', None
     simparams.poly_type  = 'hem'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
@@ -81,7 +81,7 @@ def main(theta):
     # # simparams.num_samples=np.arange(21+1, 130, 5)
     simparams.update()
     simparams.info()
-    n_lhs = 20
+    n_initial = 20
     u_center = np.array([0,0]).reshape(-1,1)
     x_center = np.array([0,0]).reshape(-1,1)
 
@@ -90,10 +90,10 @@ def main(theta):
     ## ----- Testing data set centered around u_center, first 100000
     print(' > Getting Test data set...')
     filename    = 'FPSO_SDOF_DoE_McsE5R{:d}.npy'.format(theta)
-    pred_uxy_each_deg   = np.load(os.path.join(simparams.data_dir_result,'TestData', filename))
-    u_test      = pred_uxy_each_deg[            :  solver.ndim, :]
-    x_test      = pred_uxy_each_deg[solver.ndim :2*solver.ndim, :]
-    y_test      = pred_uxy_each_deg[-1]
+    data_test   = np.load(os.path.join(simparams.data_dir_result,'TestData', filename))
+    u_test      = data_test[            :  solver.ndim, :]
+    x_test      = data_test[solver.ndim :2*solver.ndim, :]
+    y_test      = data_test[-1]
 
     print('   - {:<25s} : {}, {}, {}'.format('Test Dataset (U,X,Y)',u_test.shape, x_test.shape, y_test.shape ))
     print('   - {:<25s} : [{}, {}]'.format('Test U[mean, std]',np.mean(u_test, axis=1),np.std (u_test, axis=1)))
@@ -113,10 +113,14 @@ def main(theta):
     print(' > Getting candidate data set...')
     # u_cand = modeling.get_candidate_data()
 
-    if simparams.doe_method.lower().startswith('cls'):
+    if simparams.doe_method.lower().startswith('cls2'):
         filename = os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls2E7d2R{:d}.npy'.format(theta))
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
         u_cand = u_cand * radius_surrogate
+
+    elif simparams.doe_method.lower().startswith('cls4'):
+        filename = os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls4E7d2R{:d}.npy'.format(theta))
+        u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
 
     elif simparams.doe_method.lower().startswith('mcs'):
         filename = os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R{:d}.npy'.format(theta))
@@ -124,7 +128,6 @@ def main(theta):
         # u_cand = np.load(os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R0.npy'))
         # u_cand = u_cand[:solver.ndim, np.linalg.norm(u_cand[:2], axis=0)<radius_surrogate]
         # u_cand = u_cand[:, :simparams.n_cand]
-    # u_cand    = deg ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     # u_cand    = 2** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
 
 
@@ -145,14 +148,19 @@ def main(theta):
         modeling  = uqra.Modeling(solver, pce_model, simparams)
         pce_model.info()
 
+        u_cand_p  = deg ** 0.5 * u_cand if simparams.doe_method.lower() in ['cls4', 'cls5'] else u_cand
         ### ----------- Oversampling ratio ----------- ###
         simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
         n_train  = int(alphas * pce_model.num_basis)
 
         ### ============ Initial Values ============
-        n_lhs   = max(20, int(0.8 * pce_model.num_basis))
-        doe     = uqra.LHS([stats.norm(),]*solver.ndim)
-        u_train = doe.samples(size=n_lhs, loc=0, scale=1, random_state=100)
+        n_initial   = max(20, int(0.8 * pce_model.num_basis))
+        if simparams.doe_method.lower().startswith('mcs'):
+            doe     = uqra.LHS([stats.norm(),]*solver.ndim)
+            u_train = doe.samples(size=n_initial, loc=0, scale=1, random_state=100)
+        elif simparams.doe_method.lower().startswith('cls'):
+            u_train = u_cand_p[:, :n_initial]
+
         x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train)) 
         y_train = solver.run(x_train)
 
@@ -165,7 +173,7 @@ def main(theta):
             ### ============ Estimate sparsity ============
             print('     > 1. Sparsity estimation ...')
             if simparams.doe_method.lower().startswith('cls'):
-                w_train = modeling.cal_cls_weight(u_train, pce_model.basis)
+                w_train = modeling.cal_cls_weight(u_train, pce_model.basis, active_index=None)
             else:
                 w_train = None
 
@@ -185,23 +193,44 @@ def main(theta):
 
             tqdm.write(' > {}:{}; Basis: {}/{}; # samples = {:d}'.format(
                 'New samples', simparams.optimality, pce_model_sparsity, pce_model.num_basis, n_train_new ))
-            u_train_new, _ = modeling.get_train_data(n_train_new, u_cand, u_train, 
+            u_train_new, _ = modeling.get_train_data(n_train_new, u_cand_p, u_train, 
                     basis=pce_model.basis, active_basis=pce_model.active_basis)
             x_train_new = Kvitebjorn.ppf(stats.norm.cdf(u_train_new))
             y_train_new = solver.run(x_train_new)
             u_train = np.hstack((u_train, u_train_new)) 
             x_train = np.hstack((x_train, x_train_new)) 
             y_train = np.hstack((y_train, y_train_new)) 
+            if np.isnan(y_train).any():
+                print(u_train[:, np.isnan(y_train)])
+                print(y_train[np.isnan(y_train)])
+
+                raise ValueError
+
+            if np.isnan(u_train).any():
+                print(u_train[:, np.isnan(u_train)])
+                print(y_train[np.isnan(u_train)])
+                raise ValueError
+
+            if np.isinf(y_train).any():
+                print(u_train[:, np.isinf(y_train)])
+                print(y_train[np.isinf(y_train)])
+                raise ValueError
 
             if u_train.shape[1] > n_train:
                 print(' > Oversampling ratio: {}'.format(np.around(u_train.shape[1]/pce_model.num_basis,2)))
                 break
 
         ### ============ Build 2nd Surrogate Model ============
+        U_train = pce_model.basis.vandermonde(u_train)
         if simparams.doe_method.lower().startswith('cls'):
-            w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.active_index)
+            w_train = modeling.cal_cls_weight(u_train, pce_model.basis, active_index=pce_model.active_index)
+            U_train = U_train[:, pce_model.active_index]
+            U_train = modeling.rescale_data(U_train, w_train) 
         else:
             w_train = None
+            U_train = U_train[:, pce_model.active_index]
+        _, sig_value, _ = np.linalg.svd(U_train)
+        kappa = max(abs(sig_value)) / min(abs(sig_value)) 
 
         pce_model.fit('OLS', u_train, y_train.T, w_train, 
                 n_splits=simparams.n_splits, active_basis=pce_model.active_basis)
@@ -250,6 +279,7 @@ def main(theta):
             tqdm.write('     - {:<15s} : {}'.format( 'Test MSE ' , np.array(metrics_each_deg)[-1:, 3]))
             tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(metrics_each_deg)[-1:, 2]))
             tqdm.write('     - {:<15s} : {}'.format( 'Design state', np.array(metrics_each_deg)[-1:,6:8]))
+            tqdm.write('     - {:<15s} : {:.4f}'.format( 'kappa '    , kappa))
             tqdm.write('     ----------------------------------------')
 
     ### ============ Saving QoIs ============
