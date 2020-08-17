@@ -17,6 +17,33 @@ from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
+def get_basis(deg, simparams, solver):
+    if simparams.doe_method.lower().startswith('mcs'):
+        if simparams.poly_type.lower() == 'leg':
+            print(' Legendre polynomial')
+            basis = uqra.Legendre(d=solver.ndim, deg=deg)
+
+        elif simparams.poly_type.lower().startswith('hem'):
+            print(' Probabilists Hermite polynomial')
+            basis = uqra.Hermite(d=solver.ndim,deg=deg, hem_type='probabilists')
+        else:
+            raise ValueError 
+
+    elif simparams.doe_method.lower().startswith('cls'):
+        if simparams.poly_type.lower() == 'leg':
+            print(' Legendre polynomial')
+            basis = uqra.Legendre(d=solver.ndim,deg=deg)
+
+        elif simparams.poly_type.lower().startswith('hem'):
+            print(' Probabilists Hermite polynomial')
+            basis = uqra.Hermite(d=solver.ndim,deg=deg, hem_type='physicists')
+        else:
+            raise ValueError
+    else:
+        raise ValueError
+
+    return basis 
+
 def main():
 
     ## ------------------------ Displaying set up ------------------- ###
@@ -30,10 +57,10 @@ def main():
     # solver      = uqra.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
     # solver      = uqra.CornerPeak(stats.uniform(-1,2), d=2)
     # solver      = uqra.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
-    # solver      = uqra.Franke()
+    solver      = uqra.Franke()
     # solver      = uqra.Ishigami()
 
-    solver      = uqra.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
+    # solver      = uqra.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = uqra.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
     # solver      = uqra.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
     # solver      = uqra.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
@@ -44,26 +71,46 @@ def main():
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = uqra.Parameters()
     simparams.solver     = solver
-    simparams.pce_degs   = np.array(range(2,16))
+    simparams.pce_degs   = np.array(range(2,21))
     simparams.n_cand     = int(1e5)
-    simparams.n_test     = -1
-    simparams.doe_method = 'CLS' ### 'mcs', 'D', 'S', 'reference'
+    simparams.n_test     = int(2e5)
+    simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
     simparams.optimality = 'S'#'D', 'S', None
-    simparams.hem_type   = 'physicists'
-    # simparams.hem_type   = 'probabilists'
     simparams.fit_method = 'OLS'
+    simparams.poly_type  = 'leg'
     simparams.n_splits   = 50
     repeats              = 50 if simparams.optimality is None else 1
-    # alphas               = np.arange(3,11)/10 
-    alphas               = [1.1]
-    # simparams.num_samples=np.arange(21+1, 130, 5)
+    alphas               = [1.2]
     simparams.update()
     simparams.info()
 
+    ## ----------- Test data set ----------- ###
+    ## ----- Testing data set centered around u_center, first 100000
+    print(' > Getting Test data set...')
+    filename    = 'Franke_2Leg_DoE_McsE6R0.npy'
+    data_test   = np.load(os.path.join(simparams.data_dir_result,'TestData', filename))
+    u_test      = data_test[            :  solver.ndim, :simparams.n_test]
+    x_test      = data_test[solver.ndim :2*solver.ndim, :simparams.n_test]
+    y_test      = data_test[-1, :simparams.n_test]
+
+    print(' > Test data: {:s}'.format(filename))
+    print('   - {:<25s} : {}, {}, {}'.format('Test Dataset (U,X,Y)',u_test.shape, x_test.shape, y_test.shape ))
+    print('   - {:<25s} : [{}, {}]'.format('Test U[mean, std]',np.mean(u_test, axis=1),np.std (u_test, axis=1)))
+    print('   - {:<25s} : [{}]'.format('Test max(U)[U1, U2]',np.amax(abs(u_test), axis=1)))
+    print('   - {:<25s} : [{}]'.format('Test [min(Y), max(Y)]',np.array([np.amin(y_test),np.amax(y_test)])))
+
+    ## ----------- Predict data set ----------- ###
+    ## ----- Prediction data set centered around u_center, all  
+    # filename= 'DoE_McsE7R0.npy'
+    # mcs_data= np.load(os.path.join(simparams.data_dir_sample,'MCS', 'Uniform', filename))
+    # u_pred  = mcs_data[:solver.ndim, :simparams.n_pred] 
+
+
     ### ============ Initial Values ============
     print(' > Starting simulation...')
-    data_poly_deg = []
-    for p in simparams.pce_degs:
+    metrics_each_deg = []
+    data_test = []
+    for deg in simparams.pce_degs:
         print('\n================================================================================')
         simparams.info()
         print('   - Sampling and Fitting:')
@@ -71,44 +118,40 @@ def main():
         print('     - {:<23s} : {}'.format('Optimality '      , simparams.optimality))
         print('     - {:<23s} : {}'.format('Fitting method'   , simparams.fit_method))
         ## ----------- Define PCE  ----------- ###
-        # orth_poly= uqra.Legendre(d=solver.ndim, deg=p)
-        orth_poly= uqra.Hermite(d=solver.ndim, deg=p, hem_type=simparams.hem_type)
-        pce_model= uqra.PCE(orth_poly)
+        basis     = get_basis(deg, simparams, solver)
+        pce_model = uqra.PCE(basis)
+        modeling  = uqra.Modeling(solver, pce_model, simparams)
         pce_model.info()
 
-        modeling = uqra.Modeling(solver, pce_model, simparams)
-        # modeling.sample_selected=[]
-
         ## ----------- Candidate and testing data set for DoE ----------- ###
-        print(' > Getting candidate data set...')
-        u_cand = modeling.get_candidate_data()
-        u_test, x_test, y_test = modeling.get_test_data(solver, pce_model) 
-        print(uqra.metrics.mquantiles(y_test, 1-np.array(pf)))
-        u_cand_p = p ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
-        # assert np.array_equal(u_test, x_test)
-        with np.printoptions(precision=2):
-            u_cand_mean_std = np.array((np.mean(u_cand[0]), np.std(u_cand[0])))
-            u_test_mean_std = np.array((np.mean(u_test[0]), np.std(u_test[0])))
-            x_test_mean_std = np.array((np.mean(x_test[0]), np.std(x_test[0])))
-            u_cand_ref = np.array(modeling.candidate_data_reference())
-            u_test_ref = np.array(modeling.test_data_reference())
-            # x_test_ref = np.array((solver.distributions[0].mean(), solver.distributions[0].std()))
-            print('    - {:<25s} : {}'.format('Candidate Data ', u_cand.shape))
-            print('    - {:<25s} : {}'.format('Test Data ', u_test.shape))
-            print('    > {:<25s}'.format('Validate data set '))
-            print('    - {:<25s} : {} {} '.format('u cand (mean, std)', u_cand_mean_std, u_cand_ref))
-            print('    - {:<25s} : {} {} '.format('u test (mean, std)', u_test_mean_std, u_test_ref))
-            # print('    - {:<25s} : {} {} '.format('x test (mean, std)', x_test_mean_std, x_test_ref))
+        if simparams.doe_method.lower().startswith('cls2'):
+            filename = os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls2E7d2R0.npy')
+            u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
+            u_cand = u_cand * radius_surrogate
+
+        elif simparams.doe_method.lower().startswith('cls4'):
+            filename = os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls4E7d2R0.npy')
+            u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
+
+        elif simparams.doe_method.lower().startswith('mcs'):
+            filename = os.path.join(simparams.data_dir_sample, 'MCS',pce_model.basis.dist_name,'DoE_McsE7R0.npy')
+            u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
+
+        u_cand_p = deg ** 0.5 * u_cand if simparams.doe_method.lower() in ['cls4', 'cls5'] else u_cand
+        print(' > Candidate data: {:s}'.format(filename))
+        print('   - shape: {}'.format(u_cand_p.shape))
 
         ## ----------- Oversampling ratio ----------- ###
         simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
         print(' > Oversampling ratio: {}'.format(np.around(simparams.alphas,2)))
-        data_nsample = []
         for i, n in enumerate(simparams.num_samples):
             ### ============ Initialize pce_model for each n ============
-            pce_model= uqra.PCE(orth_poly)
+            pce_model= uqra.PCE(basis)
             ### ============ Get training points ============
             _, u_train = modeling.get_train_data((repeats,n), u_cand_p, u_train=None, basis=pce_model.basis)
+            # doe = uqra.LHS(pce_model.basis.dist_u)
+            # u_train = np.array([doe.samples(size=n, random_state=None) for _ in range(50)])
+            # print(u_train.shape)
             # print(modeling.sample_selected)
             data_repeat = []
             for iu_train in tqdm(u_train, ascii=True, ncols=80,
@@ -128,9 +171,6 @@ def main():
                     w_train = None
                     U_train = U_train[:, pce_model.active_index]
 
-                print(iu_train.shape)
-                print(iy_train.shape)
-                print(w_train.shape)
                 pce_model.fit(simparams.fit_method, iu_train, iy_train, w_train, n_splits=simparams.n_splits)
                 # pce_model.fit(simparams.fit_method, iu_train, y_train, w_train)
                 y_train_hat = pce_model.predict(iu_train)
@@ -142,26 +182,42 @@ def main():
 
                 
                 test_mse = uqra.metrics.mean_squared_error(y_test, y_test_hat)
-                QoI   = uqra.metrics.mquantiles(y_test_hat, 1-np.array(pf))
-                data_ = np.array([p, n, kappa, pce_model.score, pce_model.cv_error, test_mse])
-                data_ = np.append(data_, QoI)
-                data_poly_deg.append(data_)
+                # QoI   = uqra.metrics.mquantiles(y_test_hat, 1-np.array(pf))
+                data_ = np.array([deg, n, kappa, pce_model.score, pce_model.cv_error, test_mse])
+                # data_ = np.append(data_, QoI)
+                metrics_each_deg.append(data_)
 
+                data_test.append([deg, n, y_test_hat])
                 ### ============ calculating & updating metrics ============
                 tqdm.write(' > Summary')
                 with np.printoptions(precision=4):
-                    tqdm.write('     - {:<15s} : {}'.format( 'QoI'       , QoI))
+                    # tqdm.write('     - {:<15s} : {}'.format( 'QoI'       , QoI))
                     tqdm.write('     - {:<15s} : {:.4f}'.format( 'Test MSE ' , test_mse))
                     tqdm.write('     - {:<15s} : {:.4f}'.format( 'CV MSE'    , pce_model.cv_error))
                     tqdm.write('     - {:<15s} : {:.4f}'.format( 'Score '    , pce_model.score))
                     tqdm.write('     - {:<15s} : {:.4f}'.format( 'kappa '    , kappa))
                     tqdm.write('     ----------------------------------------')
 
+    ### ============ Saving QoIs ============
+    metrics_each_deg = np.array(metrics_each_deg)
+    with open(os.path.join(simparams.data_dir_result, 'outlist_name.txt'), "w") as text_file:
+        text_file.write('\n'.join(['deg', 'n', 'kappa', 'score','cv_error', 'test_mse' ]))
+
     filename = '{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
     try:
-        np.save(os.path.join(simparams.data_dir_result, filename), np.array(data_poly_deg))
+        np.save(os.path.join(simparams.data_dir_result, filename), np.array(metrics_each_deg))
     except:
-        np.save(os.path.join(os.getcwd(), filename), np.array(data_poly_deg))
+        np.save(os.path.join(os.getcwd(), filename), np.array(metrics_each_deg))
+
+
+    ### ============ Saving test ============
+    data_test = np.array(data_test, dtype=object)
+
+    filename = '{:s}_{:s}_{:s}_test'.format(solver.nickname, pce_model.tag, simparams.tag)
+    try:
+        np.save(os.path.join(simparams.data_dir_result, filename), data_test)
+    except:
+        np.save(os.path.join(os.getcwd(), filename), data_test)
 
 
 if __name__ == '__main__':
