@@ -953,10 +953,10 @@ class Parameters(object):
                 self.alphas[self.alphas==-1] = 2.0 * np.log(P)
             self.num_samples = np.array([math.ceil(P*ialpha) for ialpha in self.alphas])
             self.alphas = self.num_samples / P
-        except NameError:
+        except KeyError:
             try:
                 num_samples = kwargs['num_samples']
-                self.num_samples = np.array(self.num_samples, dtype=np.int32).flatten()
+                self.num_samples = np.array(num_samples, dtype=np.int32).flatten()
                 if (self.num_samples == -1).any():
                     self.num_samples[self.num_samples == -1] = int(math.ceil(2 * np.log(P) * P))
                 self.alphas = self.num_samples /P
