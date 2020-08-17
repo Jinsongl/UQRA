@@ -39,10 +39,63 @@ def get_basis(deg, simparams, solver):
             basis = uqra.Hermite(d=solver.ndim,deg=deg, hem_type='physicists')
         else:
             raise ValueError
+
+    elif simparams.doe_method.lower().startswith('lhs'):
+        if simparams.poly_type.lower() == 'leg':
+            print(' Legendre polynomial')
+            basis = uqra.Legendre(d=solver.ndim,deg=deg)
+
+        elif simparams.poly_type.lower().startswith('hem'):
+            print(' Probabilists Hermite polynomial')
+            basis = uqra.Hermite(d=solver.ndim,deg=deg, hem_type='probabilists')
+        else:
+            raise ValueError
     else:
         raise ValueError
 
     return basis 
+
+def get_candidate_data(simparams, solver, pce_model):
+    """
+    Return candidate data set for doe method if applicable
+    """
+
+    if simparams.doe_method.lower().startswith('cls2'):
+        filename = os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls2E7d2R0.npy')
+        u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
+        u_cand = u_cand * radius_surrogate
+
+    elif simparams.doe_method.lower().startswith('cls4'):
+        filename = os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls4E7d2R0.npy')
+        u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
+        u_cand = deg ** 0.5 * u_cand
+
+    elif simparams.doe_method.lower().startswith('cls5'):
+        filename = os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls4E7d2R0.npy')
+        u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
+        u_cand = deg ** 0.5 * u_cand
+
+    elif simparams.doe_method.lower().startswith('mcs'):
+        filename = os.path.join(simparams.data_dir_sample, 'MCS',pce_model.basis.dist_name,'DoE_McsE7R0.npy')
+        u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
+
+    elif simparams.doe_method.lower().startswith('lhs'):
+        filename = 'NA for LHS'
+        u_cand = None 
+
+    return filename, u_cand
+
+def get_train_data(simparams, modeling, size, dist=None, u_cand=None, u_train=None, basis=None):
+    if simparams.doe_method.lower().startswith('mcs') or simparams.doe_method.lower().startswith('cls'):
+        _, u_train = modeling.get_train_data(size, u_cand=u_cand, u_train=u_train, basis=basis)
+    elif simparams.doe_method.lower().startswith('lhs'):
+        repeats, n = size
+        doe = uqra.LHS(basis.dist_u)
+        u_train = np.array([doe.samples(size=n, random_state=None) for _ in range(repeats)])
+    else:
+        raise NotImplementedError
+    return u_train
+
 
 def main():
 
@@ -57,8 +110,8 @@ def main():
     # solver      = uqra.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
     # solver      = uqra.CornerPeak(stats.uniform(-1,2), d=2)
     # solver      = uqra.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
-    solver      = uqra.Franke()
-    # solver      = uqra.Ishigami()
+    # solver      = uqra.Franke()
+    solver      = uqra.Ishigami()
 
     # solver      = uqra.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = uqra.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
@@ -71,7 +124,7 @@ def main():
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = uqra.Parameters()
     simparams.solver     = solver
-    simparams.pce_degs   = np.array(range(20,21))
+    simparams.pce_degs   = np.array(range(2,21))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = int(2e5)
     simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
@@ -80,15 +133,16 @@ def main():
     simparams.poly_type  = 'leg'
     simparams.n_splits   = 50
     repeats              = 50 if simparams.optimality is None else 1
-    # alphas               = 1.2
-    num_samples          = np.arange(231,500, 10)
+    alphas               = 1.2
+    # num_samples          = np.arange(11,13)
     simparams.update()
     simparams.info()
 
     ## ----------- Test data set ----------- ###
     ## ----- Testing data set centered around u_center, first 100000
     print(' > Getting Test data set...')
-    filename    = 'Franke_2Leg_DoE_McsE6R0.npy'
+    # filename    = 'Franke_2Leg_DoE_McsE6R0.npy'
+    filename    = 'Ishigami_3Leg_DoE_McsE6R0.npy'
     data_test   = np.load(os.path.join(simparams.data_dir_result,'TestData', filename))
     u_test      = data_test[            :  solver.ndim, :simparams.n_test]
     x_test      = data_test[solver.ndim :2*solver.ndim, :simparams.n_test]
@@ -125,36 +179,21 @@ def main():
         pce_model.info()
 
         ## ----------- Candidate and testing data set for DoE ----------- ###
-        if simparams.doe_method.lower().startswith('cls2'):
-            filename = os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls2E7d2R0.npy')
-            u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
-            u_cand = u_cand * radius_surrogate
-
-        elif simparams.doe_method.lower().startswith('cls4'):
-            filename = os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls4E7d2R0.npy')
-            u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
-
-        elif simparams.doe_method.lower().startswith('mcs'):
-            filename = os.path.join(simparams.data_dir_sample, 'MCS',pce_model.basis.dist_name,'DoE_McsE7R0.npy')
-            u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
-
-        u_cand_p = deg ** 0.5 * u_cand if simparams.doe_method.lower() in ['cls4', 'cls5'] else u_cand
-        print(' > Candidate data: {:s}'.format(filename))
-        print('   - shape: {}'.format(u_cand_p.shape))
+        cand_fname, u_cand = get_candidate_data(simparams, solver, pce_model)
+        print(' > Candidate data: {:s}'.format(cand_fname))
+        print('   - shape: {}'.format(u_cand.shape if u_cand is not None else 'None'))
 
         ## ----------- Oversampling ratio ----------- ###
-        # simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
-        simparams.update_num_samples(pce_model.num_basis, num_samples=num_samples)
+        simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
+        # simparams.update_num_samples(pce_model.num_basis, num_samples=num_samples)
         print(' > Oversampling ratio: {}'.format(np.around(simparams.alphas,2)))
         for i, n in enumerate(simparams.num_samples):
             ### ============ Initialize pce_model for each n ============
             pce_model= uqra.PCE(basis)
             ### ============ Get training points ============
-            _, u_train = modeling.get_train_data((repeats,n), u_cand_p, u_train=None, basis=pce_model.basis)
-            # doe = uqra.LHS(pce_model.basis.dist_u)
-            # u_train = np.array([doe.samples(size=n, random_state=None) for _ in range(50)])
-            # print(u_train.shape)
-            # print(modeling.sample_selected)
+            size = (repeats, n)
+            u_train = get_train_data(simparams, modeling, size, u_cand=u_cand, u_train=None, basis=pce_model.basis)
+
             data_repeat = []
             for iu_train in tqdm(u_train, ascii=True, ncols=80,
                     desc='   [alpha={:.2f}, {:d}/{:d}, n={:d}]'.format(simparams.alphas[i], i+1, len(simparams.alphas),n)):
