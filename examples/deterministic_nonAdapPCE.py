@@ -71,16 +71,17 @@ def main():
     ## ------------------------ Simulation Parameters ----------------- ###
     simparams = uqra.Parameters()
     simparams.solver     = solver
-    simparams.pce_degs   = np.array(range(2,21))
+    simparams.pce_degs   = np.array(range(20,21))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = int(2e5)
     simparams.doe_method = 'MCS' ### 'mcs', 'D', 'S', 'reference'
-    simparams.optimality = 'S'#'D', 'S', None
+    simparams.optimality = 'D'#'D', 'S', None
     simparams.fit_method = 'OLS'
     simparams.poly_type  = 'leg'
     simparams.n_splits   = 50
     repeats              = 50 if simparams.optimality is None else 1
-    alphas               = [1.2]
+    # alphas               = 1.2
+    num_samples          = np.arange(231,500, 10)
     simparams.update()
     simparams.info()
 
@@ -142,7 +143,8 @@ def main():
         print('   - shape: {}'.format(u_cand_p.shape))
 
         ## ----------- Oversampling ratio ----------- ###
-        simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
+        # simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
+        simparams.update_num_samples(pce_model.num_basis, num_samples=num_samples)
         print(' > Oversampling ratio: {}'.format(np.around(simparams.alphas,2)))
         for i, n in enumerate(simparams.num_samples):
             ### ============ Initialize pce_model for each n ============
@@ -203,7 +205,9 @@ def main():
     with open(os.path.join(simparams.data_dir_result, 'outlist_name.txt'), "w") as text_file:
         text_file.write('\n'.join(['deg', 'n', 'kappa', 'score','cv_error', 'test_mse' ]))
 
-    filename = '{:s}_{:s}_{:s}'.format(solver.nickname, pce_model.tag, simparams.tag)
+    # filename = '{:s}_{:s}_{:s}_Alpha{:s}'.format(solver.nickname, pce_model.tag, simparams.tag,
+            # str(alphas).replace('.', 'pt'))
+    filename = '{:s}_{:s}_{:s}_NumSamples'.format(solver.nickname, pce_model.tag, simparams.tag)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), np.array(metrics_each_deg))
     except:
@@ -213,7 +217,9 @@ def main():
     ### ============ Saving test ============
     data_test = np.array(data_test, dtype=object)
 
-    filename = '{:s}_{:s}_{:s}_test'.format(solver.nickname, pce_model.tag, simparams.tag)
+    # filename = '{:s}_{:s}_{:s}_Alpha{:s}_test'.format(solver.nickname, pce_model.tag, simparams.tag,
+            # str(alphas).replace('.', 'pt'))
+    filename = '{:s}_{:s}_{:s}__NumSamples_test'.format(solver.nickname, pce_model.tag, simparams.tag)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), data_test)
     except:
