@@ -40,21 +40,16 @@ class FPSO(SolverBase):
         """
         super().__init__()
         self.name       = 'FPSO'
-        self.nickname   = 'FPSO_SDOF'
+        self.nickname   = 'FPSO_SURGE'
         self.dist_name  = 'None'
         self.ndim       = int(2)
 
         np.random.seed(100)
-        seeds_st        = np.random.randint(0, int(2**31-1), size=10000)
-        # self.tmax       = kwargs.get('time_max', 100)
-        # self.tmax       = kwargs.get('tmax', 100)
-        # self.dt         = kwargs.get('dt', 0.01)
-        # self.t_transit  = kwargs.get('t_transit', 0)
-        # self.out_stats  = kwargs.get('out_stats', ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
-        self.seeds_idx  = kwargs.get('phase', [0,])
-        self.seeds_st   = [seeds_st[idx] for idx in self.seeds_idx] 
-        self.n_short_term= len(self.seeds_st) 
-        self.out_responses= kwargs.get('out_responses', 'ALL')
+        phase_seeds         = np.random.randint(0, int(2**31-1), size=10000)
+        self.seeds_idx      = kwargs.get('phase', 0)
+        self.phase_seeds    = [phase_seeds[idx] for idx in np.array(self.seeds_idx)] 
+        self.n_short_term   = len(self.phase_seeds) 
+        self.out_responses  = kwargs.get('out_responses', 'ALL')
         # self.t          = np.arange(0,int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
         # self.f_hz       = np.arange(len(self.t)+1) *0.5/self.t[-1]
         # self.w_rad      = 2 * np.pi * self.f_hz
@@ -64,12 +59,9 @@ class FPSO(SolverBase):
 
 
     def __str__(self):
-        message1 = 'Single Degree of Fredom Oscillator: \n' +\
-                    '   - {:<25s} : {}\n'.format('tmax'  , self.tmax) +\
-                    '   - {:<25s} : {}\n'.format('dt'    , self.dt) +\
+        message1 = 'FPSO Surge: \n' +\
                     '   - {:<25s} : {}\n'.format('n_short_term'  , self.n_short_term) +\
-                    '   - {:<25s} : {}\n'.format('out_responses'  , self.out_responses) +\
-                    '   - {:<25s} : {}\n'.format('out_stats'  , self.out_stats) 
+                    '   - {:<25s} : {}\n'.format('out_responses'  , self.out_responses)
 
         keys   = list(self.dict_rand_params.keys())
         value_names = [] 
@@ -82,35 +74,26 @@ class FPSO(SolverBase):
         message = message1 + message2
         return message
 
-    def run(self, x, save_raw=False, save_qoi=False, seeds_st=None, out_responses=None, data_dir=None, verbose=False):
-        seeds_st        = self.seeds_st if seeds_st is None else seeds_st
-        seeds_st        = [seeds_st,] if np.ndim(seeds_st) == 0 else seeds_st
-        n_short_term    = np.size(seeds_st) 
-        out_responses   = self.out_responses if out_responses is None else out_responses
-        data_dir        = os.getcwd() if data_dir is None else data_dir
-
+    def run(self, x, out_responses=None, data_dir=None, verbose=False, save_raw=False, save_qoi=False):
+        """
+        Runing FPSO surge time series with second diff force
+        Arguments:
+            x, ndarray of shape (2, n)
+        """
+        data_dir  = os.getcwd() if data_dir is None else data_dir
         x = np.array(x.T, copy=False, ndmin=2)
         y = []
-        for iseed_idx, iseed in zip(self.seeds_idx, seeds_st):
-            if verbose: 
-                pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(iseed_idx, n_short_term))
-                if save_raw:
-                    raise NotImplementedError
-                    ### Note that xlist and ylist will be tuples (since zip will be unpacked). 
-                    ### If you want them to be lists, you can for instance use:
-                    # y_raw_, y_QoI_ = map(list, zip(*[self._linear_oscillator(ix, random_seed=iseed,
-                        # out_responses=out_responses, ret_raw=True) for ix in pbar_x]))
-                    # filename = '{:s}_yRaw_nst{:d}'.format(self.nickname,iseed_idx)
-                    # np.save(os.path.join(data_dir, filename), np.array(y_raw_))
-                else:
-                    with mp.Pool(processes=mp.cpu_count()) as p:
-                        y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, iseed) for ix in pbar_x]),ncols=80, total=x.shape[1])))
+        for iseed_idx, iseed in zip(self.seeds_idx, self.phase_seeds):
+            if not verbose: 
+                uqra.blockPrint()
+            if save_raw:
+                raise NotImplementedError
             else:
-                if save_raw:
-                    raise NotImplementedError
-                else:
-                    with mp.Pool(processes=mp.cpu_count()) as p:
-                        y_QoI_ = np.array(list(p.imap(self._Glimitmax , [(ix, iseed) for ix in x])))
+                with mp.Pool(processes=mp.cpu_count()) as p:
+                    y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, iseed) for ix in x]),
+                        ncols=80, desc=' {:d}/{:d}'.format(iseed_idx, self.n_short_term), total=x.shape[1])))
+            if not verbose: 
+                uqra.enablePrint()
 
             if save_qoi:
                 filename = '{:s}_yQoI_nst{:d}'.format(self.nickname,iseed_idx)
@@ -118,10 +101,6 @@ class FPSO(SolverBase):
 
             y.append(y_QoI_)
         return np.squeeze(y)
-
-    def _run_FPSO(self, x, random_seed):
-        y = self._Glimitmax(x)
-        return y
 
     def _load_freq_mat(self, filename):
         data = scipy.io.loadmat(os.path.join(os.path.dirname(os.path.abspath(__file__)), filename))
@@ -143,7 +122,7 @@ class FPSO(SolverBase):
 
         self.diag_surge  = self.diag_surge*fac1   #0.255554093091961
 
-        self.TFv = self.TFv[0,:] 
+        self.TFv = self.TFv[0,:]  ## surge motion
 
         # -----------
         # Mass matrix
@@ -168,8 +147,8 @@ class FPSO(SolverBase):
         # -----------
 
         self.RAO = self.TFv/(-self.w**2 *self.M +1j*self.w *self.B +self.K)
-
-        self.Hx  = 1.0 / ( -self.w_LF**2 * self.M + 1j * self.w_LF * self.B + self.K )
+        self.Hx  = 0 * self.RAO
+        self.Hx[:self.w_LF.size] = 1.0 / ( -self.w_LF**2 * self.M + 1j * self.w_LF * self.B + self.K )
 
     def _Glimitmax(self, args):
 
@@ -179,7 +158,6 @@ class FPSO(SolverBase):
         # ------------------
         Hs, Tp = args[0]
         random_seed = args[1]
-
         Snn=self._jonswap(Hs,Tp);
 
         N =960;
@@ -193,9 +171,8 @@ class FPSO(SolverBase):
         x_rand= np.random.normal(loc=0,scale=1.0, size=(1,2*N))
         Re    = x_rand[0,:N];
         Im    = x_rand[0,N:];
-        # print(x_rand[:10])
         A=(Re+1j*Im)*np.sqrt(self.dw*Snn)
-        # print(A.shape)
+        A[0] = 0
         # X_0 =-Nt*np.real(np.fft.ifft(A,Nt))
         # print(' Hs: {:.2f}, 4*sigma: {:.2f}'.format(Hs, 4*np.std(X_0[:41888])))
         # -----------
@@ -205,20 +182,21 @@ class FPSO(SolverBase):
         Z1 = np.zeros((int(self.wmin/self.dw,)))
         Z2 = self.RAO * A
         Z  = np.hstack((Z1,Z2))
-        # print(Z.shape)
 
 
         # -----------
         # LF response
         # -----------
-        X1 = np.zeros((self.N_LF,),dtype=np.complex_)
-        for i in range(self.N_LF-1, -1,-1):
+        X1 = np.zeros((self.N_LF+1,),dtype=np.complex_)
+        for i in range(self.N_LF, 0,-1):
             A_Aconj = A[:N-i] * np.conj(A[i:N])
             X1[i] = self.Hx[i] * np.sum( 0.5 * (self.diag_surge[:N-i] + self.diag_surge[i:N]) * A_Aconj)
 
         Z [:len(X1)] = Z[:len(X1)] + 2 * X1
 
 
+        # print('X1:\n{}'.format(X1))
+        # print('|X1|:\n{}'.format(abs(X1)))
 
         # dt = np.pi/(self.dw * Nt)
         # t  = np.arange(0,2000,dt)
@@ -282,7 +260,6 @@ class FPSO(SolverBase):
             JS1[np.isinf(JS1)] = 0
             JS2[np.isinf(JS2)] = 0
             JS3[np.isinf(JS3)] = 0
-            # print(np.isnan(JS1).any())
             JS = JS1 * JS2 * JS3
 
         return JS
