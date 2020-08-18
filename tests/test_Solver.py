@@ -211,24 +211,24 @@ class BasicTestSuite(unittest.TestCase):
         # print('Hs = {}, Tp={}'.format(np.around(x[0]), np.around(x[1])))
 
         ## ------------------------ MCS  ----------------- ###
-        # ### MCS for DoE_McsE7R0
+        ## MCS for DoE_McsE7R0
         # solver = uqra.FPSO(phase=np.arange(1))
         # data_mcs_u = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R0.npy'))[:solver.ndim, :int(1e5)]
         # data_mcs_x = Kvitebjorn.ppf(stats.norm.cdf(data_mcs_u))
-        # y = solver.run(data_mcs_x) 
+        # y = solver.run(data_mcs_x, verbose=True) 
         # data = np.concatenate((data_mcs_u, data_mcs_x, y.reshape(1,-1)))
         # np.save(os.path.join(data_dir_result, 'DoE_McsE5R0.npy'), data)
-        # print('Hs = {}, Tp={}'.format(np.around(x[0]), np.around(x[1])))
+        # print('Hs = {:.2f}, Tp={:.2f}'.format(x[0,0], x[1,0]))
 
         
         for s in range(10):
             solver = uqra.FPSO(phase=[s,])
-            # data_mcs_u = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R{:d}.npy'.format(s)))
-            data_mcs_u = stats.norm.rvs(loc=0,scale=1,size=(solver.ndim, int(1e5)))
+            data_mcs_u = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R{:d}.npy'.format(s)))
+            data_mcs_u = data_mcs_u[:solver.ndim, :int(1e6)]
             data_mcs_x = Kvitebjorn.ppf(stats.norm.cdf(data_mcs_u))
             y = solver.run(data_mcs_x, verbose=True) 
             data = np.concatenate((data_mcs_u, data_mcs_x, y.reshape(1,-1)))
-            np.save(os.path.join(data_dir_result, 'FPSO_SDOF_McsE5R{:d}.npy'.format(s)), data)
+            np.save(os.path.join(data_dir_result, 'FPSO_SDOF_McsE6R{:d}.npy'.format(s)), data)
 
         ## ------------------------ Environmental Contour ----------------- ###
         # solver = uqra.FPSO(phase=np.arange(21))
