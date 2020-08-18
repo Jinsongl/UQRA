@@ -139,10 +139,10 @@ class BasicTestSuite(unittest.TestCase):
 
         pf = 1e-5
         # data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/NonAdap_PCE'  
-        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF'  
+        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/NonAdap_PCE'  
         for iseed in range(10):
             try:
-                filename = 'FPSO_SDOF_2Hem10_AdapMcsD_Lassolars_Alpha1pt2_ST{:d}_pred.npy'.format(iseed)
+                filename = 'FPSO_SDOF_2Hem10_McsS_Ols_Alpha3_ST{:d}_pred.npy'.format(iseed)
                 data  = np.load(os.path.join(data_dir_result, filename), allow_pickle=True)
                 print(filename)
             except FileNotFoundError:
