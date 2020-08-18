@@ -47,7 +47,7 @@ class FPSO(SolverBase):
         np.random.seed(100)
         phase_seeds         = np.random.randint(0, int(2**31-1), size=10000)
         self.seeds_idx      = kwargs.get('phase', 0)
-        self.phase_seeds    = [phase_seeds[idx] for idx in np.array(self.seeds_idx)] 
+        self.phase_seeds    = [phase_seeds[idx] for idx in self.seeds_idx] 
         self.n_short_term   = len(self.phase_seeds) 
         self.out_responses  = kwargs.get('out_responses', 'ALL')
         # self.t          = np.arange(0,int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
@@ -91,7 +91,7 @@ class FPSO(SolverBase):
             else:
                 with mp.Pool(processes=mp.cpu_count()) as p:
                     y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, iseed) for ix in x]),
-                        ncols=80, desc=' {:d}/{:d}'.format(iseed_idx, self.n_short_term), total=x.shape[1])))
+                        ncols=80, desc=' {:d}/{:d}'.format(iseed_idx, self.n_short_term), total=x.shape[0])))
             if not verbose: 
                 uqra.enablePrint()
 
