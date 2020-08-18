@@ -46,7 +46,7 @@ class FPSO(SolverBase):
 
         np.random.seed(100)
         phase_seeds         = np.random.randint(0, int(2**31-1), size=10000)
-        self.seeds_idx      = kwargs.get('phase', 0)
+        self.seeds_idx      = kwargs.get('phase', [0,])
         self.phase_seeds    = [phase_seeds[idx] for idx in self.seeds_idx] 
         self.n_short_term   = len(self.phase_seeds) 
         self.out_responses  = kwargs.get('out_responses', 'ALL')
