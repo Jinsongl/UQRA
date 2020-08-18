@@ -130,7 +130,7 @@ def main(theta):
 
     ## Initialize u_train with LHS 
     doe     = uqra.LHS([stats.norm(),]*solver.ndim)
-    u_train = doe.samples(size=n_initial, loc=0, scale=1)
+    u_train = doe.samples(size=n_initial, loc=0, scale=1, random_state=100)
     x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train)) 
     y_train = solver.run(x_train)
 
@@ -173,7 +173,8 @@ def main(theta):
         print('       Active Index: {}'.format(pce_model.active_index))
         print('     > 2. Getting new training data ...')
         pce_model_sparsity = pce_model.sparsity 
-        n_train_new = int(1.2*pce_model.num_basis)
+        # n_train_new = int(1.2*pce_model.num_basis)
+        n_train_new = min(int(1.2*pce_model.num_basis), 2*pce_model_sparsity)
         # n_train_new = max(pce_model_sparsity, 
                 # 2*pce_model_sparsity - u_train.shape[1],
                 # int(alphas * pce_model.num_basis) - u_train.shape[1])
@@ -252,6 +253,15 @@ def main(theta):
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
         np.save(os.path.join(os.getcwd(), filename), data_train)
 
+    ### ============ Saving test ============
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_test'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(alphas).replace('.', 'pt'), theta)
+    try:
+        np.save(os.path.join(simparams.data_dir_result, filename), y_test_hat)
+    except:
+        print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
+        np.save(os.path.join(os.getcwd(), filename), y_test_hat)
+
     ### ============ Saving QoIs ============
     metrics_each_deg = np.array(metrics_each_deg)
     with open(os.path.join(simparams.data_dir_result, 'outlist_name.txt'), "w") as text_file:
@@ -276,5 +286,5 @@ def main(theta):
         np.save(os.path.join(os.getcwd(), filename), pred_uxy_each_deg)
 
 if __name__ == '__main__':
-    for s in range(6,10):
+    for s in range(10):
         main(s)
