@@ -247,7 +247,7 @@ def main(theta):
 
         y_train_hat= pce_model.predict(u_train)
         y_test_hat = pce_model.predict(u_test - u_center)
-        test_error = uqra.metrics.mean_squared_error(y_test, y_test_hat,multioutput='raw_values')
+        test_error = uqra.metrics.mean_squared_error(y_test, y_test_hat,squared=False)
 
 
         ### prediction data set, randomly draw or from MCS directory

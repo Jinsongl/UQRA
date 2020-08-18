@@ -46,11 +46,8 @@ def get_basis(deg, simparams, solver):
 
     return basis 
 
-def main(theta):
-    print('------------------------------------------------------------')
-    print('>>> Model: FPSO, Short-term simulation (Theta: {:d})  '.format(theta))
-    print('------------------------------------------------------------')
 
+def main(theta):
     ## ------------------------ Displaying set up ------------------- ###
     np.random.seed(100)
     np.set_printoptions(precision=4)
@@ -62,79 +59,75 @@ def main(theta):
     # short_term_seeds_applied = np.setdiff1d(np.arange(10), np.array([]))
 
     ## ------------------------ Simulation Parameters ----------------- ###
-    # short_term_seeds = np.arange(theta,theta+1)
-    # assert short_term_seeds.size == 1
+    # theta = np.arange(theta,theta+1)
+    # assert theta.size == 1
     solver    = uqra.FPSO(phase=[theta,])
     simparams = uqra.Parameters()
     simparams.solver     = solver
     simparams.pce_degs   = np.array(range(2,11))
     simparams.n_cand     = int(1e5)
-    simparams.n_test     = -1
+    simparams.n_test     = int(1e6)
     simparams.n_pred     = int(1e6)
     simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
     simparams.optimality = 'S'# 'D', 'S', None
     simparams.poly_type  = 'hem'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    repeats              = 1 #if simparams.optimality is None else 1
-    alphas               = 1
+    alphas               = 1.2
     simparams.update()
+    n_initial = 20
+    print('------------------------------------------------------------')
+    print('>>> Model: {:s}, Short-term simulation (n={:d})  '.format(solver.nickname, theta))
+    print('------------------------------------------------------------')
     simparams.info()
 
-
-    u_center = np.array([0,0]).reshape(-1,1)
-    x_center = np.array([0,0]).reshape(-1,1)
 
     ## ----------- Test data set ----------- ###
     ## ----- Testing data set centered around u_center, first 100000
     print(' > Getting Test data set...')
-    filename    = 'FPSO_SDOF_DoE_McsE5R{:d}.npy'.format(theta)
+    filename    = '{:s}_DoE_McsE6R{:d}.npy'.format(solver.nickname,theta)
     data_test   = np.load(os.path.join(simparams.data_dir_result,'TestData', filename))
-    u_test      = data_test[            :   solver.ndim, :]
-    x_test      = data_test[solver.ndim :2* solver.ndim, :]
+    u_test      = data_test[            :  solver.ndim, :]
+    x_test      = data_test[solver.ndim :2*solver.ndim, :]
     y_test      = data_test[-1]
 
-    print('   - {:<25s} : {}, {}, {}'.format('Test Dataset (U,X,Y)', u_test.shape, x_test.shape, y_test.shape ))
+    print('   - {:<25s} : {}, {}, {}'.format('Test Dataset (U,X,Y)',u_test.shape, x_test.shape, y_test.shape ))
     print('   - {:<25s} : [{}, {}]'.format('Test U[mean, std]',np.mean(u_test, axis=1),np.std (u_test, axis=1)))
-    print('   - {:<25s} : [{}]'.format('Test max(U)[U1, U2]', np.amax(abs(u_test), axis=1)))
-    print('   - {:<25s} : [{}]'.format('Test [min(Y), max(Y)]', np.array([np.amin(y_test),np.amax(y_test)])))
+    print('   - {:<25s} : [{}]'.format('Test max(U)[U1, U2]',np.amax(abs(u_test), axis=1)))
+    print('   - {:<25s} : [{}]'.format('Test [min(Y), max(Y)]',np.array([np.amin(y_test),np.amax(y_test)])))
+
 
     ## ----------- Predict data set ----------- ###
     ## ----- Prediction data set centered around u_center, all  
-    # u_pred      = mcs_data_ux[ :2,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
-    # x_pred      = mcs_data_ux[-2:,np.linalg.norm(mcs_data_ux[:2] - u_center, axis=0) < radius_surrogate]
+    filename= 'DoE_McsE7R{:d}.npy'.format(theta)
+    mcs_data= np.load(os.path.join(simparams.data_dir_sample,'MCS', 'Norm', filename))
+    u_pred  = mcs_data[:solver.ndim, -simparams.n_pred:] 
+    x_pred  = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
     # u_cand = modeling.get_candidate_data()
 
-    if simparams.doe_method.lower().startswith('cls'):
+    if simparams.doe_method.lower().startswith('cls2'):
         filename = os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls2E7d2R{:d}.npy'.format(theta))
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
         u_cand = u_cand * radius_surrogate
 
-    elif simparams.doe_method.lower().startswith('mcs'):
-        filename = os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R{:d}.npy'.format(theta))
+    elif simparams.doe_method.lower().startswith('cls4'):
+        filename = os.path.join(simparams.data_dir_sample, 'CLS', 'DoE_Cls4E7d2R{:d}.npy'.format(theta))
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
-        # u_cand = u_cand[:solver.ndim, np.linalg.norm(u_cand[:2], axis=0)<radius_surrogate]
-        # u_cand = u_cand[:, :simparams.n_cand]
+
+    elif simparams.doe_method.lower().startswith('mcs'):
+        filename = os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R0.npy')
+        # filename = os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R{:d}.npy'.format(theta))
+        u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
+
     # u_cand    = deg ** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
     # u_cand    = 2** 0.5 * u_cand if modeling.is_cls_unbounded() else u_cand
-    ### ============ Initial Values ============
+
 
     metrics_each_deg  = []
     pred_uxy_each_deg = []
-
-    ## Initialize u_train with 20 samples based on LHS 
-    doe     = uqra.LHS([stats.norm(),]*solver.ndim)
-    u_train = doe.samples(size=20, loc=0, scale=1)
-    x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train + u_center)) 
-    y_train = solver.run(x_train)
-
-    print('   - {:<25s} : {}, {}, {}'.format('Train Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
-    print('   - {:<25s} : [{}, {}]'.format('Train U[mean, std]',np.mean(u_train, axis=1),np.std (u_train, axis=1)))
-    print('   - {:<25s} : [{}]'.format('Train max(U)[U1, U2]',np.amax(abs(u_train), axis=1)))
-    print('   - {:<25s} : [{}]'.format('Train [min(Y), max(Y)]',np.array([np.amin(y_train),np.amax(y_train)])))
 
     for deg in simparams.pce_degs:
         print('\n================================================================================')
@@ -150,38 +143,39 @@ def main(theta):
         modeling  = uqra.Modeling(solver, pce_model, simparams)
         pce_model.info()
 
-        ### ============ Get training points ============
-        print('     > 1. Sparsity estimation ...')
+        ### ----------- Oversampling ratio ----------- ###
+        simparams.update_num_samples(pce_model.num_basis, alphas=alphas)
+        print(' > Oversampling ratio: {}'.format(np.around(simparams.alphas,2)))
+        n_train  = int(alphas * pce_model.num_basis)  
+
+        print(' > Getting Train data set...')
+        if simparams.optimality is None:
+            doe_idx_u_cand = np.arange(simparams.n_cand) 
+            filename= 'Random index'
+        else:
+            # filename = 'DoE_{:s}E6R{:d}_{:s}_{:s}.npy'.format(simparams.doe_method.capitalize(), theta,
+            filename = 'DoE_{:s}E5R0_{:s}_{:s}.npy'.format(simparams.doe_method.capitalize(), 
+                         pce_model.tag, simparams.optimality)
+            doe_idx_u_cand = np.load(os.path.join(simparams.data_dir_sample, 'OED', filename))
+            # doe_idx_u_cand = doe_idx_u_cand, 
+
+        ### ============ Build Surrogate Model ============
+        u_train = u_cand[:, doe_idx_u_cand[:n_train]]
+        x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train)) 
+        y_train = solver.run(x_train)
+        U_train = pce_model.basis.vandermonde(u_train)
         if simparams.doe_method.lower().startswith('cls'):
-            w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_basis_index)
+            w_train = modeling.cal_cls_weight(u_train, pce_model.basis, active_index=pce_model.active_index)
+            U_train = U_train[:, pce_model.active_index]
+            U_train = modeling.rescale_data(U_train, w_train) 
         else:
             w_train = None
+            U_train = U_train[:, pce_model.active_index]
+        _, sig_value, _ = np.linalg.svd(U_train)
+        kappa = max(abs(sig_value)) / min(abs(sig_value)) 
 
-        pce_model.fit(simparams.fit_method, u_train, y_train.T, w=w_train, n_splits=simparams.n_splits)
-        pce_model.var(0.95)
-        pce_model_sparsity = len(pce_model.var_pct_basis)
-        print('     > 2. Getting new training data ...')
-        n_train_new = max(pce_model_sparsity, 
-                2*pce_model_sparsity - u_train.shape[1],
-                int(alphas * pce_model.num_basis) - u_train.shape[1])
-
-        tqdm.write('    > {}:{}; Basis: {}/{}; #samples = {:d}'.format(
-            'Sampling', simparams.optimality, pce_model_sparsity, pce_model.num_basis, n_train_new ))
-        u_train_new, _ = modeling.get_train_data(n_train_new, u_cand, u_train, basis=pce_model.basis, 
-                active_basis=pce_model.var_pct_basis)
-        x_train_new = Kvitebjorn.ppf(stats.norm.cdf(u_train_new + u_center))
-        y_train_new = solver.run(x_train_new)
-        u_train = np.hstack((u_train, u_train_new)) 
-        x_train = np.hstack((x_train, x_train_new)) 
-        y_train = np.hstack((y_train, y_train_new)) 
-        ### ============ Build 2nd Surrogate Model ============
-        # print(bias_weight)
-        if simparams.doe_method.lower().startswith('cls'):
-            w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.var_basis_index)
-        else:
-            w_train = None
-
-        pce_model.fit(simparams.fit_method, u_train, y_train.T, w_train, n_splits=simparams.n_splits)
+        pce_model.fit(simparams.fit_method, u_train, y_train.T, w=w_train,
+                n_splits=simparams.n_splits, active_basis=pce_model.active_basis)
 
         print('   - {:<25s} : {:s}'.format('File', filename))
         print('   - {:<25s} : {}, {}, {}'.format('Train Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
@@ -193,20 +187,30 @@ def main(theta):
         print('   - {:<25s} : [{}]'.format('Train max(U)[U1, U2]',np.amax(abs(u_train), axis=1)))
         print('   - {:<25s} : [{}]'.format('Train [min(Y), max(Y)]',np.array([np.amin(y_train),np.amax(y_train)])))
 
-        y_train_hat= pce_model.predict(u_train)
-        y_test_hat = pce_model.predict(u_test - u_center)
-        test_error = uqra.metrics.mean_squared_error(y_test, y_test_hat,multioutput='raw_values')
+        y_train_hat = pce_model.predict(u_train)
+        y_test_hat  = pce_model.predict(u_test)
+        train_error = uqra.metrics.mean_squared_error(y_train, y_train_hat, squared=False)
+        test_error  = uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False)
 
-        np.random.seed()
-        u_pred = stats.norm.rvs(loc=0,scale=1,size=(solver.ndim, simparams.n_pred))
-        x_pred = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
-        y_pred = pce_model.predict(u_pred - u_center)
+
+        ### prediction data set, randomly draw or from MCS directory
+        # y_pred = pce_model.predict(u_pred - u_center)
+        # alpha  = (pf * mcs_data_ux.shape[1]) / y_pred.size
+        # y50_pce_y   = uqra.metrics.mquantiles(y_pred, 1-alpha)
+        # y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
+        # y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
+        # pred_uxy_each_deg.append([deg, n_train, y_pred])
+
+        # np.random.seed()
+        # u_pred = stats.norm.rvs(size=(solver.ndim,simparams.n_pred))
+        # x_pred = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
+        y_pred = pce_model.predict(u_pred)
         y50_pce_y   = uqra.metrics.mquantiles(y_pred, 1-pf)
         y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
         y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
         pred_uxy_each_deg.append([deg, u_train.shape[1], y_pred])
 
-        res = [deg, u_train.shape[1], pce_model.cv_error, test_error[0]]
+        res = [deg, u_train.shape[1], train_error, pce_model.cv_error, test_error, kappa]
         for item in y50_pce_uxy:
             res.append(item)
         metrics_each_deg.append(res)
@@ -215,17 +219,19 @@ def main(theta):
         tqdm.write(' > Summary')
         with np.printoptions(precision=4):
             tqdm.write('     - {:<15s} : {}'.format( 'y50_pce_y' , np.array(metrics_each_deg)[-1:,-1]))
-            tqdm.write('     - {:<15s} : {}'.format( 'Test MSE ' , np.array(metrics_each_deg)[-1:, 3]))
-            tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(metrics_each_deg)[-1:, 2]))
-            tqdm.write('     - {:<15s} : {}'.format( 'Design state', np.array(metrics_each_deg)[-1:,6:8]))
+            tqdm.write('     - {:<15s} : {}'.format( 'Train MSE' , np.array(metrics_each_deg)[-1:, 2]))
+            tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(metrics_each_deg)[-1:, 3]))
+            tqdm.write('     - {:<15s} : {}'.format( 'Test MSE ' , np.array(metrics_each_deg)[-1:, 4]))
+            tqdm.write('     - {:<15s} : {}'.format( 'kappa '    , np.array(metrics_each_deg)[-1:, 5]))
             tqdm.write('     ----------------------------------------')
 
     ### ============ Saving QoIs ============
     metrics_each_deg = np.array(metrics_each_deg)
     with open(os.path.join(simparams.data_dir_result, 'outlist_name.txt'), "w") as text_file:
-        text_file.write('\n'.join(['deg', 'n_train', 'cv_error', 'test mse', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
+        text_file.write(', '.join(
+            ['deg', 'n_train', 'train error', 'cv_error', 'test mse', 'kappa','y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
 
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
+    filename = '{:s}_{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(alphas).replace('.', 'pt'), theta)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), metrics_each_deg)
@@ -235,7 +241,7 @@ def main(theta):
 
     ### ============ Saving Predict data ============
     pred_uxy_each_deg = np.array(pred_uxy_each_deg, dtype=object)
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_pred'.format(solver.nickname, pce_model.tag, 
+    filename = '{:s}_{:s}_{:s}_Alpha{}_ST{}_pred'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(alphas).replace('.', 'pt'), theta)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), pred_uxy_each_deg)
@@ -244,5 +250,5 @@ def main(theta):
         np.save(os.path.join(os.getcwd(), filename), pred_uxy_each_deg)
 
 if __name__ == '__main__':
-    for s in range(5,10):
+    for s in range(6,10):
         main(s)
