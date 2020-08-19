@@ -19,6 +19,22 @@ from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
+def get_pts_inside_square(x, center=[0,0], vertice=[-1,-1]):
+    """
+    return coordinates of points inside the defined square
+    """
+    x = np.array(x, ndmin=2)
+    center = np.squeeze(center)
+    vertice = np.squeeze(vertice)
+    m, n = x.shape
+    
+    center = np.array(center).reshape(m, -1)
+    x = x - center
+    idx1 = abs(x[0]) <= abs(vertice[0])  
+    idx2 = abs(x[1]) <= abs(vertice[1])
+    idx  = np.logical_and(idx1,idx2)
+    return idx
+
 def get_basis(deg, simparams, solver):
     if simparams.doe_method.lower().startswith('mcs'):
         if simparams.poly_type.lower() == 'leg':
@@ -72,13 +88,15 @@ def main(theta):
     simparams.n_test     = int(1e6)
     simparams.n_pred     = int(1e6)
     simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = None # 'D', 'S', None
-    simparams.poly_type  = 'hem'
+    simparams.optimality = 'S'# 'D', 'S', None
+    simparams.poly_type  = 'leg'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     alphas               = 10
     simparams.update()
     n_initial = 20
+    u_square_center = np.array([4.0, 0.0]).reshape(solver.ndim, -1)
+    u_square_vertice= np.array((1.7, 4.5)).reshape(solver.ndim, -1)
 
     print('------------------------------------------------------------')
     print('>>> Model: {:s}, Short-term simulation (n={:d})  '.format(solver.nickname, theta))
@@ -93,6 +111,10 @@ def main(theta):
     u_test      = data_test[            :   solver.ndim, :]
     x_test      = data_test[solver.ndim :2* solver.ndim, :]
     y_test      = data_test[-1]
+    u_test_idx  = get_pts_inside_square(u_test, center=u_square_center, vertice=u_square_vertice)
+    u_test      = u_test[:, u_test_idx]
+    x_test      = x_test[:, u_test_idx]
+    y_test      = y_test[   u_test_idx]
 
     print('   - {:<25s} : {}, {}, {}'.format('Test Dataset (U,X,Y)', u_test.shape, x_test.shape, y_test.shape ))
     print('   - {:<25s} : [{}, {}]'.format('Test U[mean, std]',np.mean(u_test, axis=1),np.std (u_test, axis=1)))
@@ -105,6 +127,9 @@ def main(theta):
     mcs_data= np.load(os.path.join(simparams.data_dir_sample,'MCS', 'Norm', filename))
     u_pred  = mcs_data[:solver.ndim, -simparams.n_pred:] 
     x_pred  = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
+    u_pred_idx = get_pts_inside_square(u_pred, center=u_square_center, vertice=u_square_vertice)
+    u_pred  = u_pred[:, u_pred_idx]
+    x_pred  = x_pred[:, u_pred_idx]
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
@@ -120,7 +145,7 @@ def main(theta):
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
 
     elif simparams.doe_method.lower().startswith('mcs'):
-        filename = os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R0.npy')
+        filename = os.path.join(simparams.data_dir_sample, 'MCS','Uniform','DoE_McsE7R0.npy')
         # filename = os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R{:d}.npy'.format(theta))
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
     ### ============ Initial Values ============
@@ -129,9 +154,12 @@ def main(theta):
     pred_uxy_each_deg = []
 
     ## Initialize u_train with LHS 
-    doe     = uqra.LHS([stats.norm(),]*solver.ndim)
-    u_train = doe.samples(size=n_initial, loc=0, scale=1, random_state=100)
-    x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train)) 
+    doe     = uqra.LHS([stats.uniform(-1,2),]*solver.ndim)
+    u_train = doe.samples(size=n_initial, random_state=100)  ## u_i ~ [-1, 1]
+    ## mapping points to the square in standard normal space
+    u_train_normal = u_train * u_square_vertice + u_square_center
+    ## mapping points to physical space
+    x_train = Kvitebjorn.ppf(stats.norm.cdf(u_train_normal))   
     y_train = solver.run(x_train)
 
     print('   - {:<25s} : {}, {}, {}'.format('Train Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
@@ -168,19 +196,20 @@ def main(theta):
         kappa0 = max(abs(sig_value)) / min(abs(sig_value)) 
 
         pce_model.fit('LASSOLARS', u_train, y_train.T, w=w_train, 
-                n_splits=simparams.n_splits, epsilon=1e-3)
+                n_splits=simparams.n_splits, epsilon=1e-2)
 
         print('       Active Index: {}'.format(pce_model.active_index))
         print('     > 2. Getting new training data ...')
         pce_model_sparsity = pce_model.sparsity 
-        n_train_new = int(alphas*pce_model.num_basis)
-        # n_train_new = min(int(alphas*pce_model.num_basis), 2*pce_model_sparsity)
+        # n_train_new = int(alphas*pce_model.num_basis)
+        n_train_new = min(int(alphas*pce_model.num_basis), pce_model_sparsity, 10)
         tqdm.write('    > {}:{}; Basis: {}/{}; #samples = {:d}'.format(
             'Sampling', simparams.optimality, pce_model_sparsity, pce_model.num_basis, n_train_new ))
 
         u_train_new, _ = modeling.get_train_data(n_train_new, u_cand, u_train, basis=pce_model.basis, 
                 active_basis=pce_model.active_basis)
-        x_train_new = Kvitebjorn.ppf(stats.norm.cdf(u_train_new))
+        u_train_normal = u_train_new * u_square_vertice + u_square_center
+        x_train_new = Kvitebjorn.ppf(stats.norm.cdf(u_train_normal))
         y_train_new = solver.run(x_train_new)
         u_train = np.hstack((u_train, u_train_new)) 
         x_train = np.hstack((x_train, x_train_new)) 
@@ -212,15 +241,21 @@ def main(theta):
         print('   - {:<25s} : [{}]'.format('Train [min(Y), max(Y)]',np.array([np.amin(y_train),np.amax(y_train)])))
 
         y_train_hat = pce_model.predict(u_train)
-        y_test_hat  = pce_model.predict(u_test)
+        u_test_     = (u_test - u_square_center)/ u_square_vertice
+        y_test_hat  = pce_model.predict(u_test_)
         train_error = uqra.metrics.mean_squared_error(y_train, y_train_hat, squared=False)
         test_error  = uqra.metrics.mean_squared_error(y_test , y_test_hat , squared=False)
 
         # np.random.seed()
         # u_pred = stats.norm.rvs(loc=0,scale=1,size=(solver.ndim, simparams.n_pred))
         # x_pred = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
-        y_pred = pce_model.predict(u_pred)
-        y50_pce_y   = uqra.metrics.mquantiles(y_pred, 1-pf)
+        u_pred_     = (u_pred-u_square_center)/u_square_vertice
+        y_pred      = pce_model.predict(u_pred_)
+        print('   - {:<25s} : {}, {}, {}'.format('Predict Dataset (U,X,Y)',u_pred.shape, x_pred.shape, y_pred.shape))
+        print('   - {:<25s} : [{}]'.format('Predict min(U)[U1, U2]',np.amin(u_pred_, axis=1)))
+        print('   - {:<25s} : [{}]'.format('Predict max(U)[U1, U2]',np.amax(u_pred_, axis=1)))
+        alpha       = simparams.n_pred * pf / y_pred.size
+        y50_pce_y   = uqra.metrics.mquantiles(y_pred, 1-alpha)
         y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
         y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
         pred_uxy_each_deg.append([deg, u_train.shape[1], y_pred])
