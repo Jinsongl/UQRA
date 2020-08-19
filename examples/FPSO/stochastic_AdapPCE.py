@@ -173,11 +173,8 @@ def main(theta):
         print('       Active Index: {}'.format(pce_model.active_index))
         print('     > 2. Getting new training data ...')
         pce_model_sparsity = pce_model.sparsity 
-        # n_train_new = int(1.2*pce_model.num_basis)
-        n_train_new = min(int(1.2*pce_model.num_basis), 2*pce_model_sparsity)
-        # n_train_new = max(pce_model_sparsity, 
-                # 2*pce_model_sparsity - u_train.shape[1],
-                # int(alphas * pce_model.num_basis) - u_train.shape[1])
+        n_train_new = int(10*pce_model.num_basis)
+        # n_train_new = min(int(1.2*pce_model.num_basis), 2*pce_model_sparsity)
         tqdm.write('    > {}:{}; Basis: {}/{}; #samples = {:d}'.format(
             'Sampling', simparams.optimality, pce_model_sparsity, pce_model.num_basis, n_train_new ))
 
@@ -265,7 +262,8 @@ def main(theta):
     ### ============ Saving QoIs ============
     metrics_each_deg = np.array(metrics_each_deg)
     with open(os.path.join(simparams.data_dir_result, 'outlist_name.txt'), "w") as text_file:
-        text_file.write('\n'.join(['deg', 'n_train', 'cv_error', 'test mse', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
+        text_file.write(','.join(
+            ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
 
     filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(alphas).replace('.', 'pt'), theta)
