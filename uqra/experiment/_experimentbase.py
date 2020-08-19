@@ -96,6 +96,10 @@ class ExperimentBase(object):
 
 
     def _set_distributions(self, distributions):
+        """
+        return a list of distributions and set ndim
+
+        """
         if distributions is None:
             dists = None
             ndim = 0
