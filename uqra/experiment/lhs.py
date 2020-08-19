@@ -36,6 +36,7 @@ class LatinHyperCube(ExperimentBase):
                - “centermaximin” or “cm”: same as “maximin”, but centered within the intervals
                - “correlation” or “corr”: minimize the maximum correlation coefficient
         """
+        ### return a list of distributions and set ndim
         self.ndim, self.distributions = super()._set_distributions(distributions)
         self.criterion = kwargs.get('criterion', 'maximin')
         self.iterations= kwargs.get('iterations', 5)
