@@ -72,11 +72,11 @@ def main(theta):
     simparams.n_test     = int(1e6)
     simparams.n_pred     = int(1e6)
     simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = 'S'# 'D', 'S', None
+    simparams.optimality = None # 'D', 'S', None
     simparams.poly_type  = 'hem'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    alphas               = 1.2
+    alphas               = 10
     simparams.update()
     n_initial = 20
 
@@ -173,8 +173,8 @@ def main(theta):
         print('       Active Index: {}'.format(pce_model.active_index))
         print('     > 2. Getting new training data ...')
         pce_model_sparsity = pce_model.sparsity 
-        n_train_new = int(10*pce_model.num_basis)
-        # n_train_new = min(int(1.2*pce_model.num_basis), 2*pce_model_sparsity)
+        n_train_new = int(alphas*pce_model.num_basis)
+        # n_train_new = min(int(alphas*pce_model.num_basis), 2*pce_model_sparsity)
         tqdm.write('    > {}:{}; Basis: {}/{}; #samples = {:d}'.format(
             'Sampling', simparams.optimality, pce_model_sparsity, pce_model.num_basis, n_train_new ))
 
