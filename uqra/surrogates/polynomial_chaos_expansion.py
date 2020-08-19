@@ -42,8 +42,6 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.deg        = self.basis.deg
             self.active_index = None if self.num_basis is None else range(self.num_basis)
             self.active_basis = None if self.basis.basis_degree is None else self.basis.basis_degree 
-            self.var_pct_basis= self.active_basis
-            self.var_basis_index=self.active_index
             self.cv_error   = np.inf
             if self.deg is None:
                 self.tag        = '{:d}{:s}0'.format(self.ndim, self.basis.nickname[:3])
@@ -298,13 +296,13 @@ class PolynomialChaosExpansion(SurrogateBase):
     def var(self, pct=1):
         cum_var = -np.cumsum(np.sort(-self.coef[1:] **2))
         if cum_var[-1] == 0:
-            self.var_basis_index = [0]
-            self.var_pct_basis  = [self.basis.basis_degree[0]]
+            self.active_index = [0]
+            self.active_basis  = [self.basis.basis_degree[0]]
         else:
             y_hat_var_pct = cum_var / cum_var[-1] 
             n_pct_var_term= np.argwhere(y_hat_var_pct > pct)[0][-1] + 1 ## return index +1 since cum_var starts with 1, not 0
-            self.var_basis_index= [0,] + list(np.argsort(-self.coef[1:])[:n_pct_var_term+1]+1) ## +1 to always count phi_0
-            self.var_pct_basis  = [self.basis.basis_degree[i] for i in self.var_basis_index]
+            self.active_index= [0,] + list(np.argsort(-self.coef[1:])[:n_pct_var_term+1]+1) ## +1 to always count phi_0
+            self.active_basis  = [self.basis.basis_degree[i] for i in self.active_index]
 
     def predict(self,x, **kwargs):
         """
