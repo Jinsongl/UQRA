@@ -260,7 +260,7 @@ class Kvitebjorn(EnvBase):
         hs= self.dist_Tp_ppf(hs, u)
         return hs
 
-    def dist_Tp_ppf(self, hs, tp_cdf):
+    def dist_Tp_ppf(self, hs, u):
         """
         Generate Tp sample values based on given Hs values:
         """
@@ -272,8 +272,8 @@ class Kvitebjorn(EnvBase):
         b3 = 0.455
         mu_tp    = a1 + a2* hs**a3 
         sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*hs))
-        tp = [stats.lognorm.ppf(iu, s=isigma, loc=0, scale=iscale) for isigma, iscale, iu in zip(sigma_tp, np.exp(mu_tp),tp_cdf)]
-        return np.array(tp)
+        tp       = stats.lognorm.ppf(u, s=sigma_tp, loc=0, scale=np.exp(mu_tp))
+        return tp 
 
     def dist_Tp_cdf(self, hs, tp):
         a1 = 1.134
@@ -284,8 +284,8 @@ class Kvitebjorn(EnvBase):
         b3 = 0.455
         mu_tp    = a1 + a2* hs**a3 
         sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*hs))
-        tp_cdf =[stats.lognorm.cdf(itp, s=isigma, loc=0, scale=iscale) for isigma, iscale, itp in zip(sigma_tp, np.exp(mu_tp),tp)]
-        return np.array(tp_cdf)
+        u = stats.lognorm.cdf(tp, s=sigma_tp, loc=0, scale=np.exp(mu_tp))
+        return u 
 
     def _make_circles(self, r,n=100):
         """
