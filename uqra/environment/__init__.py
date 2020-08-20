@@ -12,6 +12,7 @@ Define environmental variable distributions
 """
 
 from .Kvitebjorn import Kvitebjorn
+from .Norway5 import Norway5
 
 # import environment
 # import Norway5_2

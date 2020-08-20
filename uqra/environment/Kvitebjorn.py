@@ -42,11 +42,26 @@ class Kvitebjorn(EnvBase):
         if x.shape[0] != 2:
             raise ValueError('Kvitebjørn site expects two random variables (Hs, Tp), but {:d} were given'.format(x.shape[0]))
         
-        hs = np.squeeze(x[0,:])
-        tp = np.squeeze(x[1,:])
+        hs, tp = x
         hs_pdf = np.squeeze(self._hs_pdf(hs))
         tp_pdf = np.squeeze(self._tp_pdf(tp, hs))
         y = np.array(hs_pdf * tp_pdf)
+        return y
+
+    def jpdf(self, x):
+        """
+        Return pdf values for given random variables x
+        parameters:
+            x, ndarray of shape (2, n)
+        Return:
+            y, ndarray of shape(2, n)
+        """
+        self._check_input(x)
+        
+        hs, tp = x
+        hs_pdf = np.squeeze(self._hs_pdf(hs))
+        tp_pdf = np.squeeze(self._tp_pdf(tp, hs))
+        y = np.array([hs_pdf, tp_pdf])
         return y
 
     def cdf(self, x):
@@ -57,14 +72,26 @@ class Kvitebjorn(EnvBase):
         Return:
             y, ndarray of shape(2, n)
         """
-        if x.shape[0] != 2:
-            raise ValueError('Kvitebjørn site expects two random variables (Hs, Tp), but {:d} were given'.format(x.shape[0]))
-        
-        hs = np.squeeze(x[0,:])
-        tp = np.squeeze(x[1,:])
+        self._check_input(x)
+        hs, tp = x
         hs_cdf = np.squeeze(self._hs_cdf(hs))
         tp_cdf = np.squeeze(self._tp_cdf(tp, hs))
-        y = np.array([hs_cdf, tp_cdf])
+        y      = np.array([hs_cdf, tp_cdf])
+        return y
+
+    def jcdf(self, x):
+        """
+        Return cdf values for given random variables x
+        parameters:
+            x, ndarray of shape (2, n)
+        Return:
+            y, ndarray of shape(n,)
+        """
+        self._check_input(x)
+        hs, tp = x
+        hs_cdf = np.squeeze(self._hs_cdf(hs))
+        tp_cdf = np.squeeze(self._tp_cdf(tp, hs))
+        y      = hs_cdf * tp_cdf
         return y
 
     def ppf(self, u):
@@ -73,13 +100,13 @@ class Kvitebjorn(EnvBase):
 
         """
         u = np.array(u, ndmin=2)
+        self._check_input(u)
         ### make sure u is valid cdf values
-        assert np.amin(u) >= 0
-        assert np.amax(u) <= 1
+        assert np.amin(u).all() >= 0
+        assert np.amax(u).all() <= 1
 
-        tp_cdf = None if u.shape[0] == 1 else u[1,:]
-        hs = self.samples_hs_ppf(u[0,:])
-        tp = self.samples_tp(hs, tp_cdf=tp_cdf)
+        hs = self.dist_Hs_ppf(u[0])
+        tp = self.dist_Tp_ppf(hs, u[1])
         return np.array([hs, tp])
 
     def rvs(self, size=None):
@@ -88,16 +115,15 @@ class Kvitebjorn(EnvBase):
 
         """
         n = int(size)
-        u = np.random.uniform(0,1,n)
         ### generate n random Hs
-        hs= self.samples_hs_ppf(u)
+        hs= self.dist_Hs_rvs(n)
         ### generate n random Tp given above Hs
-        tp= self.samples_tp(hs)
-        res = np.array([hs, tp]).reshape(2,-1)
+        tp= self.dist_Tp_rvs(hs, n)
+        res = np.array([hs, tp])
         return res
 
-    def get_environment_contour(self, P,T=1000,n=100):
-        """
+    def environment_contour(self, P ,T=1000,n=100):
+        """za
         Return samples for Environment Contours method
         
         arguments:
@@ -112,16 +138,26 @@ class Kvitebjorn(EnvBase):
         print(r' - {:<25s}: {}'.format('Return period (years)', P))
         print(r' - {:<25s}: {}'.format('Simulation duration (s)', T))
         prob_fail   = 1.0/(P * 365.25*24*3600/T)
-        beta        = stats.norm.ppf(1-prob_fail) ## reliability index
+        beta        = -stats.norm().ppf(prob_fail) ## reliability index
         print(r' - {:<25s}: {:.2e}'.format('Failure probability', prob_fail))
         print(r' - {:<25s}: {:.2f}'.format('Reliability index', beta))
-        U_samples   = self._make_circles(beta,n=n)
-        U_cdf       = stats.norm.cdf(U_samples)
-        Hs          = self.samples_hs_ppf(U_cdf[0])
-        Tp          = self.samples_tp(Hs, tp_cdf=U_cdf[1])
-        X_samples   = np.array([Hs, Tp])
-        res         = np.vstack((U_samples, X_samples))
-        return res 
+        U = self._make_circles(beta,n=n)
+        X = self.ppf(stats.norm.cdf(U))
+        return U, X
+
+
+    def target_contour(self, hs, P, T=1000, n=100):
+        """
+        Return EC points for specified points Uw
+        """
+        prob_fail   = T/(P * 365.25*24*3600)
+        beta        = -stats.norm().ppf(prob_fail) ## reliability index
+        u1 = stats.norm().ppf(self.dist_Hs_cdf(hs))
+        u2 = np.sqrt(beta**2 - u1**2)
+        tp = self.dist_Tp_ppf(hs, stats.norm.cdf(u2))
+        res = np.array([hs, tp])
+        return res
+
 
 # Sequence of conditional distributions based on Rosenblatt transformation 
     def dist_Hs(self, x, key='value'):
@@ -159,18 +195,14 @@ class Kvitebjorn(EnvBase):
         else:
             raise ValueError('Key value: {} is not defined'.format(key))
 
-    def dist_Tp(self, Hs):
-        a1 = 1.134
-        a2 = 0.892
-        a3 = 0.225
-        b1 = 0.005
-        b2 = 0.120
-        b3 = 0.455
-        mu_tp = a1 + a2* Hs**a3 
-        sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*Hs))
-        return stats.lognorm(sigma_tp, scale=np.exp(mu_tp))
+    def dist_Hs_rvs(self, size):
+        n = int(size)
+        ### generate n random Hs
+        u = stats.uniform(0,1).rvs(size=n)
+        hs= self.dist_Hs_ppf(u)
+        return hs
 
-    def samples_hs_ppf(self, u):
+    def dist_Hs_ppf(self, u):
         """
         Return Hs samples corresponding ppf values u
         """
@@ -189,30 +221,71 @@ class Kvitebjorn(EnvBase):
 
         return np.squeeze(samples_hs)
 
-    def samples_tp(self, hs,tp_cdf=None):
+    def dist_Hs_cdf(self, hs):
         """
-        Generate Tp sample values based on given Hs values:
-        two steps:
-            1. get the conditional distributions of Tp given Hs
-            2. If tp_cdf is given, return the corresponding ppf values
-                else, return a random sample from distribution Tp|Hs
+        Return Hs samples corresponding ppf values u
         """
 
+        mu_Hs    = 0.77
+        sigma_Hs = 0.6565
+        Hs_shape = 1.503
+        Hs_scale = 2.691
+        h0       = 2.9
+
+        hs      = np.array(hs,ndmin=1)
+        hs_cdf1 = stats.lognorm.cdf(hs, s=sigma_Hs, loc=0, scale=np.exp(mu_Hs))
+        hs_cdf2 = stats.weibull_min.cdf(hs, c=Hs_shape, loc=0, scale=Hs_scale) #0 #Hs_scale * (-np.log(1-u)) **(1/Hs_shape)
+        hs_cdf  = np.where(hs<=h0,hs_cdf1, hs_cdf2)
+
+        return np.squeeze(hs_cdf)
+
+
+
+
+    def dist_Tp(self, Hs):
         a1 = 1.134
         a2 = 0.892
         a3 = 0.225
         b1 = 0.005
         b2 = 0.120
         b3 = 0.455
-        mu_tp   = a1 + a2* hs**a3 
-        sigma_tp= np.sqrt(b1 + b2*np.exp(-b3*hs))
+        mu_tp = a1 + a2* Hs**a3 
+        sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*Hs))
+        return stats.lognorm(sigma_tp, scale=np.exp(mu_tp))
 
-        if tp_cdf is None:
-            samples = np.random.lognormal(mean=mu_tp, sigma=sigma_tp, size=np.size(hs)) 
-        else:
-            samples = stats.lognorm.ppf(tp_cdf, s=sigma_tp, loc=0, scale=np.exp(mu_tp)) 
+    def dist_Tp_rvs(self, hs, size):
+        n = int(size)
+        ### generate n random Hs
+        u = stats.uniform(0,1).rvs(size=n)
+        hs= self.dist_Tp_ppf(hs, u)
+        return hs
 
-        return np.squeeze(samples)
+    def dist_Tp_ppf(self, hs, tp_cdf):
+        """
+        Generate Tp sample values based on given Hs values:
+        """
+        a1 = 1.134
+        a2 = 0.892
+        a3 = 0.225
+        b1 = 0.005
+        b2 = 0.120
+        b3 = 0.455
+        mu_tp    = a1 + a2* hs**a3 
+        sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*hs))
+        tp = [stats.lognorm.ppf(iu, s=isigma, loc=0, scale=iscale) for isigma, iscale, iu in zip(sigma_tp, np.exp(mu_tp),tp_cdf)]
+        return np.array(tp)
+
+    def dist_Tp_cdf(self, hs, tp):
+        a1 = 1.134
+        a2 = 0.892
+        a3 = 0.225
+        b1 = 0.005
+        b2 = 0.120
+        b3 = 0.455
+        mu_tp    = a1 + a2* hs**a3 
+        sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*hs))
+        tp_cdf =[stats.lognorm.cdf(itp, s=isigma, loc=0, scale=iscale) for isigma, iscale, itp in zip(sigma_tp, np.exp(mu_tp),tp)]
+        return np.array(tp_cdf)
 
     def _make_circles(self, r,n=100):
         """
@@ -271,3 +344,7 @@ class Kvitebjorn(EnvBase):
         return res
 
 
+    def _check_input(self, x):
+
+        if x.shape[0] != self.ndim:
+            raise ValueError('Kvitebjørn site expects two random variables (Hs, Tp), but {:d} were given'.format(x.shape[0]))

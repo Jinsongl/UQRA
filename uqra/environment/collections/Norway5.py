@@ -12,11 +12,11 @@ from chaospy.dist.baseclass import Dist
 import chaospy.dist
 
 """ Define Environment random variables.
-Reference: 
-        Norway 5:
-        Li L, Gao Z, Moan T. Joint environmental data at five european offshore sites for design of combined wind and wave
-        energy concepts. 32nd International Conference on Ocean, Offshore, and Arctic Engineering, Nantes, France, Paper
-        No. OMAE2013-10156, 2013.
+    Reference: 
+    Norway 5:
+    Li L, Gao Z, Moan T. Joint environmental data at five european offshore sites for design of combined wind and wave
+    energy concepts. 32nd International Conference on Ocean, Offshore, and Arctic Engineering, Nantes, France, Paper
+    No. OMAE2013-10156, 2013.
 """
 
 ########################################################
