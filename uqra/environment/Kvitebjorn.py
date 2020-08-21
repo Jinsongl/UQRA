@@ -18,7 +18,131 @@ import numpy as np
 import scipy.stats as stats
 import uqra
 from ._envbase import EnvBase
+#### Hs distribution Class
+##################################################
+##################################################
+class DistHs(object):
 
+    def __init__(self):
+
+        self.name     = 'lognorm_weibull'
+        self.mu_Hs    = 0.77
+        self.sigma_Hs = 0.6565
+        self.Hs_shape = 1.503
+        self.Hs_scale = 2.691
+        self.h0       = 2.9
+        self.dist1    = stats.lognorm(s=self.sigma_Hs, scale=np.exp(self.mu_Hs))
+        self.dist2    = stats.weibull_min(c=self.Hs_shape, scale=self.Hs_scale)
+
+    def ppf(self, u):
+        """
+        Return Hs samples corresponding ppf values u
+        """
+
+        assert (min(u) >=0).all() and (max(u) <=1).all(), 'CDF values should be in range [0,1]'
+        hs1 = self.dist1.ppf(u)
+        hs2 = self.dist2.ppf(u)
+        hs  = np.where(hs1 < self.h0, hs1, hs2)
+        return hs 
+
+    def cdf(self, hs):
+        """
+        Return Hs cdf 
+        """
+        hs_cdf1 = self.dist1.cdf(hs)
+        hs_cdf2 = self.dist2.cdf(hs)
+        hs_cdf  = np.where(hs < self.h0, hs_cdf1, hs_cdf2)
+        return hs_cdf
+
+    def rvs(self, size=1):
+        hs1 = self.dist1.rvs(size=size)
+        hs2 = self.dist2.rvs(size=size)
+        hs  = np.where(hs1 < self.h0, hs1, hs2)
+        return hs
+
+    def pdf(self):
+        hs_pdf1 = self.dist1.pdf(hs)
+        hs_pdf2 = self.dist2.pdf(hs)
+        hs_pdf  = np.where(hs < self.h0, hs_pdf1, hs_pdf2)
+        return hs_pdf
+
+    def get_distribution(self, x, key='value'):
+        """
+        Return Hs distribution based on x value
+        For Kvitebjorn, Hs distribution is a piecewise distribution 
+        connected at Hs = H0 or ppf_Hs = ppf_h0 (icdf_h0)
+
+        key = 'value'
+        dist_Hs = dist1 if x < h0
+                = dist2 if x > h0
+        or 
+
+        dist_hs = dist1 if cdf_x < ppf_h0
+                = dist2 if cdf_x > ppf_h0
+
+        key = 'ppf'
+           - value: physical value of Hs
+           - ppf: point percentile value of Hs
+        """
+        dist1    = stats.lognorm(s=self.sigma_Hs, scale=np.exp(self.mu_Hs))
+        dist2    = stats.weibull_min(c=self.Hs_shape, scale=self.Hs_scale)
+        ppf_h0   = dist1.cdf(self.h0)
+
+        if key.lower() == 'value':
+            dist = dist1 if x <= h0 else dist2
+        elif key.lower() == 'ppf':
+            dist = dsit1 if x <= ppf_h0 else dist2
+
+        else:
+            raise ValueError('Key value: {} is not defined'.format(key))
+
+##################################################
+##################################################
+
+class DistTp(object):
+
+    def __init__(self):
+
+        self.a1 = 1.134
+        self.a2 = 0.892
+        self.a3 = 0.225
+        self.b1 = 0.005
+        self.b2 = 0.120
+        self.b3 = 0.455
+        self.dist = stats.lognorm(s=1)
+
+    def rvs(self, hs, size=1):
+        assert np.array_equal(np.array(hs.shape), np.array(size)) 
+        mu_tp    = self.a1 + self.a2* hs**self.a3 
+        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*hs))
+        tp       = stats.lognorm.rvs(sigma_tp, loc=0, scale=np.exp(mu_tp), size=1)
+        assert hs.shape == tp.shape
+        return tp 
+
+    def ppf(self, hs, u):
+        """
+        Generate Tp sample values based on given Hs values:
+        """
+        mu_tp    = self.a1 + self.a2* hs**self.a3 
+        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*hs))
+        tp       = stats.lognorm.ppf(u, sigma_tp, loc=0, scale=np.exp(mu_tp))
+        return tp 
+
+    def cdf(self, hs, tp):
+        mu_tp    = self.a1 + self.a2* hs**self.a3 
+        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*hs))
+        tp_cdf   = stats.lognorm.cdf(tp, sigma_tp, loc=0, scale=np.exp(mu_tp))
+        return tp_cdf
+
+    def pdf(self, hs, tp):
+        mu_tp    = self.a1 + self.a2* hs**self.a3 
+        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*hs))
+        tp_pdf   = stats.lognorm.pdf(tp, sigma_tp, loc=0, scale=np.exp(mu_tp))
+        return tp_pdf
+
+
+##################################################
+##################################################
 class Kvitebjorn(EnvBase):
     """
     Environment class for site "Kvitebjorn"
@@ -30,6 +154,8 @@ class Kvitebjorn(EnvBase):
         self.is_arg_rand = [True, True] 
         self.ndim = int(2)
         self.name = ['lognorm_weibull','lognorm']
+        self.dist_hs = DistHs()
+        self.dist_tp = DistTp()
 
     def pdf(self, x):
         """
@@ -39,14 +165,13 @@ class Kvitebjorn(EnvBase):
         Return:
             y, ndarray of shape(2, n)
         """
-        if x.shape[0] != 2:
-            raise ValueError('Kvitebjørn site expects two random variables (Hs, Tp), but {:d} were given'.format(x.shape[0]))
-        
+        self._check_input(x)
+
         hs, tp = x
-        hs_pdf = np.squeeze(self._hs_pdf(hs))
-        tp_pdf = np.squeeze(self._tp_pdf(tp, hs))
-        y = np.array(hs_pdf * tp_pdf)
-        return y
+        hs_pdf = self.dist_hs.pdf(hs)
+        tp_pdf = self.dist_tp.pdf(hs, tp)
+        x_pdf  = np.array([hs_pdf, tp_pdf])
+        return x_pdf
 
     def jpdf(self, x):
         """
@@ -59,10 +184,10 @@ class Kvitebjorn(EnvBase):
         self._check_input(x)
         
         hs, tp = x
-        hs_pdf = np.squeeze(self._hs_pdf(hs))
-        tp_pdf = np.squeeze(self._tp_pdf(tp, hs))
-        y = np.array([hs_pdf, tp_pdf])
-        return y
+        hs_pdf = self.dist_hs.pdf(hs)
+        tp_pdf = self.dist_tp.pdf(hs, tp)
+        x_pdf  = hs_pdf * tp_pdf
+        return x_pdf
 
     def cdf(self, x):
         """
@@ -74,8 +199,8 @@ class Kvitebjorn(EnvBase):
         """
         self._check_input(x)
         hs, tp = x
-        hs_cdf = np.squeeze(self._hs_cdf(hs))
-        tp_cdf = np.squeeze(self._tp_cdf(tp, hs))
+        hs_cdf = self.dist_hs.cdf(hs)
+        tp_cdf = self.dist_tp.cdf(hs, tp)
         y      = np.array([hs_cdf, tp_cdf])
         return y
 
@@ -89,8 +214,8 @@ class Kvitebjorn(EnvBase):
         """
         self._check_input(x)
         hs, tp = x
-        hs_cdf = np.squeeze(self._hs_cdf(hs))
-        tp_cdf = np.squeeze(self._tp_cdf(tp, hs))
+        hs_cdf = self.dist_hs.cdf(hs)
+        tp_cdf = self.dist_tp.cdf(hs, tp)
         y      = hs_cdf * tp_cdf
         return y
 
@@ -105,8 +230,8 @@ class Kvitebjorn(EnvBase):
         assert np.amin(u).all() >= 0
         assert np.amax(u).all() <= 1
 
-        hs = self.dist_Hs_ppf(u[0])
-        tp = self.dist_Tp_ppf(hs, u[1])
+        hs = self.dist_hs.ppf(u[0])
+        tp = self.dist_tp.ppf(hs, u[1])
         return np.array([hs, tp])
 
     def rvs(self, size=None):
@@ -114,11 +239,10 @@ class Kvitebjorn(EnvBase):
         Generate random sample for Kvitebjørn
 
         """
-        n = int(size)
         ### generate n random Hs
-        hs= self.dist_Hs_rvs(n)
+        hs= self.dist_hs.rvs(size=size)
         ### generate n random Tp given above Hs
-        tp= self.dist_Tp_rvs(hs, n)
+        tp= self.dist_tp.rvs(hs, size=size)
         res = np.array([hs, tp])
         return res
 
@@ -152,140 +276,15 @@ class Kvitebjorn(EnvBase):
         """
         prob_fail   = T/(P * 365.25*24*3600)
         beta        = -stats.norm().ppf(prob_fail) ## reliability index
-        u1 = stats.norm().ppf(self.dist_Hs_cdf(hs))
+        u1 = stats.norm().ppf(self.dist_hs.cdf(hs))
         u2 = np.sqrt(beta**2 - u1**2)
-        tp = self.dist_Tp_ppf(hs, stats.norm.cdf(u2))
+        tp = self.dist_tp.ppf(hs, stats.norm.cdf(u2))
         res = np.array([hs, tp])
         return res
 
 
 # Sequence of conditional distributions based on Rosenblatt transformation 
-    def dist_Hs(self, x, key='value'):
-        """
-        Return Hs distribution based on x value
-        For Kvitebjorn, Hs distribution is a piecewise distribution 
-        connected at Hs = H0 or ppf_Hs = ppf_h0 (icdf_h0)
 
-        key = 'value'
-        dist_Hs = dist1 if x < h0
-                = dist2 if x > h0
-        or 
-
-        dist_hs = dist1 if cdf_x < ppf_h0
-                = dist2 if cdf_x > ppf_h0
-
-        key = 'ppf'
-           - value: physical value of Hs
-           - ppf: point percentile value of Hs
-        """
-        mu_Hs    = 0.77
-        sigma_Hs = 0.6565
-        dist1    = stats.lognorm(s=sigma_Hs, scale=np.exp(mu_Hs))
-        Hs_shape = 1.503
-        Hs_scale = 2.691
-        dist2    = stats.weibull_min(c=Hs_shape, scale=Hs_scale)
-        h0       = 2.9
-        ppf_h0   = dist1.cdf(h0)
-
-        if key.lower() == 'value':
-            dist = dist1 if x <= h0 else dist2
-        elif key.lower() == 'ppf':
-            dist = dsit1 if x <= ppf_h0 else dist2
-
-        else:
-            raise ValueError('Key value: {} is not defined'.format(key))
-
-    def dist_Hs_rvs(self, size):
-        n = int(size)
-        ### generate n random Hs
-        u = stats.uniform(0,1).rvs(size=n)
-        hs= self.dist_Hs_ppf(u)
-        return hs
-
-    def dist_Hs_ppf(self, u):
-        """
-        Return Hs samples corresponding ppf values u
-        """
-
-        mu_Hs    = 0.77
-        sigma_Hs = 0.6565
-        Hs_shape = 1.503
-        Hs_scale = 2.691
-        h0       = 2.9
-
-        u = np.array(u,ndmin=1)
-        assert (min(u) >=0).all() and (max(u) <=1).all(), 'CDF values should be in range [0,1]'
-        samples1 = stats.lognorm.ppf(u, s=sigma_Hs, loc=0, scale=np.exp(mu_Hs))
-        samples2 = stats.weibull_min.ppf(u, c=Hs_shape, loc=0, scale=Hs_scale) #0 #Hs_scale * (-np.log(1-u)) **(1/Hs_shape)
-        samples_hs = np.where(samples1<=h0,samples1, samples2)
-
-        return np.squeeze(samples_hs)
-
-    def dist_Hs_cdf(self, hs):
-        """
-        Return Hs samples corresponding ppf values u
-        """
-
-        mu_Hs    = 0.77
-        sigma_Hs = 0.6565
-        Hs_shape = 1.503
-        Hs_scale = 2.691
-        h0       = 2.9
-
-        hs      = np.array(hs,ndmin=1)
-        hs_cdf1 = stats.lognorm.cdf(hs, s=sigma_Hs, loc=0, scale=np.exp(mu_Hs))
-        hs_cdf2 = stats.weibull_min.cdf(hs, c=Hs_shape, loc=0, scale=Hs_scale) #0 #Hs_scale * (-np.log(1-u)) **(1/Hs_shape)
-        hs_cdf  = np.where(hs<=h0,hs_cdf1, hs_cdf2)
-
-        return np.squeeze(hs_cdf)
-
-
-
-
-    def dist_Tp(self, Hs):
-        a1 = 1.134
-        a2 = 0.892
-        a3 = 0.225
-        b1 = 0.005
-        b2 = 0.120
-        b3 = 0.455
-        mu_tp = a1 + a2* Hs**a3 
-        sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*Hs))
-        return stats.lognorm(sigma_tp, scale=np.exp(mu_tp))
-
-    def dist_Tp_rvs(self, hs, size):
-        n = int(size)
-        ### generate n random Hs
-        u = stats.uniform(0,1).rvs(size=n)
-        hs= self.dist_Tp_ppf(hs, u)
-        return hs
-
-    def dist_Tp_ppf(self, hs, u):
-        """
-        Generate Tp sample values based on given Hs values:
-        """
-        a1 = 1.134
-        a2 = 0.892
-        a3 = 0.225
-        b1 = 0.005
-        b2 = 0.120
-        b3 = 0.455
-        mu_tp    = a1 + a2* hs**a3 
-        sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*hs))
-        tp       = stats.lognorm.ppf(u, s=sigma_tp, loc=0, scale=np.exp(mu_tp))
-        return tp 
-
-    def dist_Tp_cdf(self, hs, tp):
-        a1 = 1.134
-        a2 = 0.892
-        a3 = 0.225
-        b1 = 0.005
-        b2 = 0.120
-        b3 = 0.455
-        mu_tp    = a1 + a2* hs**a3 
-        sigma_tp = np.sqrt(b1 + b2*np.exp(-b3*hs))
-        u = stats.lognorm.cdf(tp, s=sigma_tp, loc=0, scale=np.exp(mu_tp))
-        return u 
 
     def _make_circles(self, r,n=100):
         """
@@ -303,48 +302,7 @@ class Kvitebjorn(EnvBase):
         x = r * np.cos(t)
         y = r * np.sin(t)
         return np.hstack((x, y)).T
-    def _hs_pdf(self, hs):
-        """
-        Return pdf value for give hs
-        """
-        mu_Hs    = 0.77
-        sigma_Hs = 0.6565
-        Hs_shape = 1.503
-        Hs_scale = 2.691
-        h0       = 2.9
-
-        hs1_pdf = stats.lognorm.pdf(hs, s=sigma_Hs, loc=0, scale=np.exp(mu_Hs)) 
-        hs2_pdf = stats.weibull_min.pdf(hs, c=Hs_shape, scale=Hs_scale) 
-        pdf  = np.where(hs<=h0, hs1_pdf, hs2_pdf)
-        return pdf
-
-    def _tp_pdf(self, tp, hs):
-        res = np.array([self.dist_Tp(ihs).pdf(itp) for itp, ihs in zip(tp, hs)])
-        # res = np.where(res==np.NaN, 1, res)
-        return res
-
-    def _hs_cdf(self, hs):
-        """
-        Return pdf value for give hs
-        """
-        mu_Hs    = 0.77
-        sigma_Hs = 0.6565
-        Hs_shape = 1.503
-        Hs_scale = 2.691
-        h0       = 2.9
-
-        hs1_cdf = stats.lognorm.cdf(hs, s=sigma_Hs, loc=0, scale=np.exp(mu_Hs)) 
-        hs2_cdf = stats.weibull_min.cdf(hs, c=Hs_shape, scale=Hs_scale) 
-        hs_cdf  = np.where(hs<=h0, hs1_cdf, hs2_cdf)
-        return hs_cdf
-
-    def _tp_cdf(self, tp, hs):
-        res = np.array([self.dist_Tp(ihs).cdf(itp) for itp, ihs in zip(tp, hs)])
-        res = np.where(res==np.NaN, 1, res)
-        return res
-
 
     def _check_input(self, x):
-
         if x.shape[0] != self.ndim:
             raise ValueError('Kvitebjørn site expects two random variables (Hs, Tp), but {:d} were given'.format(x.shape[0]))
