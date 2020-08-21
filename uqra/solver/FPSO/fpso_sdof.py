@@ -51,7 +51,7 @@ class FPSO(SolverBase):
         if self.random_states is None:
             self.random_states = [None,]
         elif np.ndim(self.random_states) == 0:
-            self.random_states = [self.random_states,]
+            self.random_states = [RANDOM_SEEDS[self.random_states],]
         elif np.ndim(self.random_states) == 1:
             self.random_states = [RANDOM_SEEDS[istate] for istate in self.random_states] 
         else:
@@ -83,31 +83,23 @@ class FPSO(SolverBase):
         message = message1 + message2
         return message
 
-    def run(self, x, data_dir=None, verbose=False, save_raw=False, save_qoi=False):
+    def run(self, x, verbose=False, **kwargs):
         """
         Runing FPSO surge time series with second diff force
         Arguments:
             x, ndarray of shape (2, n)
         """
-        data_dir  = os.getcwd() if data_dir is None else data_dir
         x = np.array(x.T, copy=False, ndmin=2)
+        random_states = kwargs['random_state', self.random_states]
         y = []
-        for irandom_state in self.random_states:
+        for irandom_state in random_states:
             if not verbose: 
                 uqra.blockPrint()
-            if save_raw:
-                raise NotImplementedError
-            else:
-                with mp.Pool(processes=mp.cpu_count()) as p:
-                    y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, irandom_state) for ix in x]),
-                        ncols=80, desc=' {}/{:d}'.format(irandom_state, self.n_short_term), total=x.shape[0])))
+            with mp.Pool(processes=mp.cpu_count()) as p:
+                y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, irandom_state) for ix in x]),
+                    ncols=80, desc=' {}/{:d}'.format(irandom_state, self.n_short_term), total=x.shape[0])))
             if not verbose: 
                 uqra.enablePrint()
-
-            if save_qoi:
-                filename = '{:s}_yQoI_ST{}'.format(self.nickname,irandom_state)
-                np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
-
             y.append(y_QoI_)
         return np.squeeze(y)
 
