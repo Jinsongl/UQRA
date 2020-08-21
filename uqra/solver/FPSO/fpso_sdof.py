@@ -232,10 +232,7 @@ class FPSO(SolverBase):
         # Gmax = np.max(y_t[int(200/dt):])
 
         X = -Nt * np.real(np.fft.ifft(Z, Nt)) 
-        print(X[:10])
-        print(X[41878:41888])
         Gmax = np.max(X[:41888]) 
-        print(Gmax)
         return Gmax
 
         # for xx=160:-1:1
