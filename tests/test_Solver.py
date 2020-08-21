@@ -195,9 +195,9 @@ class BasicTestSuite(unittest.TestCase):
             # np.save(os.path.join(data_dir_destn, filename), y_QoI)
 
     def test_FPSO(self):
-        solver = uqra.FPSO(phase=np.arange(20))
-        data_dir_samples= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
-        data_dir_result = os.path.join(r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/', solver.nickname)
+        # solver = uqra.FPSO(phase=np.arange(20))
+        # data_dir_samples= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
+        # data_dir_result = os.path.join(r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/', solver.nickname)
         # data_dir_samples= r'/home/jinsong/Documents/MUSE_UQ_DATA/Samples'
         # data_dir_result = r'/home/jinsong/Documents/MUSE_UQ_DATA/FPSO_SDOF'
         Kvitebjorn      = uqra.environment.Kvitebjorn()
@@ -205,15 +205,26 @@ class BasicTestSuite(unittest.TestCase):
         radius_surrogate= 3
         short_term_seeds_applied = np.setdiff1d(np.arange(11), np.array([]))
 
-        ## ------------------------ Basic Check ----------------- ###
-        # solver = uqra.FPSO(phase=list(range(0,4)))
+        # ------------------------ Basic Check ----------------- ###
+        # solver = uqra.FPSO()
         # x = np.array([2,4]).reshape(2,-1)
         # y = solver.run(x) 
         # print('Hs = {}, Tp={}'.format(np.around(x[0]), np.around(x[1])))
 
+        ## ------------------------ LHS ----------------- ###
+        # n_initial = 20
+        # solver    = uqra.FPSO(phase=np.arange(20))
+        # Kvitebjorn= uqra.environment.Kvitebjorn()
+        # doe   = uqra.LHS([stats.norm(),] * solver.ndim)
+        # u_lhs = doe.samples(size=n_initial, loc=0, scale=1, random_state=100)
+        # x_lhs = Kvitebjorn.ppf(stats.norm.cdf(u_lhs)) 
+        # y_lhs = solver.run(x_lhs)
+        # print(y_lhs.shape)
+        # data_lhs = np.concatenate((u_lhs, x_lhs, y_lhs), axis=0)
+        # np.save(os.path.join(data_dir_result, '{:s}_DoE_Lhs.npy'), data_lhs)
         ## ------------------------ MCS  ----------------- ###
-        ## MCS for DoE_McsE7R0
-        # solver = uqra.FPSO(phase=np.arange(1))
+        # MCS for DoE_McsE7R0
+        solver = uqra.FPSO(random_state = None)
         # data_mcs_u = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R0.npy'))[:solver.ndim, :int(1e5)]
         # data_mcs_x = Kvitebjorn.ppf(stats.norm.cdf(data_mcs_u))
         # y = solver.run(data_mcs_x, verbose=True) 
@@ -222,27 +233,27 @@ class BasicTestSuite(unittest.TestCase):
         # print('Hs = {:.2f}, Tp={:.2f}'.format(x[0,0], x[1,0]))
 
         
-        # for s in range(10):
-            # solver = uqra.FPSO(phase=[s,])
-            # data_mcs_u = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R{:d}.npy'.format(s)))
-            # data_mcs_u = data_mcs_u[:solver.ndim, :int(1e6)]
-            # data_mcs_x = Kvitebjorn.ppf(stats.norm.cdf(data_mcs_u))
-            # y = solver.run(data_mcs_x, verbose=True) 
-            # data = np.concatenate((data_mcs_u, data_mcs_x, y.reshape(1,-1)))
-            # np.save(os.path.join(data_dir_result, '{:s}_DoE_McsE6R{:d}.npy'.format(solver.nickname,s)), data)
+        for s in range(10):
+            solver = uqra.FPSO(phase=[s,])
+            data_mcs_u = np.load(os.path.join(data_dir_samples, 'MCS', 'Norm', 'DoE_McsE7R{:d}.npy'.format(s)))
+            data_mcs_u = data_mcs_u[:solver.ndim, :int(1e6)]
+            data_mcs_x = Kvitebjorn.ppf(stats.norm.cdf(data_mcs_u))
+            y = solver.run(data_mcs_x, verbose=True) 
+            data = np.concatenate((data_mcs_u, data_mcs_x, y.reshape(1,-1)))
+            np.save(os.path.join(data_dir_result, '{:s}_DoE_Norm_McsE6R{:d}.npy'.format(solver.nickname,s)), data)
 
         ## ------------------------ Environmental Contour ----------------- ###
-        data_ec = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/DoE_EC2D_T50.npy')
-        EC_u, EC_x = data_ec[:2], data_ec[2:]
-        EC_y = solver.run(EC_x, verbose=True) 
-        EC2D_median = np.median(EC_y, axis=0)
-        EC2D_data = np.concatenate((EC_u,EC_x,EC2D_median.reshape(1,-1)), axis=0)
-        y50_EC_idx = np.argmax(EC2D_median)
-        y50_EC     = EC2D_data[:,y50_EC_idx]
-        print('Extreme reponse from EC:')
-        print('   {}'.format(y50_EC))
-        np.save(os.path.join(data_dir_result, '{:s}_DoE_EC2D_T50.npy'.format(solver.nickname)  ), EC2D_data)
-        np.save(os.path.join(data_dir_result, '{:s}_DoE_EC2D_T50_y.npy'.format(solver.nickname)), EC_y)
+        # data_ec = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/DoE_EC2D_T50.npy')
+        # EC_u, EC_x = data_ec[:2], data_ec[2:]
+        # EC_y = solver.run(EC_x, verbose=True) 
+        # EC2D_median = np.median(EC_y, axis=0)
+        # EC2D_data = np.concatenate((EC_u,EC_x,EC2D_median.reshape(1,-1)), axis=0)
+        # y50_EC_idx = np.argmax(EC2D_median)
+        # y50_EC     = EC2D_data[:,y50_EC_idx]
+        # print('Extreme reponse from EC:')
+        # print('   {}'.format(y50_EC))
+        # np.save(os.path.join(data_dir_result, '{:s}_DoE_EC2D_T50.npy'.format(solver.nickname)  ), EC2D_data)
+        # np.save(os.path.join(data_dir_result, '{:s}_DoE_EC2D_T50_y.npy'.format(solver.nickname)), EC_y)
 
 
         ## ------------------------ Environmental Contour ----------------- ###
