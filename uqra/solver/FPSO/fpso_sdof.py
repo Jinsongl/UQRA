@@ -90,7 +90,7 @@ class FPSO(SolverBase):
             x, ndarray of shape (2, n)
         """
         x = np.array(x.T, copy=False, ndmin=2)
-        random_states = kwargs['random_state', self.random_states]
+        random_states = kwargs.get('random_state', self.random_states)
         y = []
         for irandom_state in random_states:
             if not verbose: 
