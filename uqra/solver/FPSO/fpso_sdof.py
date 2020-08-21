@@ -45,23 +45,32 @@ class FPSO(SolverBase):
         self.ndim       = int(2)
 
         np.random.seed(100)
-        phase_seeds         = np.random.randint(0, int(2**31-1), size=10000)
-        self.seeds_idx      = kwargs.get('phase', [0,])
-        self.phase_seeds    = [phase_seeds[idx] for idx in self.seeds_idx] 
-        self.n_short_term   = len(self.phase_seeds) 
-        self.out_responses  = kwargs.get('out_responses', 'ALL')
-        # self.t          = np.arange(0,int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
-        # self.f_hz       = np.arange(len(self.t)+1) *0.5/self.t[-1]
-        # self.w_rad      = 2 * np.pi * self.f_hz
+        RANDOM_SEEDS        = np.random.randint(0, int(2**31-1), size=10000)
 
+        self.random_states  = kwargs.get('random_state', None )
+        if self.random_states is None:
+            self.random_states = [None,]
+        elif np.ndim(self.random_states) == 0:
+            self.random_states = [self.random_states,]
+        elif np.ndim(self.random_states) == 1:
+            self.random_states = [RANDOM_SEEDS[istate] for istate in self.random_states] 
+        else:
+            raise ValueError('random_state {} not defined'.format(self.random_states))
+        try:
+            kwargs.pop('random_state')
+        except KeyError:
+            pass
+
+        self.n_short_term   = len(self.random_states) 
         self._load_freq_mat('freq_data.mat')
         self._FD_FPSO_LF()
+        if len(kwargs) > 0:
+            raise ValueError(' Unknown arguments: {} '.format(', '.join('"{}"'.format(key) for key in kwargs.keys())))
 
 
     def __str__(self):
         message1 = 'FPSO Surge: \n' +\
-                    '   - {:<25s} : {}\n'.format('n_short_term'  , self.n_short_term) +\
-                    '   - {:<25s} : {}\n'.format('out_responses'  , self.out_responses)
+                    '   - {:<25s} : {}\n'.format('n_short_term'  , self.n_short_term) 
 
         keys   = list(self.dict_rand_params.keys())
         value_names = [] 
@@ -74,7 +83,7 @@ class FPSO(SolverBase):
         message = message1 + message2
         return message
 
-    def run(self, x, out_responses=None, data_dir=None, verbose=False, save_raw=False, save_qoi=False):
+    def run(self, x, data_dir=None, verbose=False, save_raw=False, save_qoi=False):
         """
         Runing FPSO surge time series with second diff force
         Arguments:
@@ -83,20 +92,20 @@ class FPSO(SolverBase):
         data_dir  = os.getcwd() if data_dir is None else data_dir
         x = np.array(x.T, copy=False, ndmin=2)
         y = []
-        for iseed_idx, iseed in zip(self.seeds_idx, self.phase_seeds):
+        for irandom_state in self.random_states:
             if not verbose: 
                 uqra.blockPrint()
             if save_raw:
                 raise NotImplementedError
             else:
                 with mp.Pool(processes=mp.cpu_count()) as p:
-                    y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, iseed) for ix in x]),
-                        ncols=80, desc=' {:d}/{:d}'.format(iseed_idx, self.n_short_term), total=x.shape[0])))
+                    y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, irandom_state) for ix in x]),
+                        ncols=80, desc=' {}/{:d}'.format(irandom_state, self.n_short_term), total=x.shape[0])))
             if not verbose: 
                 uqra.enablePrint()
 
             if save_qoi:
-                filename = '{:s}_yQoI_nst{:d}'.format(self.nickname,iseed_idx)
+                filename = '{:s}_yQoI_ST{}'.format(self.nickname,irandom_state)
                 np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
 
             y.append(y_QoI_)
@@ -171,6 +180,7 @@ class FPSO(SolverBase):
         x_rand= np.random.normal(loc=0,scale=1.0, size=(1,2*N))
         Re    = x_rand[0,:N];
         Im    = x_rand[0,N:];
+
         A=(Re+1j*Im)*np.sqrt(self.dw*Snn)
         A[0] = 0
         # X_0 =-Nt*np.real(np.fft.ifft(A,Nt))
@@ -222,7 +232,10 @@ class FPSO(SolverBase):
         # Gmax = np.max(y_t[int(200/dt):])
 
         X = -Nt * np.real(np.fft.ifft(Z, Nt)) 
+        print(X[:10])
+        print(X[41878:41888])
         Gmax = np.max(X[:41888]) 
+        print(Gmax)
         return Gmax
 
         # for xx=160:-1:1
