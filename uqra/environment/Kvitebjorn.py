@@ -180,10 +180,10 @@ class Kvitebjorn(EnvBase):
         """
         mu_Hs    = 0.77
         sigma_Hs = 0.6565
-        dist1    = stats.lognorm(sigma_Hs, scale=np.exp(mu_Hs))
+        dist1    = stats.lognorm(s=sigma_Hs, scale=np.exp(mu_Hs))
         Hs_shape = 1.503
         Hs_scale = 2.691
-        dist2    = stats.Weibull(Hs_shape, scale=Hs_scale)
+        dist2    = stats.weibull_min(c=Hs_shape, scale=Hs_scale)
         h0       = 2.9
         ppf_h0   = dist1.cdf(h0)
 
