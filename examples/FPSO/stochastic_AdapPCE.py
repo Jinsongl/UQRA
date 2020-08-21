@@ -19,52 +19,67 @@ from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
-def map_domain_u2x(x_bounds, u_cdf):
+def inverse_rosenblatt(x_dist, u, x_range=None, u_dist=stats.norm()):
     """
     Map cdf values from [0,1] to truncated domain in X space 
 
-    x_bounds: boundary
-    u_cdf: ndarray of shape(solver.ndim, n)
+    x_range: boundary
+    u: ndarray of shape(solver.ndim, n)
 
     """
-    hs_square, tp_square= x_bounds
-    Kvitebjorn = uqra.environment.Kvitebjorn()
-    x= []
-    for iu1_cdf, iu2_cdf in u_cdf.T:
-        Fa, Fb  = Kvitebjorn.dist_Hs_cdf(hs_square[0]), Kvitebjorn.dist_Hs_cdf(hs_square[1])
-        ihs_cdf = iu1_cdf * (Fb - Fa) + Fa
-        ihs     = Kvitebjorn.dist_Hs_ppf(ihs_cdf)
+    if x_range is None:
+        u_cdf = u_dist.cdf(u)
+        x = x_dist.ppf(u_cdf)
+    else:
+        x_range = np.array(x_range, ndmin=2)
+        hs_range, tp_range = x_range
+        u_cdf   = u_dist.cdf(u) ## cdf values in truncated domain
 
-        Fa, Fb  = Kvitebjorn.dist_Tp_cdf(ihs, tp_square[0]), Kvitebjorn.dist_Tp_cdf(ihs, tp_square[1])
-        itp_cdf = iu2_cdf * (Fb - Fa) + Fa
-        itp     = Kvitebjorn.dist_Tp_ppf(ihs, itp_cdf)
-        
-        x.append([ihs, itp])
+        ## Hs not depend on any other x, return the Fa, Fb. the 1st row corresponds to hs
+        Fa_hs, Fb_hs = x_dist.cdf(x_range)[0] 
+        ## transform cdf values to non-truncated domain
+        u_cdf[0] = u_cdf[0] * (Fb_hs - Fa_hs) + Fa_hs
+        ## return hs
+        hs = x_dist.ppf(u_cdf)[0]  ## only Hs is correct, Tp is wrong
 
-    lhs_square = np.array(x).T
-    return lhs_square
+        ## Tp is conditional on Hs, need to find the Fa, Fb for [Tp1, Tp2] condition on each Hs
+        Fa_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
+        Fb_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
+        u_cdf[1] = u_cdf[1] * (Fb_tp - Fa_tp) + Fa_tp
 
-def map_domain_x2u(x_bounds, x):
+        x = x_dist.ppf(u_cdf)
+    return x 
+
+def rosenblatt(x_dist, x, x_range=None,  u_dist=stats.norm()):
     """
     Map values from truncated domain in X space to uspace 
 
-    x_bounds: boundary
-    u_cdf: ndarray of shape(solver.ndim, n)
+    x_range: boundary
+    u: ndarray of shape(solver.ndim, n)
 
     """
-    hs_square, tp_square= x_bounds
-    hs, tp  = x
-    Kvitebjorn = uqra.environment.Kvitebjorn()
-    x_cdf = Kvitebjorn.cdf(x)
-    u = []
-    for ihs, itp in x.T:
-        Fa, Fb  = Kvitebjorn.dist_Hs_cdf(hs_square[0]), Kvitebjorn.dist_Hs_cdf(hs_square[1])
-        iu1     = (Kvitebjorn.dist_Hs_cdf(ihs)- Fa) / (Fb - Fa) 
+    hs, tp  = np.array(x, ndmin=2)
 
-        Fa, Fb  = Kvitebjorn.dist_Tp_cdf(ihs, tp_square[0]), Kvitebjorn.dist_Tp_cdf(ihs, tp_square[1])
-        iu2     = (Kvitebjorn.dist_Tp_cdf(ihs, itp)- Fa) / (Fb - Fa) 
-        u.append([iu1, iu2])
-    u= np.array(u).T
+    if x_range is None:
+        x_cdf   = x_dist.cdf(x)
+        u       = u_dist.ppf(x_cdf)
+    else:
+        x_range = np.array(x_range, ndmin=2)
+        hs_range, tp_range = x_range
+
+        ## get the cdf values in non-truncate domain
+        x_cdf   = x_dist.cdf(x)
+        ## Hs not depend on any other x, return the Fa, Fb. the 1st row corresponds to hs
+        Fa_hs, Fb_hs = x_dist.cdf(x_range)[0] 
+        ## transform to cdf values in truncated domain
+        x_cdf[0] = (x_cdf[0] - Fa_hs)/(Fb_hs  - Fa_hs)
+
+        ## Tp is conditional on Hs, need to find the Fa, Fb for [Tp1, Tp2] condition on each Hs
+        Fa_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
+        Fb_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
+        x_cdf[1] = (x_cdf[1] - Fa_tp)/(Fb_tp  - Fa_tp)
+
+        u = u_dist.ppf(x_cdf)
     return u 
 
 def get_pts_inside_square(x, center=[0,0], edges=[1,1]):
@@ -131,19 +146,19 @@ def main(theta):
     simparams.n_test     = int(1e6)
     simparams.n_pred     = int(1e6)
     simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = 'D'# 'D', 'S', None
+    simparams.optimality = 'S'# 'D', 'S', None
     simparams.poly_type  = 'leg'
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
     alphas               = 1.2
     simparams.update()
     n_initial = 20
-    hs_truncate = np.array([9,16])
-    tp_truncate = np.array([9,20])
-    F_truncate  = Kvitebjorn.cdf(np.array([hs_truncate, tp_truncate]))
-    F_truncate  = [F_truncate[:,0].reshape(solver.ndim, 1), F_truncate[:,1].reshape(solver.ndim, 1)]
-    x_square_center = np.mean([hs_truncate, tp_truncate], axis=1)
-    x_square_edges  = np.array([hs_truncate[1] - hs_truncate[0],tp_truncate[1] - tp_truncate[0]])
+    hs_range = [9,16]
+    tp_range = [9,20]
+    x_range  = [hs_range, tp_range]
+    x_square_center = np.mean([hs_range, tp_range], axis=1)
+    x_square_edges  = np.array([hs_range[1] - hs_range[0],tp_range[1] - tp_range[0]])
+    u_dist   = stats.uniform(-1,2)
 
     print('------------------------------------------------------------')
     print('>>> Model: {:s}, Short-term simulation (n={:d})  '.format(solver.nickname, theta))
@@ -159,7 +174,7 @@ def main(theta):
     y_test      = data_test[-1]
     x_test_idx  = get_pts_inside_square(x_test, center=x_square_center, edges=x_square_edges)
     x_test      = x_test[:, x_test_idx]
-    u_test      = map_domain_x2u([hs_truncate, tp_truncate], x_test)
+    u_test      = rosenblatt(Kvitebjorn, x_test, x_range=x_range, u_dist=u_dist)
     y_test      = y_test[   x_test_idx]
 
     print('   - {:<25s} : {}, {}, {}'.format('Test Dataset (U,X,Y)', u_test.shape, x_test.shape, y_test.shape ))
@@ -170,12 +185,12 @@ def main(theta):
     ## ----------- Predict data set ----------- ###
     ## ----- Prediction data set centered around u_center, all  
     filename    = 'DoE_McsE7R{:d}.npy'.format(theta)
-    mcs_data    = np.load(os.path.join(simparams.data_dir_sample,'MCS', 'Uniform', filename))
+    mcs_data    = np.load(os.path.join(simparams.data_dir_sample,'MCS', u_dist.dist.name.capitalize(), filename))
     u_pred      = mcs_data[:solver.ndim, :simparams.n_pred] 
-    x_pred      = Kvitebjorn.ppf(stats.uniform(-1,2).cdf(u_pred))
+    x_pred      = Kvitebjorn.ppf(u_dist.cdf(u_pred))
     x_pred_idx  = get_pts_inside_square(x_pred, center=x_square_center, edges=x_square_edges)
     x_pred      = x_pred[:, x_pred_idx]
-    u_pred      = map_domain_x2u([hs_truncate, tp_truncate], x_pred)
+    u_pred      = rosenblatt(Kvitebjorn, x_pred, x_range=x_range, u_dist=u_dist)
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
@@ -194,7 +209,7 @@ def main(theta):
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
 
     elif simparams.doe_method.lower().startswith('mcs'):
-        filename = os.path.join(simparams.data_dir_sample, 'MCS','Uniform','DoE_McsE7R0.npy')
+        filename = os.path.join(simparams.data_dir_sample, 'MCS', u_dist.dist.name.capitalize(),'DoE_McsE7R0.npy')
         # filename = os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R{:d}.npy'.format(theta))
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
     ### ============ Initial Values ============
@@ -204,12 +219,12 @@ def main(theta):
 
     ## Initialize u_train with LHS 
     if simparams.doe_method.lower().startswith('mcs'):
-        doe     = uqra.LHS([stats.uniform(-1,2),]*solver.ndim)
+        doe     = uqra.LHS([u_dist,]*solver.ndim)
         u_train = doe.samples(size=n_initial, random_state=100)  ## u_i ~ [-1, 1]
     elif simparams.doe_method.lower().startswith('cls'):
         u_train = u_cand[:, :n_initial]
     ## mapping points to the square in X space
-    x_train = map_domain_u2x([hs_truncate, tp_truncate], stats.uniform(-1,2).cdf(u_train))
+    x_train = inverse_rosenblatt(Kvitebjorn, u_train, x_range=x_range, u_dist=u_dist)
     ## mapping points to physical space
     y_train = solver.run(x_train)
 
@@ -261,7 +276,7 @@ def main(theta):
                 active_basis=pce_model.active_basis)
         # u_train_normal = u_train_new * u_square_vertice + u_square_center
         # x_train_new = Kvitebjorn.ppf(stats.norm.cdf(u_train_normal))
-        x_train_new = map_domain_u2x([hs_truncate, tp_truncate], stats.uniform(-1,2).cdf(u_train_new))
+        x_train_new = inverse_rosenblatt(Kvitebjorn, u_train_new, x_range=x_range, u_dist=u_dist)
         y_train_new = solver.run(x_train_new)
         u_train = np.hstack((u_train, u_train_new)) 
         x_train = np.hstack((x_train, x_train_new)) 
