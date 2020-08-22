@@ -150,7 +150,7 @@ def main(theta):
     # simparams.u_dist   = stats.uniform(-1,2)
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    alphas  = 1.2
+    alphas  = 1
     simparams.update()
     n_initial = 20
     # hs_range = [9,16]
@@ -268,8 +268,7 @@ def main(theta):
         print('       Active Index: {}'.format(pce_model.active_index))
         print('     > 2. Getting new training data ...')
         pce_model_sparsity = pce_model.sparsity 
-        # n_train_new = int(alphas*pce_model.num_basis)
-        n_train_new = min(int(alphas*pce_model.num_basis), pce_model_sparsity)
+        n_train_new = int(alphas*pce_model_sparsity)
         tqdm.write('    > {}:{}; Basis: {}/{}; #samples = {:d}'.format(
             'Sampling', simparams.optimality, pce_model_sparsity, pce_model.num_basis, n_train_new ))
 
