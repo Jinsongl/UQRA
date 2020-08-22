@@ -100,22 +100,22 @@ def get_pts_inside_square(x, center=[0,0], edges=[1,1]):
 
 def get_basis(deg, simparams, solver):
     if simparams.doe_method.lower().startswith('mcs'):
-        if simparams.poly_type.lower() == 'leg':
+        if simparams.u_dist.dist.name == 'uniform':
             print(' Legendre polynomial')
             basis = uqra.Legendre(d=solver.ndim, deg=deg)
 
-        elif simparams.poly_type.lower().startswith('hem'):
+        elif simparams.u_dist.dist.name == 'norm':
             print(' Probabilists Hermite polynomial')
             basis = uqra.Hermite(d=solver.ndim,deg=deg, hem_type='probabilists')
         else:
             raise ValueError 
 
     elif simparams.doe_method.lower().startswith('cls'):
-        if simparams.poly_type.lower() == 'leg':
+        if simparams.u_dist.dist.name == 'uniform':
             print(' Legendre polynomial')
             basis = uqra.Legendre(d=solver.ndim,deg=deg)
 
-        elif simparams.poly_type.lower().startswith('hem'):
+        elif simparams.u_dist.dist.name == 'norm':
             print(' Probabilists Hermite polynomial')
             basis = uqra.Hermite(d=solver.ndim,deg=deg, hem_type='physicists')
         else:
@@ -126,7 +126,6 @@ def get_basis(deg, simparams, solver):
     return basis 
 
 def main(theta):
-
     ## ------------------------ Displaying set up ------------------- ###
     np.random.seed(100)
     np.set_printoptions(precision=4)
@@ -147,18 +146,20 @@ def main(theta):
     simparams.n_pred     = int(1e6)
     simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
     simparams.optimality = 'S'# 'D', 'S', None
-    simparams.poly_type  = 'leg'
+    simparams.u_dist     = stats.norm(0,1)
+    # simparams.u_dist   = stats.uniform(-1,2)
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    alphas               = 1.2
+    alphas  = 1.2
     simparams.update()
     n_initial = 20
-    hs_range = [9,16]
-    tp_range = [9,20]
+    # hs_range = [9,16]
+    # tp_range = [9,20]
+    hs_range = [0,20]
+    tp_range = [0,40]
     x_range  = [hs_range, tp_range]
     x_square_center = np.mean([hs_range, tp_range], axis=1)
     x_square_edges  = np.array([hs_range[1] - hs_range[0],tp_range[1] - tp_range[0]])
-    u_dist   = stats.uniform(-1,2)
 
     print('------------------------------------------------------------')
     print('>>> Model: {:s}, Short-term simulation (n={:d})  '.format(solver.nickname, theta))
@@ -174,7 +175,7 @@ def main(theta):
     y_test      = data_test[-1]
     x_test_idx  = get_pts_inside_square(x_test, center=x_square_center, edges=x_square_edges)
     x_test      = x_test[:, x_test_idx]
-    u_test      = rosenblatt(Kvitebjorn, x_test, x_range=x_range, u_dist=u_dist)
+    u_test      = rosenblatt(Kvitebjorn, x_test, x_range=x_range, u_dist=simparams.u_dist)
     y_test      = y_test[   x_test_idx]
 
     print('   - {:<25s} : {}, {}, {}'.format('Test Dataset (U,X,Y)', u_test.shape, x_test.shape, y_test.shape ))
@@ -185,12 +186,12 @@ def main(theta):
     ## ----------- Predict data set ----------- ###
     ## ----- Prediction data set centered around u_center, all  
     filename    = 'DoE_McsE7R{:d}.npy'.format(theta)
-    mcs_data    = np.load(os.path.join(simparams.data_dir_sample,'MCS', u_dist.dist.name.capitalize(), filename))
+    mcs_data    = np.load(os.path.join(simparams.data_dir_sample,'MCS', simparams.u_dist.dist.name.capitalize(), filename))
     u_pred      = mcs_data[:solver.ndim, :simparams.n_pred] 
-    x_pred      = Kvitebjorn.ppf(u_dist.cdf(u_pred))
+    x_pred      = Kvitebjorn.ppf(simparams.u_dist.cdf(u_pred))
     x_pred_idx  = get_pts_inside_square(x_pred, center=x_square_center, edges=x_square_edges)
     x_pred      = x_pred[:, x_pred_idx]
-    u_pred      = rosenblatt(Kvitebjorn, x_pred, x_range=x_range, u_dist=u_dist)
+    u_pred      = rosenblatt(Kvitebjorn, x_pred, x_range=x_range, u_dist=simparams.u_dist)
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
@@ -209,7 +210,7 @@ def main(theta):
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
 
     elif simparams.doe_method.lower().startswith('mcs'):
-        filename = os.path.join(simparams.data_dir_sample, 'MCS', u_dist.dist.name.capitalize(),'DoE_McsE7R0.npy')
+        filename = os.path.join(simparams.data_dir_sample, 'MCS', simparams.u_dist.dist.name.capitalize(),'DoE_McsE7R0.npy')
         # filename = os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R{:d}.npy'.format(theta))
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
     ### ============ Initial Values ============
@@ -219,12 +220,12 @@ def main(theta):
 
     ## Initialize u_train with LHS 
     if simparams.doe_method.lower().startswith('mcs'):
-        doe     = uqra.LHS([u_dist,]*solver.ndim)
+        doe     = uqra.LHS([simparams.u_dist,]*solver.ndim)
         u_train = doe.samples(size=n_initial, random_state=100)  ## u_i ~ [-1, 1]
     elif simparams.doe_method.lower().startswith('cls'):
         u_train = u_cand[:, :n_initial]
     ## mapping points to the square in X space
-    x_train = inverse_rosenblatt(Kvitebjorn, u_train, x_range=x_range, u_dist=u_dist)
+    x_train = inverse_rosenblatt(Kvitebjorn, u_train, x_range=x_range, u_dist=simparams.u_dist)
     ## mapping points to physical space
     y_train = solver.run(x_train)
 
@@ -276,7 +277,7 @@ def main(theta):
                 active_basis=pce_model.active_basis)
         # u_train_normal = u_train_new * u_square_vertice + u_square_center
         # x_train_new = Kvitebjorn.ppf(stats.norm.cdf(u_train_normal))
-        x_train_new = inverse_rosenblatt(Kvitebjorn, u_train_new, x_range=x_range, u_dist=u_dist)
+        x_train_new = inverse_rosenblatt(Kvitebjorn, u_train_new, x_range=x_range, u_dist=simparams.u_dist)
         y_train_new = solver.run(x_train_new)
         u_train = np.hstack((u_train, u_train_new)) 
         x_train = np.hstack((x_train, x_train_new)) 
@@ -285,7 +286,7 @@ def main(theta):
         # print(bias_weight)
         U_train = pce_model.basis.vandermonde(u_train)
         if simparams.doe_method.lower().startswith('cls'):
-            w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.active_index)
+            w_train = modeling.cal_cls_weight(u_train, pce_model.basis, active_index=pce_model.active_index)
             U_train = U_train[:, pce_model.active_index]
             U_train = modeling.rescale_data(U_train, w_train) 
         else:
@@ -308,7 +309,6 @@ def main(theta):
         print('   - {:<25s} : [{}]'.format('Train [min(Y), max(Y)]',np.array([np.amin(y_train),np.amax(y_train)])))
 
         y_train_hat = pce_model.predict(u_train)
-        # u_test_     = (u_test - u_square_center)/ u_square_vertice
         y_test_hat  = pce_model.predict(u_test)
         train_error = uqra.metrics.mean_squared_error(y_train, y_train_hat, squared=False)
         test_error  = uqra.metrics.mean_squared_error(y_test , y_test_hat , squared=False)
@@ -336,9 +336,9 @@ def main(theta):
         tqdm.write(' > Summary')
         with np.printoptions(precision=4):
             tqdm.write('     - {:<15s} : {}'.format( 'y50_pce_y' , np.array(metrics_each_deg)[-1:,-1]))
-            tqdm.write('     - {:<15s} : {}'.format( 'Test MSE ' , np.array(metrics_each_deg)[-1:, 3]))
-            tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(metrics_each_deg)[-1:, 2]))
-            tqdm.write('     - {:<15s} : {}'.format( 'Design state', np.array(metrics_each_deg)[-1:,6:8]))
+            tqdm.write('     - {:<15s} : {}'.format( 'Train MSE' , np.array(metrics_each_deg)[-1:, 2]))
+            tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(metrics_each_deg)[-1:, 3]))
+            tqdm.write('     - {:<15s} : {}'.format( 'Test MSE ' , np.array(metrics_each_deg)[-1:, 4]))
             tqdm.write('     - {:<15s} : {:.2f}-> {:.2f}'.format( 'kappa ' , kappa0, kappa))
             tqdm.write('     ----------------------------------------')
 
@@ -364,7 +364,7 @@ def main(theta):
     ### ============ Saving QoIs ============
     metrics_each_deg = np.array(metrics_each_deg)
     with open(os.path.join(simparams.data_dir_result, 'outlist_name.txt'), "w") as text_file:
-        text_file.write(','.join(
+        text_file.write(', '.join(
             ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
 
     filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
