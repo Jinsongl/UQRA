@@ -112,10 +112,10 @@ class DistTp(object):
         self.dist = stats.lognorm(s=1)
 
     def rvs(self, hs, size=1):
-        assert np.array_equal(np.array(hs.shape), np.array(size)) 
         mu_tp    = self.a1 + self.a2* hs**self.a3 
         sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*hs))
-        tp       = stats.lognorm.rvs(sigma_tp, loc=0, scale=np.exp(mu_tp), size=1)
+        tp       = stats.lognorm.rvs(sigma_tp, loc=0, scale=np.exp(mu_tp), size=[size,hs.size])
+        tp       = np.squeeze(tp)
         assert hs.shape == tp.shape
         return tp 
 
@@ -242,7 +242,7 @@ class Kvitebjorn(EnvBase):
         ### generate n random Hs
         hs= self.dist_hs.rvs(size=size)
         ### generate n random Tp given above Hs
-        tp= self.dist_tp.rvs(hs, size=size)
+        tp= self.dist_tp.rvs(hs, size=1)
         res = np.array([hs, tp])
         return res
 
