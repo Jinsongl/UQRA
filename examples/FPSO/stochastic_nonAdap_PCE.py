@@ -19,24 +19,103 @@ from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
+def inverse_rosenblatt(x_dist, u, x_range=None, u_dist=stats.norm()):
+    """
+    Map cdf values from [0,1] to truncated domain in X space 
+
+    x_range: boundary
+    u: ndarray of shape(solver.ndim, n)
+
+    """
+    if x_range is None:
+        u_cdf = u_dist.cdf(u)
+        x = x_dist.ppf(u_cdf)
+    else:
+        x_range = np.array(x_range, ndmin=2)
+        hs_range, tp_range = x_range
+        u_cdf   = u_dist.cdf(u) ## cdf values in truncated domain
+
+        ## Hs not depend on any other x, return the Fa, Fb. the 1st row corresponds to hs
+        Fa_hs, Fb_hs = x_dist.cdf(x_range)[0] 
+        ## transform cdf values to non-truncated domain
+        u_cdf[0] = u_cdf[0] * (Fb_hs - Fa_hs) + Fa_hs
+        ## return hs
+        hs = x_dist.ppf(u_cdf)[0]  ## only Hs is correct, Tp is wrong
+
+        ## Tp is conditional on Hs, need to find the Fa, Fb for [Tp1, Tp2] condition on each Hs
+        Fa_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
+        Fb_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
+        u_cdf[1] = u_cdf[1] * (Fb_tp - Fa_tp) + Fa_tp
+
+        x = x_dist.ppf(u_cdf)
+    return x 
+
+def rosenblatt(x_dist, x, x_range=None,  u_dist=stats.norm()):
+    """
+    Map values from truncated domain in X space to uspace 
+
+    x_range: boundary
+    u: ndarray of shape(solver.ndim, n)
+
+    """
+    hs, tp  = np.array(x, ndmin=2)
+
+    if x_range is None:
+        x_cdf   = x_dist.cdf(x)
+        u       = u_dist.ppf(x_cdf)
+    else:
+        x_range = np.array(x_range, ndmin=2)
+        hs_range, tp_range = x_range
+
+        ## get the cdf values in non-truncate domain
+        x_cdf   = x_dist.cdf(x)
+        ## Hs not depend on any other x, return the Fa, Fb. the 1st row corresponds to hs
+        Fa_hs, Fb_hs = x_dist.cdf(x_range)[0] 
+        ## transform to cdf values in truncated domain
+        x_cdf[0] = (x_cdf[0] - Fa_hs)/(Fb_hs  - Fa_hs)
+
+        ## Tp is conditional on Hs, need to find the Fa, Fb for [Tp1, Tp2] condition on each Hs
+        Fa_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
+        Fb_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
+        x_cdf[1] = (x_cdf[1] - Fa_tp)/(Fb_tp  - Fa_tp)
+
+        u = u_dist.ppf(x_cdf)
+    return u 
+
+def get_pts_inside_square(x, center=[0,0], edges=[1,1]):
+    """
+    return coordinates of points inside the defined square
+    """
+    x = np.array(x, ndmin=2)
+    center = np.squeeze(center)
+    edges = np.squeeze(edges)
+    m, n = x.shape
+    
+    center = np.array(center).reshape(m, -1)
+    x = x - center
+    idx1 = abs(x[0]) <= abs(edges[0]/2)  
+    idx2 = abs(x[1]) <= abs(edges[1]/2)
+    idx  = np.logical_and(idx1,idx2)
+    return idx
+
 def get_basis(deg, simparams, solver):
     if simparams.doe_method.lower().startswith('mcs'):
-        if simparams.poly_type.lower() == 'leg':
+        if simparams.u_dist.dist.name == 'uniform':
             print(' Legendre polynomial')
             basis = uqra.Legendre(d=solver.ndim, deg=deg)
 
-        elif simparams.poly_type.lower().startswith('hem'):
+        elif simparams.u_dist.dist.name == 'norm':
             print(' Probabilists Hermite polynomial')
             basis = uqra.Hermite(d=solver.ndim,deg=deg, hem_type='probabilists')
         else:
             raise ValueError 
 
     elif simparams.doe_method.lower().startswith('cls'):
-        if simparams.poly_type.lower() == 'leg':
+        if simparams.u_dist.dist.name == 'uniform':
             print(' Legendre polynomial')
             basis = uqra.Legendre(d=solver.ndim,deg=deg)
 
-        elif simparams.poly_type.lower().startswith('hem'):
+        elif simparams.u_dist.dist.name == 'norm':
             print(' Probabilists Hermite polynomial')
             basis = uqra.Hermite(d=solver.ndim,deg=deg, hem_type='physicists')
         else:
@@ -52,7 +131,7 @@ def main(theta):
     np.set_printoptions(precision=4)
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
-    pf = 1e-5 #0.5/(50*365.25*24)
+    pf = 0.5/(50*365.25*24)
     radius_surrogate= 5
     Kvitebjorn      = uqra.environment.Kvitebjorn()
     # short_term_seeds_applied = np.setdiff1d(np.arange(10), np.array([]))
@@ -64,16 +143,16 @@ def main(theta):
     simparams.pce_degs   = np.array(range(2,11))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = int(1e6)
-    simparams.n_pred     = int(1e6)
+    simparams.n_pred     = int(1e7)
     simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
     simparams.optimality = None # 'D', 'S', None
-    simparams.poly_type  = 'hem'
+    simparams.u_dist     = stats.norm(0,1)
+    # simparams.u_dist   = stats.uniform(-1,2)
     simparams.fit_method = 'OLS'
     simparams.n_splits   = 50
-    alphas               = 10
+    alphas               = 3
     simparams.update()
     n_initial = 20
-    u_dist = stats.norm()
     print('------------------------------------------------------------')
     print('>>> Model: {:s}, Short-term simulation (n={:d})  '.format(solver.nickname, theta))
     print('------------------------------------------------------------')
@@ -97,9 +176,9 @@ def main(theta):
     ## ----------- Predict data set ----------- ###
     ## ----- Prediction data set centered around u_center, all  
     filename    = 'DoE_McsE7R{:d}.npy'.format(theta)
-    mcs_data    = np.load(os.path.join(simparams.data_dir_sample,'MCS', u_dist.dist.name.capitalize(), filename))
-    u_pred      = mcs_data[:solver.ndim, -simparams.n_pred:] 
-    x_pred      = Kvitebjorn.ppf(u_dist.cdf(u_pred))
+    mcs_data    = np.load(os.path.join(simparams.data_dir_sample,'MCS', simparams.u_dist.dist.name.capitalize(), filename))
+    u_pred      = mcs_data[:solver.ndim, :simparams.n_pred] 
+    x_pred      = Kvitebjorn.ppf(simparams.u_dist.cdf(u_pred))
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
@@ -118,7 +197,7 @@ def main(theta):
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
 
     elif simparams.doe_method.lower().startswith('mcs'):
-        filename = os.path.join(simparams.data_dir_sample, 'MCS', u_dist.dist.name.capitalize(),'DoE_McsE7R0.npy')
+        filename = os.path.join(simparams.data_dir_sample, 'MCS', simparams.u_dist.dist.name.capitalize(),'DoE_McsE7R0.npy')
         # filename = os.path.join(simparams.data_dir_sample, 'MCS','Norm','DoE_McsE7R{:d}.npy'.format(theta))
         u_cand = np.load(filename)[:solver.ndim, :simparams.n_cand]
     ### ============ Initial Values ============
