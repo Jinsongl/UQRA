@@ -131,7 +131,7 @@ def main(theta):
     np.set_printoptions(precision=4)
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
-    pf = 1e-5 #0.5/(50*365.25*24)
+    pf = 0.5/(50*365.25*24)
     radius_surrogate= 5
     Kvitebjorn      = uqra.environment.Kvitebjorn()
     # short_term_seeds_applied = np.setdiff1d(np.arange(10), np.array([]))
@@ -143,20 +143,20 @@ def main(theta):
     simparams.pce_degs   = np.array(range(2,11))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = int(1e6)
-    simparams.n_pred     = int(1e6)
+    simparams.n_pred     = int(1e7)
     simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = 'S'# 'D', 'S', None
-    simparams.u_dist     = stats.norm(0,1)
-    # simparams.u_dist   = stats.uniform(-1,2)
+    simparams.optimality = 'D'# 'D', 'S', None
+    # simparams.u_dist     = stats.norm(0,1)
+    simparams.u_dist   = stats.uniform(-1,2)
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    alphas  = 1
+    alphas               = 1
     simparams.update()
     n_initial = 20
-    # hs_range = [9,16]
-    # tp_range = [9,20]
-    hs_range = [0,20]
-    tp_range = [0,40]
+    hs_range = [10,16]
+    tp_range = [10,20]
+    # hs_range = [0,20]
+    # tp_range = [0,40]
     x_range  = [hs_range, tp_range]
     x_square_center = np.mean([hs_range, tp_range], axis=1)
     x_square_edges  = np.array([hs_range[1] - hs_range[0],tp_range[1] - tp_range[0]])
@@ -320,8 +320,10 @@ def main(theta):
         print('   - {:<25s} : [{}]'.format('Predict max(U)[U1, U2]',np.amax(u_pred, axis=1)))
         y_pred      = pce_model.predict(u_pred)
         print('   - {:<25s} : {}, {}, {}'.format('Predict Dataset (U,X,Y)',u_pred.shape, x_pred.shape, y_pred.shape))
-        alpha       = simparams.n_pred * pf / y_pred.size
-        y50_pce_y   = uqra.metrics.mquantiles(y_pred, 1-alpha)
+        # alpha       = simparams.n_pred * pf / y_pred.size
+        y_pred_     = -np.inf * np.ones((simparams.n_pred,))
+        y_pred_[-y_pred.size:] = y_pred
+        y50_pce_y   = uqra.metrics.mquantiles(y_pred_, 1-pf)
         y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
         y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
         pred_uxy_each_deg.append([deg, u_train.shape[1], y_pred])
