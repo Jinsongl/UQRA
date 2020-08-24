@@ -214,7 +214,7 @@ def main(theta):
     ### ============ Initial Values ============
 
     metrics_each_deg  = []
-    pred_uxy_each_deg = []
+    pred_ecdf_each_deg = []
     pce_model_each_deg= []
 
     ## Initialize u_train with LHS 
@@ -325,11 +325,13 @@ def main(theta):
         y50_pce_y   = uqra.metrics.mquantiles(y_pred_, 1-pf)
         y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
         y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
-        pred_uxy_each_deg.append([deg, u_train.shape[1], y_pred])
+        y_pred_ecdf = uqra.utilities.helpers.ECDF(y_pred_, alpha=pf, compress=True)
+
 
         res = [deg, u_train.shape[1], train_error, pce_model.cv_error, test_error, kappa]
         for item in y50_pce_uxy:
             res.append(item)
+        pred_ecdf_each_deg.append([deg, u_train.shape[1], y_pred_ecdf])
         metrics_each_deg.append(res)
         pce_model_each_deg.append(pce_model)
 
@@ -384,14 +386,14 @@ def main(theta):
         np.save(os.path.join(os.getcwd(), filename), metrics_each_deg)
 
     ### ============ Saving Predict data ============
-    pred_uxy_each_deg = np.array(pred_uxy_each_deg, dtype=object)
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_pred'.format(solver.nickname, pce_model.tag, 
+    pred_ecdf_each_deg = np.array(pred_ecdf_each_deg, dtype=object)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_ecdf'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(alphas).replace('.', 'pt'), theta)
     try:
-        np.save(os.path.join(simparams.data_dir_result, filename), pred_uxy_each_deg)
+        np.save(os.path.join(simparams.data_dir_result, filename), pred_ecdf_each_deg)
     except:
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        np.save(os.path.join(os.getcwd(), filename), pred_uxy_each_deg)
+        np.save(os.path.join(os.getcwd(), filename), pred_ecdf_each_deg)
 
 if __name__ == '__main__':
     for s in range(10):
