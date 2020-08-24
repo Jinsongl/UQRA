@@ -145,6 +145,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.cv_error= -np.mean(neg_mse)
         self.model   = model 
         self.coef    = model.coef_
+        self.coef[0] = model.intercept_
         if active_basis is None:
             self.active_index = range(self.num_basis)
             self.active_basis = self.basis.basis_degree
