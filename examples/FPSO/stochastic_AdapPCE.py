@@ -9,12 +9,10 @@
 """
 
 """
-import uqra, warnings, random, math
+import uqra, warnings
 import numpy as np, os, sys
-import collections
 import scipy.stats as stats
-import scipy
-import scipy.io
+import pickle
 from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
@@ -146,17 +144,17 @@ def main(theta):
     simparams.n_pred     = int(1e7)
     simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
     simparams.optimality = 'D'# 'D', 'S', None
-    # simparams.u_dist     = stats.norm(0,1)
-    simparams.u_dist   = stats.uniform(-1,2)
+    simparams.u_dist     = stats.norm(0,1)
+    # simparams.u_dist   = stats.uniform(-1,2)
     simparams.fit_method = 'LASSOLARS'
     simparams.n_splits   = 50
-    alphas               = 1
+    alphas               = 2
     simparams.update()
     n_initial = 20
-    hs_range = [10,16]
-    tp_range = [10,20]
-    # hs_range = [0,20]
-    # tp_range = [0,40]
+    # hs_range = [10,16]
+    # tp_range = [10,20]
+    hs_range = [0,20]
+    tp_range = [0,40]
     x_range  = [hs_range, tp_range]
     x_square_center = np.mean([hs_range, tp_range], axis=1)
     x_square_edges  = np.array([hs_range[1] - hs_range[0],tp_range[1] - tp_range[0]])
@@ -217,6 +215,7 @@ def main(theta):
 
     metrics_each_deg  = []
     pred_uxy_each_deg = []
+    pce_model_each_deg= []
 
     ## Initialize u_train with LHS 
     if simparams.doe_method.lower().startswith('mcs'):
@@ -332,6 +331,7 @@ def main(theta):
         for item in y50_pce_uxy:
             res.append(item)
         metrics_each_deg.append(res)
+        pce_model_each_deg.append(pce_model)
 
         ### ============ calculating & updating metrics ============
         tqdm.write(' > Summary')
@@ -342,6 +342,13 @@ def main(theta):
             tqdm.write('     - {:<15s} : {}'.format( 'Test MSE ' , np.array(metrics_each_deg)[-1:, 4]))
             tqdm.write('     - {:<15s} : {:.2f}-> {:.2f}'.format( 'kappa ' , kappa0, kappa))
             tqdm.write('     ----------------------------------------')
+
+
+    ### ============ Saving pce model============
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_pce.pkl'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(alphas).replace('.', 'pt'), theta)
+    with open(os.path.join(simparams.data_dir_result,filename), 'wb') as output:
+        pickle.dump(pce_model_each_deg, output, pickle.HIGHEST_PROTOCOL)
 
     ### ============ Saving train ============
     data_train = np.concatenate((u_train, x_train, y_train.reshape(1,-1)), axis=0)
