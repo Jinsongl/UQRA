@@ -26,15 +26,15 @@ class Hermite(PolyBase):
 
     def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total', hem_type='probabilists'):
         super().__init__(d=d, deg=deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
-        self.hem_type  = hem_type
-        self.name      = 'Hermite_e' if hem_type.lower() == 'probabilists' else 'Hermite'
-        self.nickname  = 'Heme' if hem_type.lower() == 'probabilists' else 'Hem'
+        self.hem_type  = hem_type.lower()
+        self.name      = 'Hermite_e' if hem_type.startswith('prob') else 'Hermite'
+        self.nickname  = 'Heme' if hem_type.startswith('prob') else 'Hem'
         self.dist_name = 'norm'
         if self.ndim is None:
             self.dist_u = None
-        elif hem_type.lower() == 'probabilists':
+        elif hem_type.startswith('prob'):
             self.dist_u = [stats.norm(0,1),] * self.ndim
-        elif hem_type.lower() == 'physicists':
+        elif hem_type.startswith('phy'):
             self.dist_u = [stats.norm(0,np.sqrt(0.5)),] * self.ndim 
         else:
             raise ValueError
@@ -68,14 +68,14 @@ class Hermite(PolyBase):
         coords = []
         weight = []
 
-        if self.hem_type == 'probabilists':
+        if self.hem_type.startswith('prob'):
             for iloc, iscale in zip(loc, scale):
                 x, w = np.polynomial.hermite_e.hermegauss(self.n_gauss) 
                 x = iloc + iscale* x
                 w = iscale * w
                 coords.append(x)
                 weight.append(w)
-        elif self.hem_type == 'physicists':
+        elif self.hem_type.startswith('phy'):
             for iloc, iscale in zip(loc, scale):
                 x, w = np.polynomial.hermite.hermgauss(self.n_gauss) 
                 x = iloc + iscale* x
