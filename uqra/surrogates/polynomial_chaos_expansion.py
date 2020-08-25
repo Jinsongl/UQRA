@@ -10,6 +10,7 @@
 
 """
 import numpy as np
+import copy
 import scipy.stats as stats
 import multiprocessing as mp
 from sklearn import linear_model
@@ -144,7 +145,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         model.fit(X, y, sample_weight=w)
         self.cv_error= -np.mean(neg_mse)
         self.model   = model 
-        self.coef    = model.coef_
+        self.coef    = copy.deepcopy(model.coef_)
         self.coef[0] = model.intercept_
         if active_basis is None:
             self.active_index = range(self.num_basis)
@@ -243,7 +244,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                 return
             self.model    = model 
             self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
-            self.coef     = model.coef_
+            self.coef     = copy.deepcopy(model.coef_)
             self.coef[0]  = model.intercept_
             self.active_index = [i for i, icoef in enumerate(model.coef_) if abs(icoef) > epsilon]
             self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
