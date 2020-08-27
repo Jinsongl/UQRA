@@ -9,12 +9,10 @@
 """
 
 """
-import uqra, warnings, random, math
+import uqra, warnings
 import numpy as np, os, sys
-import collections
 import scipy.stats as stats
-import scipy
-import scipy.io
+import pickle
 from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
@@ -145,28 +143,38 @@ def main(theta):
     simparams.n_test     = int(1e6)
     simparams.n_pred     = int(1e7)
     simparams.doe_method = 'MCS' ### 'mcs', 'cls1', 'cls2', ..., 'cls5', 'reference'
-    simparams.optimality = None # 'D', 'S', None
+    simparams.optimality = 'D'# 'D', 'S', None
     simparams.u_dist     = stats.norm(0,1)
     # simparams.u_dist   = stats.uniform(-1,2)
     simparams.fit_method = 'OLS'
     simparams.n_splits   = 50
-    alphas               = 3
+    alphas               = 2
     simparams.update()
     n_initial = 20
+    # hs_range = [10,16]
+    # tp_range = [10,20]
+    hs_range = [0,20]
+    tp_range = [0,40]
+    x_range  = [hs_range, tp_range]
+    x_square_center = np.mean([hs_range, tp_range], axis=1)
+    x_square_edges  = np.array([hs_range[1] - hs_range[0],tp_range[1] - tp_range[0]])
+
     print('------------------------------------------------------------')
     print('>>> Model: {:s}, Short-term simulation (n={:d})  '.format(solver.nickname, theta))
     print('------------------------------------------------------------')
     simparams.info()
-
 
     ## ----------- Test data set ----------- ###
     ## ----- Testing data set centered around u_center, first 100000
     print(' > Getting Test data set...')
     filename    = '{:s}_DoE_McsE6R{:d}.npy'.format(solver.nickname,theta)
     data_test   = np.load(os.path.join(simparams.data_dir_result,'TestData', filename))
-    u_test      = data_test[            :  solver.ndim, :]
-    x_test      = data_test[solver.ndim :2*solver.ndim, :]
+    x_test      = data_test[solver.ndim :2* solver.ndim, :]
     y_test      = data_test[-1]
+    x_test_idx  = get_pts_inside_square(x_test, center=x_square_center, edges=x_square_edges)
+    x_test      = x_test[:, x_test_idx]
+    u_test      = rosenblatt(Kvitebjorn, x_test, x_range=x_range, u_dist=simparams.u_dist)
+    y_test      = y_test[   x_test_idx]
 
     print('   - {:<25s} : {}, {}, {}'.format('Test Dataset (U,X,Y)', u_test.shape, x_test.shape, y_test.shape ))
     print('   - {:<25s} : [{}, {}]'.format('Test U[mean, std]',np.mean(u_test, axis=1),np.std (u_test, axis=1)))
@@ -179,6 +187,9 @@ def main(theta):
     mcs_data    = np.load(os.path.join(simparams.data_dir_sample,'MCS', simparams.u_dist.dist.name.capitalize(), filename))
     u_pred      = mcs_data[:solver.ndim, :simparams.n_pred] 
     x_pred      = Kvitebjorn.ppf(simparams.u_dist.cdf(u_pred))
+    x_pred_idx  = get_pts_inside_square(x_pred, center=x_square_center, edges=x_square_edges)
+    x_pred      = x_pred[:, x_pred_idx]
+    u_pred      = rosenblatt(Kvitebjorn, x_pred, x_range=x_range, u_dist=simparams.u_dist)
 
     ## ----------- Candidate and testing data set for DoE ----------- ###
     print(' > Getting candidate data set...')
@@ -203,7 +214,8 @@ def main(theta):
     ### ============ Initial Values ============
 
     metrics_each_deg  = []
-    pred_uxy_each_deg = []
+    pred_ecdf_each_deg = []
+    pce_model_each_deg= []
 
     for deg in simparams.pce_degs:
         print('\n================================================================================')
@@ -266,28 +278,27 @@ def main(theta):
         train_error = uqra.metrics.mean_squared_error(y_train, y_train_hat, squared=False)
         test_error  = uqra.metrics.mean_squared_error(y_test , y_test_hat , squared=False)
 
-
-        ### prediction data set, randomly draw or from MCS directory
-        # y_pred = pce_model.predict(u_pred - u_center)
-        # alpha  = (pf * mcs_data_ux.shape[1]) / y_pred.size
-        # y50_pce_y   = uqra.metrics.mquantiles(y_pred, 1-alpha)
-        # y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
-        # y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
-        # pred_uxy_each_deg.append([deg, n_train, y_pred])
-
         # np.random.seed()
-        # u_pred = stats.norm.rvs(size=(solver.ndim,simparams.n_pred))
+        # u_pred = stats.norm.rvs(loc=0,scale=1,size=(solver.ndim, simparams.n_pred))
         # x_pred = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
-        y_pred = pce_model.predict(u_pred)
-        y50_pce_y   = uqra.metrics.mquantiles(y_pred, 1-pf)
+        print('   - {:<25s} : [{}]'.format('Predict min(U)[U1, U2]',np.amin(u_pred, axis=1)))
+        print('   - {:<25s} : [{}]'.format('Predict max(U)[U1, U2]',np.amax(u_pred, axis=1)))
+        y_pred      = pce_model.predict(u_pred)
+        print('   - {:<25s} : {}, {}, {}'.format('Predict Dataset (U,X,Y)',u_pred.shape, x_pred.shape, y_pred.shape))
+        # alpha       = simparams.n_pred * pf / y_pred.size
+        y_pred_     = -np.inf * np.ones((simparams.n_pred,))
+        y_pred_[-y_pred.size:] = y_pred
+        y50_pce_y   = uqra.metrics.mquantiles(y_pred_, 1-pf)
         y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
         y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
-        pred_uxy_each_deg.append([deg, u_train.shape[1], y_pred])
+        y_pred_ecdf = uqra.utilities.helpers.ECDF(y_pred_, alpha=pf, compress=True)
 
         res = [deg, u_train.shape[1], train_error, pce_model.cv_error, test_error, kappa]
         for item in y50_pce_uxy:
             res.append(item)
+        pred_ecdf_each_deg.append([deg, u_train.shape[1], y_pred_ecdf])
         metrics_each_deg.append(res)
+        pce_model_each_deg.append(pce_model)
 
         ### ============ calculating & updating metrics ============
         tqdm.write(' > Summary')
@@ -298,6 +309,13 @@ def main(theta):
             tqdm.write('     - {:<15s} : {}'.format( 'Test MSE ' , np.array(metrics_each_deg)[-1:, 4]))
             tqdm.write('     - {:<15s} : {}'.format( 'kappa '    , np.array(metrics_each_deg)[-1:, 5]))
             tqdm.write('     ----------------------------------------')
+
+
+    ### ============ Saving pce model============
+    filename = '{:s}_{:s}_{:s}_Alpha{}_ST{}_pce.pkl'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(alphas).replace('.', 'pt'), theta)
+    with open(os.path.join(simparams.data_dir_result,filename), 'wb') as output:
+        pickle.dump(pce_model_each_deg, output, pickle.HIGHEST_PROTOCOL)
 
     ### ============ Saving train ============
     data_train = np.concatenate((u_train, x_train, y_train.reshape(1,-1)), axis=0)
@@ -333,14 +351,14 @@ def main(theta):
         np.save(os.path.join(os.getcwd(), filename), metrics_each_deg)
 
     ### ============ Saving Predict data ============
-    pred_uxy_each_deg = np.array(pred_uxy_each_deg, dtype=object)
-    filename = '{:s}_{:s}_{:s}_Alpha{}_ST{}_pred'.format(solver.nickname, pce_model.tag, 
+    pred_ecdf_each_deg = np.array(pred_ecdf_each_deg, dtype=object)
+    filename = '{:s}_{:s}_{:s}_Alpha{}_ST{}_ecdf'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(alphas).replace('.', 'pt'), theta)
     try:
-        np.save(os.path.join(simparams.data_dir_result, filename), pred_uxy_each_deg)
+        np.save(os.path.join(simparams.data_dir_result, filename), pred_ecdf_each_deg)
     except:
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        np.save(os.path.join(os.getcwd(), filename), pred_uxy_each_deg)
+        np.save(os.path.join(os.getcwd(), filename), pred_ecdf_each_deg)
 
 if __name__ == '__main__':
     for s in range(10):
