@@ -101,7 +101,7 @@ class DistHs(object):
 
 class DistTp(object):
 
-    def __init__(self):
+    def __init__(self, hs):
 
         self.a1 = 1.134
         self.a2 = 0.892
@@ -109,37 +109,37 @@ class DistTp(object):
         self.b1 = 0.005
         self.b2 = 0.120
         self.b3 = 0.455
+        self.hs = hs
         self.dist = stats.lognorm(s=1)
 
-    def rvs(self, hs, size=1):
-        mu_tp    = self.a1 + self.a2* hs**self.a3 
-        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*hs))
-        tp       = stats.lognorm.rvs(sigma_tp, loc=0, scale=np.exp(mu_tp), size=[size,hs.size])
+    def rvs(self, size=1):
+        mu_tp    = self.a1 + self.a2* self.hs**self.a3 
+        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*self.hs))
+        tp       = stats.lognorm.rvs(sigma_tp, loc=0, scale=np.exp(mu_tp), size=[size,self.hs.size])
         tp       = np.squeeze(tp)
-        assert hs.shape == tp.shape
+        assert self.hs.shape == tp.shape
         return tp 
 
-    def ppf(self, hs, u):
+    def ppf(self, u):
         """
         Generate Tp sample values based on given Hs values:
         """
-        mu_tp    = self.a1 + self.a2* hs**self.a3 
-        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*hs))
+        mu_tp    = self.a1 + self.a2* self.hs**self.a3 
+        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*self.hs))
         tp       = stats.lognorm.ppf(u, sigma_tp, loc=0, scale=np.exp(mu_tp))
         return tp 
 
-    def cdf(self, hs, tp):
-        mu_tp    = self.a1 + self.a2* hs**self.a3 
-        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*hs))
+    def cdf(self, tp):
+        mu_tp    = self.a1 + self.a2* self.hs**self.a3 
+        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*self.hs))
         tp_cdf   = stats.lognorm.cdf(tp, sigma_tp, loc=0, scale=np.exp(mu_tp))
         return tp_cdf
 
-    def pdf(self, hs, tp):
-        mu_tp    = self.a1 + self.a2* hs**self.a3 
-        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*hs))
+    def pdf(self, tp):
+        mu_tp    = self.a1 + self.a2* self.hs**self.a3 
+        sigma_tp = np.sqrt(self.b1 + self.b2*np.exp(-self.b3*self.hs))
         tp_pdf   = stats.lognorm.pdf(tp, sigma_tp, loc=0, scale=np.exp(mu_tp))
         return tp_pdf
-
 
 ##################################################
 ##################################################
@@ -154,8 +154,12 @@ class Kvitebjorn(EnvBase):
         self.is_arg_rand = [True, True] 
         self.ndim = int(2)
         self.name = ['lognorm_weibull','lognorm']
-        self.dist_hs = DistHs()
-        self.dist_tp = DistTp()
+
+    def dist_hs(self):
+        return DistHs()
+
+    def dist_tp(self, hs):
+        return DistTp(hs)
 
     def pdf(self, x):
         """
@@ -166,10 +170,9 @@ class Kvitebjorn(EnvBase):
             y, ndarray of shape(2, n)
         """
         self._check_input(x)
-
         hs, tp = x
-        hs_pdf = self.dist_hs.pdf(hs)
-        tp_pdf = self.dist_tp.pdf(hs, tp)
+        hs_pdf = self.dist_hs().pdf(hs)
+        tp_pdf = self.dist_tp(hs).pdf(tp)
         x_pdf  = np.array([hs_pdf, tp_pdf])
         return x_pdf
 
@@ -184,8 +187,8 @@ class Kvitebjorn(EnvBase):
         self._check_input(x)
         
         hs, tp = x
-        hs_pdf = self.dist_hs.pdf(hs)
-        tp_pdf = self.dist_tp.pdf(hs, tp)
+        hs_pdf = self.dist_hs().pdf(hs)
+        tp_pdf = self.dist_tp(hs).pdf(tp)
         x_pdf  = hs_pdf * tp_pdf
         return x_pdf
 
@@ -199,8 +202,8 @@ class Kvitebjorn(EnvBase):
         """
         self._check_input(x)
         hs, tp = x
-        hs_cdf = self.dist_hs.cdf(hs)
-        tp_cdf = self.dist_tp.cdf(hs, tp)
+        hs_cdf = self.dist_hs().cdf(hs)
+        tp_cdf = self.dist_tp(hs).cdf(tp)
         y      = np.array([hs_cdf, tp_cdf])
         return y
 
@@ -214,8 +217,8 @@ class Kvitebjorn(EnvBase):
         """
         self._check_input(x)
         hs, tp = x
-        hs_cdf = self.dist_hs.cdf(hs)
-        tp_cdf = self.dist_tp.cdf(hs, tp)
+        hs_cdf = self.dist_hs().cdf(hs)
+        tp_cdf = self.dist_tp(hs).cdf(tp)
         y      = hs_cdf * tp_cdf
         return y
 
@@ -230,8 +233,8 @@ class Kvitebjorn(EnvBase):
         assert np.amin(u).all() >= 0
         assert np.amax(u).all() <= 1
 
-        hs = self.dist_hs.ppf(u[0])
-        tp = self.dist_tp.ppf(hs, u[1])
+        hs = self.dist_hs().ppf(u[0])
+        tp = self.dist_tp(hs).ppf(u[1])
         return np.array([hs, tp])
 
     def rvs(self, size=None):
@@ -240,9 +243,9 @@ class Kvitebjorn(EnvBase):
 
         """
         ### generate n random Hs
-        hs= self.dist_hs.rvs(size=size)
+        hs= self.dist_hs().rvs(size=size)
         ### generate n random Tp given above Hs
-        tp= self.dist_tp.rvs(hs, size=1)
+        tp= self.dist_tp(hs).rvs(size=1)
         res = np.array([hs, tp])
         return res
 
@@ -276,9 +279,9 @@ class Kvitebjorn(EnvBase):
         """
         prob_fail   = T/(P * 365.25*24*3600)
         beta        = -stats.norm().ppf(prob_fail) ## reliability index
-        u1 = stats.norm().ppf(self.dist_hs.cdf(hs))
+        u1 = stats.norm().ppf(self.dist_hs().cdf(hs))
         u2 = np.sqrt(beta**2 - u1**2)
-        tp = self.dist_tp.ppf(hs, stats.norm.cdf(u2))
+        tp = self.dist_tp(hs).ppf(stats.norm.cdf(u2))
         res = np.array([hs, tp])
         return res
 
