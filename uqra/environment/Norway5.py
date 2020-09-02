@@ -46,9 +46,9 @@ class Norway5(EnvBase):
             raise ValueError('Norway5 site expects three random variables (Uw, Hs, Tp), but {:d} were given'.format(x.shape[0]))
         
         uw, hs, tp = x
-        uw_pdf = self.dist_Uw().pdf(uw)
-        hs_pdf = np.squeeze([self.dist_Hs(iuw).pdf(ihs) for iuw, ihs in zip(uw, hs)])
-        tp_pdf = np.squeeze([self.dist_Tp(ihs, iuw).pdf(itp) for iuw, ihs, itp in zip(uw, hs, tp)])
+        uw_pdf = self.dist_uw().pdf(uw)
+        hs_pdf = np.squeeze([self.dist_hs(iuw).pdf(ihs) for iuw, ihs in zip(uw, hs)])
+        tp_pdf = np.squeeze([self.dist_tp(ihs, iuw).pdf(itp) for iuw, ihs, itp in zip(uw, hs, tp)])
         pdf_y  = np.array([uw_pdf, hs_pdf, tp_pdf])
         return pdf_y
 
@@ -64,9 +64,9 @@ class Norway5(EnvBase):
             raise ValueError('Norway5 site expects three random variables (Uw, Hs, Tp), but {:d} were given'.format(x.shape[0]))
         
         uw, hs, tp = x
-        uw_pdf = self.dist_Uw().pdf(uw)
-        hs_pdf = np.squeeze([self.dist_Hs(iuw).pdf(ihs) for iuw, ihs in zip(uw, hs)])
-        tp_pdf = np.squeeze([self.dist_Tp(ihs, iuw).pdf(itp) for iuw, ihs, itp in zip(uw, hs, tp)])
+        uw_pdf = self.dist_uw().pdf(uw)
+        hs_pdf = np.squeeze([self.dist_hs(iuw).pdf(ihs) for iuw, ihs in zip(uw, hs)])
+        tp_pdf = np.squeeze([self.dist_tp(ihs, iuw).pdf(itp) for iuw, ihs, itp in zip(uw, hs, tp)])
         pdf_y  = uw_pdf * hs_pdf * tp_pdf
         return pdf_y
 
@@ -82,9 +82,9 @@ class Norway5(EnvBase):
             raise ValueError('Norway5 site expects three random variables (Uw, Hs, Tp), but {:d} were given'.format(x.shape[0]))
         
         uw, hs, tp = x
-        uw_cdf = self.dist_Uw().cdf(uw)
-        hs_cdf = np.squeeze([self.dist_Hs(iuw).cdf(ihs) for iuw, ihs in zip(uw, hs)]) 
-        tp_cdf = np.squeeze([self.dist_Tp(ihs, iuw).cdf(itp) for iuw, ihs, itp in zip(uw, hs, tp)])
+        uw_cdf = self.dist_uw().cdf(uw)
+        hs_cdf = np.squeeze([self.dist_hs(iuw).cdf(ihs) for iuw, ihs in zip(uw, hs)]) 
+        tp_cdf = np.squeeze([self.dist_tp(ihs, iuw).cdf(itp) for iuw, ihs, itp in zip(uw, hs, tp)])
         cdf_y  = np.array([uw_cdf , hs_cdf , tp_cdf])
         return cdf_y
 
@@ -100,9 +100,9 @@ class Norway5(EnvBase):
             raise ValueError('Norway5 site expects three random variables (Uw, Hs, Tp), but {:d} were given'.format(x.shape[0]))
         
         uw, hs, tp = x
-        uw_cdf = self.dist_Uw().cdf(uw)
-        hs_cdf = np.squeeze([self.dist_Hs(iuw).cdf(ihs) for iuw, ihs in zip(uw, hs)]) 
-        tp_cdf = np.squeeze([self.dist_Tp(ihs, iuw).cdf(itp) for iuw, ihs, itp in zip(uw, hs, tp)])
+        uw_cdf = self.dist_uw().cdf(uw)
+        hs_cdf = np.squeeze([self.dist_hs(iuw).cdf(ihs) for iuw, ihs in zip(uw, hs)]) 
+        tp_cdf = np.squeeze([self.dist_tp(ihs, iuw).cdf(itp) for iuw, ihs, itp in zip(uw, hs, tp)])
         cdf_y  = uw_cdf * hs_cdf * tp_cdf
         return cdf_y
 
@@ -118,9 +118,9 @@ class Norway5(EnvBase):
         assert np.amin(u).all() >= 0
         assert np.amax(u).all() <= 1
 
-        uw = self.dist_Uw().ppf(u[0])
-        hs = np.squeeze([self.dist_Hs(iuw).ppf(iu) for iuw, iu in zip(uw, u[1])])
-        tp = np.squeeze([self.dist_Tp(ihs, iuw).ppf(iu) for ihs, iuw, iu in zip(uw, hs, u[2])])
+        uw = self.dist_uw().ppf(u[0])
+        hs = np.squeeze([self.dist_hs(iuw).ppf(iu) for iuw, iu in zip(uw, u[1])])
+        tp = np.squeeze([self.dist_tp(ihs, iuw).ppf(iu) for ihs, iuw, iu in zip(uw, hs, u[2])])
         res = np.array([uw, hs, tp])
         return res 
 
@@ -131,11 +131,11 @@ class Norway5(EnvBase):
         """
         n = int(size)
         ### generate n random Uw
-        uw= self.dist_Uw().rvs(size=(n,))
+        uw= self.dist_uw().rvs(size=(n,))
         ### generate n random Hs
-        hs= np.squeeze([self.dist_Hs(iuw).rvs(size=1) for iuw in uw]) 
+        hs= np.squeeze([self.dist_hs(iuw).rvs(size=1) for iuw in uw]) 
         ### generate n random Tp given above Hs
-        tp= np.squeeze([self.dist_Tp(ihs, iuw).rvs(size=1) for ihs, iuw in zip(hs, uw)]) 
+        tp= np.squeeze([self.dist_tp(ihs, iuw).rvs(size=1) for ihs, iuw in zip(hs, uw)]) 
         res = np.array([uw, hs, tp])
         return res
 
@@ -168,11 +168,11 @@ class Norway5(EnvBase):
         """
         prob_fail   = T/(P * 365.25*24*3600)
         beta        = -stats.norm().ppf(prob_fail) ## reliability index
-        u1 = stats.norm().ppf(self.dist_Uw().cdf(uw))
+        u1 = stats.norm().ppf(self.dist_uw().cdf(uw))
         u2 = np.sqrt(beta**2 - u1**2)
         u3 = u2 * 0
-        hs = np.array([self.dist_Hs(iuw).ppf(stats.norm().cdf(iu)) for iuw, iu in zip(uw, u2)])
-        tp = np.array([self.dist_Tp(ihs, iuw).ppf(stats.norm().cdf(iu)) for ihs, iuw, iu in zip(hs, uw, u3)])
+        hs = np.array([self.dist_hs(iuw).ppf(stats.norm().cdf(iu)) for iuw, iu in zip(uw, u2)])
+        tp = np.array([self.dist_tp(ihs, iuw).ppf(stats.norm().cdf(iu)) for ihs, iuw, iu in zip(hs, uw, u3)])
         res = np.array([uw, hs, tp])
         return res
 
@@ -180,13 +180,13 @@ class Norway5(EnvBase):
     # ===========================================================  
     # Sequence of conditional distributions based on Rosenblatt transformation 
     # ===========================================================  
-    def dist_Uw(self):
+    def dist_uw(self):
         # Marginal distribution of 10-meter wind speed
         Uw_shape, Uw_scale = 2.029, 9.409
         dist = stats.weibull_min(c=Uw_shape, loc=0, scale=Uw_scale) #0 #Hs_scale * (-np.log(1-u)) **(1/Hs_shape)
         return dist
 
-    def dist_Hs(self, Uw):
+    def dist_hs(self, Uw):
         # Hs distribution conditional on Uw
         a1, a2, a3 = 2.136, 0.013, 1.709
         b1, b2, b3 = 1.816, 0.024, 1.787
@@ -196,7 +196,7 @@ class Norway5(EnvBase):
         return dist
 
 
-    def dist_Tp(self, Hs, Uw):
+    def dist_tp(self, Hs, Uw):
         """
         Conditional distribution of Tp given var
         var: list of one or two values
