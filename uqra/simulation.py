@@ -32,282 +32,131 @@ class Modeling(object):
         assert solver.ndim == model.ndim
         self.ndim = solver.ndim
 
-    def get_init_samples(self, n, doe_method='lhs', random_state=None, **kwargs):
+
+    def get_train_data(self, size, u_cand, u_train=None, active_basis=None):
         """
-        Get initial sample design, return samples in U,X space and results y
+        Return train data from candidate data set. All samples are in U-space (with pluripotential equilibrium measure nv(x))
 
         Arguments:
-            n: int, number of samples to return
-            solver: solver used to return y
-            pce_model: for LHS, provide the u distributions needed to be sampled
-                        for cls, need to know PCE.deg such that in unbounded case to scale u
-
-        """
-
-        qoi = kwargs.get('qoi', None)
-        if doe_method.lower() == 'lhs':
-            doe = uqra.LHS(self.model.basis.dist_u)
-            z, u= doe.get_samples(n, random_state=random_state)
-            x = self.solver.map_domain(u, z) ## z_train is the cdf of u_train
-        else:
-            raise NotImplementedError
-            # u_cand = kwargs['u_cand']
-            # optimality = kwargs.get('optimality', None)
-            # p = kwargs['p']
-            # sample_selected= self.sample_selected 
-            # u_cand_p = p **0.5* u_cand if (doe_method.lower()=='cls' and self.model.basis.dist_name=='norm') else u_cand
-            # _,u = get_train_data(n, u_cand_p, doe_method, optimality=optimality, sample_selected=sample_selected, basis=self.model.basis)
-            # x = self.solver.map_domain(u, self.model.basis.dist_u)
-        y = self.solver.run(x)
-        # idx = []
-        # for i, iqoi in enumerate(qoi):
-            # if iqoi is None:
-                # idx.append(list(np.arange(y.shape[i])))
-            # else:
-                # idx.append([iqoi])
-        # y = y[idx]
-        return u, x, y
-
-    def get_candidate_data(self, **kwargs):
-        """
-        Return canndidate samples in u space
-        """
-        try:
-            n = kwargs['n']
-            self.params.n_cand = n
-        except KeyError:
-            n = self.params.n_cand
-        doe_method = self.params.doe_method.lower()
-        data_dir = os.path.join(self.params.data_dir_sample, doe_method.upper(), self.dist_u_name.capitalize()) 
-        try:
-            self.filename_candidates = kwargs['filename']
-            try:
-                data = np.load(self.filename_candidates)
-            except FileNotFoundError:
-                data = np.load(os.path.join(data_dir, self.filename_candidates))
-            u_cand = data[:self.ndim,:n].reshape(self.ndim, -1) ## will raise error when samples files smaller than n
-            self.filename_optimality = kwargs.get('filename_optimality', None)
-
-        except KeyError:
-            if doe_method.lower().startswith('mcs'):
-                self.filename_candidates = r'DoE_McsE6R0.npy'
-                data = np.load(os.path.join(data_dir, self.filename_candidates))
-                u_cand = data[:self.ndim,:n].reshape(self.ndim, -1) ## will raise error when samples files smaller than n
-
-            elif doe_method.lower().startswith('cls') or doe_method == 'reference':
-                if self.dist_u_name.lower().startswith('norm'):
-                    self.filename_candidates = r'DoE_ClsE6d{:d}R0.npy'.format(self.ndim)
-                elif self.dist_u_name.lower().startswith('uniform'):
-                    self.filename_candidates = r'DoE_ClsE6R0.npy'
-                else:
-                    raise ValueError('dist_x_name {} not defined'.format(self.dist_x_name))
-                data  = np.load(os.path.join(data_dir, self.filename_candidates))
-                u_cand = data[:self.ndim,:n].reshape(self.ndim, -1)
-            else:
-                raise ValueError('DoE method {:s} not defined'.format(doe_method))
-            self.filename_optimality = kwargs.get('filename_optimality', None)
-
-        return u_cand
-
-    def get_test_data(self, solver, pce_model, filename = r'DoE_McsE6R9.npy', **kwargs):
-        """
-        Return test data. 
-
-        Test data should always be in X-space. The correct sequence is X->y->u
-
-        To be able to generate MCS samples for X, we use MCS samples in Samples/MCS, noted as z here
-
-        If already exist in simparams.data_dir_result, then load and return
-        else, run solver
-
-        """
-        
-        data_dir_result = os.path.join(self.params.data_dir_result, 'TestData')
-        try: 
-            os.makedirs(data_dir_result)
-        except OSError as e:
-            pass
-
-        n       = kwargs.get('n'   , self.params.n_test)
-        qoi     = kwargs.get('qoi' , solver.out_responses )
-        n       = int(n)
-        n_short_term = self.solver.n_short_term
-        assert solver.ndim == pce_model.ndim
-        ndim = solver.ndim
-        try:
-            nparams = solver.nparams
-        except AttributeError:
-            nparams = ndim
-        self.filename_test = '{:s}_{:d}{:s}_'.format(solver.nickname, ndim, pce_model.basis.nickname) + filename
-        if self.params.doe_method.lower() == 'cls':
-            self.filename_test = self.filename_test.replace('Mcs', 'Cls')
-
-        try:
-            u_test = None 
-            x_test = None
-            y_test = []
-            for iqoi in qoi:
-                filename_iqoi = self.filename_test[:-4] + '_y{:d}.npy'.format(iqoi)
-                data_set = np.load(os.path.join(data_dir_result, filename_iqoi))
-                print('   - Retrieving test data from {}'.format(os.path.join(data_dir_result, filename_iqoi)))
-                if not solver.nickname.lower().startswith('sdof'):
-                    assert data_set.shape[0] == 2*ndim+1
-
-                u_test_ = data_set[     :  ndim,:n] if n > 0 else data_set[     :  ndim, :]
-                x_test_ = data_set[ndim :ndim+nparams,:n] if n > 0 else data_set[ndim :ndim+nparams, :]
-
-                if u_test is None:
-                    u_test  = u_test_
-                else:
-                    assert np.array_equal(u_test_, u_test)
-
-                if x_test is None:
-                    x_test  = x_test_
-                else:
-                    assert np.array_equal(x_test_, x_test)
-
-                y_test_ = data_set[ndim+nparams: ndim+nparams+n_short_term,:n] if n > 0 else data_set[ndim+nparams: ndim+nparams+n_short_term, : ]
-                y_test.append(y_test_)
-            if len(y_test) == 1:
-                y_test = y_test[0]
-
-        except FileNotFoundError:
-            ### 1. Get MCS samples for X
-            if pce_model.basis.dist_name.lower() == 'uniform':
-                data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Uniform')
-                print('    - Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
-                data_set = np.load(os.path.join(data_dir_sample,filename))
-                z_test = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
-                x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * ndim)
-            elif pce_model.basis.dist_name.lower().startswith('norm'):
-                data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Norm')
-                print('    - Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
-                data_set= np.load(os.path.join(data_dir_sample,filename))
-                z_test  = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
-                x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
-            else:
-                raise ValueError
-            y_test = solver.run(x_test, out_responses='ALL', save_qoi=True, data_dir=data_dir_result)
-            np.save('y_test.npy', np.array(y_test))
-
-            ### 2. Mapping MCS samples from X to u
-            ###     dist_u is defined by pce_model
-            ### Bounded domain maps to [-1,1] for both mcs and cls methods. so u = z
-            ### Unbounded domain, mcs maps to N(0,1), cls maps to N(0,sqrt(0.5))
-            u_test = 0.0 + z_test * np.sqrt(0.5) if self.is_cls_unbounded() else z_test
-            u_test = u_test[:,:n] if n > 0 else u_test
-            x_test = x_test[:,:n] if n > 0 else x_test
-
-            if y_test.ndim == 1:
-                data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
-                np.save(os.path.join(data_dir_result, self.filename_test), data)
-                print('   > Saving test data to {} '.format(data_dir_result))
-                y_test = y_test[  :n] if n > 0 else y_test
-            elif y_test.ndim == 2:
-                # if y_test.shape[0] == n:
-                    # y_test = y_test.T
-                # elif y_test.shape[1] == n:
-                    # y_test = y_test
-                # else:
-                raise ValueError('Solver output format not understood: {}, expecting has {:d} in 1 dimensino'.format(n))
-            elif y_test.ndim == 3:
-                ### (n_short_term, n, nqoi)
-                if solver.name.lower() == 'linear oscillator':
-                    y = []
-                    for i, iqoi_test in enumerate(y_test.T):
-                        data = np.vstack((u_test, x_test, iqoi_test.T))
-                        np.save(os.path.join(data_dir_result, self.filename_test[:-4]+'_y{:d}.npy'.format(i)), data)
-                        if i in solver.out_responses:
-                            y.append(iqoi_test[:n].T if n > 0 else iqoi_test)
-                    print('   > Saving test data to {} '.format(data_dir_result))
-                    y_test = y[0] if len(y) == 1 else y
-                elif solver.name.lower() == 'duffing oscillator':
-                    y = []
-                    for i, iqoi_test in enumerate(y_test.T):
-                        data = np.vstack((u_test, x_test, iqoi_test.T))
-                        np.save(os.path.join(data_dir_result, self.filename_test[:-4]+'_y{:d}.npy'.format(i)), data)
-                        if i in solver.out_responses:
-                            y.append(iqoi_test[:n].T if n > 0 else iqoi_test)
-                    print('   > Saving test data to {} '.format(data_dir_result))
-                    y_test = y[0] if len(y) == 1 else y
-                else:
-                    raise NotImplementedError
-
-
-        return u_test, x_test, y_test
-
-    def get_train_data(self, size, u_cand, u_train=None, basis=None, active_basis=None, precomputed=True):
-        """
-        Return train data from candidate data set. All samples are in U-space
-        size is how many MORE to be sampled besides those alrady existed in u_train 
-
-        Arguments:
-            size        : size of samples, (r, n): size n repeats r times
+            n           : int, size of new samples in addtion to selected elements
             u_cand      : ndarray, candidate samples in U-space to be chosen from
-            u_train     : samples already selected, need to be removed from candidate set to get n samples
-            basis       : When optimality is 'D' or 'S', one need the design matrix in the basis selected
+            u_train     : selected train samples from candidate data
             active_basis: activated basis used in optimality design
 
         """
-        ###  formating the input arguments
-        u_cand  = np.array(u_cand, ndmin=2)
-        size    = tuple(np.atleast_1d(size))
-        if len(size) == 1:
-            ## case: just a number if given n
-            repeats, n = 1, int(size[0])
-        elif len(size) == 2:
-            ## case: (1,n) or (r, n) 
-            repeats, n = int(size[0]), int(size[1])
-        else:
-            raise ValueError
 
-        ## u_train format checking
-        if u_train is None:
-            u_train = [None,] * repeats
-        else:
-            u_train = np.array(u_train, ndmin=2)
-            if u_train.ndim == 2:
-                ## just one train data set is given, of shape(ndim, nsamples)
-                assert u_train.shape[0] == self.ndim
-                u_train = [u_train,] * repeats
-            elif u_train.ndim == 3:
-                ## #repeats train data set are given, of shape(repeats, ndim, nsamples)
-                assert u_train.shape[0] == repeats
-                assert u_train.shape[1] == self.ndim
-            else:
-                ValueError('Wrong data type for u_train: {}'.format(u_train.shape))
-        assert len(u_train) == repeats, 'Expecting {:d} trianing set, but {:d} were given, u_train.shape={}'.format(repeats, len(u_train), u_train.shape )
-
+        size = int(size)
         u_train_new = []
         u_train_all = []
-        basis       = self.model.basis if basis is None else basis
-        active_basis= basis.basis_degree if active_basis is None or len(active_basis) == 0 else active_basis
+        active_index = [i for i in range(self.model.basis.num_basis) if self.model.basis.basis_degree[i] in active_basis]
 
-        ### Checking if the data is available to speed up the process
-        ### Precomputed datasets are only available to Optimality Design (S/D) with ALL basis 
-        if precomputed:
-            precomputed, precomputed_index = self._check_precomputed_optimality(basis, active_basis) 
+        ### get the list of indices in u_selected
+        selected_index = list(self._common_vectors(u_train, u_cand))
 
-        if precomputed:
-            tqdm.write('   - {:<20s} : {:s}'.format('Precomputed File ', self.filename_optimality))
+        if self.params.optimality is None:
+            ### for non optimality design, design matrix X is irrelative, so all columns are used
+            row_index_adding = []
+            while len(row_index_adding) < size:
+                ### random index set
+                random_idx = set(np.random.randint(0, u_cand.shape[1], size=size*10))
+                ### remove selected_index chosen in this step
+                random_idx = random_idx.difference(set(row_index_adding))
+                ### remove selected_index passed
+                random_idx = random_idx.difference(set(selected_index))
+                ### update new samples set
+                row_index_adding += list(random_idx)
+            row_index_adding = row_index_adding[:size]
+            u_new = u_cand[:,row_index_adding]
+            u_all = u_new if u_train is None else np.hstack((u_train, u_new))
+            if len(self._check_duplicate_rows(u_all.T)) > 0:
+                raise ValueError('Modeling.get_train_data(): found duplicate samples')
+
         else:
-            precomputed_index = [None,] * repeats
+            doe = uqra.OptimalDesign(self.params.optimality, selected_index=selected_index)
+            ### Using full design matrix, and precomputed optimality file exists only for this calculation
+            assert len(active_index) != 0
+            X = self.model.basis.vandermonde(u_cand)
+            X = X[:,active_index]
+            if self.params.doe_method.lower().startswith('cls'):
+                X  = X.shape[1]**0.5*(X.T / np.linalg.norm(X, axis=1)).T
+            row_index_adding = doe.get_samples(X, size, orth_basis=True)
+            u_new = u_cand[:,row_index_adding]
+            u_all = u_new if u_train is None else np.hstack((u_train, u_new))
+            if len(self._check_duplicate_rows(u_all.T)) > 0:
+                raise ValueError('Modeling.get_train_data(): found duplicate samples')
+        return u_new, u_all
 
-        for r in tqdm(range(repeats), ascii=True,ncols=80, desc='   '):
-            u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
-                    u_selected=u_train[r], basis=basis, active_basis=active_basis, precomputed=precomputed, precomputed_index=precomputed_index[r])
-            u_train_new.append(u_new)
-            u_train_all.append(u_all)
-        if len(size) == 1:
-            u_train_new = u_train_new[0] 
-            u_train_all = u_train_all[0]
-        elif len(size) == 2:
-            u_train_new = np.array(u_train_new)
-            u_train_all = np.array(u_train_all)
 
-        return u_train_new, u_train_all
+    # def get_train_data(self, size, u_cand, u_train=None, active_basis=None, precomputed=True):
+        # """
+        # Return train data from candidate data set. All samples are in U-space
+        # size is how many MORE to be sampled besides those alrady existed in u_train 
 
-    def _choose_samples_from_candidates(self, n, u_cand, u_selected=None, basis=None, active_basis=None, precomputed=False, precomputed_index=None):
+        # Arguments:
+            # size        : size of samples, (r, n): size n repeats r times
+            # u_cand      : ndarray, candidate samples in U-space to be chosen from
+            # u_train     : samples already selected, need to be removed from candidate set to get n samples
+            # active_basis: activated basis used in optimality design
+
+        # """
+        # ###  formating the input arguments
+        # u_cand  = np.array(u_cand, ndmin=2, copy=False)
+        # size    = tuple(np.atleast_1d(size))
+        # if len(size) == 1:
+            # ## case: just a number if given n
+            # repeats, n = 1, int(size[0])
+        # elif len(size) == 2:
+            # ## case: (1,n) or (r, n) 
+            # repeats, n = int(size[0]), int(size[1])
+        # else:
+            # raise ValueError
+
+        # ## u_train format checking
+        # if u_train is None:
+            # u_train = [None,] * repeats
+        # else:
+            # u_train = np.array(u_train, ndmin=2)
+            # if u_train.ndim == 2:
+                # ## just one train data set is given, of shape(ndim, nsamples)
+                # assert u_train.shape[0] == self.ndim
+                # u_train = [u_train,] * repeats
+            # elif u_train.ndim == 3:
+                # ## #repeats train data set are given, of shape(repeats, ndim, nsamples)
+                # assert u_train.shape[0] == repeats
+                # assert u_train.shape[1] == self.ndim
+            # else:
+                # ValueError('Wrong data type for u_train: {}'.format(u_train.shape))
+        # assert len(u_train) == repeats, 'Expecting {:d} trianing set, but {:d} were given, u_train.shape={}'.format(repeats, len(u_train), u_train.shape )
+
+        # u_train_new = []
+        # u_train_all = []
+        # active_basis= self.model.basis.basis_degree if active_basis is None or len(active_basis) == 0 else active_basis
+
+        # ### Checking if the data is available to speed up the process
+        # ### Precomputed datasets are only available to Optimality Design (S/D) with ALL basis 
+        # if precomputed:
+            # precomputed, precomputed_index = self._check_precomputed_optimality(active_basis) 
+
+        # if precomputed:
+            # tqdm.write('   - {:<20s} : {:s}'.format('Precomputed File ', self.filename_optimality))
+        # else:
+            # precomputed_index = [None,] * repeats
+
+        # for r in tqdm(range(repeats), ascii=True,ncols=80, desc='   '):
+            # u_new, u_all  = self._choose_samples_from_candidates(n, u_cand, 
+                    # u_selected=u_train[r], active_basis=active_basis, precomputed=precomputed, precomputed_index=precomputed_index[r])
+            # u_train_new.append(u_new)
+            # u_train_all.append(u_all)
+        # if len(size) == 1:
+            # u_train_new = u_train_new[0] 
+            # u_train_all = u_train_all[0]
+        # elif len(size) == 2:
+            # u_train_new = np.array(u_train_new)
+            # u_train_all = np.array(u_train_all)
+
+        # return u_train_new, u_train_all
+
+    def _choose_samples_from_candidates(self, n, u_cand, u_selected=None, active_basis=None, precomputed=False, precomputed_index=None):
         """
         Return train data from candidate data set. All samples are in U-space (with pluripotential equilibrium measure nv(x))
 
@@ -403,13 +252,11 @@ class Modeling(object):
 
         return u_new, u_all
 
-    def _check_precomputed_optimality(self, basis, active_basis):
+    def _check_precomputed_optimality(self, active_basis):
         """
 
         """
         ### Case: direct MCS and CLS without optimality, basis could be None
-        if basis is None:
-            return False, [None,]
         if self.params.optimality is None:
             return False, [None,]
 
@@ -486,6 +333,10 @@ class Modeling(object):
 
     def _check_duplicate_rows(self, A):
         """
+        Return the index of duplicate rows in A:
+        check column by column, 
+            1. check the first column, return index of same elments
+            2. check the next column with all previous elements are same
 
         """
         duplicate_idx = np.arange(A.shape[0])
@@ -588,7 +439,7 @@ class Modeling(object):
             else:
                 raise ValueError('{:s} not defined for CLS'.format(self.dist_u_name))
         else:
-            raise ValueError('{:s} not defined '.format(self.params.doe_methodd))
+            raise ValueError('{:s} not defined '.format(self.params.doe_method))
         return pdf
 
 
@@ -610,68 +461,28 @@ class Parameters(object):
         normalize: 
     """
 
-    def __init__(self,**kwargs):
-        sys.stdout  = Logger()
-        # self.solver = solver
-        self.optimality = None
-        ###------------- Adaptive setting -----------------------------
-        self.is_adaptive= False
-        self.plim     = kwargs.get('plim'     , None  )  ## polynomial degree limit
-        self.n_budget = kwargs.get('n_budget' , None  )
-        self.min_r2   = kwargs.get('min_r2'   , None  )  ## minimum adjusted R-squared threshold value to take
-        self.rel_mse  = kwargs.get('rel_mse'  , None  )  ## Relative mean square error 
-        self.abs_mse  = kwargs.get('abs_mse'  , None  )  ## Absolute mean square error
-        self.rel_qoi  = kwargs.get('rel_qoi'  , None  )  ## Relative error for QoI, i.e. percentage difference relative to previous simulation
-        self.abs_qoi  = kwargs.get('abs_qoi'  , None  )  ## Absolute error for QoI, i.e. decimal accuracy 
-        self.qoi_val  = kwargs.get('qoi_val'  , None  )  ## QoI value up to decimal accuracy 
-        self.rel_cv   = kwargs.get('rel_cv'   , 0.05  )  ## percentage difference relative to previous simulation
-        if self.plim is not None or self.n_budget is not None:
-            self.is_adaptive = True
-        
+    def __init__(self, solver, doe_method='MCS', optimality=None, fit_method='OLS'):
+        sys.stdout      = Logger()
+        self.solver     = solver
+        self.doe_method = str(doe_method).lower()
+        self.optimality = str(optimality).lower() 
+        self.fit_method = str(fit_method).lower()
+        self.tag        = self._get_tag()
+        self.update_dir()
+        self.data_dir_precomputed_optimality = os.path.join(self.data_dir_sample, 'OED')
+
     def info(self):
         print(r'------------------------------------------------------------')
-        print(r'>>> Parameters for Model: {}'.format(self.solver.name))
+        print(r' > Parameters for Model: {}'.format(self.solver.name))
+        print(r'   - DoE method: {}'.format(self.doe_method.upper()))
+        print(r'   - Optimality: {}'.format(self.optimality.upper()))
+        print(r'   - fit method: {}'.format(self.fit_method.capitalize()))
         print(r'------------------------------------------------------------')
-        print(r' > Working directory:')
-        print(r'   WORKING_DIR: {}'.format(os.getcwd()))
-        print(r'   +-- MODEL: {}'.format(self.figure_dir[:-7]))
-        print(r'   |   +-- {:<6s}: {}'.format('FIGURE',self.figure_dir))
-        print(r'   |   +-- {:<6s}: {}'.format('DATA(RESULT)',self.data_dir_result))
-
-        print(r' > Optional parameters:')
-        if self.time_params:
-            print(r'   * {:<15s} : '.format('time parameters'))
-            print(r'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('start', self.time_start, 'end', self.time_max ))
-            print(r'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('ramp ', self.time_ramp , 'dt ', self.dt ))
-        if self.post_params:
-            print(r'   * {:<15s} '.format('post analysis parameters'))
-            out_responses = self.out_responses if self.out_responses is not None else 'All'
-            print(r'     - {:<23s} : {} '.format('out_responses', out_responses))
-            print(r'     - {:<23s} : {} '.format('statistics'  , self.stats)) 
-
-        if self.is_adaptive:
-            print(r'   * {:<15s} '.format('Adaptive parameters'))
-            print(r'     - {:<23s} : {} '.format('Simulation budget', self.n_budget))
-            print(r'     - {:<23s} : {} '.format('Poly degree limit', self.plim))
-            print(r'     - {:<23s} : {} '.format('Relvative CV error', self.rel_cv))
-            if self.min_r2:
-                print(r'     - {:<23s} : {} '.format('R2 bound', self.min_r2))
-            if self.rel_mse:
-                print(r'     - {:<23s} : {} '.format('Relative MSE', self.rel_mse))
-            if self.abs_mse:
-                print(r'     - {:<23s} : {} '.format('Absolute MSE', self.abs_mse))
-            if self.rel_qoi:
-                print(r'     - {:<23s} : {} '.format('Relative QoI', self.rel_qoi))
-            if self.abs_qoi:
-                print(r'     - {:<23s} : {} '.format('QoI decimal accuracy', self.abs_qoi))
-            if self.qoi_val:
-                print(r'     - {:<23s} : {} '.format('QoI=0, decimal accuracy', self.qoi_val))
-
-    def update(self):
-        self.set_params()
-        self.update_dir()
-        self._get_tag()
-        self.data_dir_precomputed_optimality = os.path.join(self.data_dir_sample, 'OED')
+        print(r' > DIRECTORIES:')
+        print(r'   - Working Dir: {}'.format(os.getcwd()))
+        print(r'   - Figure  Dir: {}'.format(self.figure_dir))
+        print(r'   - Result  Dir: {}'.format(self.data_dir_result))
+        print(r'   - Samples Dir: {}'.format(self.data_dir_sample))
 
     def update_dir(self, **kwargs):
         """
@@ -687,13 +498,320 @@ class Parameters(object):
             data_dir_result: directory saving all data, self.data_dir_result
             figure_dir: directory saving all figures, self.figure_dir
         """
-        data_dir_sample, data_dir_result, dir_id_sample, dir_id_result, figure_dir =  self._make_output_dir()
+        data_dir_sample, data_dir_result, figure_dir =  self._make_output_dir()
         self.pwd            = kwargs.get('pwd'              , os.getcwd()    )
         self.figure_dir     = kwargs.get('figure_dir'       , figure_dir     )
         self.data_dir_result= kwargs.get('data_dir_result'  , data_dir_result)
         self.data_dir_sample= kwargs.get('data_dir_sample'  , data_dir_sample)
-        self.dir_id_sample  = kwargs.get('dir_id_sample'    , dir_id_sample  )
-        self.dir_id_result  = kwargs.get('dir_id_result'    , dir_id_result  )
+
+    def set_udist(self, u_dist):
+        if u_dist[0].dist.name == 'uniform':
+            self.pce_type = 'legendre'
+        elif u_dist[0].dist.name == 'norm':
+            self.pce_type = 'hermite'
+        elif u_dist[0].dist.name == 'beta':
+            self.pce_type = 'jacobi'
+        else:
+            raise NotImplementedError
+        self.u_dist = u_dist
+
+    def get_candidate_data(self, filename):
+        """
+        Return canndidate samples in u space
+        """
+        u_cdf = np.load(os.path.join(self.data_dir_sample, 'CDF', filename))
+        u_cdf_cand = u_cdf[:self.solver.ndim, :self.n_cand]
+
+
+        if self.doe_method.startswith('cls1'):
+            raise NotImplementedError
+            filename = os.path.join(self.data_dir_sample, 'CLS', filename)
+            u_cand = np.load(filename)[:solver.ndim, :self.n_cand]
+
+        elif self.doe_method.startswith('cls2'):
+            raise NotImplementedError
+            filename = os.path.join(self.data_dir_sample, 'CLS', filename)
+            u_cand = np.load(filename)[:solver.ndim, :self.n_cand]
+            u_cand = u_cand * radius_surrogate
+
+        elif self.doe_method.startswith('cls4'):
+            raise NotImplementedError
+            filename = os.path.join(self.data_dir_sample, 'CLS', filename)
+            u_cand = np.load(filename)[:solver.ndim, :self.n_cand]
+
+        elif self.doe_method.startswith('mcs'):
+            u_cand = np.array([idist.ppf(iu_cdf) for idist, iu_cdf in zip(self.u_dist, u_cdf_cand)])
+
+        return u_cand
+
+    def get_predict_data(self, filename, segments=None):
+        """
+        Return canndidate samples in u space
+        """
+        u_cdf = np.load(os.path.join(self.data_dir_sample, 'CDF', filename))
+        u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
+        x = self.x_dist.ppf(u_cdf_pred)
+        if segments is None:
+            pass
+        else:
+            idx = np.ones(x.shape[1])
+            for ix, isegments in zip(x, segments):
+                i_idx = np.logical_and(ix > isegments[0], ix < isegments[1])
+                idx = np.logical_and(idx, i_idx)
+            x = x[:, idx]
+        return x
+
+        # doe_method = self.doe_method.lower()
+        # data_dir = os.path.join(self.data_dir_sample, doe_method.upper(), self.dist_u_name.capitalize()) 
+        # try:
+            # self.filename_candidates = kwargs['filename']
+            # try:
+                # data = np.load(self.filename_candidates)
+            # except FileNotFoundError:
+                # data = np.load(os.path.join(data_dir, self.filename_candidates))
+            # u_cand = data[:self.ndim,:n].reshape(self.ndim, -1) ## will raise error when samples files smaller than n
+            # self.filename_optimality = kwargs.get('filename_optimality', None)
+
+        # except KeyError:
+            # if doe_method.lower().startswith('mcs'):
+                # self.filename_candidates = r'DoE_McsE6R0.npy'
+                # data = np.load(os.path.join(data_dir, self.filename_candidates))
+                # u_cand = data[:self.ndim,:n].reshape(self.ndim, -1) ## will raise error when samples files smaller than n
+
+            # elif doe_method.lower().startswith('cls') or doe_method == 'reference':
+                # if self.dist_u_name.lower().startswith('norm'):
+                    # self.filename_candidates = r'DoE_ClsE6d{:d}R0.npy'.format(self.ndim)
+                # elif self.dist_u_name.lower().startswith('uniform'):
+                    # self.filename_candidates = r'DoE_ClsE6R0.npy'
+                # else:
+                    # raise ValueError('dist_x_name {} not defined'.format(self.dist_x_name))
+                # data  = np.load(os.path.join(data_dir, self.filename_candidates))
+                # u_cand = data[:self.ndim,:n].reshape(self.ndim, -1)
+            # else:
+                # raise ValueError('DoE method {:s} not defined'.format(doe_method))
+            # self.filename_optimality = kwargs.get('filename_optimality', None)
+
+        # return u_cand
+
+    # def get_test_data(self, solver, pce_model, filename = r'DoE_McsE6R9.npy', **kwargs):
+        # """
+        # Return test data. 
+
+        # Test data should always be in X-space. The correct sequence is X->y->u
+
+        # To be able to generate MCS samples for X, we use MCS samples in Samples/MCS, noted as z here
+
+        # If already exist in simparams.data_dir_result, then load and return
+        # else, run solver
+
+        # """
+        
+        # data_dir_result = os.path.join(self.params.data_dir_result, 'TestData')
+        # try: 
+            # os.makedirs(data_dir_result)
+        # except OSError as e:
+            # pass
+
+        # n       = kwargs.get('n'   , self.params.n_test)
+        # qoi     = kwargs.get('qoi' , solver.out_responses )
+        # n       = int(n)
+        # n_short_term = self.solver.n_short_term
+        # assert solver.ndim == pce_model.ndim
+        # ndim = solver.ndim
+        # try:
+            # nparams = solver.nparams
+        # except AttributeError:
+            # nparams = ndim
+        # self.filename_test = '{:s}_{:d}{:s}_'.format(solver.nickname, ndim, pce_model.basis.nickname) + filename
+        # if self.params.doe_method.lower() == 'cls':
+            # self.filename_test = self.filename_test.replace('Mcs', 'Cls')
+
+        # try:
+            # u_test = None 
+            # x_test = None
+            # y_test = []
+            # for iqoi in qoi:
+                # filename_iqoi = self.filename_test[:-4] + '_y{:d}.npy'.format(iqoi)
+                # data_set = np.load(os.path.join(data_dir_result, filename_iqoi))
+                # print('   - Retrieving test data from {}'.format(os.path.join(data_dir_result, filename_iqoi)))
+                # if not solver.nickname.lower().startswith('sdof'):
+                    # assert data_set.shape[0] == 2*ndim+1
+
+                # u_test_ = data_set[     :  ndim,:n] if n > 0 else data_set[     :  ndim, :]
+                # x_test_ = data_set[ndim :ndim+nparams,:n] if n > 0 else data_set[ndim :ndim+nparams, :]
+
+                # if u_test is None:
+                    # u_test  = u_test_
+                # else:
+                    # assert np.array_equal(u_test_, u_test)
+
+                # if x_test is None:
+                    # x_test  = x_test_
+                # else:
+                    # assert np.array_equal(x_test_, x_test)
+
+                # y_test_ = data_set[ndim+nparams: ndim+nparams+n_short_term,:n] if n > 0 else data_set[ndim+nparams: ndim+nparams+n_short_term, : ]
+                # y_test.append(y_test_)
+            # if len(y_test) == 1:
+                # y_test = y_test[0]
+
+        # except FileNotFoundError:
+            # ### 1. Get MCS samples for X
+            # if pce_model.basis.dist_name.lower() == 'uniform':
+                # data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Uniform')
+                # print('    - Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
+                # data_set = np.load(os.path.join(data_dir_sample,filename))
+                # z_test = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
+                # x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * ndim)
+            # elif pce_model.basis.dist_name.lower().startswith('norm'):
+                # data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Norm')
+                # print('    - Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
+                # data_set= np.load(os.path.join(data_dir_sample,filename))
+                # z_test  = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
+                # x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
+            # else:
+                # raise ValueError
+            # y_test = solver.run(x_test, out_responses='ALL', save_qoi=True, data_dir=data_dir_result)
+            # np.save('y_test.npy', np.array(y_test))
+
+            # ### 2. Mapping MCS samples from X to u
+            # ###     dist_u is defined by pce_model
+            # ### Bounded domain maps to [-1,1] for both mcs and cls methods. so u = z
+            # ### Unbounded domain, mcs maps to N(0,1), cls maps to N(0,sqrt(0.5))
+            # u_test = 0.0 + z_test * np.sqrt(0.5) if self.is_cls_unbounded() else z_test
+            # u_test = u_test[:,:n] if n > 0 else u_test
+            # x_test = x_test[:,:n] if n > 0 else x_test
+
+            # if y_test.ndim == 1:
+                # data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
+                # np.save(os.path.join(data_dir_result, self.filename_test), data)
+                # print('   > Saving test data to {} '.format(data_dir_result))
+                # y_test = y_test[  :n] if n > 0 else y_test
+            # elif y_test.ndim == 2:
+                # # if y_test.shape[0] == n:
+                    # # y_test = y_test.T
+                # # elif y_test.shape[1] == n:
+                    # # y_test = y_test
+                # # else:
+                # raise ValueError('Solver output format not understood: {}, expecting has {:d} in 1 dimensino'.format(n))
+            # elif y_test.ndim == 3:
+                # ### (n_short_term, n, nqoi)
+                # if solver.name.lower() == 'linear oscillator':
+                    # y = []
+                    # for i, iqoi_test in enumerate(y_test.T):
+                        # data = np.vstack((u_test, x_test, iqoi_test.T))
+                        # np.save(os.path.join(data_dir_result, self.filename_test[:-4]+'_y{:d}.npy'.format(i)), data)
+                        # if i in solver.out_responses:
+                            # y.append(iqoi_test[:n].T if n > 0 else iqoi_test)
+                    # print('   > Saving test data to {} '.format(data_dir_result))
+                    # y_test = y[0] if len(y) == 1 else y
+                # elif solver.name.lower() == 'duffing oscillator':
+                    # y = []
+                    # for i, iqoi_test in enumerate(y_test.T):
+                        # data = np.vstack((u_test, x_test, iqoi_test.T))
+                        # np.save(os.path.join(data_dir_result, self.filename_test[:-4]+'_y{:d}.npy'.format(i)), data)
+                        # if i in solver.out_responses:
+                            # y.append(iqoi_test[:n].T if n > 0 else iqoi_test)
+                    # print('   > Saving test data to {} '.format(data_dir_result))
+                    # y_test = y[0] if len(y) == 1 else y
+                # else:
+                    # raise NotImplementedError
+        # return u_test, x_test, y_test
+
+    def get_test_data(self, filename, segments=None):
+        data = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
+        x = data[  self.solver.ndim : 2*self.solver.ndim, :self.n_test]
+        y = np.squeeze(data[2*self.solver.ndim :        , :self.n_test])
+
+        if segments is None:
+            x = np.array(x, ndmin=2)
+            y = np.squeeze(y)
+        else:
+
+            idx = np.ones(x.shape[1])
+            for ix, isegments in zip(x, segments):
+                i_idx = np.logical_and(ix > isegments[0], ix < isegments[1])
+                idx = np.logical_and(idx, i_idx)
+            x = x[:, idx]
+            y = np.array(y, ndmin=2, copy=False)
+            y = np.squeeze(y[:, idx])
+        return x, y
+        
+    def get_init_samples(self, n, doe_method='lhs', random_state=None, **kwargs):
+        """
+        Get initial sample design, return samples in U,X space and results y
+
+        Arguments:
+            n: int, number of samples to return
+            solver: solver used to return y
+            pce_model: for LHS, provide the u distributions needed to be sampled
+                        for cls, need to know PCE.deg such that in unbounded case to scale u
+
+        """
+
+        if doe_method.lower() == 'lhs':
+            doe = uqra.LHS(self.u_dist)
+            u   = doe.samples(size=n, random_state=random_state)
+        elif doe_method.lower() == 'cls':
+            raise NotImplementedError
+
+        else:
+            raise NotImplementedError
+        return u
+    def update_num_samples(self, P, **kwargs):
+        """
+        return array number of samples based on given oversampling ratio alphas or num_samples
+        alpha or num_samples = -1: 2 log(P) * P samples used as reference calculation
+        """
+        try:
+            alphas = kwargs['alphas']
+            self.alphas = np.array(alphas, dtype=np.float64).flatten()
+            ### alpha = -1 for reference: 2 * P * log(P)
+            if (self.alphas == -1).any():
+                self.alphas[self.alphas==-1] = 2.0 * np.log(P)
+            self.num_samples = np.array([math.ceil(P*ialpha) for ialpha in self.alphas])
+            self.alphas = self.num_samples / P
+        except KeyError:
+            try:
+                num_samples = kwargs['num_samples']
+                self.num_samples = np.array(num_samples, dtype=np.int32).flatten()
+                if (self.num_samples == -1).any():
+                    self.num_samples[self.num_samples == -1] = int(math.ceil(2 * np.log(P) * P))
+                self.alphas = self.num_samples /P
+            except NameError:
+                raise ValueError('Either alphas or num_samples should be defined')
+
+    def get_basis(self, deg, **kwargs):
+        if self.doe_method.startswith('mcs'):
+            if self.pce_type == 'legendre':
+                basis = uqra.Legendre(d=self.solver.ndim, deg=deg)
+
+            elif self.pce_type == 'hermite':
+                basis = uqra.Hermite(d=self.solver.ndim,deg=deg, hem_type='probabilists')
+            elif self.pce_type == 'jacobi':
+                a = kwargs['a']
+                b = kwargs['b']
+                basis = uqra.Jacobi(a, b, d=self.solver.ndim, deg=deg)
+
+            else:
+                raise ValueError 
+
+        elif self.doe_method.startswith('cls'):
+            if self.pce_type == 'legendre':
+                basis = uqra.Legendre(d=self.solver.ndim, deg=deg)
+
+            elif self.pce_type == 'hermite':
+                basis = uqra.Hermite(d=self.solver.ndim,deg=deg, hem_type='physicists')
+            elif self.pce_type == 'jacobi':
+                a = kwargs['a']
+                b = kwargs['b']
+                basis = uqra.Jacobi(a, b, d=self.solver.ndim, deg=deg)
+            else:
+                raise ValueError
+        else:
+            raise ValueError
+
+        return basis 
 
     def set_params(self, **kwargs):
         """
@@ -891,16 +1009,10 @@ class Parameters(object):
         if current_os.upper()[:3] == 'WIN':
             data_dir_sample = r'G:\My Drive\MUSE_UQ_DATA\Samples' 
             data_dir_result = os.path.join('G:','My Drive','MUSE_UQ_DATA')
-            dir_id_result   = self._get_gdrive_folder_id(self.solver.nickname)
-            dir_id_sample   = None 
         elif current_os.upper() == 'DARWIN':
             data_dir_sample = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
             data_dir_result = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA'
-            dir_id_result   = self._get_gdrive_folder_id(self.solver.nickname)
-            dir_id_sample   = None 
         elif current_os.upper() == 'LINUX':
-            dir_id_result   = None 
-            dir_id_sample   = None 
             data_dir_result = r'/home/jinsong/Documents/MUSE_UQ_DATA'
             data_dir_sample = r'/home/jinsong/Documents/MUSE_UQ_DATA/Samples'
         else:
@@ -912,7 +1024,7 @@ class Parameters(object):
             os.makedirs(figure_dir)
         except FileExistsError:
             pass
-        return data_dir_sample, data_dir_result, dir_id_sample, dir_id_result, figure_dir
+        return data_dir_sample, data_dir_result, figure_dir
 
     def _get_gdrive_folder_id(self, folder_name):
         """
@@ -936,33 +1048,55 @@ class Parameters(object):
 
     def _get_tag(self):
         if self.optimality:
-            self.tag = '{:s}{:s}_{:s}'.format(self.doe_method.capitalize(), self.optimality, self.fit_method.capitalize())
+            tag = '{:s}{:s}'.format(self.doe_method.capitalize(), self.optimality.capitalize())
         else:
-            self.tag = '{:s}_{:s}'.format(self.doe_method.capitalize(), self.fit_method.capitalize())
-
-    def update_num_samples(self, P, **kwargs):
-        """
-        return array number of samples based on given oversampling ratio alphas or num_samples
-        alpha or num_samples = -1: 2 log(P) * P samples used as reference calculation
-        """
-        try:
-            alphas = kwargs['alphas']
-            self.alphas = np.array(alphas, dtype=np.float64).flatten()
-            ### alpha = -1 for reference: 2 * P * log(P)
-            if (self.alphas == -1).any():
-                self.alphas[self.alphas==-1] = 2.0 * np.log(P)
-            self.num_samples = np.array([math.ceil(P*ialpha) for ialpha in self.alphas])
-            self.alphas = self.num_samples / P
-        except KeyError:
-            try:
-                num_samples = kwargs['num_samples']
-                self.num_samples = np.array(num_samples, dtype=np.int32).flatten()
-                if (self.num_samples == -1).any():
-                    self.num_samples[self.num_samples == -1] = int(math.ceil(2 * np.log(P) * P))
-                self.alphas = self.num_samples /P
-            except NameError:
-                raise ValueError('Either alphas or num_samples should be defined')
+            tag = '{:s}'.format(self.doe_method.capitalize())
+        return tag
 
 
 
 
+        # # self.solver = solver
+        # self.optimality = None
+        # ###------------- Adaptive setting -----------------------------
+        # self.is_adaptive= False
+        # self.plim     = kwargs.get('plim'     , None  )  ## polynomial degree limit
+        # self.n_budget = kwargs.get('n_budget' , None  )
+        # self.min_r2   = kwargs.get('min_r2'   , None  )  ## minimum adjusted R-squared threshold value to take
+        # self.rel_mse  = kwargs.get('rel_mse'  , None  )  ## Relative mean square error 
+        # self.abs_mse  = kwargs.get('abs_mse'  , None  )  ## Absolute mean square error
+        # self.rel_qoi  = kwargs.get('rel_qoi'  , None  )  ## Relative error for QoI, i.e. percentage difference relative to previous simulation
+        # self.abs_qoi  = kwargs.get('abs_qoi'  , None  )  ## Absolute error for QoI, i.e. decimal accuracy 
+        # self.qoi_val  = kwargs.get('qoi_val'  , None  )  ## QoI value up to decimal accuracy 
+        # self.rel_cv   = kwargs.get('rel_cv'   , 0.05  )  ## percentage difference relative to previous simulation
+        # if self.plim is not None or self.n_budget is not None:
+            # self.is_adaptive = True
+        
+        # print(r' > Optional parameters:')
+        # if self.time_params:
+            # print(r'   * {:<15s} : '.format('time parameters'))
+            # print(r'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('start', self.time_start, 'end', self.time_max ))
+            # print(r'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('ramp ', self.time_ramp , 'dt ', self.dt ))
+        # if self.post_params:
+            # print(r'   * {:<15s} '.format('post analysis parameters'))
+            # out_responses = self.out_responses if self.out_responses is not None else 'All'
+            # print(r'     - {:<23s} : {} '.format('out_responses', out_responses))
+            # print(r'     - {:<23s} : {} '.format('statistics'  , self.stats)) 
+
+        # if self.is_adaptive:
+            # print(r'   * {:<15s} '.format('Adaptive parameters'))
+            # print(r'     - {:<23s} : {} '.format('Simulation budget', self.n_budget))
+            # print(r'     - {:<23s} : {} '.format('Poly degree limit', self.plim))
+            # print(r'     - {:<23s} : {} '.format('Relvative CV error', self.rel_cv))
+            # if self.min_r2:
+                # print(r'     - {:<23s} : {} '.format('R2 bound', self.min_r2))
+            # if self.rel_mse:
+                # print(r'     - {:<23s} : {} '.format('Relative MSE', self.rel_mse))
+            # if self.abs_mse:
+                # print(r'     - {:<23s} : {} '.format('Absolute MSE', self.abs_mse))
+            # if self.rel_qoi:
+                # print(r'     - {:<23s} : {} '.format('Relative QoI', self.rel_qoi))
+            # if self.abs_qoi:
+                # print(r'     - {:<23s} : {} '.format('QoI decimal accuracy', self.abs_qoi))
+            # if self.qoi_val:
+                # print(r'     - {:<23s} : {} '.format('QoI=0, decimal accuracy', self.qoi_val))
