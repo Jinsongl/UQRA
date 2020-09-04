@@ -74,7 +74,7 @@ class PolyBase(object):
         Evaluate polynomials at given values x
         """
         raise NotImplementedError
-    def __get_basis_degree(self):
+    def _get_basis_degree(self):
         """
         self.basis_degree, list of tuples containing degree component for each basis function.
         E.g. for ndim = 3, deg = 5, the results are: 
@@ -115,7 +115,7 @@ class PolyBase(object):
             self.basis_degree = None
             self.num_basis = None
         else:
-            self.basis_degree = self.__get_basis_degree()
+            self.basis_degree = self._get_basis_degree()
             self.num_basis = len(self.basis_degree)
 
     def set_coef(self, coef):
