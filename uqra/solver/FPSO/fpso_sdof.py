@@ -97,7 +97,7 @@ class FPSO(SolverBase):
                 uqra.blockPrint()
             with mp.Pool(processes=mp.cpu_count()) as p:
                 y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, irandom_state) for ix in x]),
-                    ncols=80, desc=' {}/{:d}'.format(irandom_state, self.n_short_term), total=x.shape[0])))
+                    ncols=80, desc='   - [{}/{:d}]'.format(irandom_state, self.n_short_term), total=x.shape[0])))
             if not verbose: 
                 uqra.enablePrint()
             y.append(y_QoI_)
