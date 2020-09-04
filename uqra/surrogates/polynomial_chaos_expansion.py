@@ -250,7 +250,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
             self.sparsity = len(self.active_index)
             self.score    = model.score(X, y)
-            self._least_ns_ratio()
+            # self._least_ns_ratio()
         elif y.ndim == 2:
             raise NotImplementedError
             model_ls      = []
