@@ -327,19 +327,19 @@ def main(theta):
         # x_pred = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
 
         y_pred      = pce_model.predict(u_pred)
-        # y_pred_     = -np.inf * np.ones((simparams.n_pred,))
-        # y_pred_[-y_pred.size:] = y_pred
+        y_pred_     = -np.inf * np.ones((simparams.n_pred,))
+        y_pred_[-y_pred.size:] = y_pred
+        y_pred_ecdf = uqra.utilities.helpers.ECDF(y_pred_, alpha=pf, compress=True)
         # y50_pce_y   = uqra.metrics.mquantiles(y_pred_, 1-pf)
         # y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
         # y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
-        # y_pred_ecdf = uqra.utilities.helpers.ECDF(y_pred_, alpha=pf, compress=True)
-        y_pred_top = np.sort(y_pred, axis=None)[-22:]
+        y_pred_top = np.sort(y_pred, axis=None)[-2*int(simparams.n_pred * pf):]
 
         res = [deg, u_train.shape[1], train_error, pce_model.cv_error, test_error,
                 kappa, np.mean(y_pred_top), np.median(y_pred_top)]
         # for item in y50_pce_uxy:
             # res.append(item)
-        # pred_ecdf_each_deg.append([deg, u_train.shape[1], y_pred_ecdf])
+        pred_ecdf_each_deg.append([deg, u_train.shape[1], u_pred.size, simparams.n_pred, y_pred_ecdf])
         metrics_each_deg.append(res)
         pce_model_each_deg.append(pce_model)
 
@@ -372,13 +372,13 @@ def main(theta):
         np.save(os.path.join(os.getcwd(), filename), data_train)
 
     ### ============ Saving test ============
-    # filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_test_S{:d}'.format(solver.nickname, pce_model.tag, 
-            # simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isegment)
-    # try:
-        # np.save(os.path.join(simparams.data_dir_result, filename), y_test_hat)
-    # except:
-        # print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        # np.save(os.path.join(os.getcwd(), filename), y_test_hat)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_test_S{:d}'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isegment)
+    try:
+        np.save(os.path.join(simparams.data_dir_result, filename), y_test_hat)
+    except:
+        print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
+        np.save(os.path.join(os.getcwd(), filename), y_test_hat)
 
     ### ============ Saving QoIs ============
     metrics_each_deg = np.array(metrics_each_deg)
@@ -395,15 +395,15 @@ def main(theta):
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
         np.save(os.path.join(os.getcwd(), filename), metrics_each_deg)
 
-    ### ============ Saving Predict data ============
-    # pred_ecdf_each_deg = np.array(pred_ecdf_each_deg, dtype=object)
-    # filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_ecdf'.format(solver.nickname, pce_model.tag, 
-            # simparams.tag, str(alphas).replace('.', 'pt'), theta)
-    # try:
-        # np.save(os.path.join(simparams.data_dir_result, filename), pred_ecdf_each_deg)
-    # except:
-        # print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        # np.save(os.path.join(os.getcwd(), filename), pred_ecdf_each_deg)
+    ## ============ Saving Predict data ============
+    pred_ecdf_each_deg = np.array(pred_ecdf_each_deg, dtype=object)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_ecdf'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(alphas).replace('.', 'pt'), theta)
+    try:
+        np.save(os.path.join(simparams.data_dir_result, filename), pred_ecdf_each_deg)
+    except:
+        print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
+        np.save(os.path.join(os.getcwd(), filename), pred_ecdf_each_deg)
 
 if __name__ == '__main__':
     for s in range(10):
