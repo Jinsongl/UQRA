@@ -125,7 +125,7 @@ def get_basis(deg, simparams, solver):
 
 def main(theta):
     ## ------------------------ Displaying set up ------------------- ###
-    np.random.seed(100)
+    np.random.seed(10
     np.set_printoptions(precision=4)
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)

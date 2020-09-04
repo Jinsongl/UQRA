@@ -314,7 +314,6 @@ def main(theta):
         # np.random.seed()
         # u_pred = stats.norm.rvs(loc=0,scale=1,size=(solver.ndim, simparams.n_pred))
         # x_pred = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
-        # u_pred_     = (u_pred-u_square_center)/u_square_vertice
         print('   - {:<25s} : [{}]'.format('Predict min(U)[U1, U2]',np.amin(u_pred, axis=1)))
         print('   - {:<25s} : [{}]'.format('Predict max(U)[U1, U2]',np.amax(u_pred, axis=1)))
         y_pred      = pce_model.predict(u_pred)
@@ -326,7 +325,6 @@ def main(theta):
         y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
         y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
         y_pred_ecdf = uqra.utilities.helpers.ECDF(y_pred_, alpha=pf, compress=True)
-
 
         res = [deg, u_train.shape[1], train_error, pce_model.cv_error, test_error, kappa]
         for item in y50_pce_uxy:
