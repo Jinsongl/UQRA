@@ -69,7 +69,7 @@ class BasicTestSuite(unittest.TestCase):
                     np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf'.format(i)), excd)
 
     def test_exceedance(self):
-        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF' 
+        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SURGE' 
         # print('========================TESTING: Lienar Oscillator =======================')
         # pf       = 0.5/365.25/24/50
         # radius_surrogate= 3
@@ -137,14 +137,17 @@ class BasicTestSuite(unittest.TestCase):
             # data_ecdf = np.array(data_ecdf, dtype=object)
             # np.save(os.path.join(data_dir_result, filename[:-8]+'ecdf.npy'), data_ecdf, allow_pickle=True)
 
-        pf = 1e-5
-        # data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/NonAdap_PCE'  
-        data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/NonAdap_PCE'  
+        pf = 0.5/(50*365.25*24)
+        # data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SURGE/Data/NonAdap_PCE'  
+        # data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SURGE'  
+        # data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SURGE/Data/AdapPCE_Sampling'  
+        data_dir_result = '/Volumes/Files/FPSO_SURGE'
         for iseed in range(10):
             try:
-                filename = 'FPSO_SDOF_2Hem10_McsS_Ols_Alpha3_ST{:d}_pred.npy'.format(iseed)
+                filename = 'FPSO_SURGE_2Hem10_Mcs_Ols_Alpha10_ST{:d}_pred.npy'.format(iseed)
                 data  = np.load(os.path.join(data_dir_result, filename), allow_pickle=True)
                 print(filename)
+                print(data.shape)
             except FileNotFoundError:
                 print('File Not Found: {:s} '.format(filename))
                 continue
@@ -157,7 +160,7 @@ class BasicTestSuite(unittest.TestCase):
             np.save(os.path.join(data_dir_result, filename[:-8]+'ecdf.npy'), data_ecdf, allow_pickle=True)
 
         # pf = 1e-5
-        # data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/NonAdap_PCE'  
+        # data_dir_result = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SURGE/Data/NonAdap_PCE'  
         # for iseed in range(10):
             # filename = 'FPSO_SDOF_2Hem10_Mcs_Lassolars_Alpha1pt2_ST{:d}_pred.npy'.format(iseed)
             # print(filename)

@@ -35,15 +35,17 @@ class BasicTestSuite(unittest.TestCase):
             # # np.save(os.path.join(data_dir, filename), samples_x)
 
     def test_EC(self):
-        P = 50
+        P = 1000
         U, X= Kvitebjorn().environment_contour(P,T=1800,n=1000)
         EC_samples = np.concatenate((U, X), axis=0)
-        print(U)
-        print(X)
         np.save(os.path.join('Kvitebjorn_EC_{:d}yr_1000'.format(P)), EC_samples)
+
+
         # U, X = Norway5().environment_contour(P,T=3600,n=1000)
         # EC_samples = np.concatenate((U, X), axis=0)
-        # np.save('Norway5_EC_T{:d}'.format(P), EC_samples)
+        # np.save('Norway5_EC_{:d}yr_1000'.format(P), EC_samples)
+
+
         # # print(EC_samples.shape)
         # U_hub = np.arange(3,26) 
         # hub_height = 90

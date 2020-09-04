@@ -141,6 +141,7 @@ class BasicTestSuite(unittest.TestCase):
             y0=solver1(x)
             y1=pce_model.predict(x)
             print('     Max abs error: {}'.format(max(abs(y0-y1))))
+
     def test_mPCE(self):
         foo = lambda x: x**3 + 0.5*x + np.random.randn(*x.shape)
         dist = cp.Normal()
@@ -195,50 +196,13 @@ class BasicTestSuite(unittest.TestCase):
                 uqra.enablePrint()
                 print('\t Optimal: {}'.format( np.around(coeffs,4)))
 
-    def test_surrogate_model(self):
-        pass
-        # solver2 = lambda x: x**2 + 1
-        # solver3 = lambda x: x**3 + x**2 + x + 3
-        # solver4 = lambda x: cp.Gamma(1,1).inv(cp.Normal(0,1).cdf(x))
-        # solver5 = lambda x: cp.Gamma(1,1).inv(cp.Gamma(1,1).cdf(x))
-
-        # upper_tail_probs= [0.999,0.9999,0.99999]
-        # moment2cal      = [1,2,3,4]
-        # metrics2cal     = [ 'explained_variance_score', 'mean_absolute_error', 'mean_squared_error',
-                    # 'median_absolute_error', 'r2_score', 'r2_score_adj', 'moment', 'mquantiles']
-        
-        # sample_weight = None
-        # multioutput   = 'uniform_average'
-        # # squared       = True
-
-        # solvers2test= [solver1,solver2,solver3, solver4, solver5]
-        # solver_strs = ['x', '1 + x**2', '3 + x + x**2 + x**3', 'Gamma(1,1), Hermite', 'Gamma(1,1), Optimal']
-        # poly_orders = range(2,5)
-        # dist_zeta   = cp.Normal()
-        # dist_x      = cp.Normal()
-
-        # orth_poly   = uqra.Hermite(d=1)
-        # for isolver , isolver_str in zip(solvers2test, solver_strs):
-            # for ipoly_order in poly_orders:
-                # # uqra.blockPrint()
-                # orth_poly.set_degree(ipoly_order)
-                # doe_x, doe_w = uqra.QuadratureDesign(orth_poly).samples(ipoly_order+1)
-                # train_y = np.squeeze(isolver(doe_x))
-                # # train_y = np.array([train_y,train_y]).T
-                # pce_model  = uqra.PCE(stats.norm, ipoly_order)
-                # # print(len(pce_model.basis[0]))
-                # pce_model.fit_quadrature(doe_x, doe_w, train_y)
-                # print(isolver_str)
-                # print(pce_model.metamodels)
-                # pce_model.predict(doe.u, train_y, metrics=metrics2cal, prob=upper_tail_probs, moment=moment2cal, sample_weight=sample_weight, multioutput=multioutput)
-
     def test_LassoLars(self):
         from sklearn import linear_model
         from sklearn.linear_model import LassoCV, LassoLarsCV, LassoLarsIC, LassoLars
         from sklearn import datasets
 
-        solver3 = lambda x: x**4 + x**2 + 3 
-        solver4 = lambda x: x**9 + 1.5*x**5 + 10
+        solver3 = lambda x: x**4 + x**2 + 3 + 0.3
+        solver4 = lambda x: x**9 + 1.5*x**5 + 10 + 0.5
 
         np.random.seed(100)
         u_samples = stats.norm.rvs(size=1000)
@@ -250,14 +214,14 @@ class BasicTestSuite(unittest.TestCase):
         pce_model = uqra.PCE(orth_poly)
         print(u_samples.shape)
         print(y_samples.shape)
-        pce_model.fit('LassoLars', u_samples, y_samples )
-        # print(pce_model.active_)
-        # print(pce_model.metamodels)
-        y_pred = pce_model.predict(u_samples)
-        print(pce_model.score)
-        print(pce_model.cv_error)
-        print(np.amax(abs(y_pred[0] - y_samples[0])))
-        print(np.amax(abs(y_pred[1] - y_samples[1])))
+        for iy_samples in y_samples:
+            pce_model.fit('OLS', u_samples, iy_samples)
+            # print(pce_model.active_)
+            # print(pce_model.metamodels)
+            y_pred = pce_model.predict(u_samples)
+            print(pce_model.score)
+            print(pce_model.cv_error)
+            print(np.amax(abs(y_pred - iy_samples)))
 
         # pce_model.fit('OlsLars', u_samples, y_samples)
         # print(pce_model.active_)
@@ -265,5 +229,29 @@ class BasicTestSuite(unittest.TestCase):
         # y_pred = pce_model.predict(u_samples)
         # print(y_pred[:4])
 
+    def test_OLS(self):
+        np.random.seed(10)
+        ndim, deg, nsamples = 1, 4, 10
+        solver = uqra.Hermite(d=ndim, deg=deg)
+        coef = stats.norm.rvs(0,1,size=solver.num_basis)
+        coef[0] = 1
+        coef[1] = 0.5
+        coef[-1]= 1.5
+        solver.set_coef(coef)
+        print('solver coef: {}'.format(solver.coef))
+        xx = np.linspace(-4,4,1000)
+        yy = solver(xx) #+ 0.05*stats.norm.rvs(size=(1,x.size))
+
+        orth_poly = uqra.Hermite(d=ndim, deg=deg)
+        pce_model = uqra.PCE(orth_poly)
+        x_train = stats.norm.rvs(0,1,size=(ndim,nsamples))
+        y_train = solver(x_train)#+ 0.5*stats.norm.rvs(size=x_train.size)
+        pce_model.fit('OLS',x_train.reshape(ndim,-1),y_train)
+        yy_test = pce_model.predict(xx.reshape(1,-1)) #+ pce_model.model.intercept_
+        error = yy - yy_test
+        print('pce coef: {}'.format(pce_model.coef))
+        print(pce_model.model.intercept_)
+        print('max error: {:.2}'.format(max(error)))
+ 
 if __name__ == '__main__':
     unittest.main()
