@@ -335,7 +335,8 @@ def main(theta):
         # y_pred_ecdf = uqra.utilities.helpers.ECDF(y_pred_, alpha=pf, compress=True)
         y_pred_top = np.sort(y_pred, axis=None)[-22:]
 
-        res = [deg, u_train.shape[1], train_error, pce_model.cv_error, test_error, kappa]
+        res = [deg, u_train.shape[1], train_error, pce_model.cv_error, test_error,
+                kappa, np.mean(y_pred_top), np.median(y_pred_top)]
         # for item in y50_pce_uxy:
             # res.append(item)
         # pred_ecdf_each_deg.append([deg, u_train.shape[1], y_pred_ecdf])
@@ -345,8 +346,8 @@ def main(theta):
         ### ============ calculating & updating metrics ============
         tqdm.write(' > Summary')
         with np.printoptions(precision=4):
-            tqdm.write('     - {:<15s} : {}'.format( 'Mean top y', np.mean (y_pred_top)))
-            tqdm.write('     - {:<15s} : {}'.format( 'Median top y', np.median(y_pred_top)))
+            tqdm.write('     - {:<15s} : {}'.format( 'Mean top y', np.array(metrics_each_deg)[-1:, -2]))
+            tqdm.write('     - {:<15s} : {}'.format( 'Median top y',np.array(metrics_each_deg)[-1:,-1]))
             tqdm.write('     - {:<15s} : {}'.format( 'Train MSE' , np.array(metrics_each_deg)[-1:, 2]))
             tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(metrics_each_deg)[-1:, 3]))
             tqdm.write('     - {:<15s} : {}'.format( 'Test MSE ' , np.array(metrics_each_deg)[-1:, 4]))
@@ -371,19 +372,20 @@ def main(theta):
         np.save(os.path.join(os.getcwd(), filename), data_train)
 
     ### ============ Saving test ============
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_test_S{:d}'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isegment)
-    try:
-        np.save(os.path.join(simparams.data_dir_result, filename), y_test_hat)
-    except:
-        print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        np.save(os.path.join(os.getcwd(), filename), y_test_hat)
+    # filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_test_S{:d}'.format(solver.nickname, pce_model.tag, 
+            # simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isegment)
+    # try:
+        # np.save(os.path.join(simparams.data_dir_result, filename), y_test_hat)
+    # except:
+        # print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
+        # np.save(os.path.join(os.getcwd(), filename), y_test_hat)
 
     ### ============ Saving QoIs ============
     metrics_each_deg = np.array(metrics_each_deg)
     with open(os.path.join(simparams.data_dir_result, 'outlist_name.txt'), "w") as text_file:
         text_file.write(', '.join(
-            ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
+            # ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
+            ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y_pred_top mean', 'y_pred_top median']))
 
     filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_S{:d}'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isegment)
