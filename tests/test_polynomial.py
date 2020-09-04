@@ -2,10 +2,34 @@
 
 import uqra, unittest, warnings, os, sys, math
 from tqdm import tqdm
-import numpy as np, chaospy as cp, scipy as sp 
+import numpy as np, scipy as sp 
 import scipy.stats as stats
+import scipy
 
 sys.stdout  = uqra.utilities.classes.Logger()
+
+def orthogonal_normalization(n, alpha, beta):
+    """
+    Calculate the orthogonality value for Jacobi polynoial, C
+    int Pm(1-2x) * Pn(1-2x) * w(x) dx = C* delta_{ij} on [0,1]
+    """
+    c1 = 2**(alpha+beta+1)
+    c2 = (2 * n + alpha + beta + 1)
+    c3 = scipy.special.gamma(n+alpha+1)*scipy.special.gamma(n+beta+1)
+    c4 = scipy.special.gamma(n+alpha+beta+1)*scipy.special.factorial(n)
+    c  = c1 * c3 / c2 / c4
+    return c
+
+def weight_normalization(alpha, beta):
+    """
+    Normalization value to make the weight function being a Beta distribution as defined in scipy.stats.beta
+    if x ~ Beta(alpha+1, beta+1)
+    1-2x ~ w(x, alpha, beta) * C(alpha, beta)
+    """
+    B = lambda a, b : scipy.special.gamma(a) * scipy.special.gamma(b) / scipy.special.gamma(a+b)
+    c = 1.0/ (2**(alpha+beta+1)*B(beta+1,alpha+1))
+    return c
+
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
     def test_PolyBase(self):
@@ -305,7 +329,193 @@ class BasicTestSuite(unittest.TestCase):
         for p in range(1,10):
             X = uqra.Legendre(ndim,p).vandermonde(x)
             print(np.diag(X.T.dot(X)/n))
-    def test_cls_Legendre(self):
+
+    def test_Legendre1(self):
+
+        print('--------------------Testing instance--------------------')
+        poly = uqra.Legendre1()
+        print('{:20s}: {}'.format('poly.basis',poly.basis))
+        print('{:20s}: {}'.format('poly.basis_degree',poly.basis_degree))
+        print('{:20s}: {}'.format('poly.num_basis',poly.num_basis))
+
+        poly = uqra.Legendre1(1, 3)
+        x = np.arange(-1,1,0.5)
+        print('{:20s}: {}'.format('poly.basis',poly.basis))
+        print('{:20s}: {}'.format('poly.basis_degree',poly.basis_degree))
+        print('{:20s}: {}'.format('poly.num_basis',poly.num_basis))
+        print('{:20s}: {}'.format('weights:uqra', poly.weight(x)))
+        print('{:20s}: {}'.format('weights:numpy', np.polynomial.legendre.legweight(x)))
+        print('{:20s}: {}'.format('orth norm', poly.orthogonal_normalization(3)))
+
+        print('--------------------Testing Gauss-Quadrature: Legendre1(d=1), n=5--------------------')
+        x, w = uqra.Legendre1(d=1).gauss_quadrature(5)
+        print(x)
+        print(w)
+
+        print('--------------------Testing Legendre1.call(): Legendre1(d=1, p=4)--------------------')
+        d, p = 1, 4
+        poly = uqra.Legendre1(d,p)
+        x = np.arange(-1,1,0.5)
+        print('uqra.Legendre1(1,4): {}'.format(poly))
+        print('x: np.arange(-1,1,0.5)')
+        for _ in range(5):
+            coef = np.random.normal(size=poly.num_basis)
+            y0   = np.polynomial.legendre.legval(x,coef)
+            npleg= np.polynomial.legendre.Legendre(coef)
+            uqleg= uqra.Legendre1(d=d, deg=p, coef=coef)
+            poly.set_coef(coef)
+            y1 = poly(x)
+            print('     - coefficients: {}'.format(np.around(coef, 2)))
+            print('     - Numpy coef  : {}'.format(npleg))
+            print('     - UQRAleg coef: {}'.format(np.around(uqleg.coef, 2)))
+            print('     - UQRA  coef  : {}'.format(np.around(poly.coef, 2)))
+            print('     - Numpy y0    : {}'.format(np.around(y0, 2)))
+            print('     - UQRA leg y0 : {}'.format(np.around(uqleg(x), 2)))
+            print('     - UQRA  y0    : {}'.format(np.around(y1, 2)))
+            print('     - max abs error: {}\n'.format(np.around(max(abs(y0-y1)), 2)))
+
+        
+        print('--------------------Testing Legendre1.call(): Legendre1(d=2, p=4)--------------------')
+        d, p = 2, 4
+        poly = uqra.Legendre1(d,p)
+        print('uqra.Legendre1(2,4): {}'.format(poly))
+        x = np.random.uniform(-1,1,size=(d,1000))
+        for i in range(poly.num_basis):
+            coef = np.zeros((poly.num_basis,))
+            coef[i] = 1 
+            print('     > coefficients: {}'.format(np.around(coef, 2)))
+            print('     - basis_degree: {}'.format(poly.basis_degree[i]))
+            y0 = 1
+            for i, ideg in enumerate(poly.basis_degree[i]):
+                coef1 = np.zeros((ideg+1,))
+                coef1[ideg] = 1 ##np.random.uniform(1)
+                print('     > ideg coef: {}'.format(np.around(coef1, 2)))
+                y0= y0 * np.polynomial.legendre.legval(x[i],coef1)
+            poly.set_coef(coef)
+            y1=poly(x)
+            print('     - max abs error: {}\n'.format(max(abs(y0-y1))))
+
+        print('--------------------Testing Orthogonality --------------------')
+        np.set_printoptions(precision=2)
+        ndim= 1
+        n   = int(1e5)
+        print('d={:d}, n={:d}'.format(ndim, n))
+        x = stats.uniform.rvs(-1,2,size=(ndim,n))
+        print(np.mean(x,axis=1))
+        print(np.max( x,axis=1))
+        print(np.min( x,axis=1))
+        for p in range(1,10):
+            X = uqra.Legendre1(ndim,p).vandermonde(x)
+            print(np.diag(X.T.dot(X)/n))
+
+        ndim= 2
+        n   = int(1e5)
+        print('d={:d}, n={:d}'.format(ndim, n))
+        x = sp.random.uniform(-1,1,size=(ndim,n))
+        print(np.mean(x,axis=1))
+        print(np.max( x,axis=1))
+        print(np.min( x,axis=1))
+        for p in range(1,10):
+            X = uqra.Legendre1(ndim,p).vandermonde(x)
+            print(np.diag(X.T.dot(X)/n))
+
+    def test_Jacobi(self):
+        print('--------------------Testing empty instance--------------------')
+        poly = uqra.Jacobi()
+        # print('--------------------Testing Gauss-Quadrature: Jacobi(d=1), n=5--------------------')
+        # x, w = uqra.Jacobi(d=1).gauss_quadrature(5)
+        # print(x)
+        # print(w)
+
+        print('--------------------Testing Jacobi basis by basis --------------------')
+        d, p = 1, 4
+        a, b = 1, 1
+        poly = uqra.Jacobi(a,b, d=d, deg=p)
+        x = np.arange(-1,1.1,0.1)
+        # print('uqra.Jacobi(1,4,1,1): {}'.format(poly))
+        # print('x: np.arange(0,1,0.5)')
+
+        np.random.seed(100)
+        for _ in range(1):
+            print('random repeat>....')
+            # coef = np.random.normal(size=poly.num_basis)
+            for ideg in np.arange(p+1):
+                coef = np.zeros(p+1)
+                coef[ideg] = 1
+                print('     - coefficients: {}'.format(np.around(coef, 2)))
+                npleg= np.polynomial.legendre.Legendre(coef)
+                y0   = npleg(x)
+                spjac= scipy.special.jacobi(ideg,0,0)
+                y1   = spjac(x)
+                poly = uqra.Jacobi(a,b, d=d, deg=p, coef=coef)
+                y2   = poly(x)
+                print('     - max abs error y1-y0 : {}'.format(np.around(max(abs(y1-y0)), 4)))
+                print('     - max abs error y2-y0 : {}'.format(np.around(max(abs(y2-y0)), 4)))
+                
+        print('--------------------Testing Legendre1.call(): Legendre1(d=1, p=4)--------------------')
+        d, p = 1, 4
+        a, b = 1, 1
+        poly = uqra.Jacobi(a,b, d=d, deg=p)
+        x = np.arange(-1,1.1,0.1)
+        print('uqra.Jacobi(1,4,1,1): {}'.format(poly))
+        print('x: np.arange(0,1,0.5)')
+
+        for _ in range(5):
+            coef = np.random.normal(size=poly.num_basis)
+            npleg= np.polynomial.legendre.Legendre(coef)
+            y0   = npleg(x)
+            poly = uqra.Jacobi(a,b, d=d, deg=p, coef=coef)
+            y1   = poly(x)
+            print('     - coefficients: {}'.format(np.around(coef, 2)))
+            print('     - Numpy coef  : {}'.format(npleg))
+            print('     - UQRA  coef  : {}'.format(np.around(poly.coef, 2)))
+            print('     - Numpy y0    : {}'.format(np.around(y0, 2)))
+            print('     - UQRA  y0    : {}'.format(np.around(y1, 2)))
+            print('     - max abs error: {}\n'.format(np.around(max(abs(y0-y1)), 2)))
+
+        print('--------------------Testing Orthogonality --------------------')
+        np.set_printoptions(precision=2)
+        np.random.seed(100)
+        n   = int(1e6)
+        a, b = 1, 1
+        x = stats.beta.rvs(a,b,size=(d,n),loc=-1, scale=2)
+        print(np.mean(x), np.std(x))
+        print(np.amin(x), np.amax(x))
+        print(x)
+        C = weight_normalization(0,0)
+
+        for i in np.arange(5):
+            spjac = scipy.special.jacobi(i,0,0)
+            C1 = orthogonal_normalization(i,0,0)
+            y = spjac(x)
+            e = np.dot(y, y.T)[0][0]/n
+            print(i, C, C1, e, e/C1/C)
+
+
+        print('--------------------Testing Orthogonality --------------------')
+        np.random.seed(100)
+        np.set_printoptions(precision=2)
+        a, b = 1, 1
+        d, p = 1, 4
+        n   = int(1e6)
+        print('d={:d}, n={:d}'.format(d, n))
+        x = stats.beta.rvs(a,b,size=(d,n),loc=-1, scale=2)
+        poly = uqra.Jacobi(a,b,d=d,deg=p)
+        X = poly.vandermonde(x)
+        print(np.diag(X.T.dot(X)/n))
+
+        d, p = 2, 4
+        n   = int(1e6)
+        print('d={:d}, n={:d}'.format(d, n))
+        x = stats.beta.rvs(a,b,size=(d,n),loc=-1, scale=2)
+        print(np.mean(x,axis=1))
+        print(np.max( x,axis=1))
+        print(np.min( x,axis=1))
+        poly = uqra.Jacobi(a,b,d=d,deg=p)
+        X = poly.vandermonde(x)
+        print(np.diag(X.T.dot(X)/n))
+
+    def test_cls_Jacobi(self):
         print('--------------------Testing CLS Legendre--------------------')
         ndim= 2
         p   = 4
