@@ -13,6 +13,8 @@ from uqra.simulation import Modeling
 from uqra.polynomial._polybase import PolyBase
 from uqra.polynomial.hermite import Hermite
 from uqra.polynomial.legendre import Legendre
+from uqra.polynomial.legendre1 import Legendre1
+from uqra.polynomial.jacobi import Jacobi
 
 from uqra.environment._envbase import EnvBase
 from uqra.environment.environment import Environment as Environment
@@ -24,6 +26,7 @@ from uqra.experiment.lhs import LatinHyperCube as LHS
 from uqra.experiment.optimal_design import OptimalDesign 
 
 # from uqra.solver.dynamic import linear_oscillator, duffing_oscillator
+from uqra.solver.solver import Solver
 from uqra.solver.linear_oscillator import linear_oscillator as linear_oscillator
 from uqra.solver.duffing_oscillator import duffing_oscillator as duffing_oscillator
 from uqra.solver.surge_model import surge_model as surge_model
