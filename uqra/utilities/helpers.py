@@ -476,3 +476,74 @@ def _bootstrpping(data, bootstrap_size):
     return res
 
 
+def inverse_rosenblatt(x_dist, u, x_range=None, u_dist=stats.norm()):
+    """
+    x_dist: a list of distributions in x space or an UQRA.environment object which has
+    Map cdf values from [0,1] to truncated domain in X space 
+
+    x_range: boundary
+    u: ndarray of shape(solver.ndim, n)
+
+    """
+    if x_range is None:
+        u_cdf = u_dist.cdf(u)
+        x = x_dist.ppf(u_cdf)
+    else:
+        x       = []
+        u_cdf   = u_dist.cdf(u) ## cdf values in truncated domain
+
+        for i, (ix_range, iu_cdf) in enumerate(zip(x_range, u_cdf)):
+            if ix_range is None:
+                Fa, Fb = 0, 1
+            else:
+                Fa, Fb = x_dist.cdf(ix_range)[i]
+
+
+
+        ## Hs not depend on any other x, return the Fa, Fb. the 1st row corresponds to hs
+         
+        ## transform cdf values to non-truncated domain
+        u_cdf[0] = u_cdf[0] * (Fb_hs - Fa_hs) + Fa_hs
+        ## return hs
+        hs = x_dist.ppf(u_cdf)[0]  ## only Hs is correct, Tp is wrong
+
+        ## Tp is conditional on Hs, need to find the Fa, Fb for [Tp1, Tp2] condition on each Hs
+        Fa_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
+        Fb_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
+        u_cdf[1] = u_cdf[1] * (Fb_tp - Fa_tp) + Fa_tp
+
+        x = x_dist.ppf(u_cdf)
+    return x 
+
+def rosenblatt(x_dist, x, x_range=None,  u_dist=stats.norm()):
+    """
+    Map values from truncated domain in X space to uspace 
+
+    x_range: boundary
+    u: ndarray of shape(solver.ndim, n)
+
+    """
+    hs, tp  = np.array(x, ndmin=2)
+
+    if x_range is None:
+        x_cdf   = x_dist.cdf(x)
+        u       = u_dist.ppf(x_cdf)
+    else:
+        x_range = np.array(x_range, ndmin=2)
+        hs_range, tp_range = x_range
+
+        ## get the cdf values in non-truncate domain
+        x_cdf   = x_dist.cdf(x)
+        ## Hs not depend on any other x, return the Fa, Fb. the 1st row corresponds to hs
+        Fa_hs, Fb_hs = x_dist.cdf(x_range)[0] 
+        ## transform to cdf values in truncated domain
+        x_cdf[0] = (x_cdf[0] - Fa_hs)/(Fb_hs  - Fa_hs)
+
+        ## Tp is conditional on Hs, need to find the Fa, Fb for [Tp1, Tp2] condition on each Hs
+        Fa_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
+        Fb_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
+        x_cdf[1] = (x_cdf[1] - Fa_tp)/(Fb_tp  - Fa_tp)
+
+        u = u_dist.ppf(x_cdf)
+    return u 
+
