@@ -28,7 +28,7 @@ class Legendre(PolyBase):
         self.name       = 'Legendre'
         self.nickname   = 'Leg'
         self.dist_name  = 'Uniform'
-        self.dist_u     = [stats.uniform(-1,2), ] * self.ndim 
+        self.dist_u     = None if self.ndim is None else [stats.uniform(-1,2), ] * self.ndim 
         self._update_basis()
 
     def gauss_quadrature(self, n, loc=[], scale=[]):
@@ -110,10 +110,13 @@ class Legendre(PolyBase):
         self._update_basis()
 
     def set_coef(self, coef):
+        """
+        set coefficients for orthoNORMAL basis
+        """
         self._update_basis()
         if len(coef) != self.num_basis:
             raise TypeError('Expected coefficients has length {}, but {} is given'.format(self.num_basis, len(coef)))
-        self.coef = coef
+        self.coef = coef*np.sqrt(self.basis_norms)
     def _update_basis(self):
         """
         Return a list of polynomial basis function with specified degree and multi_index rule
