@@ -567,7 +567,7 @@ class Parameters(object):
         u_cdf = np.load(os.path.join(self.data_dir_sample, 'CDF', filename))
         u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
         x = self.x_dist.ppf(u_cdf_pred)
-        x = data_within_domain(x, subdomains)
+        x = self.data_within_domain(x, subdomains)
         return x
 
         # doe_method = self.doe_method.lower()
