@@ -17,31 +17,32 @@ from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
-def inverse_rosenblatt(x_dist, u, u_dist, segments=None):
+def inverse_rosenblatt(x_dist, u, u_dist, subdomains=None):
     """
     Map cdf values from [0,1] to truncated domain in X space 
 
-    segments: boundary
+    subdomains: boundary
     u: ndarray of shape(solver.ndim, n)
 
     """
     u1, u2 = np.array(u, ndmin=2, copy=False)
     assert len(u_dist) == 2
 
-    if segments is None:
+    if subdomains is None:
         u_cdf = np.array([idist.cdf(iu) for iu, idist in zip(u, u_dist)])
         x = x_dist.ppf(u_cdf)
     else:
-        hs_range, tp_range = segments
+        hs_range, tp_range = subdomains
         u_cdf = np.array([idist.cdf(iu) for iu, idist in zip(u, u_dist)]) ## cdf values in truncated domain
+        x_cdf = np.ones(u_cdf.shape) 
 
         ## Hs not depend on any other x, return the Fa, Fb. the 1st row corresponds to hs
         if hs_range is None:
             Fa, Fb = 0,1
         else:
-            Fa, Fb = x_dist.cdf(segments)[0] 
+            Fa, Fb = x_dist.cdf(subdomains)[0] 
         ## transform cdf values to non-truncated domain
-        u_cdf[0] = u_cdf[0] * (Fb - Fa) + Fa
+        x_cdf[0] = u_cdf[0] * (Fb - Fa) + Fa
         ## return hs
         hs = x_dist.ppf(u_cdf)[0]  ## only Hs is correct, Tp is wrong
 
@@ -51,36 +52,37 @@ def inverse_rosenblatt(x_dist, u, u_dist, segments=None):
         else:
             Fa = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
             Fb = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
-        u_cdf[1] = u_cdf[1] * (Fb - Fa) + Fa
+        x_cdf[1] = u_cdf[1] * (Fb - Fa) + Fa
 
-        x = x_dist.ppf(u_cdf)
+        x = x_dist.ppf(x_cdf)
     return x 
 
-def rosenblatt(x_dist, x, u_dist, segments=None):
+def rosenblatt(x_dist, x, u_dist, subdomains=None):
     """
     Map values from truncated domain in X space to u-space 
 
-    segments: boundary
+    subdomains: boundary
     u: ndarray of shape(solver.ndim, n)
 
     """
     hs, tp = np.array(x, ndmin=2, copy=False)
     assert len(u_dist) == 2
 
-    if segments is None:
+    if subdomains is None:
         x_cdf = x_dist.cdf(x)
         u     = np.array([iu_dist.ppf(ix_cdf) for iu_dist, ix_cdf in zip(u_dist, x_cdf)])
     else:
-        hs_range, tp_range = segments
+        hs_range, tp_range = subdomains
         ## get the cdf values in non-truncate domain
-        x_cdf  = x_dist.cdf(x)
+        x_cdf = x_dist.cdf(x)
+        u_cdf = np.ones(x_cdf.shape)
         ## Hs not depend on any other x, return the Fa, Fb. the 1st row corresponds to hs
         if hs_range is None:
             Fa, Fb = 0,1
         else:
-            Fa, Fb = x_dist.cdf(segments)[0] 
+            Fa, Fb = x_dist.cdf(subdomains)[0] 
         ## transform to cdf values in truncated domain
-        x_cdf[0] = (x_cdf[0] - Fa)/(Fb  - Fa)
+        u_cdf[0] = (x_cdf[0] - Fa)/(Fb  - Fa)
 
         ## Tp is conditional on Hs, need to find the Fa, Fb for [Tp1, Tp2] condition on each Hs
         if tp_range is None:
@@ -88,14 +90,14 @@ def rosenblatt(x_dist, x, u_dist, segments=None):
         else:
             Fa = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
             Fb = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
-        x_cdf[1] = (x_cdf[1] - Fa)/(Fb  - Fa)
+        u_cdf[1] = (x_cdf[1] - Fa)/(Fb  - Fa)
 
         if (x_cdf <0).any() or (x_cdf>1).any():
             print('CDF < 0: {}'.format(x_cdf[x_cdf<0]))
             print('CDF > 1: {}'.format(x_cdf[x_cdf>1]))
             raise ValueError('CDF values must be in [0,1] ...')
 
-        u = np.array([iu_dist.ppf(ix_cdf) for iu_dist, ix_cdf in zip(u_dist, x_cdf)])
+        u = np.array([iu_dist.ppf(iu_cdf) for iu_dist, iu_cdf in zip(u_dist, u_cdf)])
     return u 
 
 def get_pts_inside_square(x, center=[0,0], edges=[1,1]):
@@ -115,13 +117,13 @@ def get_pts_inside_square(x, center=[0,0], edges=[1,1]):
     return idx
 
 def get_rounded_range(x):
-    segments = np.array([[np.floor(np.amin(ix)), np.ceil(np.amax(ix))] for ix in x])
-    return segments
+    subdomains = np.array([[np.floor(np.amin(ix)), np.ceil(np.amax(ix))] for ix in x])
+    return subdomains
 
-def estimate_beta_params(x, segments=None):
-    segments = get_rounded_range(x) if segments is None else np.asarray(segments)
-    x_min   = segments[:,0].reshape(-1,1)
-    x_max   = segments[:,1].reshape(-1,1)
+def estimate_beta_params(x, subdomains=None):
+    subdomains = get_rounded_range(x) if subdomains is None else np.asarray(subdomains)
+    x_min   = subdomains[:,0].reshape(-1,1)
+    x_max   = subdomains[:,1].reshape(-1,1)
     x_scaled  = (x- x_min)/(x_max- x_min) * 2 -1 ## scale to [-1,1]
     a, b = [], []
     for ix in x_scaled:
@@ -136,17 +138,17 @@ def main(theta):
     print('#' * 80 + '\n')
     np.random.seed(100)
     np.set_printoptions(precision=4)
-    np.set_printoptions(threshold=100)
+    np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
     # hs_range = [10,16]
     # tp_range = [10,20]
     # hs_range = [0,21]
     # tp_range = [0,35]
-    # segments  = np.array([hs_range, tp_range])
+    # subdomains  = np.array([hs_range, tp_range])
     # x_square_center = np.mean([hs_range, tp_range], axis=1)
     # x_square_edges  = np.array([hs_range[1] - hs_range[0],tp_range[1] - tp_range[0]])
-    # x_min    = segments[:,0].reshape(2,1)
-    # x_max    = segments[:,1].reshape(2,1)
+    # x_min    = subdomains[:,0].reshape(2,1)
+    # x_max    = subdomains[:,1].reshape(2,1)
     # x_pred_idx  = get_pts_inside_square(x_pred, center=x_square_center, edges=x_square_edges)
     # x_pred      = x_pred[:, x_pred_idx]
 
@@ -168,32 +170,32 @@ def main(theta):
     simparams.info()
 
     ## ----------- Predict data set ----------- ###
-    isegment = 0
-    segments  = [np.array([[0,10],[0,34]]), np.array([[10,17],[10,20]])][isegment]
-    # segments = None
-    # segments= get_rounded_range(x_pred)
+    isubdomain = 0
+    subdomains = [np.array([[0,10],[0,34]]), np.array([[10,17],[10,20]])][isubdomain]
+    # subdomains = None
+    # subdomains= get_rounded_range(x_pred)
     print(' > Getting predict data set...')
     filename = 'CDF_McsE7R{:d}.npy'.format(theta)
-    x_pred = simparams.get_predict_data(filename, segments=segments)
-    a, b   = estimate_beta_params(x_pred, segments=segments)
+    x_pred = simparams.get_predict_data(filename, subdomains=subdomains)
+    a, b   = estimate_beta_params(x_pred, subdomains=subdomains)
     u_dist = [stats.beta(ia,ib,loc=-1,scale=2) for ia, ib in zip(a, b)]
     # u_dist = [stats.norm(0,1),] * solver.ndim
     # u_dist = [stats.uniform(-1,2),]* solver.ndim
     simparams.set_udist(u_dist)
-    u_pred     = rosenblatt(Kvitebjorn, x_pred, simparams.u_dist, segments=segments)
+    u_pred     = rosenblatt(Kvitebjorn, x_pred, simparams.u_dist, subdomains=subdomains)
     print('   - {:<25s} : {}, {}'.format(' Dataset (U,X)', u_pred.shape, x_pred.shape))
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_pred, axis=1), np.amax(u_pred, axis=1)))
     print('   - {:<25s} : {}, {}'.format(' X support', np.amin(x_pred, axis=1), np.amax(x_pred, axis=1)))
-    if segments is None:
+    if subdomains is None:
         print('   - {:<25s} : {}, {}'.format(' X truncate', None , None ))
     else:
-        print('   - {:<25s} : {}, {}'.format(' X truncate', segments[0], segments[1]))
+        print('   - {:<25s} : {}, {}'.format(' X truncate', subdomains[0], subdomains[1]))
 
     ## ----------- Test data set ----------- ###
     print(' > Getting Test data set...')
     filename = '{:s}_DoE_McsE6R{:d}.npy'.format(solver.nickname,theta)
-    x_test, y_test = simparams.get_test_data(filename, segments=segments)
-    u_test   = rosenblatt(Kvitebjorn, x_test, simparams.u_dist, segments=segments)
+    x_test, y_test = simparams.get_test_data(filename, subdomains=subdomains)
+    u_test   = rosenblatt(Kvitebjorn, x_test, simparams.u_dist, subdomains=subdomains)
 
     print('   - {:<25s} : {}, {}, {}'.format(' Dataset (U,X,Y)', u_test.shape, x_test.shape, y_test.shape ))
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_test, axis=1), np.amax(u_test, axis=1)))
@@ -205,7 +207,7 @@ def main(theta):
     print(' > Getting candidate data set...')
     filename = 'CDF_McsE7R{:d}.npy'.format(theta)
     u_cand   = simparams.get_candidate_data(filename)
-    x_cand   = inverse_rosenblatt(Kvitebjorn, u_cand, simparams.u_dist, segments=segments)
+    x_cand   = inverse_rosenblatt(Kvitebjorn, u_cand, simparams.u_dist, subdomains=subdomains)
     print('   - {:<25s} : {}'.format(' Dataset (U)', u_cand.shape))
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_cand, axis=1), np.amax(u_cand, axis=1)))
     print('   - {:<25s} : {}, {}'.format(' X support', np.amin(x_cand, axis=1), np.amax(x_cand, axis=1)))
@@ -219,7 +221,7 @@ def main(theta):
     ## Initialize u_train with LHS 
     u_train = simparams.get_init_samples(n_initial, doe_method='lhs', random_state=100)
     ## mapping points to the square in X space
-    x_train = inverse_rosenblatt(Kvitebjorn, u_train, simparams.u_dist, segments=segments)
+    x_train = inverse_rosenblatt(Kvitebjorn, u_train, simparams.u_dist, subdomains=subdomains)
     ## mapping points to physical space
     y_train = solver.run(x_train)
     print('   - {:<25s} : {}, {}, {}'.format(' Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
@@ -229,9 +231,9 @@ def main(theta):
 
     print(' > Train data at knot points...')
     u_knot = simparams.get_init_samples(10, doe_method='lhs', random_state=100)
-    x_knot = inverse_rosenblatt(Kvitebjorn, u_knot, simparams.u_dist, segments=segments)
+    x_knot = inverse_rosenblatt(Kvitebjorn, u_knot, simparams.u_dist, subdomains=subdomains)
     x_knot[0] = x_knot[0]/x_knot[0] * 10
-    u_knot = rosenblatt(Kvitebjorn, x_knot, simparams.u_dist, segments=segments)
+    u_knot = rosenblatt(Kvitebjorn, x_knot, simparams.u_dist, subdomains=subdomains)
     y_knot = solver.run(x_knot)
     print('   - {:<25s} : {}, {}, {}'.format(' Dataset (U,X,Y)',u_knot.shape, x_knot.shape, y_knot.shape))
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_knot, axis=1), np.amax(u_knot, axis=1)))
@@ -285,7 +287,7 @@ def main(theta):
                 active_basis=pce_model.active_basis)
         # u_train_normal = u_train_new * u_square_vertice + u_square_center
         # x_train_new = Kvitebjorn.ppf(stats.norm.cdf(u_train_normal))
-        x_train_new = inverse_rosenblatt(Kvitebjorn, u_train_new, simparams.u_dist, segments=segments)
+        x_train_new = inverse_rosenblatt(Kvitebjorn, u_train_new, simparams.u_dist, subdomains=subdomains)
         y_train_new = solver.run(x_train_new)
         u_train = np.hstack((u_train, u_train_new)) 
         x_train = np.hstack((x_train, x_train_new)) 
@@ -357,14 +359,14 @@ def main(theta):
 
     ### ============ Saving pce model============
     filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_pce_S{:d}.pkl'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isegment)
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isubdomain)
     with open(os.path.join(simparams.data_dir_result,filename), 'wb') as output:
         pickle.dump(pce_model_each_deg, output, pickle.HIGHEST_PROTOCOL)
 
     ### ============ Saving train ============
     data_train = np.concatenate((u_train, x_train, y_train.reshape(1,-1)), axis=0)
     filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_Train_S{:d}'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isegment)
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isubdomain)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), data_train)
     except:
@@ -373,7 +375,7 @@ def main(theta):
 
     ### ============ Saving test ============
     filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_test_S{:d}'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isegment)
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isubdomain)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), y_test_hat)
     except:
@@ -388,7 +390,7 @@ def main(theta):
             ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y_pred_top mean', 'y_pred_top median']))
 
     filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_S{:d}'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isegment)
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isubdomain)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), metrics_each_deg)
     except:
@@ -397,8 +399,8 @@ def main(theta):
 
     ## ============ Saving Predict data ============
     pred_ecdf_each_deg = np.array(pred_ecdf_each_deg, dtype=object)
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_ecdf'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(alphas).replace('.', 'pt'), theta)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_ecdf_S{:d}'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(alphas).replace('.', 'pt'), theta, isubdomain)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), pred_ecdf_each_deg)
     except:
