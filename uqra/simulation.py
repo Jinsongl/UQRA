@@ -544,21 +544,30 @@ class Parameters(object):
 
         return u_cand
 
-    def get_predict_data(self, filename, segments=None):
+
+    def data_within_domain(self, data, domain=None):
+        data = np.array(data, ndmin=2, copy=False)
+        if domain is None:
+            pass
+        else:
+            idx= np.ones(data.shape[1])
+            for idata, isubdomains in zip(data, domain):
+                if isubdomains is None:
+                    i_idx= np.ones(idata.shape)
+                else:
+                    i_idx= np.logical_and(idata > isubdomains[0], idata < isubdomains[1])
+                idx = np.logical_and(idx, i_idx)
+            data = data[:, idx]
+        return data
+
+    def get_predict_data(self, filename, subdomains=None):
         """
         Return canndidate samples in u space
         """
         u_cdf = np.load(os.path.join(self.data_dir_sample, 'CDF', filename))
         u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
         x = self.x_dist.ppf(u_cdf_pred)
-        if segments is None:
-            pass
-        else:
-            idx = np.ones(x.shape[1])
-            for ix, isegments in zip(x, segments):
-                i_idx = np.logical_and(ix > isegments[0], ix < isegments[1])
-                idx = np.logical_and(idx, i_idx)
-            x = x[:, idx]
+        x = data_within_domain(x, subdomains)
         return x
 
         # doe_method = self.doe_method.lower()
@@ -718,19 +727,22 @@ class Parameters(object):
                     # raise NotImplementedError
         # return u_test, x_test, y_test
 
-    def get_test_data(self, filename, segments=None):
+    def get_test_data(self, filename, subdomains=None):
         data = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
         x = data[  self.solver.ndim : 2*self.solver.ndim, :self.n_test]
         y = np.squeeze(data[2*self.solver.ndim :        , :self.n_test])
 
-        if segments is None:
+        if subdomains is None:
             x = np.array(x, ndmin=2)
             y = np.squeeze(y)
         else:
 
             idx = np.ones(x.shape[1])
-            for ix, isegments in zip(x, segments):
-                i_idx = np.logical_and(ix > isegments[0], ix < isegments[1])
+            for ix, isubdomains in zip(x, subdomains):
+                if isubdomains is None:
+                    i_idx = np.ones(ix.shape)
+                else:
+                    i_idx = np.logical_and(ix > isubdomains[0], ix < isubdomains[1])
                 idx = np.logical_and(idx, i_idx)
             x = x[:, idx]
             y = np.array(y, ndmin=2, copy=False)
