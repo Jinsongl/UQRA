@@ -157,7 +157,7 @@ def main(theta):
 
     ## ------------------------ Simulation Parameters ----------------- ###
     solver    = uqra.FPSO(random_state =theta)
-    simparams = uqra.Parameters(solver, doe_method='MCS', optimality='D', fit_method='LASSOLARS')
+    simparams = uqra.Parameters(solver, doe_method='MCS', optimality='S', fit_method='LASSOLARS')
 
     simparams.x_dist     = Kvitebjorn
     simparams.pce_degs   = np.array(range(2,11))
@@ -400,7 +400,7 @@ def main(theta):
     ## ============ Saving Predict data ============
     pred_ecdf_each_deg = np.array(pred_ecdf_each_deg, dtype=object)
     filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_ecdf_S{:d}'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(alphas).replace('.', 'pt'), theta, isubdomain)
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, isubdomain)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), pred_ecdf_each_deg)
     except:
@@ -408,5 +408,5 @@ def main(theta):
         np.save(os.path.join(os.getcwd(), filename), pred_ecdf_each_deg)
 
 if __name__ == '__main__':
-    for s in range(10):
+    for s in range(8,10):
         main(s)
