@@ -191,6 +191,11 @@ def main(theta):
     else:
         print('   - {:<25s} : {}, {}'.format(' X truncate', subdomains[0], subdomains[1]))
 
+    filename = '{:s}_Parameters_R{:d}.pkl'.format(solver.nickname, theta)
+    with open(os.path.join(simparams.data_dir_result, filename), "wb") as output_file:
+        pickle.dump(simparams, output_file)
+
+
     ## ----------- Test data set ----------- ###
     print(' > Getting Test data set...')
     filename = '{:s}_DoE_McsE6R{:d}.npy'.format(solver.nickname,theta)
