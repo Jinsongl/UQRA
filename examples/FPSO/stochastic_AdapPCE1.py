@@ -197,7 +197,6 @@ def main(theta):
     filename = '{:s}_DoE_McsE6R{:d}.npy'.format(solver.nickname,theta)
     x_test, y_test = simparams.get_test_data(filename, subdomains=subdomains)
     u_test   = rosenblatt(Kvitebjorn, x_test, simparams.u_dist, subdomains=subdomains)
-
     print('   - {:<25s} : {}, {}, {}'.format(' Dataset (U,X,Y)', u_test.shape, x_test.shape, y_test.shape ))
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_test, axis=1), np.amax(u_test, axis=1)))
     print('   - {:<25s} : {}, {}'.format(' X support', np.amin(x_test, axis=1), np.amax(x_test, axis=1)))
