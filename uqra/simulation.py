@@ -561,7 +561,7 @@ class Parameters(object):
                 idx = np.logical_and(idx, i_idx)
             return idx
 
-    def get_predict_data(self, filename, subdomains=None):
+    def get_predict_data(self, filename, domain=None):
         """
         Return predict samples in x space
         """
@@ -569,15 +569,15 @@ class Parameters(object):
         u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
         x = self.x_dist.ppf(u_cdf_pred)
         x = np.array(x, ndmin=2, copy=False)
-        idx = self.data_within_domain(x, subdomains)
+        idx = self.data_within_domain(x, domain)
         x = x[:, idx]
         return x
 
-    def get_test_data(self, filename, subdomains=None):
+    def get_test_data(self, filename, domain=None):
         data = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
         x = data[  self.solver.ndim : 2*self.solver.ndim, :self.n_test]
         y = np.squeeze(data[2*self.solver.ndim :        , :self.n_test])
-        idx = self.data_within_domain(x, subdomains)
+        idx = self.data_within_domain(x, domain)
         x = x[:, idx]
         y = np.array(y, ndmin=2, copy=False)
         y = np.squeeze(y[:, idx])
