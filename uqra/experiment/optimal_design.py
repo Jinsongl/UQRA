@@ -321,7 +321,9 @@ class OptimalDesign(ExperimentBase):
             Alpha2 = np.moveaxis(Alpha2,-1, 0)              ### shape (n-k, k ,k)
             I      = np.identity(Alpha2.shape[-1])
             Alpha2 = I - Alpha2                             ### shape (n-k, k, k)
-            Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])]
+            # Alpha  = [ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[:,np.newaxis], Alpha2, Alpha3.T[:,:,np.newaxis])]
+            Alpha_ = np.einsum('ijk,ikl->ijl', Alpha1[:,np.newaxis], Alpha2, optimize='greedy')
+            Alpha  = np.einsum('ijl,ilj->i', Alpha_, Alpha3.T[:,:,np.newaxis], optimize='greedy')
         else:
             batch_size = math.floor(size_of_array_8gb/k/k)  ## large memory is allocated as 8 GB
             Alpha = []
@@ -340,7 +342,11 @@ class OptimalDesign(ExperimentBase):
                 Alpha2 = np.moveaxis(Alpha2,-1, 0)              ### shape (n-k, k ,k)
                 I      = np.identity(Alpha2.shape[-1])
                 Alpha2 = I - Alpha2                             ### shape (n-k, k, k)
-                Alpha_ =[ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis])]
+
+                Alpha_ = np.einsum('ijk,ikl->ijl', Alpha1[idx_start:idx_end,np.newaxis], Alpha2, optimize='greedy')
+                Alpha_ = np.einsum('ijl,ilj->i', Alpha_, Alpha3.T[idx_start:idx_end,:,np.newaxis], optimize='greedy')
+
+                # Alpha_ =[ia.dot(ib).dot(ic).item() for ia, ib, ic in zip(Alpha1[idx_start:idx_end,np.newaxis], Alpha2, Alpha3.T[idx_start:idx_end,:,np.newaxis])]
                 Alpha.extend(Alpha_)
 
         Alpha = np.array(Alpha)
