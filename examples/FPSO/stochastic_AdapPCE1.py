@@ -350,8 +350,8 @@ def main(theta):
         ### ============ calculating & updating metrics ============
         tqdm.write(' > Summary')
         with np.printoptions(precision=4):
-            tqdm.write('     - {:<15s} : {}'.format( 'Mean top y', np.array(metrics_each_deg)[-1:, -2]))
-            tqdm.write('     - {:<15s} : {}'.format( 'Median top y',np.array(metrics_each_deg)[-1:,-1]))
+            tqdm.write('     - {:<5s} [{:d}]: mean:{}, median:{} '.format( 'Top y', y_pred_top.size, 
+                np.array(metrics_each_deg)[-1:, -2], np.array(metrics_each_deg)[-1:, -1]))
             tqdm.write('     - {:<15s} : {}'.format( 'Train MSE' , np.array(metrics_each_deg)[-1:, 2]))
             tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(metrics_each_deg)[-1:, 3]))
             tqdm.write('     - {:<15s} : {}'.format( 'Test MSE ' , np.array(metrics_each_deg)[-1:, 4]))
