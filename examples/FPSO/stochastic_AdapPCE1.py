@@ -137,8 +137,8 @@ def main(theta):
     print(' >>>  Start simulation: {:s}, theta={:d}'.format(__file__, theta))
     print('#' * 80 + '\n')
     np.random.seed(100)
-    np.set_printoptions(precision=2)
-    np.set_printoptions(threshold=100)
+    np.set_printoptions(precision=4)
+    np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
     # hs_range = [10,16]
     # tp_range = [10,20]
@@ -157,11 +157,11 @@ def main(theta):
 
     ## ------------------------ Simulation Parameters ----------------- ###
     solver    = uqra.FPSO(random_state =theta)
-    simparams = uqra.Parameters(solver, doe_method='MCS', optimality='D', fit_method='LASSOLARS')
+    simparams = uqra.Parameters(solver, doe_method='MCS', optimality='S', fit_method='LASSOLARS')
 
     simparams.x_dist     = Kvitebjorn
     simparams.pce_degs   = np.array(range(2,11))
-    simparams.n_cand     = int(1e5)
+    simparams.n_cand     = int(1e7)
     simparams.n_test     = int(1e6)
     simparams.n_pred     = int(1e7)
     simparams.n_splits   = 50
@@ -170,7 +170,7 @@ def main(theta):
     simparams.info()
 
     ## ----------- Predict data set ----------- ###
-    isubdomain = 1
+    isubdomain = 0
     subdomains = [np.array([[0,10],[0,34]]), np.array([[10,17],[10,20]])]
     # subdomains = None
     # subdomains= get_rounded_range(x_pred)
