@@ -142,10 +142,11 @@ def main(theta):
     np.set_printoptions(suppress=True)
     Kvitebjorn = uqra.environment.Kvitebjorn()
     pf = 0.5/(50*365.25*24)
+    domain_radius = -stats.norm().ppf(pf*1e-2)
 
     ## ------------------------ Simulation Parameters ----------------- ###
     solver    = uqra.FPSO(random_state =theta)
-    simparams = uqra.Parameters(solver, doe_method='MCS', optimality='D', fit_method='LASSOLARS')
+    simparams = uqra.Parameters(solver, doe_method='MCS', optimality='S', fit_method='LASSOLARS')
     simparams.x_dist     = Kvitebjorn
     simparams.pce_degs   = np.array(range(2,11))
     simparams.n_cand     = int(1e5)
@@ -174,6 +175,10 @@ def main(theta):
     # u_dist = [stats.uniform(-1,2),]* solver.ndim
     simparams.set_udist(u_dist)
     u_pred = rosenblatt(Kvitebjorn, x_pred, simparams.u_dist, domain=domain)
+    u_pred_outside_idx = np.arange(u_pred.shape[1])[np.linalg.norm(u_pred, axis=0) > domain_radius]
+    u_pred_outside = u_pred[:, u_pred_outside_idx]
+    x_pred_outside = x_pred[:, u_pred_outside_idx]
+    y_pred_outside = solver.run(x_pred_outside)
     print('   - {:<25s} : {}, {}'.format(' Dataset (U,X)', u_pred.shape, x_pred.shape))
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_pred, axis=1), np.amax(u_pred, axis=1)))
     print('   - {:<25s} : {}, {}'.format(' X support', np.amin(x_pred, axis=1), np.amax(x_pred, axis=1)))
@@ -181,6 +186,15 @@ def main(theta):
         print('   - {:<25s} : {}, {}'.format(' X truncate', None , None ))
     else:
         print('   - {:<25s} : {}, {}'.format(' X truncate', domain[0], domain[1]))
+
+    if len(u_pred_outside_idx) != 0:
+        print('   - {:<25s} : {}    '.format(' Candidate domain R: ', domain_radius))
+        print('   - {:<25s} : {}, {}, {}'.format('(U,X,Y) ', u_pred_outside.shape, x_pred_outside.shape, y_pred_outside.shape))
+        print('   - {:<25s} :\n {}'.format(' U ', u_pred_outside.T))
+        print('   - {:<25s} :\n {}'.format(' X ', x_pred_outside.T))
+        print('   - {:<25s} :\n {}'.format(' Y ', y_pred_outside.T))
+
+
 
 
     ## ----------- Test data set ----------- ###
@@ -315,20 +329,19 @@ def main(theta):
         train_error = uqra.metrics.mean_squared_error(y_train, y_train_hat, squared=False)
         test_error  = uqra.metrics.mean_squared_error(y_test , y_test_hat , squared=False)
 
-        # np.random.seed()
-        # u_pred = stats.norm.rvs(loc=0,scale=1,size=(solver.ndim, simparams.n_pred))
-        # x_pred = Kvitebjorn.ppf(stats.norm.cdf(u_pred))
         y_pred      = pce_model.predict(u_pred)
+        y_pred[u_pred_outside_idx] = y_pred_outside
         y_pred_     = -np.inf * np.ones((simparams.n_pred,))
         y_pred_[-y_pred.size:] = y_pred
         y_pred_ecdf = uqra.utilities.helpers.ECDF(y_pred_, alpha=pf, compress=True)
-        y_pred_top = np.sort(y_pred, axis=None)[-2*int(simparams.n_pred * pf):]
         y50_pce_y   = uqra.metrics.mquantiles(y_pred_, 1-pf)
+        y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
+        y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
+        y_pred_top = np.sort(y_pred, axis=None)[-2*int(simparams.n_pred * pf):]
 
-        res = [deg, u_train.shape[1], train_error, pce_model.cv_error, test_error,
-                kappa, np.mean(y_pred_top), np.median(y_pred_top)]
-        # for item in y50_pce_uxy:
-            # res.append(item)
+        res = [deg, u_train.shape[1], train_error, pce_model.cv_error, test_error, kappa]
+        for item in y50_pce_uxy:
+            res.append(item)
         pred_ecdf_each_deg.append([deg, u_train.shape[1], u_pred.size, simparams.n_pred, y_pred_ecdf])
         metrics_each_deg.append(res)
         pce_model_each_deg.append(pce_model)
