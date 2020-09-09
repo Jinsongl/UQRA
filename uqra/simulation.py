@@ -519,7 +519,7 @@ class Parameters(object):
         """
         Return canndidate samples in u space
         """
-        u_cdf = np.load(os.path.join(self.data_dir_sample, 'CDF', filename))
+        u_cdf = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
         u_cdf_cand = u_cdf[:self.solver.ndim, :self.n_cand]
 
 
@@ -544,22 +544,19 @@ class Parameters(object):
 
         return u_cand
 
-    def data_within_domain(self, data, domain=None):
+    def data_within_domain(self, data, domain):
         """
         Return the index for data within the defined domain
         """
         data = np.array(data, ndmin=2, copy=False)
-        if domain is None:
-            return np.ones(data.shape[1])
-        else:
-            idx= np.ones(data.shape[1])
-            for idata, isubdomains in zip(data, domain):
-                if isubdomains is None:
-                    i_idx= np.ones(idata.shape)
-                else:
-                    i_idx= np.logical_and(idata > isubdomains[0], idata < isubdomains[1])
-                idx = np.logical_and(idx, i_idx)
-            return idx
+        idx= np.ones(data.shape[1], dtype=np.int32)
+        for idata, isubdomains in zip(data, domain):
+            if isubdomains is None:
+                i_idx= np.ones(idata.shape)
+            else:
+                i_idx= np.logical_and(idata > isubdomains[0], idata < isubdomains[1])
+            idx = np.logical_and(idx, i_idx)
+        return idx
 
     def get_predict_data(self, filename, domain=None):
         """
@@ -569,19 +566,26 @@ class Parameters(object):
         u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
         x = self.x_dist.ppf(u_cdf_pred)
         x = np.array(x, ndmin=2, copy=False)
-        idx = self.data_within_domain(x, domain)
-        x = x[:, idx]
-        return x
+        if domain is None:
+            return x
+        else:
+            idx = self.data_within_domain(x, domain)
+            x = x[:, idx]
+            print(np.amax(x, axis=1))
+            return x
 
     def get_test_data(self, filename, domain=None):
         data = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
         x = data[  self.solver.ndim : 2*self.solver.ndim, :self.n_test]
         y = np.squeeze(data[2*self.solver.ndim :        , :self.n_test])
-        idx = self.data_within_domain(x, domain)
-        x = x[:, idx]
-        y = np.array(y, ndmin=2, copy=False)
-        y = np.squeeze(y[:, idx])
-        return x, y
+        if domain is None:
+            return x, y
+        else:
+            idx = self.data_within_domain(x, domain)
+            x = x[:, idx]
+            y = np.array(y, ndmin=2, copy=False)
+            y = np.squeeze(y[:, idx])
+            return x, y
         
         # doe_method = self.doe_method.lower()
         # data_dir = os.path.join(self.data_dir_sample, doe_method.upper(), self.dist_u_name.capitalize()) 
