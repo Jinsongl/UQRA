@@ -60,7 +60,7 @@ class DistHs(object):
         hs  = np.where(hs1 < self.h0, hs1, hs2)
         return hs
 
-    def pdf(self):
+    def pdf(self, hs):
         hs_pdf1 = self.dist1.pdf(hs)
         hs_pdf2 = self.dist2.pdf(hs)
         hs_pdf  = np.where(hs < self.h0, hs_pdf1, hs_pdf2)
