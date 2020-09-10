@@ -12,7 +12,7 @@
 import uqra, warnings
 import numpy as np, os, sys
 import scipy.stats as stats
-import pickle
+import pickle, scipy
 from tqdm import tqdm
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
@@ -148,14 +148,12 @@ def main(theta):
     solver    = uqra.FPSO(random_state =theta)
     simparams = uqra.Parameters(solver, doe_method='MCS', optimality='D', fit_method='LASSOLARS')
     simparams.x_dist     = Kvitebjorn
-    simparams.pce_degs   = np.array(range(2,11))
+    simparams.pce_degs   = np.array(range(2,4))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = int(1e6)
     simparams.n_pred     = int(1e7)
     simparams.n_splits   = 50
     simparams.alphas     = 2
-    simparams.top1pct_center = [np.array([0,0]).reshape(-1,1),]
-    simparams.top1pct_radius = [domain_radius,]
     n_initial = 20
     simparams.info()
 
@@ -163,7 +161,7 @@ def main(theta):
     # isubdomain = 0
     # subdomains = [np.array([[0,10],[0,34]]), np.array([[10,17],[10,20]])]
     # subdomains = [np.array([[0,7.4335],[0,34]]), np.array([[7.4335,17],[7.3239,21.7258]])]
-    # subdomains = [np.array([[0, 17],[0,34]])]
+    # subdomains = [np.array([[0, 18],[0,35]])]
     # domain = subdomains[isubdomain]
     domain = None
     # subdomains= get_rounded_range(x_pred)
@@ -211,6 +209,7 @@ def main(theta):
     filename = 'FPSO_SURGE_DoE_CandE5.npy'
     data_cand= np.load(os.path.join(simparams.data_dir_result, 'TestData', filename)) 
     u_cand, x_cand = data_cand[:2], data_cand[2:4]
+    u_cand   = rosenblatt(Kvitebjorn, x_cand, simparams.u_dist, domain=domain)
     # x_cand   = inverse_rosenblatt(Kvitebjorn, u_cand, simparams.u_dist, domain=domain)
     print('   - {:<25s} : {}'.format(' Dataset (U)', u_cand.shape))
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_cand, axis=1), np.amax(u_cand, axis=1)))
@@ -229,13 +228,6 @@ def main(theta):
     x_train = inverse_rosenblatt(Kvitebjorn, u_train, simparams.u_dist, domain=domain)
     ## mapping points to physical space
     y_train = solver.run(x_train)
-
-    u_train0 = simparams.get_init_samples(6, u_cand=u_cand, p=2)
-    x_train0 = inverse_rosenblatt(Kvitebjorn, u_train0, simparams.u_dist, domain=domain)
-    y_train0 = solver.run(x_train0)
-    u_train = np.concatenate((u_train, u_train0), axis=1)
-    x_train = np.concatenate((x_train, x_train0), axis=1)
-    y_train = np.concatenate((y_train, y_train0))
     print('   - {:<25s} : {}, {}, {}'.format(' Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_train, axis=1), np.amax(u_train, axis=1)))
     print('   - {:<25s} : {}, {}'.format(' X support', np.amin(x_train, axis=1), np.amax(x_train, axis=1)))
@@ -266,6 +258,7 @@ def main(theta):
         print(' > Building surrogate model ...')
         ## ----------- Define PCE  ----------- ###
         basis     = simparams.get_basis(deg)
+        # basis     = simparams.get_basis(deg, a=a, b=b)
         pce_model = uqra.PCE(basis)
         modeling  = uqra.Modeling(solver, pce_model, simparams)
         pce_model.info()
@@ -302,20 +295,6 @@ def main(theta):
         u_train = np.hstack((u_train, u_train_new)) 
         x_train = np.hstack((x_train, x_train_new)) 
         y_train = np.hstack((y_train, y_train_new)) 
-
-
-        ### samples for top y
-
-        u_cand_top = u_cand[:, np.linalg.norm(u_cand - simparams.top1pct_center[-1], axis=0) < simparams.top1pct_radius[-1]]
-        u_train_new, _ = modeling.get_train_data(pce_model_sparsity, u_cand_top, u_train=u_train,
-                active_basis=pce_model.active_basis)
-        x_train_new = inverse_rosenblatt(Kvitebjorn, u_train_new, simparams.u_dist, domain=domain)
-        y_train_new = solver.run(x_train_new)
-        u_train = np.hstack((u_train, u_train_new)) 
-        x_train = np.hstack((x_train, x_train_new)) 
-        y_train = np.hstack((y_train, y_train_new)) 
-
-
         ### ============ Build 2nd Surrogate Model ============
         # print(bias_weight)
         U_train = pce_model.basis.vandermonde(u_train)
@@ -348,25 +327,13 @@ def main(theta):
         test_error  = uqra.metrics.mean_squared_error(y_test , y_test_hat , squared=False)
 
         y_pred      = pce_model.predict(u_pred)
-        y_pred[u_pred_outside_idx] = y_pred_outside
         y_pred_     = -np.inf * np.ones((simparams.n_pred,))
         y_pred_[-y_pred.size:] = y_pred
         y_pred_ecdf = uqra.utilities.helpers.ECDF(y_pred_, alpha=pf, compress=True)
         y50_pce_y   = uqra.metrics.mquantiles(y_pred_, 1-pf)
         y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
         y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
-        y_pred_top1pct_idx = np.argsort(y_pred)[-int(0.01*simparams.n_pred):]
-        y_pred_top1pct = y_pred[y_pred_top1pct_idx]
-        u_pred_top1pct = u_pred[:, y_pred_top1pct_idx]
-        x_pred_top1pct = x_pred[:, y_pred_top1pct_idx]
-        u_pred_top1pct_center = np.mean(u_pred_top1pct, axis=1).reshape(-1,1)
-        u_pred_top1pct_radius = np.max(np.abs(u_pred_top1pct-u_pred_top1pct_center), axis=None)
-        simparams.top1pct_center.append(u_pred_top1pct_center)
-        simparams.top1pct_radius.append(u_pred_top1pct_radius)
-        pred_topy_each_deg.append(np.concatenate((u_pred_top1pct, x_pred_top1pct, y_pred_top1pct.reshape()), axis=0))
-
-
-
+        # y_pred_top = np.sort(y_pred, axis=None)[-2*int(simparams.n_pred * pf):]
 
         res = [deg, u_train.shape[1], train_error, pce_model.cv_error, test_error, kappa]
         for item in y50_pce_uxy:
@@ -378,8 +345,8 @@ def main(theta):
         ### ============ calculating & updating metrics ============
         tqdm.write(' > Summary')
         with np.printoptions(precision=4):
-            tqdm.write('     - {:<5s} [{:d}]: center:{}, radius:{} '.format( r'Y Top 1%', y_pred_top1pct.size, 
-                u_pred_top1pct_center, u_pred_top1pct_radius))
+            # tqdm.write('     - {:<5s} [{:d}]: mean:{}, median:{} '.format( 'Top y', y_pred_top.size, 
+                # np.array(metrics_each_deg)[-1:, -2], np.array(metrics_each_deg)[-1:, -1]))
             tqdm.write('     - {:<15s} : {}'.format( 'y50 PCE Y:', y50_pce_y))
             tqdm.write('     - {:<15s} : {}'.format( 'Train MSE' , np.array(metrics_each_deg)[-1:, 2]))
             tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(metrics_each_deg)[-1:, 3]))
@@ -389,21 +356,21 @@ def main(theta):
 
 
     ### ============ Saving Parameters ============
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_Parameters.pkl'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_D{:d}{:d}_Parameters.pkl'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, len(subdomains), isubdomain)
     with open(os.path.join(simparams.data_dir_result, filename), "wb") as output_file:
         pickle.dump(simparams, output_file)
 
     ### ============ Saving pce model============
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_pce.pkl'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_D{:d}{:d}_pce.pkl'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, len(subdomains), isubdomain)
     with open(os.path.join(simparams.data_dir_result,filename), 'wb') as output:
         pickle.dump(pce_model_each_deg, output, pickle.HIGHEST_PROTOCOL)
 
     ### ============ Saving train ============
     data_train = np.concatenate((u_train, x_train, y_train.reshape(1,-1)), axis=0)
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_Train'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_D{:d}{:d}_Train'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, len(subdomains), isubdomain)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), data_train)
     except:
@@ -411,8 +378,8 @@ def main(theta):
         np.save(os.path.join(os.getcwd(), filename), data_train)
 
     ### ============ Saving test ============
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_test'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_D{:d}{:d}_test'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, len(subdomains), isubdomain)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), y_test_hat)
     except:
@@ -426,43 +393,24 @@ def main(theta):
             ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
             # ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y_pred_top mean', 'y_pred_top median']))
 
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_D{:d}{:d}_ST{}'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, len(subdomains), isubdomain)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), metrics_each_deg)
     except:
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
         np.save(os.path.join(os.getcwd(), filename), metrics_each_deg)
 
-    ### ============ Saving Predict ecdf data ============
+    ## ============ Saving Predict ecdf data ============
     pred_ecdf_each_deg = np.array(pred_ecdf_each_deg, dtype=object)
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_ecdf'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_D{:d}{:d}_ecdf'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta, len(subdomains), isubdomain)
     try:
         np.save(os.path.join(simparams.data_dir_result, filename), pred_ecdf_each_deg)
     except:
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
         np.save(os.path.join(os.getcwd(), filename), pred_ecdf_each_deg)
 
-    ### ============ Saving Predict top Y data ============
-    pred_topy_each_deg= np.array(pred_topy_each_deg)
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_pred'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
-    try:
-        np.save(os.path.join(simparams.data_dir_result, filename), pred_topy_each_deg)
-    except:
-        print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        np.save(os.path.join(os.getcwd(), filename), pred_topy_each_deg)
-
-    ### ============ Saving samples outside domain ============
-    data = np.concatenate((u_pred_outside, x_pred_outside, y_pred_outside.reshape(1,-1)), axis=0)
-    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_outside'.format(solver.nickname, pce_model.tag, 
-            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
-    try:
-        np.save(os.path.join(simparams.data_dir_result, filename), data )
-    except:
-        print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        np.save(os.path.join(os.getcwd(), filename), data)
 if __name__ == '__main__':
     for s in range(10):
         main(s)
