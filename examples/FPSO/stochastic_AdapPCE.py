@@ -146,7 +146,7 @@ def main(theta):
 
     ## ------------------------ Simulation Parameters ----------------- ###
     solver    = uqra.FPSO(random_state =theta)
-    simparams = uqra.Parameters(solver, doe_method='MCS', optimality='S', fit_method='LASSOLARS')
+    simparams = uqra.Parameters(solver, doe_method='MCS', optimality='D', fit_method='LASSOLARS')
     simparams.x_dist     = Kvitebjorn
     simparams.pce_degs   = np.array(range(2,11))
     simparams.n_cand     = int(1e5)
@@ -154,6 +154,8 @@ def main(theta):
     simparams.n_pred     = int(1e7)
     simparams.n_splits   = 50
     simparams.alphas     = 2
+    simparams.top1pct_center = [np.array([0,0]).reshape(-1,1),]
+    simparams.top1pct_radius = [domain_radius,]
     n_initial = 20
     simparams.info()
 
@@ -194,9 +196,6 @@ def main(theta):
         print('   - {:<25s} :\n {}'.format(' X ', x_pred_outside.T))
         print('   - {:<25s} :\n {}'.format(' Y ', y_pred_outside.T))
 
-
-
-
     ## ----------- Test data set ----------- ###
     print(' > Getting Test data set...')
     filename = '{:s}_DoE_McsE6R{:d}.npy'.format(solver.nickname,theta)
@@ -223,17 +222,23 @@ def main(theta):
     pce_model_each_deg = []
 
     print(' > Train data initialization ...')
-    ## Initialize u_train with LHS 
+    # Initialize u_train with LHS 
     u_train = simparams.get_init_samples(n_initial, doe_method='lhs', random_state=100)
     ## mapping points to the square in X space
     x_train = inverse_rosenblatt(Kvitebjorn, u_train, simparams.u_dist, domain=domain)
     ## mapping points to physical space
     y_train = solver.run(x_train)
+
+    u_train0 = simparams.get_init_samples(6, u_cand=u_cand, p=2)
+    x_train0 = inverse_rosenblatt(Kvitebjorn, u_train0, simparams.u_dist, domain=domain)
+    y_train0 = solver.run(x_train0)
+    u_train = np.concatenate((u_train, u_train0), axis=1)
+    x_train = np.concatenate((x_train, x_train0), axis=1)
+    y_train = np.concatenate((y_train, y_train0))
     print('   - {:<25s} : {}, {}, {}'.format(' Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_train, axis=1), np.amax(u_train, axis=1)))
     print('   - {:<25s} : {}, {}'.format(' X support', np.amin(x_train, axis=1), np.amax(x_train, axis=1)))
     print('   - {:<25s} : [{}]'.format(' Y [min(Y), max(Y)]',np.array([np.amin(y_train),np.amax(y_train)])))
-
     # print(' > Train data at knot points...')
     # filename = 'FPSO_SURGE_Adap2Jac10_McsD_Alpha2_ST{:d}_Knot.npy'.format(theta)
     # knot_data = np.load(os.path.join(simparams.data_dir_result, 'TestData', filename))
@@ -297,6 +302,20 @@ def main(theta):
         u_train = np.hstack((u_train, u_train_new)) 
         x_train = np.hstack((x_train, x_train_new)) 
         y_train = np.hstack((y_train, y_train_new)) 
+
+
+        ### samples for top y
+
+        u_cand_top = u_cand[:, np.linalg.norm(u_cand - simparams.top1pct_center[-1], axis=0) < simparams.top1pct_radius[-1]]
+        u_train_new, _ = modeling.get_train_data(pce_model_sparsity, u_cand_top, u_train=u_train,
+                active_basis=pce_model.active_basis)
+        x_train_new = inverse_rosenblatt(Kvitebjorn, u_train_new, simparams.u_dist, domain=domain)
+        y_train_new = solver.run(x_train_new)
+        u_train = np.hstack((u_train, u_train_new)) 
+        x_train = np.hstack((x_train, x_train_new)) 
+        y_train = np.hstack((y_train, y_train_new)) 
+
+
         ### ============ Build 2nd Surrogate Model ============
         # print(bias_weight)
         U_train = pce_model.basis.vandermonde(u_train)
@@ -337,7 +356,16 @@ def main(theta):
         y50_pce_y   = uqra.metrics.mquantiles(y_pred_, 1-pf)
         y50_pce_idx = np.array(abs(y_pred - y50_pce_y)).argmin()
         y50_pce_uxy = np.concatenate((u_pred[:,y50_pce_idx], x_pred[:, y50_pce_idx], y50_pce_y)) 
-        y_pred_top = np.sort(y_pred, axis=None)[-2*int(simparams.n_pred * pf):]
+        y_pred_top1pct_idx = np.argsort(y_pred)[-int(0.01*simparams.n_pred):]
+        y_pred_top1pct = y_pred[y_pred_top1pct_idx]
+        u_pred_top1pct = u_pred[:, y_pred_top1pct_idx]
+        x_pred_top1pct = x_pred[:, y_pred_top1pct_idx]
+        u_pred_top1pct_center = np.mean(u_pred_top1pct, axis=1).reshape(-1,1)
+        u_pred_top1pct_radius = np.max(np.abs(u_pred_top1pct-u_pred_top1pct_center), axis=None)
+        simparams.top1pct_center.append(u_pred_top1pct_center)
+        simparams.top1pct_radius.append(u_pred_top1pct_radius)
+
+
 
         res = [deg, u_train.shape[1], train_error, pce_model.cv_error, test_error, kappa]
         for item in y50_pce_uxy:
@@ -349,8 +377,8 @@ def main(theta):
         ### ============ calculating & updating metrics ============
         tqdm.write(' > Summary')
         with np.printoptions(precision=4):
-            tqdm.write('     - {:<5s} [{:d}]: mean:{}, median:{} '.format( 'Top y', y_pred_top.size, 
-                np.array(metrics_each_deg)[-1:, -2], np.array(metrics_each_deg)[-1:, -1]))
+            tqdm.write('     - {:<5s} [{:d}]: center:{}, radius:{} '.format( r'Y Top 1%', y_pred_top1pct.size, 
+                u_pred_top1pct_center, u_pred_top1pct_radius))
             tqdm.write('     - {:<15s} : {}'.format( 'y50 PCE Y:', y50_pce_y))
             tqdm.write('     - {:<15s} : {}'.format( 'Train MSE' , np.array(metrics_each_deg)[-1:, 2]))
             tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'    , np.array(metrics_each_deg)[-1:, 3]))
@@ -394,8 +422,8 @@ def main(theta):
     metrics_each_deg = np.array(metrics_each_deg)
     with open(os.path.join(simparams.data_dir_result, 'outlist_name.txt'), "w") as text_file:
         text_file.write(', '.join(
-            # ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
-            ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y_pred_top mean', 'y_pred_top median']))
+            ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
+            # ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y_pred_top mean', 'y_pred_top median']))
 
     filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
