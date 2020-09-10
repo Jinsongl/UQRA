@@ -48,7 +48,10 @@ class Modeling(object):
         size = int(size)
         u_train_new = []
         u_train_all = []
-        active_index = [i for i in range(self.model.basis.num_basis) if self.model.basis.basis_degree[i] in active_basis]
+        if active_basis is None:
+            active_index = list(np.arange(self.model.num_basis))
+        else:
+            active_index = [i for i in range(self.model.basis.num_basis) if self.model.basis.basis_degree[i] in active_basis]
 
         ### get the list of indices in u_selected
         selected_index = list(self._common_vectors(u_train, u_cand))
@@ -508,6 +511,8 @@ class Parameters(object):
         if u_dist[0].dist.name == 'uniform':
             self.pce_type = 'legendre'
         elif u_dist[0].dist.name == 'norm':
+            self.pce_type = 'hermite_e'
+        elif u_dist[0].dist.name == 'norm':
             self.pce_type = 'hermite'
         elif u_dist[0].dist.name == 'beta':
             self.pce_type = 'jacobi'
@@ -744,7 +749,7 @@ class Parameters(object):
                     # raise NotImplementedError
         # return u_test, x_test, y_test
 
-    def get_init_samples(self, n, doe_method='lhs', random_state=None, **kwargs):
+    def get_init_samples(self, n, doe_method=None, random_state=None, **kwargs):
         """
         Get initial sample design, return samples in U,X space and results y
 
@@ -755,16 +760,47 @@ class Parameters(object):
                         for cls, need to know PCE.deg such that in unbounded case to scale u
 
         """
+        doe_method = self.doe_method if doe_method is None else doe_method
 
         if doe_method.lower() == 'lhs':
             doe = uqra.LHS(self.u_dist)
             u   = doe.samples(size=n, random_state=random_state)
-        elif doe_method.lower() == 'cls':
+            return u
+
+        np.random.seed(random_state)
+        if self.optimality is None:
+            u_cand = kwargs.get('u_cand', None)
+            if u_cand is None:
+                u_cdf = stats.uniform(0,1).rvs(size=(self.solver.ndim, n))
+                u   = np.array([iu_dist.ppf(iu) for iu_dist, iu in zip(self.u_dist, u)]) 
+            else:
+                u = u_cand[:, np.random.randint(0, u_cand.shape[1], size=n)]
+            return u
+
+        if self.optimality is not None:
+            u_cand      = kwargs['u_cand']
+            pce_order   = kwargs['p']
+            ndim, n_cand= u_cand.shape
+
+            if self.pce_type.lower() == 'hermite_e':
+                orth_poly = uqra.Hermite(d=ndim,deg=pce_order, hem_type='prob')
+            elif self.pce_type.lower() == 'hemite':
+                orth_poly = uqra.Hermite(d=ndim,deg=pce_order, hem_type='phy')
+            elif self.pce_type.lower() == 'legendre':
+                orth_poly = uqra.Legendre(d=ndim,deg=pce_order)
+            elif self.pce_type.lower() == 'jacobi':
+                raise NotImplementedError
+            else:
+                raise NotImplementedError
+            design_matrix = orth_poly.vandermonde(u_cand)
+            doe = uqra.OptimalDesign(self.optimality.upper(), selected_index=[])
+            doe_index= doe.get_samples(design_matrix, n, orth_basis=True)
+            u = u_cand[:, doe_index]
+            return u
+
+        if doe_method.lower() == 'cls':
             raise NotImplementedError
 
-        else:
-            raise NotImplementedError
-        return u
     def update_num_samples(self, P, **kwargs):
         """
         return array number of samples based on given oversampling ratio alphas or num_samples
@@ -793,15 +829,17 @@ class Parameters(object):
             if self.pce_type == 'legendre':
                 basis = uqra.Legendre(d=self.solver.ndim, deg=deg)
 
-            elif self.pce_type == 'hermite':
+            elif self.pce_type == 'hermite_e':
                 basis = uqra.Hermite(d=self.solver.ndim,deg=deg, hem_type='probabilists')
+            elif self.pce_type == 'hermite':
+                basis = uqra.Hermite(d=self.solver.ndim,deg=deg, hem_type='phy')
             elif self.pce_type == 'jacobi':
                 a = kwargs['a']
                 b = kwargs['b']
                 basis = uqra.Jacobi(a, b, d=self.solver.ndim, deg=deg)
 
             else:
-                raise ValueError 
+                raise ValueError('UQRA.Parameters.get_basis: attribute pce_type = {} not defined'.format(self.pce_type))
 
         elif self.doe_method.startswith('cls'):
             if self.pce_type == 'legendre':
