@@ -32,12 +32,15 @@ class Hermite(PolyBase):
         self.dist_name = 'norm'
         if self.ndim is None:
             self.dist_u = None
-        elif hem_type.startswith('prob'):
+            self.hem_type = None
+        elif hem_type.lower().startswith('prob'):
+            self.hem_type = 'probabilists'
             self.dist_u = [stats.norm(0,1),] * self.ndim
-        elif hem_type.startswith('phy'):
+        elif hem_type.lower().startswith('phy'):
+            self.hem_type = 'physicists'
             self.dist_u = [stats.norm(0,np.sqrt(0.5)),] * self.ndim 
         else:
-            raise ValueError
+            raise ValueError('UQRA.Hermite: {} not defined for hem_type '.format(hem_type))
         self._update_basis()
 
     def gauss_quadrature(self, n, loc=[], scale=[]):
