@@ -142,7 +142,7 @@ def main(theta):
     np.set_printoptions(suppress=True)
     Kvitebjorn = uqra.environment.Kvitebjorn()
     pf = 0.5/(50*365.25*24)
-    domain_radius = -stats.norm().ppf(pf*1e-2)
+    domain_radius = -stats.norm().ppf(1e-7)
 
     ## ------------------------ Simulation Parameters ----------------- ###
     solver    = uqra.FPSO(random_state =theta)
@@ -219,10 +219,11 @@ def main(theta):
 
     metrics_each_deg   = []
     pred_ecdf_each_deg = []
+    pred_topy_each_deg = []
     pce_model_each_deg = []
 
     print(' > Train data initialization ...')
-    # Initialize u_train with LHS 
+    ## Initialize u_train with LHS 
     u_train = simparams.get_init_samples(n_initial, doe_method='lhs', random_state=100)
     ## mapping points to the square in X space
     x_train = inverse_rosenblatt(Kvitebjorn, u_train, simparams.u_dist, domain=domain)
@@ -283,7 +284,7 @@ def main(theta):
         _, sig_value, _ = np.linalg.svd(U_train)
         kappa0 = max(abs(sig_value)) / min(abs(sig_value)) 
 
-        pce_model.fit('LASSOLARS', u_train, y_train.T, w=w_train,epsilon=1e-3) 
+        pce_model.fit('LASSOLARS', u_train, y_train.T, w=w_train,epsilon=1e-3)
 
         print('       Active Index: {}'.format(pce_model.active_index))
         print('     > 2. Getting new training data ...')
@@ -328,7 +329,7 @@ def main(theta):
         _, sig_value, _ = np.linalg.svd(U_train)
         kappa = max(abs(sig_value)) / min(abs(sig_value)) 
 
-        pce_model.fit('OLS', u_train, y_train.T, w_train, active_basis=pce_model.active_basis) 
+        pce_model.fit('OLS', u_train, y_train.T, w_train, active_basis=pce_model.active_basis)
 
         print(' > Train data ...')
         print('   - {:<25s} : {}, {}, {}'.format(' Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
@@ -362,6 +363,8 @@ def main(theta):
         u_pred_top1pct_radius = np.max(np.abs(u_pred_top1pct-u_pred_top1pct_center), axis=None)
         simparams.top1pct_center.append(u_pred_top1pct_center)
         simparams.top1pct_radius.append(u_pred_top1pct_radius)
+        pred_topy_each_deg.append(np.concatenate((u_pred_top1pct, x_pred_top1pct, y_pred_top1pct.reshape()), axis=0))
+
 
 
 
@@ -431,7 +434,7 @@ def main(theta):
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
         np.save(os.path.join(os.getcwd(), filename), metrics_each_deg)
 
-    ### ============ Saving Predict data ============
+    ### ============ Saving Predict ecdf data ============
     pred_ecdf_each_deg = np.array(pred_ecdf_each_deg, dtype=object)
     filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_ecdf'.format(solver.nickname, pce_model.tag, 
             simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
@@ -441,6 +444,25 @@ def main(theta):
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
         np.save(os.path.join(os.getcwd(), filename), pred_ecdf_each_deg)
 
+    ### ============ Saving Predict top Y data ============
+    pred_topy_each_deg= np.array(pred_topy_each_deg)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_pred'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
+    try:
+        np.save(os.path.join(simparams.data_dir_result, filename), pred_topy_each_deg)
+    except:
+        print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
+        np.save(os.path.join(os.getcwd(), filename), pred_topy_each_deg)
+
+    ### ============ Saving samples outside domain ============
+    data = np.concatenate((u_pred_outside, x_pred_outside, y_pred_outside.reshape(1,-1)), axis=0)
+    filename = '{:s}_Adap{:s}_{:s}_Alpha{}_ST{}_outside'.format(solver.nickname, pce_model.tag, 
+            simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
+    try:
+        np.save(os.path.join(simparams.data_dir_result, filename), data )
+    except:
+        print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
+        np.save(os.path.join(os.getcwd(), filename), data)
 if __name__ == '__main__':
     for s in range(10):
         main(s)
