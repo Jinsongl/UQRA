@@ -283,8 +283,7 @@ def main(theta):
         _, sig_value, _ = np.linalg.svd(U_train)
         kappa0 = max(abs(sig_value)) / min(abs(sig_value)) 
 
-        pce_model.fit('LASSOLARS', u_train, y_train.T, w=w_train, 
-                n_splits=simparams.n_splits, epsilon=1e-2)
+        pce_model.fit('LASSOLARS', u_train, y_train.T, w=w_train,epsilon=1e-3) 
 
         print('       Active Index: {}'.format(pce_model.active_index))
         print('     > 2. Getting new training data ...')
@@ -329,8 +328,7 @@ def main(theta):
         _, sig_value, _ = np.linalg.svd(U_train)
         kappa = max(abs(sig_value)) / min(abs(sig_value)) 
 
-        pce_model.fit('OLS', u_train, y_train.T, w_train, 
-                n_splits=simparams.n_splits, active_basis=pce_model.active_basis)
+        pce_model.fit('OLS', u_train, y_train.T, w_train, active_basis=pce_model.active_basis) 
 
         print(' > Train data ...')
         print('   - {:<25s} : {}, {}, {}'.format(' Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
