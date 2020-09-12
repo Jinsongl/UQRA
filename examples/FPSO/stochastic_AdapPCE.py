@@ -91,13 +91,8 @@ def rosenblatt(x_dist, x, u_dist, support=None):
             Fa = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
             Fb = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
         u_cdf[1] = (x_cdf[1] - Fa)/(Fb  - Fa)
-
-        if (x_cdf <0).any() or (x_cdf>1).any():
-            print('CDF < 0: {}'.format(x_cdf[x_cdf<0]))
-            print('CDF > 1: {}'.format(x_cdf[x_cdf>1]))
-            raise ValueError('CDF values must be in [0,1] ...')
-
         u = np.array([iu_dist.ppf(iu_cdf) for iu_dist, iu_cdf in zip(u_dist, u_cdf)])
+
     return u 
 
 def get_pts_inside_square(x, center=[0,0], edges=[1,1]):
@@ -147,7 +142,7 @@ def main(theta):
     solver    = uqra.FPSO(random_state =theta)
     simparams = uqra.Parameters(solver, doe_method='MCS', optimality='D', fit_method='LASSOLARS')
     simparams.x_dist     = Kvitebjorn
-    simparams.pce_degs   = np.array(range(2,11))
+    simparams.pce_degs   = np.array(range(2,4))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = int(1e6)
     simparams.n_pred     = int(1e7)
@@ -159,17 +154,17 @@ def main(theta):
     simparams.info()
 
     ## ----------- Define U distributions ----------- ###
-    # u_dist = [stats.norm(0,1),] * solver.ndim
-    # domain_samples= -stats.norm().ppf(1e-7)
-    # domain_space  = 'u'
-    # dist_support  = None
-    # fname_cand = 'FPSO_SURGE_DoE_UniformE5_Norm.npy'
+    u_dist = [stats.norm(0,1),] * solver.ndim
+    domain_samples= -stats.norm().ppf(1e-7)
+    domain_space  = 'u'
+    dist_support  = None
+    fname_cand = 'FPSO_SURGE_DoE_UniformE5_Norm.npy'
 
-    u_dist = [stats.uniform(-1,2),]* solver.ndim
-    domain_samples = [[-1,1],] * solver.ndim 
-    domain_space   = 'u'
-    dist_support = np.array([[0, 18],[0,35]])
-    fname_cand = 'FPSO_SURGE_DoE_LhsE5_Uniform.npy'
+    # u_dist = [stats.uniform(-1,2),]* solver.ndim
+    # domain_samples = [[-1,1],] * solver.ndim 
+    # domain_space   = 'u'
+    # dist_support = np.array([[0, 18],[0,35]])
+    # fname_cand = 'FPSO_SURGE_DoE_LhsE5_Uniform.npy'
 
     # a, b   = estimate_beta_params(x_pred, support=dist_support)
     # u_dist = [stats.beta(ia,ib,loc=-1,scale=2) for ia, ib in zip(a, b)]
@@ -197,7 +192,7 @@ def main(theta):
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_pred, axis=1), np.amax(u_pred, axis=1)))
     print('   - {:<25s} : {}, {}'.format(' X support', np.amin(x_pred, axis=1), np.amax(x_pred, axis=1)))
     print('   - {:<25s} '.format(' Samples outside domain...'))
-    y_pred_outside = solver.run(x_pred_outside)
+    y_pred_outside = np.array(solver.run(x_pred_outside), ndmin=1)
     print('   - {:<25s} : {}, {}'.format('(X,Y) ', x_pred_outside.shape, y_pred_outside.shape))
     print( u_pred_outside)
     print( x_pred_outside)
@@ -206,7 +201,7 @@ def main(theta):
     ## ----------- Test data set ----------- ###
     print(' > Getting Test data set...')
     filename = '{:s}_DoE_McsE6R{:d}.npy'.format(solver.nickname,theta)
-    u_test, x_test, y_test = simparams.get_test_data(filename, domain=domain_samples
+    u_test, x_test, y_test = simparams.get_test_data(filename, domain=domain_samples,
             domain_space=domain_space, support=dist_support)
     print('   - {:<25s} : {}, {}, {}'.format(' U,X,Y.shape', u_test.shape, x_test.shape, y_test.shape ))
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_test, axis=1), np.amax(u_test, axis=1)))
@@ -332,7 +327,7 @@ def main(theta):
         else:
             y_pred_     = np.concatenate((y_pred_outside, y_pred)) 
             x_pred_     = np.concatenate((x_pred_outside, x_pred), axis=1) 
-            u_pred_     = np.concatenate((u_pred_outside, u_pred), axis=1) 
+            u_pred_     = np.concatenate((u_pred_outside, u_pred), axis=1) ## could have nan in u
 
         y_pred_ecdf = uqra.utilities.helpers.ECDF(y_pred_, alpha=pf, compress=True)
         y50_pce_y   = uqra.metrics.mquantiles(y_pred_, 1-pf)

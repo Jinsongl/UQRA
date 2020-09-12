@@ -75,7 +75,7 @@ def rosenblatt(x_dist, x, u_dist, support=None):
         hs_range, tp_range = support
         ## get the cdf values in non-truncate support
         x_cdf = x_dist.cdf(x)
-        u_cdf = np.ones(x_cdf.shape)
+        u_cdf = np.ones(x_cdf.shape, dtype=np.float64)
         ## Hs not depend on any other x, return the Fa, Fb. the 1st row corresponds to hs
         if hs_range is None:
             Fa, Fb = 0,1
@@ -91,13 +91,8 @@ def rosenblatt(x_dist, x, u_dist, support=None):
             Fa = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
             Fb = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
         u_cdf[1] = (x_cdf[1] - Fa)/(Fb  - Fa)
-
-        if (x_cdf <0).any() or (x_cdf>1).any():
-            print('CDF < 0: {}'.format(x_cdf[x_cdf<0]))
-            print('CDF > 1: {}'.format(x_cdf[x_cdf>1]))
-            raise ValueError('CDF values must be in [0,1] ...')
-
         u = np.array([iu_dist.ppf(iu_cdf) for iu_dist, iu_cdf in zip(u_dist, u_cdf)])
+
     return u 
 
 def get_pts_inside_square(x, center=[0,0], edges=[1,1]):
@@ -147,7 +142,7 @@ def main(theta):
     solver    = uqra.FPSO(random_state =theta)
     simparams = uqra.Parameters(solver, doe_method='MCS', optimality='D', fit_method='LASSOLARS')
     simparams.x_dist     = Kvitebjorn
-    simparams.pce_degs   = np.array(range(2,11))
+    simparams.pce_degs   = np.array(range(2,4))
     simparams.n_cand     = int(1e5)
     simparams.n_test     = int(1e6)
     simparams.n_pred     = int(1e7)
@@ -201,7 +196,7 @@ def main(theta):
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_pred, axis=1), np.amax(u_pred, axis=1)))
     print('   - {:<25s} : {}, {}'.format(' X support', np.amin(x_pred, axis=1), np.amax(x_pred, axis=1)))
     print('   - {:<25s} '.format(' Samples outside domain...'))
-    y_pred_outside = solver.run(x_pred_outside)
+    y_pred_outside = np.array(solver.run(x_pred_outside), ndmin=1)
     print('   - {:<25s} : {}, {}'.format('(X,Y) ', x_pred_outside.shape, y_pred_outside.shape))
     print( u_pred_outside)
     print( x_pred_outside)
@@ -361,7 +356,7 @@ def main(theta):
         else:
             y_pred_     = np.concatenate((y_pred_outside, y_pred)) 
             x_pred_     = np.concatenate((x_pred_outside, x_pred), axis=1) 
-            u_pred_     = np.concatenate((u_pred_outside, u_pred), axis=1) 
+            u_pred_     = np.concatenate((u_pred_outside, u_pred), axis=1) ## could have nan in u
 
         y_pred_ecdf = uqra.utilities.helpers.ECDF(y_pred_, alpha=pf, compress=True)
         y50_pce_y   = uqra.metrics.mquantiles(y_pred_, 1-pf)
@@ -371,11 +366,14 @@ def main(theta):
         y_pred_top1pct = y_pred_[y_pred_top1pct_idx]
         u_pred_top1pct = u_pred_[:, y_pred_top1pct_idx]
         x_pred_top1pct = x_pred_[:, y_pred_top1pct_idx]
-        center = np.mean(u_pred_top1pct, axis=1).reshape(-1,1)
+        ## remove nan values in u
+        u_notnan = np.logical_not(np.logical_or(*np.isnan(u_pred_top1pct)))
+        u_pred_top1pct_ = u_pred_top1pct[:, u_notnan]
+        center = np.mean(u_pred_top1pct_, axis=1).reshape(-1,1)
         if simparams.u_distname == 'norm':
-            distance = max(np.linalg.norm(u_pred_top1pct-center, axis=0))
+            distance = max(np.linalg.norm(u_pred_top1pct_-center, axis=0))
         elif simparams.u_distname == 'uniform':
-            distance = [[min(iu), max(iu)] for iu in u_pred_top1pct-center]
+            distance = [[min(iu), max(iu)] for iu in u_pred_top1pct_-center]
         simparams.top1pct_center.append(center)
         simparams.top1pct_distance.append(distance)
         pred_topy_each_deg.append(np.concatenate((u_pred_top1pct, x_pred_top1pct, y_pred_top1pct.reshape(1,-1)), axis=0))
@@ -476,6 +474,7 @@ def main(theta):
     except:
         print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
         np.save(os.path.join(os.getcwd(), filename), data)
+
 if __name__ == '__main__':
     for s in range(10):
         main(s)
