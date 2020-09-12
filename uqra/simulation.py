@@ -636,8 +636,8 @@ class Parameters(object):
         """
         u_cdf = np.load(os.path.join(self.data_dir_sample, 'CDF', filename))
         u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
-        u = np.array([idist.ppf(iu) for iu, idist in zip(u_cdf_pred, self.u_dist)])
         x = self.x_dist.ppf(u_cdf_pred)
+        u = self.rosenblatt(self.x_dist, x, self.u_dist, support=support)
         u = np.array(u, ndmin=2, copy=False)
         x = np.array(x, ndmin=2, copy=False)
 
@@ -651,14 +651,17 @@ class Parameters(object):
                 idx_inside, idx_outside = self.separate_samples_by_domain(u, domain)
                 u0 = u[:, idx_inside]
                 x0 = self.inverse_rosenblatt(self.x_dist, u0, self.u_dist, support=support)
-                u1 = None 
+                if not np.array_equal(x0, x[:, idx_inside]):
+                    print(np.amax(abs(x0-x[:, idx_inside]), axis=None))
+                u1 = u[:, idx_outside] 
                 x1 = x[:, idx_outside]
 
             elif domain_space == 'x':
                 idx_inside, idx_outside = self.separate_samples_by_domain(x, domain)
                 x0 = x[:, idx_inside]
                 u0 = self.rosenblatt(self.x_dist, x0, self.u_dist, support=support)
-                u1 = None
+                assert np.array_equal(u0, u[:, idx_inside])
+                u1 = u[:, idx_outside] 
                 x1 = x[:, idx_outside]
         return u0, x0, u1, x1
 
