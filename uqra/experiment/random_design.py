@@ -55,7 +55,6 @@ class MCS(ExperimentBase):
         return np.array(u_samples)
 
 class CLS(ExperimentBase):
-
     def __init__(self, cls_type, d):
         """
         Sampling based on Pluripotential distributions used in Christoffel least square 
