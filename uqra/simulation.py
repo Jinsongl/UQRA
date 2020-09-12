@@ -552,7 +552,6 @@ class Parameters(object):
         return u, x 
 
     def check_samples_inside_domain(self, data, domain):
-
         data = np.array(data, ndmin=2, copy=False)
         if self.u_distname == 'norm':
             if np.ndim(domain) == 0:
@@ -642,25 +641,29 @@ class Parameters(object):
         x = np.array(x, ndmin=2, copy=False)
 
         if domain is None:
-            u0 = u
-            x0 = x
-            u1 = None
-            x1 = None
+            u_isnan = np.logical_or(*np.isnan(u))
+            u0 = u[np.logical_not(u_isnan)]
+            x0 = x[np.logical_not(u_isnan)]
+            u1 = u[u_isnan]
+            x1 = x[u_isnan]
         else:
+            u_isnan = np.logical_or(*np.isnan(u))
             if domain_space == 'u':
                 idx_inside, idx_outside = self.separate_samples_by_domain(u, domain)
                 u0 = u[:, idx_inside]
                 x0 = self.inverse_rosenblatt(self.x_dist, u0, self.u_dist, support=support)
-                if not np.array_equal(x0, x[:, idx_inside]):
+                if np.amax(abs(x0-x[:, idx_inside]), axis=None) > 1e-6:
                     print(np.amax(abs(x0-x[:, idx_inside]), axis=None))
-                u1 = u[:, idx_outside] 
-                x1 = x[:, idx_outside]
+                u1 = u[:, np.logical_or(idx_outside, u_isnan)] 
+                x1 = x[:, np.logical_or(idx_outside, u_isnan)]
 
             elif domain_space == 'x':
                 idx_inside, idx_outside = self.separate_samples_by_domain(x, domain)
                 x0 = x[:, idx_inside]
                 u0 = self.rosenblatt(self.x_dist, x0, self.u_dist, support=support)
-                assert np.array_equal(u0, u[:, idx_inside])
+                if np.amax(abs(u0-u[:, idx_inside]), axis=None) > 1e-6:
+                    print(np.amax(abs(u0-u[:, idx_inside]), axis=None))
+
                 u1 = u[:, idx_outside] 
                 x1 = x[:, idx_outside]
         return u0, x0, u1, x1
