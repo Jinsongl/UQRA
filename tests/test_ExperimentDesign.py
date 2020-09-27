@@ -4,6 +4,7 @@ import uqra, unittest,warnings,os, sys, math
 from tqdm import tqdm
 import time
 import numpy as np, scipy as sp 
+import scipy.stats as stats
 
 sys.stdout  = uqra.utilities.classes.Logger()
 
@@ -63,16 +64,18 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_LHS(self):
         print('Testing: Latin Hypercube...')
-        doe = uqra.LHS([sp.stats.norm(0,1),]*2)
+        # u_dist = [stats.uniform(0,17.5), stats.uniform(0, 34.5)]
+        # doe = uqra.LHS([sp.stats.norm(0,1),]*2)
         # doe = uqra.LHS([sp.stats.uniform(),]*2)
-        doe_x = doe.samples(size=256)
+        doe = uqra.LHS(u_dist, criterion='c')
+        doe_x = doe.samples(size=int(1e5))
         print(doe_x.shape)
         print(np.mean(doe_x, axis=1))
         print(np.std(doe_x, axis=1))
         print(np.min(doe_x, axis=1))
         print(np.max(doe_x, axis=1))
 
-        # np.save('DoE_Lhs_d2_Uniform256.npy', doe_x)
+        np.save(os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SURGE/TestData', 'FPSO_SURGE_DoE_LhsE5.npy'), doe_x)
 
     def test_Doptimality(self):
         """
@@ -195,7 +198,7 @@ class BasicTestSuite(unittest.TestCase):
         x = np.linspace(-1,1,1000)
         y = cdf_chebyshev(x)
         ndim    = 2
-        n_cand  = int(1e5)
+        n_cand  = int(1e7)
 
         data_dir= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform'
         filename= r'DoE_McsE6R0.npy'

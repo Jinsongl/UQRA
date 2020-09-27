@@ -11,11 +11,29 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import KFold
 import pickle
 import uqra
+import scipy.stats as stats
 
 warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
+def ground2hub(x, hub_height = 90, alpha=0.1):
+
+    u10, hs, tp = x
+    uhub = u10 * ((hub_height / 10)**(alpha))
+    return np.array([uhub, hs, tp])
+
+def hub2ground(x, hub_height = 90, alpha=0.1):
+
+    uhub, hs, tp = x
+    u10 = uhub * ((hub_height / 10)**(-alpha))
+    return np.array([u10, hs, tp])
 data_dir = '/Users/jinsongliu/BoxSync/MUSELab/uqra/examples/JupyterNotebook'
+def draw_circle(r=1,origin=[0,0],n=1000):
+    theta =np.linspace(0,2*np.pi,n)
+    x = r*np.cos(theta) + origin[0]
+    y = r*np.sin(theta) + origin[1]
+    cood = np.array([x,y])
+    return cood
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
 
@@ -82,6 +100,69 @@ class BasicTestSuite(unittest.TestCase):
         print(mcs_ecdf.y.shape)
         print(mcs_ecdf.n)
 
+    def rosenblatt(self):
+        Norway5 = uqra.environment.Norway5()
+        # Kvitebjorn = uqra.environment.Kvitebjorn()
+        # u_dist = [stats.norm(),]*Kvitebjorn.ndim
+        # # u = stats.norm.rvs(0,1,size=(Kvitebjorn.ndim,1000))
+        # u = stats.norm.rvs(0,1,size=(Norway5.ndim,1000))
+        # support = np.array([[3,16],[2,4]])
+
+        # support = [[3,16],None]
+        # x = uqra.utilities.helpers.inverse_rosenblatt(Norway5, u, u_dist, support)
+        # # x = uqra.utilities.helpers.inverse_rosenblatt(Kvitebjorn, u, u_dist, support)
+        # print('Inverse Rosenblatt ')
+        # print(u)
+        # print(x)
+
+        # print('Forward Rosenblatt ')
+        # u = uqra.utilities.helpers.rosenblatt(Norway5, x, u_dist, support)
+        # # u = uqra.utilities.helpers.rosenblatt(Kvitebjorn, x, u_dist, support)
+        # print(u)
+        # print(x)
+        hub_height = 90
+        alpha      = 0.1
+        Uhub_range = np.array([3,25])
+        hs_domains, tp_domains = None, None
+        u10_domains= Uhub_range * ((hub_height / 10)**(-alpha))
+        subdomains_ground = [u10_domains, hs_domains, tp_domains]
+        subdomains_hub = [Uhub_range, hs_domains, tp_domains]
+        EC2D_line = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SURGE/TestData/Norway5_EC_50yr_1000.npy')
+        # print(EC2D_line.shape)
+        u_dist = [stats.norm(),] * 3
+        # EC2D_x_line = uqra.inverse_rosenblatt(Norway5, EC2D_line[:3], u_dist, support=subdomains_ground)
+        # print(EC2D_x_line)
+        # EC2D_u = draw_circle(4.71, n=36)
+        # EC2D_u = np.concatenate((EC2D_u,0*EC2D_u), axis=0)[:3]
+        # print(EC2D_u.shape)
+        # print(EC2D_u)
+        # EC2D_x = uqra.inverse_rosenblatt(Norway5, EC2D_u, u_dist, support=subdomains_ground)
+        # EC2D_x = ground2hub(EC2D_x)
+        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/DeepCWind/TestData' 
+        for i in range(1,10):
+            filename = 'CDF_McsE7R{:d}.npy'.format(i)
+            print('1. u_cdf')
+            u_cdf  = np.load(os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/CDF', filename))[:3]
+            print('2. u_pred')
+            u_pred = np.array([idist.ppf(iu_cdf) for idist, iu_cdf in zip(u_dist, u_cdf)]) 
+            print('3. x_pred')
+            x_pred = uqra.inverse_rosenblatt(Norway5, u_pred, u_dist, support=subdomains_ground)
+            while np.isnan(x_pred).any():
+                x_isnan= np.zeros(x_pred.shape[1])
+                for ix in x_pred:
+                    x_isnan = np.logical_or(x_isnan, np.isnan(ix))
+                print('nan found in x_pred: {:d}'.format(np.sum(x_isnan)))
+                u_pred = u_pred[:,np.logical_not(x_isnan)]
+                x_pred = x_pred[:,np.logical_not(x_isnan)]
+                u_cdf1  = stats.uniform(0,1).rvs(size=(len(u_dist), np.sum(x_isnan)))
+                u_pred1 = np.array([idist.ppf(iu_cdf) for idist, iu_cdf in zip(u_dist, u_cdf1)]) 
+                print(u_pred1)
+                x_pred1 = uqra.inverse_rosenblatt(Norway5, u_pred1, u_dist, support=subdomains_ground)
+                u_pred  = np.concatenate((u_pred, u_pred1), axis=1)
+                x_pred  = np.concatenate((x_pred, x_pred1), axis=1)
+            data = np.concatenate((u_pred, x_pred), axis=0)
+            print(data.shape)
+            np.save(os.path.join(data_dir, 'DeepCWind_McsE7R{:d}_pred.npy'.format(i)), data)
 
     def test_weighted_exceedance(self):
         print('========================TESTING: Weighted Exceedance =======================')
@@ -132,6 +213,73 @@ class BasicTestSuite(unittest.TestCase):
                     cdf_y = res.cumcount/res.cumcount[-1]
                     excd = np.array([cdf_x, cdf_y])
                     np.save(os.path.join(data_dir_out,filename[:-4]+'_y{:d}_ecdf'.format(i)), excd)
+
+
+    def ellipsoid_tool(self):
+        # hub_height = 90
+        # alpha      = 0.1
+        # Uhub_range = np.array([3,25])
+        # hs_domains, tp_domains = None, None
+        # u10_domains  = Uhub_range*  ((hub_height / 10)**(-alpha))
+        # subdomains_ground = [u10_domains, hs_domains, tp_domains]
+        # subdomains_hub = [Uhub_range, hs_domains, tp_domains]
+        # Uhub_rated = 11.3
+        # U10_rated  = Uhub_rated *  ((hub_height / 10)**(-alpha))
+        # solver  = uqra.Solver('DeepCWind', 3)
+        # Norway5 = uqra.environment.Norway5()
+        # model_name    = solver.nickname# 'FPSO_SURGE'
+        # return_period = 50 # years
+        # sim_duration  = 1 # hours
+        # pf            = sim_duration/(return_period*365.25*24)
+        # beta          = -stats.norm.ppf(pf)
+        # data_dir_samples = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
+        # model_dir        = os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA', model_name)
+        # data_dir_result  = os.path.join(model_dir, 'Data')
+        # figure_dir       = os.path.join(model_dir, 'Figures')
+
+        # EC2D_u_line = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SURGE/TestData/Norway5_EC_50yr_1000.npy')
+        # u_dist = [stats.norm(),]*solver.ndim
+        # EC2D_x_line = uqra.inverse_rosenblatt(Norway5, EC2D_u_line[:3], u_dist, support=subdomains_ground)
+        # EC2D_x_line = ground2hub(EC2D_x_line)
+
+        # with open(os.path.join(model_dir, 'DeepCWindAdapIS_McsD_Alpha1_ST0_Parameters.pkl'), 'rb') as input_file:
+            # simparams = pickle.load(input_file)
+            
+        # # print(simparams.topy_center)
+        # # print(simparams.topy_distance)
+
+        # train_data = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/DeepCWind/DeepCWindAdapIS3Hem23Hem2_McsD_Alpha1_ST0_Train.npy')
+        # # print(train_data.shape)
+        # pred_topy = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/DeepCWind/DeepCWindAdapIS3Hem23Hem2_McsD_Alpha1_ST0_topy.npy')
+        # # print(pred_topy.shape)
+        # n_topy = 44
+        # ipred_topy = pred_topy[0]
+        # ipred_topy_u = ipred_topy[:3]
+        # center, radii, rotation = uqra.EllipsoidTool().getMinVolEllipse(ipred_topy_u.T)
+        # print('center: {}'.format(center))
+        # print('radii : {}'.format(radii))
+        # print('rotation: {}'.format(rotation))
+        # new_train = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/DeepCWind/DeepCWindAdapIS3Hem23Hem2_McsD_Alpha1_ST0_new_train.npy')
+        # print(new_train.shape)
+
+        ndim=3
+        data = stats.uniform.rvs(-1,2,size=(ndim,10000))
+        c = np.zeros(ndim)
+        r = np.ones(ndim)
+        R = np.identity(ndim)
+        idx0, idx1 = uqra.samples_within_ellipse(data, c, r, R)
+        data0 = data[:,idx0]
+        data1 = data[:,idx1]
+
+        idx0 = np.linalg.norm(data, axis=0) < 1
+        idx1 = np.logical_not(idx0)
+
+        data00= data[:,idx0]
+        data11= data[:,idx1]
+
+        print(np.array_equal(data0, data00))
+        print(np.array_equal(data1, data11))
+
 
 
 
