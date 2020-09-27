@@ -38,6 +38,7 @@ from uqra.surrogates.polynomial_chaos_expansion import PolynomialChaosExpansion 
 from uqra.surrogates.multiple_polynomial_chaos_expansion import mPCE 
 
 from uqra.utilities import metrics as metrics
+from uqra.utilities.EllipsoidTool import EllipsoidTool
 from uqra.utilities.helpers import *
 # from uqra.utilities.helpers import get_stats
 # from uqra.utilities.helpers import blockPrint
