@@ -13,6 +13,7 @@
 import numpy as np, scipy as sp, scipy.stats as stats
 import os, sys, warnings, collections, csv, itertools, math
 from statsmodels.distributions.empirical_distribution import ECDF as mECDF
+import copy
 
 Ecdf2plot = collections.namedtuple('Ecdf2plot', ['x','y'])
 
@@ -476,74 +477,136 @@ def _bootstrpping(data, bootstrap_size):
     return res
 
 
-def inverse_rosenblatt(x_dist, u, x_range=None, u_dist=stats.norm()):
+def inverse_rosenblatt(x_dist, u, u_dist, support=None):
     """
-    x_dist: a list of distributions in x space or an UQRA.environment object which has
-    Map cdf values from [0,1] to truncated domain in X space 
+    Map random variables from U-space to (truncated) X-space
 
-    x_range: boundary
+    Arguments:
+    x_dist: UQRA.environment object 
     u: ndarray of shape(solver.ndim, n)
-
+    u_dist: a list of stats.rvs_frozen object representing the iid U-space
+    support: boundary
+    
     """
-    if x_range is None:
-        u_cdf = u_dist.cdf(u)
-        x = x_dist.ppf(u_cdf)
-    else:
-        x       = []
-        u_cdf   = u_dist.cdf(u) ## cdf values in truncated domain
 
-        for i, (ix_range, iu_cdf) in enumerate(zip(x_range, u_cdf)):
-            if ix_range is None:
+    assert len(u_dist) == len(u)
+    x_dist  = copy.deepcopy(x_dist)
+    u       = np.array(u, ndmin=2, copy=True)
+    u_dist  = copy.deepcopy(u_dist)
+    support = copy.deepcopy(support)
+    if support is None:
+        u_cdf   = np.array([idist.cdf(iu) for iu, idist in zip(u, u_dist)])
+        x       = x_dist.ppf(u_cdf)
+    else:
+        assert len(support) == len(u)
+        u_cdf   = np.array([idist.cdf(iu) for iu, idist in zip(u, u_dist)])
+        x_cdf   = u_cdf/u_cdf * 0.2
+        x       = np.ones(u.shape, dtype=u.dtype) 
+        for i, iu, iu_dist, isupport in zip(np.arange(len(u)), u, u_dist, support):
+            if isupport is None:
+                support[i] = x_dist.support()[i]## default support of x_dist, tuple of tuple
                 Fa, Fb = 0, 1
             else:
-                Fa, Fb = x_dist.cdf(ix_range)[i]
+                x_left, x_right = isupport 
+                x[i] = x[i]/x[i] * x_left
+                Fa   = x_dist.cdf(x)[i]
+                x[i] = x[i]/x[i] * x_right
+                Fb   = x_dist.cdf(x)[i]
 
-
-
-        ## Hs not depend on any other x, return the Fa, Fb. the 1st row corresponds to hs
-         
-        ## transform cdf values to non-truncated domain
-        u_cdf[0] = u_cdf[0] * (Fb_hs - Fa_hs) + Fa_hs
-        ## return hs
-        hs = x_dist.ppf(u_cdf)[0]  ## only Hs is correct, Tp is wrong
-
-        ## Tp is conditional on Hs, need to find the Fa, Fb for [Tp1, Tp2] condition on each Hs
-        Fa_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
-        Fb_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
-        u_cdf[1] = u_cdf[1] * (Fb_tp - Fa_tp) + Fa_tp
-
-        x = x_dist.ppf(u_cdf)
+            x_cdf[i] = u_cdf[i] * (Fb - Fa) + Fa
+            x[i] = x_dist.ppf(x_cdf)[i]
     return x 
 
-def rosenblatt(x_dist, x, x_range=None,  u_dist=stats.norm()):
+def rosenblatt(x_dist, x, u_dist, support=None):
     """
-    Map values from truncated domain in X space to uspace 
+    Map random variables from (truncated) X-space to U-space
 
-    x_range: boundary
+    Arguments:
+    x_dist: UQRA.environment object 
     u: ndarray of shape(solver.ndim, n)
-
+    u_dist: a list of stats.rvs_frozen object representing the iid U-space
+    support: boundary
     """
-    hs, tp  = np.array(x, ndmin=2)
+    assert len(u_dist) == len(x)
+    x_dist  = copy.deepcopy(x_dist)
+    x       = np.array(x, ndmin=2, copy=True)
+    u_dist  = copy.deepcopy(u_dist)
+    support = copy.deepcopy(support)
 
-    if x_range is None:
-        x_cdf   = x_dist.cdf(x)
-        u       = u_dist.ppf(x_cdf)
+    if support is None:
+        x_cdf = x_dist.cdf(x)
+        u     = np.array([iu_dist.ppf(ix_cdf) for iu_dist, ix_cdf in zip(u_dist, x_cdf)])
     else:
-        x_range = np.array(x_range, ndmin=2)
-        hs_range, tp_range = x_range
+        assert len(support) == len(x)
+        x_cdf = x_dist.cdf(x)
+        u_cdf = x_cdf / x_cdf * 0.5
+        u     = np.ones(x.shape, dtype=x.dtype)
 
-        ## get the cdf values in non-truncate domain
-        x_cdf   = x_dist.cdf(x)
-        ## Hs not depend on any other x, return the Fa, Fb. the 1st row corresponds to hs
-        Fa_hs, Fb_hs = x_dist.cdf(x_range)[0] 
-        ## transform to cdf values in truncated domain
-        x_cdf[0] = (x_cdf[0] - Fa_hs)/(Fb_hs  - Fa_hs)
+        for i, ix, iu_dist, isupport in zip(np.arange(len(x)), x, u_dist, support):
+            if isupport is None:
+                support[i] = x_dist.support()[i]## default support of x_dist, tuple of tuple
+                Fa, Fb = 0, 1
+            else:
+                x_    = np.array(x)
+                x_left, x_right = isupport 
+                x_[i] = x[i]/x[i] * x_left
+                Fa   = x_dist.cdf(x_)[i]
+                x_[i] = x[i]/x[i] * x_right
+                Fb   = x_dist.cdf(x_)[i]
 
-        ## Tp is conditional on Hs, need to find the Fa, Fb for [Tp1, Tp2] condition on each Hs
-        Fa_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[0] ]))[1]
-        Fb_tp     = x_dist.cdf(np.array([hs, np.ones(hs.shape) * tp_range[1] ]))[1]
-        x_cdf[1] = (x_cdf[1] - Fa_tp)/(Fb_tp  - Fa_tp)
-
-        u = u_dist.ppf(x_cdf)
+            u_cdf[i] = (x_cdf[i] - Fa) /(Fb - Fa)
+        u = np.array([iu_dist.ppf(iu_cdf) for iu_dist, iu_cdf in zip(u_dist, u_cdf)])
     return u 
+
+def samples_within_circle(data, r1, r2=None):
+    """
+    Return the index for data samples within the defined domain
+    """
+    data = np.array(data, ndmin=2, copy=False)
+    if r2 is None:
+        r1, r2 = 0, r1
+    else:
+        r1, r2 = min(r1, r2), max(r1, r2)
+
+    data_radius = np.linalg.norm(data, axis=0)
+    samples_idx_within_domain = np.logical_and(data_radius>r1, data_radius < r2)
+    samples_idx_outside_domain= np.logical_not(samples_idx_within_domain)
+    return samples_idx_within_domain, samples_idx_outside_domain
+
+def samples_within_ellipse(data, c, radii, R):
+    """
+    check if each data sample is in the hyperellipse defined by (c, radii, A)
+    (x-c).T*A*(x-c) = 1
+    perform SVD to A: USV = SVD(A)
+    then radii = 1/sqrt(S)
+    R = V = U
+    Arguments:
+        data: ndarray of shape(ndim, nsamples)
+        c: center of ellipse, ndarray of shape (ndim,)
+        radii: length of semi major axes of ellipse, ndarray of shape (ndim,)
+        R: rotation matrix, Rx -> y: y lives in the coordinates defined by the 'right' ellipse ndarray of (ndim, ndim)
+    return ndarray of shape (nsamples,), boolean values
+    """
+
+    data = np.array(data, ndmin=2, copy=True)
+    R    = np.array(R, ndmin=2, copy=False)
+    c    = np.array(c, ndmin=2, copy=False).T
+    radii= np.array(radii, ndmin=2, copy=False).T
+    y = np.dot(R.T, data-c) ## new coordinates in ellipse
+    idx_within_ellipse = np.sum((y/radii)**2, axis=0) < 1
+    idx_outside_ellipse= np.logical_not(idx_within_ellipse)
+    return idx_within_ellipse, idx_outside_ellipse
+
+
+def samples_within_cubic(data, domain):
+    """
+    Return the index for data samples within the defined by intervals 
+    """
+    data = np.array(data, ndmin=2, copy=False)
+    samples_idx_within_domain = np.ones(data.shape[1], dtype=np.int32)
+    for idata, isubdomains in zip(data, domain):
+        idx_ = np.logical_and(idata > isubdomains[0], idata < isubdomains[1])
+        samples_idx_within_domain = np.logical_and(samples_idx_within_domain, idx_)
+    samples_idx_outside_domain= np.logical_not(samples_idx_within_domain)
+    return samples_idx_within_domain, samples_idx_outside_domain
 
