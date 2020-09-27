@@ -9,10 +9,9 @@
 """
 
 """
-import uqra, warnings
+import uqra
 import numpy as np, os, sys
 import scipy.stats as stats
-import pickle
 from tqdm import tqdm
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
@@ -155,7 +154,6 @@ def main(theta):
             U_train = U_train[:, pce_model.active_index]
 
         _, sig_value, _ = np.linalg.svd(U_train)
-        kappa0 = max(abs(sig_value)) / min(abs(sig_value)) 
 
         pce_model.fit('LASSOLARS', u_train, y_train.T, w=w_train,epsilon=1e-3)
         print('     - {:<23s} : {}'.format('Active Index'   , pce_model.active_index))
@@ -217,7 +215,6 @@ def main(theta):
         
         idx_within_ellipse, _ = uqra.samples_within_ellipse(u_cand, center, radii, rotation)
         u_cand_topy = u_cand[:, idx_within_ellipse]
-        x_cand_topy = x_cand[:, idx_within_ellipse]
 
         tqdm.write('     - Min Vol ellipsoid with {:d} samples'.format(y_pred_top.size))
         tqdm.write('     - {:<15s} : {}'.format( 'center'   , center))
@@ -310,82 +307,7 @@ def main(theta):
     output   = np.array(output_each_deg, dtype=object)
     np.save(os.path.join(simparams.data_dir_result, filename), output)
 
-    # ### ============ Saving Parameters ============
-    # filename = '{:s}AdapIS{:s}_{:s}_Alpha{}_ST{}_Parameters.pkl'.format(solver.nickname, pce_model.tag, 
-            # simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
-    # with open(os.path.join(simparams.data_dir_result, filename), "wb") as output_file:
-        # pickle.dump(simparams, output_file)
-
-    # ### ============ Saving pce model============
-    # filename = '{:s}AdapIS{:s}_{:s}_Alpha{}_ST{}_pce.pkl'.format(solver.nickname, pce_model.tag, 
-            # simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
-    # with open(os.path.join(simparams.data_dir_result,filename), 'wb') as output:
-        # pickle.dump(pce_model_each_deg, output, pickle.HIGHEST_PROTOCOL)
-
-    # ### ============ Saving train ============
-    # data_train = np.concatenate((u_train, x_train, y_train.reshape(1,-1)), axis=0)
-    # filename = '{:s}AdapIS{:s}_{:s}_Alpha{}_ST{}_Train'.format(solver.nickname, pce_model.tag, 
-            # simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
-    # try:
-        # np.save(os.path.join(simparams.data_dir_result, filename), data_train)
-    # except:
-        # print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        # np.save(os.path.join(os.getcwd(), filename), data_train)
-
-    # ### ============ Saving test ============
-    # filename = '{:s}AdapIS{:s}_{:s}_Alpha{}_ST{}_test'.format(solver.nickname, pce_model.tag, 
-            # simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
-    # try:
-        # np.save(os.path.join(simparams.data_dir_result, filename), y_test_hat)
-    # except:
-        # print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        # np.save(os.path.join(os.getcwd(), filename), y_test_hat)
-
-    # ### ============ Saving QoIs ============
-    # metrics_each_deg = np.array(metrics_each_deg)
-    # with open(os.path.join(simparams.data_dir_result, 'outlist_name.txt'), "w") as text_file:
-        # text_file.write(', '.join(
-            # ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y50_pce_u', 'y50_pce_x', 'y50_pce_y']))
-            # # ['deg', 'n_train', 'train error','cv_error', 'test error', 'kappa', 'y_pred_top mean', 'y_pred_top median']))
-
-    # filename = '{:s}AdapIS{:s}_{:s}_Alpha{}_ST{}'.format(solver.nickname, pce_model.tag, 
-            # simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
-    # try:
-        # np.save(os.path.join(simparams.data_dir_result, filename), metrics_each_deg)
-    # except:
-        # print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        # np.save(os.path.join(os.getcwd(), filename), metrics_each_deg)
-
-    # ### ============ Saving Predict ecdf data ============
-    # pred_ecdf_each_deg = np.array(pred_ecdf_each_deg, dtype=object)
-    # filename = '{:s}AdapIS{:s}_{:s}_Alpha{}_ST{}_ecdf'.format(solver.nickname, pce_model.tag, 
-            # simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
-    # try:
-        # np.save(os.path.join(simparams.data_dir_result, filename), pred_ecdf_each_deg)
-    # except:
-        # print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        # np.save(os.path.join(os.getcwd(), filename), pred_ecdf_each_deg)
-
-    # ### ============ Saving Predict top Y data ============
-    # pred_topy_each_deg= np.array(pred_topy_each_deg)
-    # filename = '{:s}AdapIS{:s}_{:s}_Alpha{}_ST{}_pred'.format(solver.nickname, pce_model.tag, 
-            # simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
-    # try:
-        # np.save(os.path.join(simparams.data_dir_result, filename), pred_topy_each_deg)
-    # except:
-        # print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        # np.save(os.path.join(os.getcwd(), filename), pred_topy_each_deg)
-
-    # ### ============ Saving samples outside support ============
-    # data = np.concatenate((u_pred_outside, x_pred_outside, y_pred_outside.reshape(1,-1)), axis=0)
-    # filename = '{:s}AdapIS{:s}_{:s}_Alpha{}_ST{}_outside'.format(solver.nickname, pce_model.tag, 
-            # simparams.tag, str(simparams.alphas).replace('.', 'pt'), theta)
-    # try:
-        # np.save(os.path.join(simparams.data_dir_result, filename), data )
-    # except:
-        # print(' Directory not found: {}, file save locally... '.format(simparams.data_dir_result))
-        # np.save(os.path.join(os.getcwd(), filename), data)
-
+   
 if __name__ == '__main__':
     for s in range(10):
         main(s)
