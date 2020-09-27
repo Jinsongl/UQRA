@@ -27,7 +27,10 @@ class Modeling(object):
         self.solver = solver
         self.model  = model
         self.params = params
-        self.dist_x_name = solver.dist_name.lower()
+        try:
+            self.dist_x_name = solver.dist_name.lower()
+        except AttributeError:
+            pass
         self.dist_u_name = model.basis.dist_name.lower()
         assert solver.ndim == model.ndim
         self.ndim = solver.ndim
@@ -467,6 +470,7 @@ class Parameters(object):
     def __init__(self, solver, doe_method='MCS', optimality=None, fit_method='OLS'):
         sys.stdout      = Logger()
         self.solver     = solver
+        self.ndim       = self.solver.ndim
         self.doe_method = str(doe_method).lower()
         self.optimality = str(optimality).lower() 
         self.fit_method = str(fit_method).lower()
@@ -524,31 +528,62 @@ class Parameters(object):
             raise NotImplementedError
         self.u_dist = u_dist
 
-    def get_candidate_data(self, filename, domain=None, domain_space='u', support=None):
+    # def get_candidate_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
+        # """
+        # Return canndidate samples 
+
+        # Arguments:
+            # filename: string of filename with candidate samples. data contains (u, x) values
+            # sampling_domain: domain (in sampling_space) of samples
+            # sampling_space:  'u' or 'x', defines
+            # support: support of x_dist
+
+        # """
+        # data = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
+        # u_cand, x_cand = data[:self.solver.ndim], data[self.solver.ndim:2*self.solver.ndim]
+
+    def get_candidate_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
         """
-        Return canndidate samples in u space
+        Return canndidate samples 
+
+        Arguments:
+            filename: string of filename with candidate samples.
+                if cdf data is given, need to calculate corresponding u, x values
+                otherwise, filename should have (u_cdf, x) values
+            sampling_domain: domain (in sampling_space) of samples
+            sampling_space:  'u' or 'x', defines
+            support: support of x_dist
+
         """
         data = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
         u_cand, x_cand = data[:self.solver.ndim], data[self.solver.ndim:2*self.solver.ndim]
         ## maping u->x, or x->u 
-        if domain_space == 'u':
-            x_cand = self.inverse_rosenblatt(self.x_dist, u_cand, self.u_dist, support=support)
-        elif domain_space == 'x':
-            u_cand = self.rosenblatt(self.x_dist, x_cand, self.u_dist, support=support)
+        if sampling_space == 'u':
+            x_cand = uqra.inverse_rosenblatt(self.x_dist, u_cand, self.u_dist, support=support)
+        elif sampling_space == 'x':
+            u_cand = uqra.rosenblatt(self.x_dist, x_cand, self.u_dist, support=support)
 
-        if domain is None:
+        ux_isnan = np.zeros(u_cand.shape[1])
+        for ix, iu in zip(x_cand, u_cand):
+            ux_isnan = np.logical_or(ux_isnan, np.isnan(ix))
+            ux_isnan = np.logical_or(ux_isnan, np.isnan(iu))
+        x_cand = x_cand[:, np.logical_not(ux_isnan)]
+        u_cand = u_cand[:, np.logical_not(ux_isnan)]
+        x_cand = x_cand[:, :self.n_cand]
+        u_cand = u_cand[:, :self.n_cand]
+
+        if sampling_domain is None:
             u = u_cand
             x = x_cand
         else:
-            if domain_space == 'u':
-                assert self.check_samples_inside_domain(u_cand, domain)
-            elif domain_space == 'x':
-                assert self.check_samples_inside_domain(x_cand, domain)
+            if sampling_space == 'u':
+                assert self.check_samples_inside_domain(u_cand, sampling_domain)
+            elif sampling_space == 'x':
+                assert self.check_samples_inside_domain(x_cand, sampling_domain)
             else:
-                raise ValueError("Undefined value {} for UQRA.Parameters.get_test_data.domain_space".format(domain_space))
+                raise ValueError("Undefined value {} for UQRA.Parameters.get_test_data.sampling_space".format(sampling_space))
             u = u_cand
             x = x_cand
-
         return u, x 
 
     def check_samples_inside_domain(self, data, domain):
@@ -588,12 +623,12 @@ class Parameters(object):
                 r1, r2 = 0, domain
             else:
                 r1, r2 = domain
-            idx_inside, idx_outside = self.samples_within_circle(data, r1, r2) 
+            idx_inside, idx_outside = uqra.samples_within_circle(data, r1, r2) 
 
         elif self.u_distname == 'uniform':
             if data.shape[0] != len(domain):
                 raise ValueError('Expecting {:d} intervals but only {:d} given'.format(data.shape[0], len(domain)))
-            idx_inside, idx_outside = self.samples_within_invervals(data, domain) 
+            idx_inside, idx_outside = uqra.samples_within_cubic(data, domain) 
 
         elif self.u_distname == 'beta':
             raise NotImplementedError
@@ -602,95 +637,90 @@ class Parameters(object):
 
         return idx_inside, idx_outside
 
-    def samples_within_circle(self, data, r1, r2=None):
-        """
-        Return the index for data samples within the defined domain
-        """
-        data = np.array(data, ndmin=2, copy=False)
-        if r2 is None:
-            r1, r2 = 0, r1
-        else:
-            r1, r2 = min(r1, r2), max(r1, r2)
-
-        data_radius = np.linalg.norm(data, axis=0)
-        samples_idx_within_domain = np.logical_and(data_radius>r1, data_radius < r2)
-        samples_idx_outside_domain= np.logical_not(samples_idx_within_domain)
-        return samples_idx_within_domain, samples_idx_outside_domain
-
-    def samples_within_invervals(self, data, domain):
-        """
-        Return the index for data samples within the defined by intervals 
-        """
-        data = np.array(data, ndmin=2, copy=False)
-        samples_idx_within_domain = np.ones(data.shape[1], dtype=np.int32)
-        for idata, isubdomains in zip(data, domain):
-            idx_ = np.logical_and(idata > isubdomains[0], idata < isubdomains[1])
-            samples_idx_within_domain = np.logical_and(samples_idx_within_domain, idx_)
-        samples_idx_outside_domain= np.logical_not(samples_idx_within_domain)
-        return samples_idx_within_domain, samples_idx_outside_domain
-
-    def get_predict_data(self, filename, domain=None, domain_space='u', support=None):
+    def get_predict_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
         """
         Return predict samples in x space
+        sampling_domain: sampling sampling_domain, used to draw samples
         """
-        u_cdf = np.load(os.path.join(self.data_dir_sample, 'CDF', filename))
-        u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
-        x = self.x_dist.ppf(u_cdf_pred)
-        u = self.rosenblatt(self.x_dist, x, self.u_dist, support=support)
-        u = np.array(u, ndmin=2, copy=False)
-        x = np.array(x, ndmin=2, copy=False)
-
-        if domain is None:
-            u_isnan = np.logical_or(*np.isnan(u))
-            u0 = u[np.logical_not(u_isnan)]
-            x0 = x[np.logical_not(u_isnan)]
-            u1 = u[u_isnan]
-            x1 = x[u_isnan]
+        print(' > Loading predict data: {:s}'.format(filename))
+        if filename.lower().startswith('cdf'):
+            u_cdf = np.load(os.path.join(self.data_dir_sample, 'CDF', filename))
+            u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
+            u = np.array([idist.ppf(iu_cdf) for idist, iu_cdf in zip(self.u_dist, u_cdf_pred)])
+            x = uqra.inverse_rosenblatt(self.x_dist, u, self.u_dist, support=support)
+            u = np.array(u, ndmin=2, copy=False)
+            x = np.array(x, ndmin=2, copy=False)
         else:
-            u_isnan = np.logical_or(*np.isnan(u))
-            if domain_space == 'u':
-                idx_inside, idx_outside = self.separate_samples_by_domain(u, domain)
+            data = np.load(filename)
+            assert data.shape[0] == 2 * self.solver.ndim
+            u = data[:self.solver.ndim]
+            x = data[self.solver.ndim:]
+            u = np.array(u, ndmin=2, copy=False)
+            x = np.array(x, ndmin=2, copy=False)
+
+        if sampling_domain is None:
+            ux_isnan = np.zeros(u.shape[1])
+            for iu, ix in zip(u, x):
+                ux_isnan = np.logical_or(np.isnan(iu))
+                ux_isnan = np.logical_or(np.isnan(ix))
+            if np.sum(ux_isnan):
+                print(' nan values found in predict U/X, dropping {:d} NAN'.format(np.sum(ux_isnan)))
+            u0 = u[:,np.logical_not(ux_isnan)]
+            x0 = x[:,np.logical_not(ux_isnan)]
+            u1 = u[:,ux_isnan]
+            x1 = x[:,ux_isnan]
+        else:
+            ux_isnan = np.zeros(u.shape[1])
+            for iu, ix in zip(u, x):
+                ux_isnan = np.logical_or(np.isnan(iu))
+                ux_isnan = np.logical_or(np.isnan(ix))
+            if sampling_space == 'u':
+                idx_inside, idx_outside = self.separate_samples_by_domain(u, sampling_domain)
                 u0 = u[:, idx_inside]
-                x0 = self.inverse_rosenblatt(self.x_dist, u0, self.u_dist, support=support)
-                if np.amax(abs(x0-x[:, idx_inside]), axis=None) > 1e-6:
-                    print(np.amax(abs(x0-x[:, idx_inside]), axis=None))
-                u1 = u[:, np.logical_or(idx_outside, u_isnan)] 
-                x1 = x[:, np.logical_or(idx_outside, u_isnan)]
-
-            elif domain_space == 'x':
-                idx_inside, idx_outside = self.separate_samples_by_domain(x, domain)
                 x0 = x[:, idx_inside]
-                u0 = self.rosenblatt(self.x_dist, x0, self.u_dist, support=support)
-                if np.amax(abs(u0-u[:, idx_inside]), axis=None) > 1e-6:
-                    print(np.amax(abs(u0-u[:, idx_inside]), axis=None))
+                # x0 = uqra.inverse_rosenblatt(self.x_dist, u0, self.u_dist, support=support)
+                # if np.amax(abs(x0-x[:, idx_inside]), axis=None) > 1e-6:
+                    # print(np.amax(abs(x0-x[:, idx_inside]), axis=None))
+                u1 = u[:, np.logical_or(idx_outside, ux_isnan)] 
+                x1 = x[:, np.logical_or(idx_outside, ux_isnan)]
 
-                u1 = u[:, idx_outside] 
-                x1 = x[:, idx_outside]
+            elif sampling_space == 'x':
+                idx_inside, idx_outside = self.separate_samples_by_domain(x, sampling_domain)
+                x0 = x[:, idx_inside]
+                u0 = u[:, idx_inside]
+                # u0 = uqra.rosenblatt(self.x_dist, x0, self.u_dist, support=support)
+                # if np.amax(abs(u0-u[:, idx_inside]), axis=None) > 1e-6:
+                    # print(np.amax(abs(u0-u[:, idx_inside]), axis=None))
+
+                u1 = u[:, np.logical_or(idx_outside, ux_isnan)] 
+                x1 = x[:, np.logical_or(idx_outside, ux_isnan)]
+                # u1 = u[:, idx_outside] 
+                # x1 = x[:, idx_outside]
         return u0, x0, u1, x1
 
-    def get_test_data(self, filename, domain=None, domain_space='u', support=None):
+    def get_test_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
         data    = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
         u       = data[                   :    self.solver.ndim, :self.n_test]
         x       = data[  self.solver.ndim : 2* self.solver.ndim, :self.n_test]
         y       = np.squeeze(data[2*self.solver.ndim :        , :self.n_test])
-        u       = self.rosenblatt(self.x_dist, x, self.u_dist, support=support)
+        u       = uqra.rosenblatt(self.x_dist, x, self.u_dist, support=support)
 
 
-        if domain is None:
+        if sampling_domain is None:
             return u, x, y
         else:
-            if domain_space == 'u':
-                idx_inside, idx_outside = self.separate_samples_by_domain(u, domain)
+            if sampling_space == 'u':
+                idx_inside, idx_outside = self.separate_samples_by_domain(u, sampling_domain)
                 u = u[:, idx_inside]
                 x = x[:, idx_inside]
                 y = np.squeeze(np.array(y, ndmin=2,copy=False)[:, idx_inside]) 
-            elif domain_space == 'x':
-                idx_inside, idx_outside = self.separate_samples_by_domain(x, domain)
+            elif sampling_space == 'x':
+                idx_inside, idx_outside = self.separate_samples_by_domain(x, sampling_domain)
                 u = u[:, idx_inside]
                 x = x[:, idx_inside]
                 y = np.squeeze(np.array(y, ndmin=2,copy=False)[:, idx_inside]) 
             else:
-                raise ValueError("Undefined value {} for UQRA.Parameters.get_test_data.domain_space".format(domain_space))
+                raise ValueError("Undefined value {} for UQRA.Parameters.get_test_data.sampling_space".format(sampling_space))
 
             return u, x, y
         
