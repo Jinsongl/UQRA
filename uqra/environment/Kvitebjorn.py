@@ -249,6 +249,9 @@ class Kvitebjorn(EnvBase):
         res = np.array([hs, tp])
         return res
 
+    def support(self):
+        return ((0, np.inf), (0, np.inf))
+
     def environment_contour(self, P ,T=1000,n=100):
         """za
         Return samples for Environment Contours method

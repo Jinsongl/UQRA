@@ -58,8 +58,6 @@ class DistUw(object):
         y = self.dist.pdf(x)
         return y
 
-
-
 class DistHs(object):
     def __init__(self, uw):
         self.name = 'weibull'
@@ -192,7 +190,6 @@ class Norway5(EnvBase):
     def dist_tp(self, uw, hs):
         return DistTp(uw, hs)
 
-
     def pdf(self, x):
         """
         Return pdf values for given random variables x
@@ -297,6 +294,10 @@ class Norway5(EnvBase):
         tp = self.dist_tp(uw, hs).rvs(size=(n,))
         res = np.array([uw, hs, tp])
         return res
+
+    def support(self):
+        return ((0, np.inf),(0, np.inf), (0, np.inf))
+
 
     def environment_contour(self, P,T=1000,n=100):
         """
