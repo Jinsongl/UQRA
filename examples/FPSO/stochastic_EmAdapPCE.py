@@ -49,9 +49,6 @@ def main(theta):
     sampling_space  = 'u'
     dist_support    = None        ## always in x space
     fname_cand      = 'FPSO_SURGE_DoE_UniformE5_Norm.npy'
-    simparams.topy_center   = [np.zeros(simparams.ndim),]
-    simparams.topy_radii    = [np.array([sampling_domain,] * simparams.ndim)]
-    simparams.topy_rotation = [np.identity(simparams.ndim),]
 
     # u_dist = [stats.uniform(-1,2),]* solver.ndim
     # sampling_domain = [[-1,1],] * solver.ndim 
@@ -80,9 +77,9 @@ def main(theta):
     data_pred = data[:, idx_inside ]
     data_pred_outside = data[:, idx_outside]
     u_pred = data_pred[:simparams.ndim]
-    x_pred = data_pred[simparams.ndim:]
+    x_pred = data_pred[simparams.ndim:2*simparams.ndim]
     u_pred_outside = data_pred_outside[:simparams.ndim]
-    x_pred_outside = data_pred_outside[simparams.ndim:]
+    x_pred_outside = data_pred_outside[simparams.ndim:2*simparams.ndim]
     print('   - {:<25s} : {}'.format(' Sample domain', sampling_domain))
     print('   - {:<25s} : {}'.format(' dist Support ', dist_support if dist_support is None else dist_support.reshape(1,-1)))
     print('   - {:<25s} '.format(' Samples inside domain...'))
@@ -93,6 +90,7 @@ def main(theta):
     print('   - {:<25s} : {}'.format('X ', x_pred_outside.shape))
 
     y_pred_outside = np.array(solver.run(x_pred_outside), ndmin=1)
+    print('   - {:<25s} : {}, {}'.format('(X,Y) ', x_pred_outside.shape, y_pred_outside.shape))
 
     ## ----------- Test data set ----------- ###
     print(' > Getting Test data set...')
@@ -244,7 +242,6 @@ def main(theta):
 
         pce_model.fit('OLS', u_train, y_train.T, w_train, active_basis=active_basis)
 
-
         print(' > Train data ...')
         print('   - {:<25s} : {}, {}, {}'.format(' Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
         if w_train is None:
@@ -303,11 +300,10 @@ def main(theta):
 
         output_each_deg.append(data)
     
-    filename = '{:s}_AdapIS{:s}_{:s}_ST{}.npy'.format(solver.nickname, pce_model.tag[:4], simparams.tag, theta)
+    filename = '{:s}_EmAdap{:s}_{:s}_ST{}.npy'.format(solver.nickname, pce_model.tag[:4], simparams.tag, theta)
     output   = np.array(output_each_deg, dtype=object)
     np.save(os.path.join(simparams.data_dir_result, filename), output)
 
-   
 if __name__ == '__main__':
     for s in range(10):
         main(s)
