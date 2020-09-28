@@ -71,7 +71,7 @@ def main(theta):
 
     ## ----------- Predict data set ----------- ###
     print(' > Getting predict data set...')
-    filename = 'FPSO_SURGE_McsE6R{:d}_pred.npy'.format(theta)
+    filename = 'FPSO_SURGE_McsE7R{:d}_pred.npy'.format(theta)
     data = np.load(os.path.join(simparams.data_dir_result, 'TestData', filename))
     idx_inside, idx_outside = simparams.separate_samples_by_domain(data[:simparams.ndim], sampling_domain)
     data_pred = data[:, idx_inside ]
