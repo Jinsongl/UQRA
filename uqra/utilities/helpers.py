@@ -573,7 +573,7 @@ def samples_within_circle(data, r1, r2=None):
     samples_idx_outside_domain= np.logical_not(samples_idx_within_domain)
     return samples_idx_within_domain, samples_idx_outside_domain
 
-def samples_within_ellipse(data, c, radii, R):
+def samples_within_ellipsoid(data, c=0, radii=1, R=None):
     """
     check if each data sample is in the hyperellipse defined by (c, radii, A)
     (x-c).T*A*(x-c) = 1
@@ -589,14 +589,17 @@ def samples_within_ellipse(data, c, radii, R):
     """
 
     data = np.array(data, ndmin=2, copy=True)
-    R    = np.array(R, ndmin=2, copy=False)
-    c    = np.array(c, ndmin=2, copy=False).T
-    radii= np.array(radii, ndmin=2, copy=False).T
+    ndim, nsamples = data.shape
+    R    = np.identity(ndim) if R is None else np.array(R, ndmin=2, copy=False)
+    c    = np.zeros(ndim).reshape(-1,1) if c == 0 else np.array(c, ndmin=2, copy=False).T
+    radii= radii*np.ones(ndim).reshape(-1,1) if np.ndim(radii)==0 else np.array(radii, ndmin=2, copy=False).T
+    assert c.shape == (ndim, 1)
+    assert radii.shape == (ndim, 1)
+    ### transform data to ellipsoid coordinate
     y = np.dot(R.T, data-c) ## new coordinates in ellipse
     idx_within_ellipse = np.sum((y/radii)**2, axis=0) < 1
     idx_outside_ellipse= np.logical_not(idx_within_ellipse)
     return idx_within_ellipse, idx_outside_ellipse
-
 
 def samples_within_cubic(data, domain):
     """
