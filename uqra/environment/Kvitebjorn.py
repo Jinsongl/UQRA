@@ -39,7 +39,7 @@ class DistHs(object):
         Return Hs samples corresponding ppf values u
         """
 
-        assert (min(u) >=0).all() and (max(u) <=1).all(), 'CDF values should be in range [0,1]'
+        assert np.logical_and(u >=0, u <=1).all(), 'CDF values should be in range [0,1]'
         hs1 = self.dist1.ppf(u)
         hs2 = self.dist2.ppf(u)
         hs  = np.where(hs1 < self.h0, hs1, hs2)

@@ -32,7 +32,7 @@ class DistUw(object):
         """
         Percent point function (inverse of cdf — percentiles)
         """
-        assert (min(u) >=0).all() and (max(u) <=1).all(), 'CDF values should be in range [0,1]'
+        assert np.logical_and(u >=0, u <=1).all(), 'CDF values should be in range [0,1]'
 
         x = self.dist.ppf(u)
         return x
@@ -72,7 +72,7 @@ class DistHs(object):
         """
         Percent point function (inverse of cdf — percentiles)
         """
-        assert (min(u) >=0).all() and (max(u) <=1).all(), 'CDF values should be in range [0,1]'
+        assert np.logical_and(u >=0, u <=1).all(), 'CDF values should be in range [0,1]'
 
         x = self.dist.ppf(u)
         return x
@@ -125,7 +125,7 @@ class DistTp(object):
         """
         Percent point function (inverse of cdf — percentiles)
         """
-        assert (min(u) >=0).all() and (max(u) <=1).all(), 'CDF values should be in range [0,1]'
+        assert np.logical_and(u >=0, u <=1).all(), 'CDF values should be in range [0,1]'
 
         x = self.dist.ppf(u)
         return x
