@@ -82,6 +82,22 @@ class EllipsoidTool:
         """Calculate the volume of the blob"""
         return 4./3.*np.pi*radii[0]*radii[1]*radii[2]
 
+    def get_coordinates(self, center, radii, rotation):
+        u = np.linspace(0.0, 2.0 * np.pi, 100)
+        v = np.linspace(0.0, np.pi, 100)
+        
+        # cartesian coordinates that correspond to the spherical angles:
+        x = radii[0] * np.outer(np.cos(u), np.sin(v))
+        y = radii[1] * np.outer(np.sin(u), np.sin(v))
+        z = radii[2] * np.outer(np.ones_like(u), np.cos(v))
+        # rotate accordingly
+        for i in range(len(x)):
+            for j in range(len(x)):
+                [x[i,j],y[i,j],z[i,j]] = np.dot([x[i,j],y[i,j],z[i,j]], rotation) + center
+
+        return (x, y, z)
+    
+
     def plotEllipsoid(self, center, radii, rotation, ax=None, plotAxes=False, cageColor='b', cageAlpha=0.2):
         """Plot an ellipsoid"""
         make_ax = ax == None
@@ -119,7 +135,7 @@ class EllipsoidTool:
                 ax.plot(X3, Y3, Z3, color=cageColor)
     
         # plot ellipsoid
-        ax.plot_wireframe(x, y, z,  rstride=4, cstride=4, color=cageColor, alpha=cageAlpha)
+        ax.plot_surface(x, y, z,  rstride=4, cstride=4, color=cageColor, alpha=cageAlpha)
         
         if make_ax:
             plt.show()
