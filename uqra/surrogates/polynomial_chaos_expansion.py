@@ -24,50 +24,55 @@ class PolynomialChaosExpansion(SurrogateBase):
     Class to build polynomial chaos expansion (PCE) model
     """
 
-    def __init__(self, basis=None, random_seed=None):
+    def __init__(self, orth_poly=None, random_seed=None):
         super().__init__(random_seed=random_seed)
         self.name           = 'Polynomial Chaos Expansion'
         self.nickname       = 'PCE'
-        self.basis          = basis  ### a list of marginal basis
+        self.orth_poly      = orth_poly  ### UQRA.polynomial object
 
-        if basis is None:
+        if orth_poly is None:
             self.ndim       = None 
-            self.num_basis  = None 
             self.deg        = None
             self.cv_error   = np.inf
+            self.num_basis  = None 
             self.active_index = None
             self.active_basis = None
+            self.basis_degree = None
+            self.sparsity   = 0
         else:
-            self.ndim       = basis.ndim 
-            self.num_basis  = self.basis.num_basis
-            self.deg        = self.basis.deg
-            self.active_index = None if self.num_basis is None else range(self.num_basis)
-            self.active_basis = None if self.basis.basis_degree is None else self.basis.basis_degree 
+            self.ndim       = orth_poly.ndim 
+            self.deg        = self.orth_poly.deg
             self.cv_error   = np.inf
+            self.num_basis  = self.orth_poly.num_basis
+            self.active_index = list(range(self.num_basis))
+            self.active_basis = self.orth_poly.basis_degree 
+            self.basis_degree = self.orth_poly.basis_degree 
+            self.sparsity   = len(self.active_index)
             if self.deg is None:
-                self.tag        = '{:d}{:s}0'.format(self.ndim, self.basis.nickname[:3])
+                self.tag        = '{:d}{:s}0'.format(self.ndim, self.orth_poly.nickname[:3])
             else:
-                self.tag        = '{:d}{:s}{:d}'.format(self.ndim, self.basis.nickname[:3],self.deg)
+                self.tag        = '{:d}{:s}{:d}'.format(self.ndim, self.orth_poly.nickname[:3], self.deg)
 
     def info(self):
         print(r'   - {:<25s} : {:<20s}'.format('Surrogate Model Name', self.name))
         if self.deg is not None:
-            print(r'     - {:<23s} : {}'.format('Askey-Wiener basis'   , self.basis.name))
+            print(r'     - {:<23s} : {}'.format('Askey-Wiener polynomial'   , self.orth_poly.name))
             print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.deg ))
-            print(r'     - {:<23s} : {:d}'.format('No. poly basis   (P)', self.basis.num_basis))
+            print(r'     - {:<23s} : {:d}'.format('No. polynomial basis(P)', self.num_basis))
             print(r'     - {:<23s} : {:d}'.format('No. active basis (s)', len(self.active_index)))
 
     def set_degree(self, p):
-        if self.basis is None:
+        if self.orth_poly is None:
             raise ValueError('Basis is not defined')
         else:
-            self.basis.set_degree(p)
-            self.num_basis = self.basis.num_basis
-            self.deg       = self.basis.deg
-            self.active_index = None if self.num_basis is None else range(self.num_basis)
-            self.active_basis = None if self.basis.basis_degree is None else self.basis.basis_degree 
+            self.orth_poly.set_degree(p)
+            self.num_basis = self.orth_poly.num_basis
+            self.deg       = self.orth_poly.deg
             self.cv_error     = np.inf
-            self.tag          = '{:d}{:s}{:d}'.format(self.ndim, self.basis.nickname,self.deg)
+            self.active_index = list(range(self.num_basis))
+            self.active_basis = self.orth_poly.basis_degree 
+            self.basis_degree = self.orth_poly.basis_degree 
+            self.tag          = '{:d}{:s}{:d}'.format(self.ndim, self.orth_poly.nickname,self.deg)
     
     def fit(self, method, x, y, w=None, **kwargs):
         if method.lower().startswith('quad'):
@@ -77,7 +82,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         elif method.lower() == 'olslars':
             self.fit_olslars(x,y,w=w,**kwargs)
         elif method.lower() == 'lassolars':
-            self.fit_lassolars(x,y,sample_weight=w,**kwargs)
+            self.fit_lassolars(x,y,w=w,**kwargs)
         else:
             raise NotImplementedError
 
@@ -88,7 +93,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.fit_method = 'GLK' 
         x = np.array(x, copy=False, ndmin=2)
         y = np.array(y, copy=False, ndmin=2)
-        X = self.basis.vandermonde(x, normed=False)
+        X = self.orth_poly.vandermonde(x, normed=False)
         y = np.squeeze(y) + 0.0
         w = np.asarray(w) + 0.0
         if w.ndim != 1:
@@ -97,12 +102,12 @@ class PolynomialChaosExpansion(SurrogateBase):
             raise TypeError("expected x and w to have same length")
 
         # norms = np.sum(X.T**2 * w, -1)
-        norms       = self.basis.basis_norms *self.basis.basis_norms_const**self.basis.ndim
+        norms       = self.orth_poly.basis_norms *self.orth_poly.basis_norms_const**self.orth_poly.ndim
         coef        = np.sum(X.T * y * w, -1) / norms 
-        self.model  = self.basis.set_coef(coef) 
+        self.model  = self.orth_poly.set_coef(coef) 
         self.coef   = coef
         self.active_index = range(self.num_basis)
-        self.active_basis = self.basis.basis_degree
+        self.active_basis = self.orth_poly.basis_degree
 
     def fit_ols(self,x,y,w=None,  **kwargs):
         """
@@ -122,13 +127,13 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.fit_method = 'OLS' 
         x = np.array(x, copy=False, ndmin=2)
         y = np.array(y, copy=False, ndmin=2)
-        X = self.basis.vandermonde(x)
+        X = self.orth_poly.vandermonde(x)
         y = np.squeeze(y)
         active_basis = kwargs.get('active_basis', None)
         if active_basis is None or len(active_basis) == 0:
-            active_index = np.arange(self.basis.num_basis).tolist()
+            active_index = np.arange(self.orth_poly.num_basis).tolist()
         else:
-            active_index = [i for i in range(self.basis.num_basis) if self.basis.basis_degree[i] in active_basis]
+            active_index = [i for i in range(self.orth_poly.num_basis) if self.orth_poly.basis_degree[i] in active_basis]
         assert len(active_index) != 0
         X = X[:, active_index]
 
@@ -149,7 +154,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.coef[0] = model.intercept_
         if active_basis is None:
             self.active_index = range(self.num_basis)
-            self.active_basis = self.basis.basis_degree
+            self.active_basis = self.orth_poly.basis_degree
         else:
             self.active_index = active_index
             self.active_basis = active_basis
@@ -157,7 +162,7 @@ class PolynomialChaosExpansion(SurrogateBase):
 
     def fit_olslars(self,x,y,w=None, **kwargs):
         """
-        (weighted) Ordinary Least Error on selected basis (LARs)
+        (weighted) Ordinary Least Error on selected orth_poly (LARs)
         Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
         Arguments:
             x: array-like of shape (ndim, nsamples) 
@@ -173,7 +178,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.fit_method = 'OLSLARS' 
         x = np.array(x, copy=False, ndmin=2)
         y = np.array(y, copy=False, ndmin=2)
-        X = self.basis.vandermonde(x)
+        X = self.orth_poly.vandermonde(x)
         y = np.squeeze(y)
         ## parameters for LassoLars 
         n_splits= kwargs.get('n_splits', X.shape[0])
@@ -194,16 +199,16 @@ class PolynomialChaosExpansion(SurrogateBase):
             neg_mse        = model_selection.cross_val_score(model, X_,y,scoring = 'neg_mean_squared_error', cv=kf, n_jobs=cpu_count)
             error_loo      = -np.mean(neg_mse)
             ### Fitting with all samples
-            model.fit(X_,y, sample_weight=w)
+            model.fit(X_,y, w=w)
 
             if error_loo < self.cv_error:
                 self.model    = model 
                 self.cv_error = error_loo
                 self.coef     = model.coef_
                 self.active_index = active_indices
-                self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
+                self.active_basis = [self.orth_poly.basis_degree[i] for i in self.active_index]
 
-    def fit_lassolars(self,x,y,sample_weight=None, **kwargs):
+    def fit_lassolars(self,x,y,w=None, **kwargs):
         """
         (weighted) Ordinary Least Error on selected basis (LARs)
         Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
@@ -229,13 +234,12 @@ class PolynomialChaosExpansion(SurrogateBase):
         cpu_count = kwargs.get('cpu_count', mp.cpu_count())
         kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-        X = self.basis.vandermonde(x)
+        X = self.orth_poly.vandermonde(x)
 
         if y.ndim == 1:
-            if sample_weight is not None:
-                # Sample weight can be implemented via a simple rescaling.
-                X, y = self._rescale_data(X, y, sample_weight)
-
+            if w is not None:
+            # Sample weight can be implemented via a simple rescaling.
+                X, y = self._rescale_data(X, y, w)
             try:    
                 model  = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=cpu_count).fit(X,y)
             except ValueError as e:
@@ -246,8 +250,8 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
             self.coef     = copy.deepcopy(model.coef_)
             self.coef[0]  = model.intercept_
-            self.active_index = [i for i, icoef in enumerate(model.coef_) if abs(icoef) > epsilon]
-            self.active_basis = [self.basis.basis_degree[i] for i in self.active_index]
+            self.active_index = np.unique([0,] + [i for i, icoef in enumerate(model.coef_) if abs(icoef) > epsilon])
+            self.active_basis = [self.orth_poly.basis_degree[i] for i in self.active_index]
             self.sparsity = len(self.active_index)
             self.score    = model.score(X, y)
             # self._least_ns_ratio()
@@ -261,9 +265,9 @@ class PolynomialChaosExpansion(SurrogateBase):
             sparsity_ls   = []
             score_ls      = []
             for iy in y.T:
-                if sample_weight is not None:
+                if w is not None:
                     # Sample weight can be implemented via a simple rescaling.
-                    X, iy = self._rescale_data(X, iy, sample_weight)
+                    X, iy = self._rescale_data(X, iy, w)
 
                 try:    
                     model  = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=cpu_count).fit(X,iy)
@@ -280,7 +284,8 @@ class PolynomialChaosExpansion(SurrogateBase):
                 cv_error_ls.append(np.min(np.mean(model.mse_path_, axis=1)))
                 coef_ls.append(model.coef_)
                 active_index_ls.append([i for i, icoef in enumerate(model.coef_) if abs(icoef) > epsilon])
-                active_basis_ls.append([self.basis.basis_degree[i] for i in active_index_ls[-1]])
+                active_index_ls += [0,]
+                active_basis_ls.append([self.orth_poly.basis_degree[i] for i in active_index_ls[-1]])
                 sparsity_ls.append(len(active_index_ls[-1]))
                 score_ls.append(model.score(X,iy))
 
@@ -299,12 +304,12 @@ class PolynomialChaosExpansion(SurrogateBase):
         cum_var = -np.cumsum(np.sort(-self.coef[1:] **2))
         if cum_var[-1] == 0:
             self.active_index = [0]
-            self.active_basis  = [self.basis.basis_degree[0]]
+            self.active_basis  = [self.orth_poly.basis_degree[0]]
         else:
             y_hat_var_pct = cum_var / cum_var[-1] 
             n_pct_var_term= np.argwhere(y_hat_var_pct > pct)[0][-1] + 1 ## return index +1 since cum_var starts with 1, not 0
             self.active_index= [0,] + list(np.argsort(-self.coef[1:])[:n_pct_var_term+1]+1) ## +1 to always count phi_0
-            self.active_basis  = [self.basis.basis_degree[i] for i in self.active_index]
+            self.active_basis  = [self.orth_poly.basis_degree[i] for i in self.active_index]
 
     def predict(self,x, **kwargs):
         """
@@ -321,13 +326,13 @@ class PolynomialChaosExpansion(SurrogateBase):
         if x.shape[0] != self.ndim:
             raise ValueError('Expecting {:d}-D sampels, but {:d} given'.format(self.ndim, x.shape[0]))
         if self.fit_method == 'GLK':
-            y = self.basis(x)
+            y = self.orth_poly(x)
 
         elif self.fit_method in ['OLS']:
             size_of_array_4gb = 1e8/2.0
 
             if x.shape[1] * self.num_basis < size_of_array_4gb:
-                X = self.basis.vandermonde(x)[:, self.active_index]
+                X = self.orth_poly.vandermonde(x)[:, self.active_index]
                 y = self.model.predict(X)
             else:
                 batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
@@ -336,14 +341,14 @@ class PolynomialChaosExpansion(SurrogateBase):
                     idx_beg = i*batch_size
                     idx_end = min((i+1) * batch_size, x.shape[1])
                     x_      = x[:,idx_beg:idx_end]
-                    X_      = self.basis.vandermonde(x_)[:, self.active_index]
+                    X_      = self.orth_poly.vandermonde(x_)[:, self.active_index]
                     y_      = self.model.predict(X_)
                     y      += list(y_)
                 y = np.array(y) 
         elif self.fit_method in ['OLSLARS']:
             size_of_array_4gb = 1e8/2.0
             if x.shape[1] * self.num_basis < size_of_array_4gb:
-                X = self.basis.vandermonde(x)
+                X = self.orth_poly.vandermonde(x)
                 y = self.model.predict(X)
             else:
                 batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
@@ -352,14 +357,14 @@ class PolynomialChaosExpansion(SurrogateBase):
                     idx_beg = i*batch_size
                     idx_end = min((i+1) * batch_size, x.shape[1])
                     x_      = x[:,idx_beg:idx_end]
-                    X_      = self.basis.vandermonde(x_)
+                    X_      = self.orth_poly.vandermonde(x_)
                     y_      = self.model.predict(X_)
                     y      += list(y_)
                 y = np.array(y) 
         elif self.fit_method in ['LASSOLARS']:
             size_of_array_4gb = 1e8/2.0
             if x.shape[1] * self.num_basis < size_of_array_4gb:
-                X = self.basis.vandermonde(x)
+                X = self.orth_poly.vandermonde(x)
                 try: 
                     y = self.model.predict(X)
                 except AttributeError:
@@ -372,7 +377,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                         idx_beg = i*batch_size
                         idx_end = min((i+1) * batch_size, x.shape[1])
                         x_      = x[:,idx_beg:idx_end]
-                        X_      = self.basis.vandermonde(x_)
+                        X_      = self.orth_poly.vandermonde(x_)
                         y_      = self.model.predict(X_)
                         y      += list(y_)
                 except:
@@ -381,7 +386,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                         idx_beg = i*batch_size
                         idx_end = min((i+1) * batch_size, x.shape[1])
                         x_      = x[:,idx_beg:idx_end]
-                        X_      = self.basis.vandermonde(x_)
+                        X_      = self.orth_poly.vandermonde(x_)
                         for j, imodel in enumerate(self.model):
                             y_      = imodel.predict(X_)
                             y[j]   += list(y_)
@@ -412,15 +417,15 @@ class PolynomialChaosExpansion(SurrogateBase):
         """
         raise NotImplementedError
 
-    def _rescale_data(self, X, y, sample_weight):
-        """Rescale data so as to support sample_weight"""
+    def _rescale_data(self, X, y, w):
+        """Rescale data so as to support w"""
         n_samples = X.shape[0]
-        sample_weight = np.asarray(sample_weight)
-        if sample_weight.ndim == 0:
-            sample_weight = np.full(n_samples, sample_weight,
-                                    dtype=sample_weight.dtype)
-        sample_weight = np.sqrt(sample_weight)
-        sw_matrix = sparse.dia_matrix((sample_weight, 0),
+        w = np.asarray(w)
+        if w.ndim == 0:
+            w = np.full(n_samples, w,
+                                    dtype=w.dtype)
+        w = np.sqrt(w)
+        sw_matrix = sparse.dia_matrix((w, 0),
                                       shape=(n_samples, n_samples))
         X = sw_matrix @ X
         y = sw_matrix @ y
@@ -429,7 +434,7 @@ class PolynomialChaosExpansion(SurrogateBase):
     def _least_ns_ratio(self):
         """
         """
-        if self.basis.nickname == 'Leg':
+        if self.orth_poly.nickname == 'Leg':
             ratio_sp = self.sparsity / self.num_basis
             if ratio_sp > 0.8:
                 self.least_ns_ratio = 1.5
@@ -447,7 +452,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                 self.least_ns_ratio = 4.5
             else:
                 self.least_ns_ratio = 6.0
-        elif self.basis.nickname.lower().startswith('hem'):
+        elif self.orth_poly.nickname.lower().startswith('hem'):
             ratio_sp = self.sparsity / self.num_basis
             if ratio_sp > 0.8:
                 self.least_ns_ratio = 1.5
