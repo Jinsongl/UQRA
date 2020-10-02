@@ -37,7 +37,7 @@ class MCS(ExperimentBase):
 
         return message
 
-    def samples(self, loc=0, scale=1, size=1):
+    def samples(self, size=1):
         """
         Generating random variables of shape 'size'
         """
@@ -45,11 +45,8 @@ class MCS(ExperimentBase):
         if self.distributions is None:
             raise ValueError('Distributions must be specified first before sampling')
 
-        locs, scales = super()._set_parameters(loc, scale)
-        u_samples = []
+        u_samples = [idist.rvs(size=size) for idist in self.distributions]
 
-        for idist, iloc, iscale in zip(self.distributions, locs, scales):
-            u_samples.append(idist.rvs(loc=iloc, scale=iscale, size=size))
         ## udpate filename 
         self.filename = self.filename + num2print(np.array(size, ndmin=2).shape[-1])
         return np.array(u_samples)
@@ -64,7 +61,6 @@ class CLS(ExperimentBase):
         self.filename = 'DoE_' + self.cls_type.capitalize()
 
     def __str__(self):
-
         if self.distributions is None:
             message = '{:d}d-{:s}sampling}'.format(self.ndim, self.cls_type)
         return message
@@ -73,7 +69,7 @@ class CLS(ExperimentBase):
         """
         Generating CLS variables of shape 'size'
         """
-        size = super()._check_int(size)
+        size = int(size)
         locs, scales = super()._set_parameters(loc, scale)
 
         if self.cls_type.upper() in ['CHRISTOFFEL1', 'CLS1']:
