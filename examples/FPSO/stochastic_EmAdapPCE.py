@@ -18,6 +18,7 @@ sys.stdout  = uqra.utilities.classes.Logger()
 
 class Data():
     pass
+
 def main(theta):
     ## ------------------------ Displaying set up ------------------- ###
     print('\n'+'#' * 80)
@@ -32,7 +33,8 @@ def main(theta):
 
     ## ------------------------ Simulation Parameters ----------------- ###
     solver    = uqra.FPSO(random_state =theta)
-    simparams = uqra.Parameters(solver, doe_method='MCS', optimality='D', fit_method='LASSOLARS')
+    simparams = uqra.Parameters(solver, doe_method=['CLS4', 'D'], fit_method='LASSOLARS')
+    simparams.set_udist('norm')
     simparams.x_dist     = Kvitebjorn
     simparams.pce_degs   = np.array(range(2,11))
     simparams.n_cand     = int(1e5)
@@ -44,30 +46,13 @@ def main(theta):
     simparams.info()
 
     ## ----------- Define U distributions ----------- ###
-    u_dist = [stats.norm(0,1),] * solver.ndim
-    sampling_domain = -stats.norm().ppf(1e-7)
+    sampling_domain = -simparams.u_dist[0].ppf(1e-7)
     sampling_space  = 'u'
     dist_support    = None        ## always in x space
-    fname_cand      = 'FPSO_SURGE_DoE_UniformE5_Norm.npy'
 
-    # u_dist = [stats.uniform(-1,2),]* solver.ndim
     # sampling_domain = [[-1,1],] * solver.ndim 
     # sampling_space  = 'u'
     # dist_support    = np.array([[0, 18],[0,35]]) ## always in x space
-    # fname_cand      = 'FPSO_SURGE_DoE_LhsE5_Uniform.npy'
-    # simparams.topy_center = [np.array([0,0]).reshape(-1,1),]
-    # simparams.topy_radii   = [[[-1,1],] * solver.ndim,]
-
-    simparams.set_udist(u_dist)
-
-    ## ----------- Candidate data set for DoE ----------- ###
-    print(' > Getting candidate data set...')
-    data = np.load(os.path.join(simparams.data_dir_result, 'TestData', fname_cand))
-    u_cand, x_cand = data[:solver.ndim], data[solver.ndim:]
-    print('   - {:<25s} : {}'.format(' Dataset (U)', u_cand.shape))
-    print('   - {:<25s} : {}, {}'.format(' U [min(U), max(U)]', np.amin(u_cand, axis=1), np.amax(u_cand, axis=1)))
-    print('   - {:<25s} : {}, {}'.format(' X [min(X), max(X)]', np.amin(x_cand, axis=1), np.amax(x_cand, axis=1)))
-
 
     ## ----------- Predict data set ----------- ###
     print(' > Getting predict data set...')
@@ -106,18 +91,12 @@ def main(theta):
     output_each_deg = []
     print(' > Train data initialization ...')
     ## Initialize u_train with LHS 
-    u_train = simparams.get_init_samples(n_initial, doe_method='lhs', random_state=100)
+    u_train = simparams.get_init_samples(n_initial, doe_candidate='lhs', random_state=100)
     ## mapping points to the square in X space
     x_train = uqra.inverse_rosenblatt(simparams.x_dist, u_train, simparams.u_dist, support=dist_support)
     ## mapping points to physical space
     y_train = solver.run(x_train)
 
-    u_train0 = simparams.get_init_samples(6, u_cand=u_cand, p=2)
-    x_train0 = uqra.inverse_rosenblatt(simparams.x_dist, u_train0, simparams.u_dist, support=dist_support)
-    y_train0 = solver.run(x_train0)
-    u_train = np.concatenate((u_train, u_train0), axis=1)
-    x_train = np.concatenate((x_train, x_train0), axis=1)
-    y_train = np.concatenate((y_train, y_train0))
     print('   - {:<25s} : {}, {}, {}'.format(' Dataset (U,X,Y)',u_train.shape, x_train.shape, y_train.shape))
     print('   - {:<25s} : {}, {}'.format(' U support', np.amin(u_train, axis=1), np.amax(u_train, axis=1)))
     print('   - {:<25s} : {}, {}'.format(' X support', np.amin(x_train, axis=1), np.amax(x_train, axis=1)))
@@ -126,9 +105,27 @@ def main(theta):
     for deg in simparams.pce_degs:
         print('\n================================================================================')
         print('   - Sampling and Fitting:')
-        print('     - {:<23s} : {}'.format('Sampling method'  , simparams.doe_method))
-        print('     - {:<23s} : {}'.format('Optimality '      , simparams.optimality))
+        print('     - {:<23s} : {}'.format('Sampling method'  , simparams.doe_candidate))
+        print('     - {:<23s} : {}'.format('Optimality '      , simparams.doe_optimality))
         print('     - {:<23s} : {}'.format('Fitting method'   , simparams.fit_method))
+
+        ## ----------- Candidate data set for DoE ----------- ###
+        print(' > Getting candidate data set...')
+        if simparams.doe_candidate in ['uniform', 'unf']:
+            fname_cand = 'FPSO_SURGE_DoE_UnfE5_Norm.npy'
+            data = np.load(os.path.join(simparams.data_dir_result, 'TestData', fname_cand))
+            u_cand, x_cand = data[:solver.ndim], data[solver.ndim:]
+        elif simparams.doe_candidate.startswith('cls'):
+            fname_cand = 'FPSO_SURGE_DoE_Cls4E5.npy'
+            u_cand = np.load(os.path.join(simparams.data_dir_result, 'TestData', fname_cand)) 
+            u_cand = u_cand * np.sqrt(deg)
+            x_cand = uqra.inverse_rosenblatt(simparams.x_dist, u_cand, simparams.u_dist, support=dist_support)
+        else:
+            raise ValueError
+
+        print('   - {:<25s} : {}'.format(' Dataset (U)', u_cand.shape))
+        print('   - {:<25s} : {}, {}'.format(' U [min(U), max(U)]', np.amin(u_cand, axis=1), np.amax(u_cand, axis=1)))
+        print('   - {:<25s} : {}, {}'.format(' X [min(X), max(X)]', np.amin(x_cand, axis=1), np.amax(x_cand, axis=1)))
 
         print(' > Building surrogate model ...')
         ## ----------- Define PCE  ----------- ###
@@ -143,7 +140,7 @@ def main(theta):
         ### global new train samples 
         print('   => Getting training data based on sparsity...')
         U_train = pce_model.basis.vandermonde(u_train)
-        if simparams.doe_method.lower().startswith('cls'):
+        if simparams.doe_candidate.lower().startswith('cls'):
             w_train = modeling.cal_cls_weight(u_train, pce_model.basis, pce_model.active_index)
             U_train = U_train[:, pce_model.active_index]
             U_train = modeling.rescale_data(U_train, w_train) 
@@ -158,7 +155,7 @@ def main(theta):
         active_basis= pce_model.active_basis
         sparsity    = pce_model.sparsity 
         n_train_new = int(simparams.alphas*sparsity)
-        tqdm.write('    > {}:{}; Sparsity: {}/{}; #samples = {:d}'.format('DoE', simparams.optimality.upper(), sparsity, 
+        tqdm.write('    > {}:{}; Sparsity: {}/{}; #samples = {:d}'.format('DoE', simparams.doe_optimality.upper(), sparsity, 
             pce_model.num_basis, n_train_new ))
 
         u_train_new, _ = modeling.get_train_data(n_train_new, u_cand, u_train=u_train, active_basis=active_basis)
@@ -170,7 +167,7 @@ def main(theta):
 
         ### ============ Build 2nd Surrogate Model ============
         U_train = pce_model.basis.vandermonde(u_train)
-        if simparams.doe_method.lower().startswith('cls'):
+        if simparams.doe_candidate.lower().startswith('cls'):
             w_train = modeling.cal_cls_weight(u_train, pce_model.basis, active_index=pce_model.active_index)
             U_train = U_train[:, pce_model.active_index]
             U_train = modeling.rescale_data(U_train, w_train) 
@@ -230,7 +227,7 @@ def main(theta):
         ### ============ Build 3rd Surrogate Model ============
         # print(bias_weight)
         U_train = pce_model.basis.vandermonde(u_train)
-        if simparams.doe_method.lower().startswith('cls'):
+        if simparams.doe_candidate.lower().startswith('cls'):
             w_train = modeling.cal_cls_weight(u_train, pce_model.basis, active_index=pce_model.active_index)
             U_train = U_train[:, pce_model.active_index]
             U_train = modeling.rescale_data(U_train, w_train) 

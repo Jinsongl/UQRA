@@ -54,7 +54,8 @@ def main():
     ## ------------------------ Simulation Parameters ----------------- ###
     # solver    = uqra.FPSO(random_state =theta)
     solver    = uqra.FPSO()
-    simparams = uqra.Parameters(solver, doe_method='MCS', optimality='D', fit_method='LASSOLARS')
+    simparams = uqra.Parameters(solver, doe_method=['CLS4', 'D'], fit_method='LASSOLARS')
+    simparams.set_udist('norm')
     simparams.x_dist     = Kvitebjorn
     simparams.pce_degs   = np.array(range(2,11))
     simparams.n_cand     = int(1e5)
@@ -66,14 +67,9 @@ def main():
     simparams.info()
 
     ## ----------- Define U distributions ----------- ###
-    u_dist = [stats.norm(0,1),] * solver.ndim
-    sampling_domain = -stats.norm().ppf(1e-7)
+    sampling_domain = -simparams.u_dist[0].ppf(1e-7)
     sampling_space  = 'u'
     dist_support    = None        ## always in x space
-    fname_cand      = 'FPSO_SURGE_DoE_UniformE5_Norm.npy'
-    simparams.topy_center   = [np.zeros(simparams.ndim),]
-    simparams.topy_radii    = [np.array([sampling_domain,] * simparams.ndim)]
-    simparams.topy_rotation = [np.identity(simparams.ndim),]
 
     # u_dist = [stats.uniform(-1,2),]* solver.ndim
     # sampling_domain = [[-1,1],] * solver.ndim 
@@ -83,11 +79,12 @@ def main():
     # simparams.topy_center = [np.array([0,0]).reshape(-1,1),]
     # simparams.topy_radii   = [[[-1,1],] * solver.ndim,]
 
-    simparams.set_udist(u_dist)
-
     ## ----------- Candidate data set for DoE ----------- ###
     # print(' > Getting candidate data set...')
+    # fname_cand      = 'FPSO_SURGE_DoE_UnfE5_Norm.npy'
     # u_cand = uniform_ball(simparams.ndim, int(1.5*simparams.n_cand), r=sampling_domain)
+    # fname_cand      = 'FPSO_SURGE_DoE_Cls4E5.npy'
+    # u_cand = np.load(os.path.join(simparams.data_dir_result, 'TestData', fname_cand)) 
     # x_cand = uqra.inverse_rosenblatt(simparams.x_dist, u_cand, simparams.u_dist, support=dist_support)
     # ux_isnan = np.zeros(u_cand.shape[1])
     # for ix, iu in zip(x_cand, u_cand):
@@ -106,7 +103,7 @@ def main():
     # np.save(os.path.join(simparams.data_dir_result, 'TestData', filename), data)
 
 
-    ## ----------- predict data set ----------- ###
+    # ----------- predict data set ----------- ###
     for i in range(10):
         filename = 'CDF_McsE7R{:d}.npy'.format(i)
         print('1. u_cdf')
@@ -131,7 +128,7 @@ def main():
             x_pred  = np.concatenate((x_pred, x_pred1), axis=1)
         data = np.concatenate((u_pred, x_pred), axis=0)
         print(data.shape)
-        np.save(os.path.join(simparams.data_dir_result,'TestData', '{:s}_McsE7R{:d}_pred.npy'.format(solver.nickname, i)), data)
+        np.save(os.path.join(simparams.data_dir_result,'TestData', '{:s}_Cls4E7R{:d}_pred.npy'.format(solver.nickname, i)), data)
 
 
 if __name__ == '__main__':
