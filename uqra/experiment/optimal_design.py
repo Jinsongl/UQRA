@@ -49,26 +49,33 @@ class OptimalDesign(ExperimentBase):
         Return:
             list of row indices selected 
         """
+        random_state    = kwargs.get('random_state', None)
         selected_values = kwargs.get('selected', None)
-        seed = kwargs.get('seed', None)
-        np.random.seed(seed)
+        num_optimal_sets= kwargs.get('num_optimal_sets', 1)
 
         if self.optimality == 'S':
             """ Xb = Y """
             orth_basis     = kwargs.get('orth_basis', True)
             selected_index = kwargs.get('selected_index', self.selected_index)
-            try:
-                ### return a new set of indices, selected_index will be updated
-                row_adding = self._get_quasi_optimal(n, X, selected_index, orth_basis)
-                self.selected_index = selected_index
-            except:
-                print(selected_index)
-                raise ValueError('_get_quasi_optimal failed')
-            if len(np.unique(row_adding)) != n:
-                print('Duplicate samples detected:')
-                print(' -> len(selected_index) = {}'.format(len(selected_index)))
-                print(' -> len(row_adding) = {}'.format(len(row_adding)))
-                print(' -> len(np.unique(row_adding)) = {}'.format(len(np.unique(row_adding))))
+            row_adding     = []
+            self.selected_index = []
+            for _ in range(num_optimal_sets):
+                try:
+                    ### return a new set of indices, selected_index will be updated
+                    row_adding_ = self._get_quasi_optimal(n, X, selected_index, orth_basis)
+                except:
+                    print(selected_index)
+                    raise ValueError('_get_quasi_optimal failed')
+                if len(np.unique(row_adding_)) != n:
+                    print('Duplicate samples detected:')
+                    print(' -> len(selected_index) = {}'.format(len(selected_index)))
+                    print(' -> len(row_adding) = {}'.format(len(row_adding)))
+                    print(' -> len(np.unique(row_adding)) = {}'.format(len(np.unique(row_adding))))
+                self.selected_index.append(selected_index)
+                row_adding.append(row_adding_)
+            if len(row_adding) == 1:
+                row_adding = row_adding[0]
+                self.selected_index = self.selected_index[0]
         elif self.optimality == 'D':
             """ D optimality based on rank revealing QR factorization  """
             selected_index = kwargs.get('selected_index', self.selected_index)
