@@ -12,6 +12,7 @@
 import numpy as np
 import itertools, math
 from ._polybase import PolyBase
+from . import polyutils as pu 
 import scipy.stats as stats
 
 class Hermite(PolyBase):
@@ -25,22 +26,15 @@ class Hermite(PolyBase):
     """
 
     def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total', hem_type='probabilists'):
-        super().__init__(d=d, deg=deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
+        self.multi_index = multi_index
+        self.ndim = pu.check_int(d)
+        self.deg  = pu.check_int(deg)
         self.hem_type  = hem_type.lower()
         self.name      = 'Hermite_e' if hem_type.startswith('prob') else 'Hermite'
         self.nickname  = 'Heme' if hem_type.startswith('prob') else 'Hem'
         self.dist_name = 'norm'
-        if self.ndim is None:
-            self.dist_u = None
-            self.hem_type = None
-        elif hem_type.lower().startswith('prob'):
-            self.hem_type = 'probabilists'
-            self.dist_u = [stats.norm(0,1),] * self.ndim
-        elif hem_type.lower().startswith('phy'):
-            self.hem_type = 'physicists'
-            self.dist_u = [stats.norm(0,np.sqrt(0.5)),] * self.ndim 
-        else:
-            raise ValueError('UQRA.Hermite: {} not defined for hem_type '.format(hem_type))
+        self.dist_u    = self._wiener_askey_distribution()
+        self.coef = self.set_coef(coef)
         self._update_basis()
 
     def gauss_quadrature(self, n, loc=[], scale=[]):
@@ -61,7 +55,7 @@ class Hermite(PolyBase):
         1-D ndarray containing the weights.
 
         """
-        super().gauss_quadrature(n) ## check n and assign self.n_gauss
+        self.n_gauss = pu.check_int(n)
 
         ## for unspecified distribution parameters, default (loc, scale) = (0,1)
         for _ in range(len(loc), self.ndim):
@@ -94,12 +88,12 @@ class Hermite(PolyBase):
         w = np.squeeze(w)
         return x, w
 
-    def vandermonde(self, x, normed=True):
+    def vandermonde(self, x, normalize=True):
         """
         Pseudo-Vandermonde matrix of given degree.
         Arguments:
             x: ndarray of shape(ndim, nsamples)
-            normed: boolean
+            normalize: boolean
         return:
             vandermonde matrix of shape(nsampels, deg)
             
@@ -124,18 +118,7 @@ class Hermite(PolyBase):
                 ### (0,l), (1,m), (2,n), (3,k)
                 vander[:,i] = vander[:,i] * vander_1d[idim,:,ideg]
 
-        # vander_1d_sign= np.sign(vander_1d) 
-        # vander_1d_log = np.log(abs(vander_1d))
-        # vander      = np.zeros((n, self.num_basis))
-        # vander_sign = np.ones((n, self.num_basis))
-        # if self.basis_degree is None:
-            # self._update_basis()
-        # for i, ibasis_degree in enumerate(self.basis_degree):### ibasis_degree = (l,m,n,k), assume ndim=4
-            # for idim, ideg in enumerate(ibasis_degree):### (0,l), (1,m), (2,n), (3,k)
-                # # vander_sign[:,i]= vander_sign[:,i] 
-                # vander[:,i]     = vander[:,i] + vander_1d_log[idim,:,ideg]* vander_1d_sign[idim,:,ideg]
-        # vander = np.exp(vander)
-        if normed:
+        if normalize:
             vander = vander / np.sqrt(self.basis_norms)
 
         return vander
@@ -144,27 +127,50 @@ class Hermite(PolyBase):
         """
         set the dimension of polynomial
         """
-        self.ndim = super()._check_int(ndim)
+        self.ndim = pu.check_int(ndim)
         self._update_basis()
 
     def set_degree(self, deg):
         """
         set polynomial degree order
         """
-        self.deg = super()._check_int(deg)
+        self.deg = pu.check_int(deg)
         self._update_basis()
 
     def set_coef(self, coef):
+        """
+        set polynomial coef
+        Arguments: None, or scalar, array-like 
+        if coef is scalar, all polynomial coefficient will be assigned as that same value
+        """
         self._update_basis()
-        if len(coef) != self.num_basis:
-            raise TypeError('Expected coefficients has length {}, but {} is given'.format(self.num_basis, len(coef)))
-        self.coef = coef
+        if coef is None:
+            coef = None
+        elif np.ndim(coef) == 0:
+            coef = np.ones(len(coef)) * coef + 0.0
+        else:
+            if len(coef) != self.num_basis:
+                raise TypeError('Expected coefficients has length {}, but {} is given'.format(self.num_basis, len(coef)))
+        return coef 
+
+    def _wiener_askey_distribution(self):
+        """
+        Return Askey-Wiener distributions
+        """
+
+        if self.ndim is None:
+            dist_u = None
+        elif self.hem_type.lower().startswith('prob'):
+            dist_u = [stats.norm(0,1),] * self.ndim
+        elif self.hem_type.lower().startswith('phy'):
+            dist_u = [stats.norm(0,np.sqrt(0.5)),] * self.ndim 
+        else:
+            raise ValueError('UQRA.Hermite: {} not defined for hem_type '.format(hem_type))
+        return dist_u
 
     def _update_basis(self):
         """
         Return a list of polynomial basis function with specified degree and multi_index rule
-
-        
         """
         ### get self.basis_degree and self.num_basis
         ###    - basis_degree, list of tuples containing degree component for each basis function. i.e. (3,0,2) -> x1**3 + x2**0 + x3**2
@@ -174,13 +180,14 @@ class Hermite(PolyBase):
             self.basis_norms  = None
         else:
             if self.hem_type == 'probabilists':
-                self.basis_norms_const = np.sqrt(2* np.pi)
                 norms_1d    = np.array([math.factorial(i) for i in range(self.deg+1)])
                 basis       = []
                 basis_norms = [] 
-                for ibasis_degree in self.basis_degree:
+                ## calculate the ith multidimensional polynomial element of order(l,m,n)
+                for ibasis_degree in self.basis_degree: 
                     ibasis = 1.0
                     inorms = 1.0
+                    ## polynomial element (l,m,n)
                     for ideg in ibasis_degree:
                         ibasis = ibasis * np.polynomial.hermite_e.HermiteE.basis(ideg) 
                         inorms = inorms * norms_1d[ideg]
@@ -190,7 +197,6 @@ class Hermite(PolyBase):
                 self.basis_norms = np.array(basis_norms)
 
             elif self.hem_type == 'physicists':
-                self.basis_norms_const = np.sqrt(np.pi)
                 norms_1d    = np.array([math.factorial(i) * 2**i for i in range(self.deg+1)])
                 basis       = []
                 basis_norms = [] 
@@ -227,7 +233,6 @@ class Hermite(PolyBase):
         size_of_array_4gb = 1e8/2.0
         ## size of largest array is of shape (n-k, k, k)
         if x.shape[1] * self.num_basis < size_of_array_4gb:
-            # vander  = self.vandermonde(x)
             vander  = self.vandermonde(x)
             y       = np.sum(vander * self.coef, -1)
         else:

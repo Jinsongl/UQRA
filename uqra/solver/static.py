@@ -152,60 +152,60 @@ class SparsePoly(SolverBase):
     """
     Sparse Polynomial
     """
-    def __init__(self, basis, coef= stats.norm, sparsity='full', seed=None):
-        self.name = 'sparse polynomial'
-        if isinstance(sparsity, str) and sparsity.lower() =='full':
-            self.nickname = 'Poly_{:d}{:s}{:d}'.format(basis.ndim, basis.nickname, basis.deg)
-        else:
-            self.nickname = 'SparsePoly_{:d}{:s}{:d}'.format(basis.ndim, basis.nickname, basis.deg)
+    def __init__(self, orth_poly, coef=1, sparsity=None, seed=None):
+        self.name      = 'sparse polynomial'
+        self.nickname  = 'SparsePoly_{:d}{:s}{:d}'.format(orth_poly.ndim, orth_poly.nickname, orth_poly.deg)
+        self.orth_poly = orth_poly
+        self.ndim      = orth_poly.ndim
+        self.deg       = orth_poly.deg
+        self.num_basis = orth_poly.num_basis
+        self.dist_name = orth_poly.dist_name
+        self.distributions = orth_poly.dist_u
 
-        self.basis = basis
-        self.ndim = basis.ndim
-        self.deg  = basis.deg
-        self.num_basis = basis.num_basis
-        self.distributions = basis.dist_u
-        self.dist_name = basis.dist_name
-
-        # if self.basis.name == 'Legendre':
-        # elif self.basis.name == 'Hermite':
-            # self.distributions = [stats.norm(), ] * self.ndim
+        # if sparsity is None:
+            # if np.ndim(coef) == 0:
+                # coef = np.ones(self.num_basis) * coef
+            # assert coef.size == self.num_basis
         # else:
-            # raise NotImplementedError
+            # if np.ndim(coef) == 0:
+                # coef = np.ones(sparsity) * coef
+            # coef = self._assign_coef(coef, seed=seed)
+            # assert coef.size == self.num_basis
 
-        if isfromstats(coef):
-            k = self.num_basis if sparsity == 'full' else sparsity
-            coef = self._random_coef(k, seed=seed)
-            self.basis.set_coef(coef)
-        else:
-            self.basis.set_coef(coef)
-        self.coef = self.basis.coef
+        self.orth_poly.set_coef(coef)
+        self.coef = coef 
 
     def __str__(self):
         return 'solver: sparse polynomial function'
 
     def run(self, x, **kwargs):
-        y = self.basis(x)
+        y = self.orth_poly(x)
         if np.isnan(y).any():
-            raise ValueError('nan in solver.run() result')
+            raise ValueError('nan in SparsePoly.run() result')
         return y
 
-    def _random_coef(self, k, dist=stats.norm, seed=None, theta=(0,1)):
+    def _assign_coef(self, coef, seed=None):
         """
         p: total order    
         s: sparsity
         """
         np.random.seed(seed)
-        coef = dist.rvs(loc=theta[0], scale=theta[1], size=self.num_basis)
-        random.seed(seed)
-        coef[random.sample(range(0, self.num_basis), self.num_basis - k)] = 0.0
-        return coef
+        coefs = np.zeros(self.num_basis)
+        coefs_idx = np.sort(random.sample(range(0, self.num_basis), coef.size))
+        if sum(self.orth_poly.basis_degree[coefs_idx[-1]]) < self.deg:
+            ## at least one of the highest total order is not zero
+            basis_degree_p  = [i for i, ibasis_degree in enumerate(self.orth_poly.basis_degree) if sum(ibasis_degree)==self.deg]
+            coefs_idx[-1]   = random.sample(basis_degree_p, 1)[0]
+        ## assign the rest coefs
+        coefs[coefs_idx] = coef
+        return coefs
 
     def coef_error(self, model, normord=np.inf):
         beta    = np.array(self.coef, copy=True)
         beta_hat= np.array(model.coef, copy=True)
 
-        solver_basis_degree = self.basis.basis_degree
-        model_basis_degree  = model.basis.basis_degree
+        solver_basis_degree = self.orth_poly.basis_degree
+        model_basis_degree  = model.orth_poly.basis_degree
 
         if len(solver_basis_degree) > len(model_basis_degree):
             large_basis_degree = solver_basis_degree 

@@ -13,6 +13,7 @@ import numpy as np
 import itertools, math
 import scipy.stats as stats
 from ._polybase import PolyBase
+from . import polyutils as pu 
 
 class Legendre(PolyBase):
     """
@@ -24,11 +25,14 @@ class Legendre(PolyBase):
     """
 
     def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total'):
-        super().__init__(d=d, deg=deg, coef=coef, domain=domain, window=window, multi_index=multi_index)
+        self.multi_index = multi_index
+        self.ndim = pu.check_int(d)
+        self.deg  = pu.check_int(deg)
         self.name       = 'Legendre'
         self.nickname   = 'Leg'
         self.dist_name  = 'Uniform'
         self.dist_u     = None if self.ndim is None else [stats.uniform(-1,2), ] * self.ndim 
+        self.coef = self.set_coef(coef)
         self._update_basis()
 
     def gauss_quadrature(self, n, loc=[], scale=[]):
@@ -49,7 +53,7 @@ class Legendre(PolyBase):
         1-D ndarray containing the weights.
 
         """
-        super().gauss_quadrature(n)
+        self.n_gauss = pu.check_int(n)
         ## for unspecified distribution parameters, default (loc, scale) = (-1,2)
         ## tradition from scipy.stats
         for _ in range(len(loc), self.ndim):
@@ -71,12 +75,12 @@ class Legendre(PolyBase):
         w = np.squeeze(w)
         return x, w
 
-    def vandermonde(self, x, normed=True):
+    def vandermonde(self, x, normalize=True):
         """
             Pseudo-Vandermonde matrix of given degree.
         Arguments:
             x, ndarray of shape(ndim, nsamples)
-            normed: boolean. If true, each column is normalized such that \int_-1,1 Pm(x) Pm(x) dx = 1
+            normalize: boolean. If true, each column is normalized such that \int_-1,1 Pm(x) Pm(x) dx = 1
         """
         x    = np.array(x, copy=0, ndmin=2) + 0.0
         d, n = x.shape
@@ -91,7 +95,7 @@ class Legendre(PolyBase):
             ### ith polynomial, it is composed of ibasis_degree = (l,m,n)
             for idim, ideg in enumerate(ibasis_degree):
                 vander[:,i] = vander[:,i] * vander_ind[idim,:,ideg]
-        if normed:
+        if normalize:
             vander = vander / np.sqrt(self.basis_norms)
         return vander
 
@@ -114,9 +118,16 @@ class Legendre(PolyBase):
         set coefficients for orthoNORMAL basis
         """
         self._update_basis()
-        if len(coef) != self.num_basis:
-            raise TypeError('Expected coefficients has length {}, but {} is given'.format(self.num_basis, len(coef)))
-        self.coef = coef*np.sqrt(self.basis_norms)
+        if coef is None:
+            coef = None
+        elif np.ndim(coef) == 0:
+            coef = np.ones(len(coef)) * coef + 0.0
+        else:
+            if len(coef) != self.num_basis:
+                raise TypeError('Expected coefficients has length {}, but {} is given'.format(self.num_basis, len(coef)))
+        self.coef = coef
+        return coef 
+
     def _update_basis(self):
         """
         Return a list of polynomial basis function with specified degree and multi_index rule
@@ -156,7 +167,6 @@ class Legendre(PolyBase):
         d, n = x.shape ## (ndim, samples)
         if d != self.ndim:
             raise TypeError('Expected x has dimension {}, but {} is given'.format(self.ndim, d))
-
         if self.coef is None:
             self.coef = np.ones((self.num_basis,))
 

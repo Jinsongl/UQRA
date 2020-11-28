@@ -22,15 +22,8 @@ class PolyBase(object):
     """
     An abstract base class for series classes.
     """
-    def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total'):
-        self.ndim = self._check_int(d)
-        self.deg  = self._check_int(deg)
-        self.coef = coef
-        self.multi_index = multi_index
-        self.basis_degree= None
-        self.name     = ''
-        self.nickname = ''
-        self.num_basis = 0
+    def __init__(self):
+        pass
 
     def set_ndim(self, ndim):
         """
@@ -45,12 +38,16 @@ class PolyBase(object):
         raise NotImplementedError
     
     def Vandermonde(self, x, normed=True):
+        """
+        compute Vandermonde matrix for samples x
+        """
         raise NotImplementedError
 
     def gauss_quadrature(self, n):
-        self.n_gauss = self._check_int(n)
-        # if self.n_gauss < self.deg +1:
-            # warnings.warn('n < p + 1')
+        """
+        compute Gauss quadrature points 
+        """
+        raise NotImplementedError
 
     def fit_quadrature(self):
         raise NotImplementedError
@@ -74,9 +71,10 @@ class PolyBase(object):
         Evaluate polynomials at given values x
         """
         raise NotImplementedError
+
     def _get_basis_degree(self):
         """
-        self.basis_degree, list of tuples containing degree component for each basis function.
+        self.basis_degree, list of tuples containing degree component for each basis function. increasing order based on sum of individual degree
         E.g. for ndim = 3, deg = 5, the results are: 
         (   (0, 0, 0)
             (0, 0, 1)

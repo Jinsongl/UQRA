@@ -67,6 +67,17 @@ class PolyDomainError(PolyError):
     """
     pass
 
+def check_int(x):
+    if x is None:
+        return None
+    else:
+        int_x = int(x)
+        if int_x != x:
+            raise ValueError("deg must be integer")
+        if int_x < 0:
+            raise ValueError("deg must be non-negative")
+        return int_x
+
 
 def _fit(vander_f, x, y, deg, rcond=None, full=False, w=None):
     """

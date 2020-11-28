@@ -15,6 +15,7 @@ from uqra.polynomial.hermite import Hermite
 from uqra.polynomial.legendre import Legendre
 from uqra.polynomial.legendre1 import Legendre1
 from uqra.polynomial.jacobi import Jacobi
+from uqra.polynomial import poly
 
 from uqra.environment._envbase import EnvBase
 from uqra.environment.environment import Environment as Environment
