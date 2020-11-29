@@ -17,77 +17,79 @@ import itertools
 from tqdm import tqdm
 import time, math
 import multiprocessing as mp
-import warnings
 
 class OptimalDesign(ExperimentBase):
     """ Quasi-Optimal Experimental Design and Optimal Design"""
 
-    def __init__(self, X, optimal_samples=[]):
+    def __init__(self, optimality, selected_index=[]):
         """
         Optimal/Quasi Optimal Experimental design:
         Arguments:
-            X: {array-like, sparse matrix} of shape (n_samples, n_features)
-            optimal_samples: indices array of optimal samples 
+            optimality: optimal design optimality
         """
         super().__init__()
-        ## return the candidate design matrix after removing selected rows
-        self.X  = np.array(X, copy=False, ndmin=2)
-        self.optimal_samples   = optimal_samples
-        self.candidate_samples = self._list_diff(np.arange(X.shape[0]), self.optimal_samples)
+        self.optimality = optimality.upper()
+        self.filename   = '_'.join(['DoE', self.optimality])
+        self.selected_index   = selected_index
 
     def __str__(self):
         return('Optimal-{:s} Design'.format(self.optimality))
 
-    def get_samples(self, optimality, n, **kwargs):
+    def get_samples(self, X, n, **kwargs):
         """
         Return n new samples from X exclude those already selected
         Xb = Y
-        X: Design matrix X(u) of shape(n_samples, n_features)
+        X: Design matrix X(u) of shape(num_samples, num_features)
         Arguments:
-            n: int, number of new samples to be added
+            X: design matrix to sample from. (feature to be added: distributions + n_candidates)
 
         Optional: 
-            optimal_samples: list of selected row indices currently
-            is_orth_col: boolean, True if columns of design matrix is orthogonal to each other asymptotically
+            selected_index: list of selected row indices currently
+            orth_basis: boolean, True if columns of design matrix is orthogonal to each other asymptotically
         Return:
             list of row indices selected 
         """
-        n = helpers.check_int(n)
-        optimality = str(optimality).upper()
-        self.filename = '_'.join(['DoE', optimality])
-        optimal_samples = kwargs.get('optimal_samples', [])
-        self.optimal_samples   = self._list_union(self.optimal_samples, optimal_samples)
-        self.candidate_samples = self._list_diff(np.arange(self.X.shape[0]), self.optimal_samples)
-        assert len(self._list_union(self.candidate_samples, self.optimal_samples)) == self.X.shape[0] ## complementary
-        if len(self._list_inter(self.candidate_samples, self.optimal_samples)):
-            print(self._list_inter(self.candidate_samples, self.optimal_samples))
-            raise ValueError('Candidate samples and Optimal samples should be exclusive')
-        try:
-            algorithm = kwargs['algorithm']
-        except KeyError:
-            if optimality == 'S':
-                algorithm = 'AFP' ## approximated Fekete points with QR with column pivoting
-            elif optimality == 'D':
-                algorithm = 'RRQR' ## QR with column pivoting  
-            else:
-                raise NotImplementedError
+        random_state    = kwargs.get('random_state', None)
+        selected_values = kwargs.get('selected', None)
+        num_optimal_sets= kwargs.get('num_optimal_sets', 1)
+        initial_points  = kwargs.get('initialization', )
 
-        if optimality == 'D':
-            print('   > UQRA D-Optimality Design with {:s}'.format(algorithm))
-            optimal_samples = self.D_Optimality(n, algorithm=algorithm)
+        if self.optimality == 'S':
+            """ Xb = Y """
+            orth_basis     = kwargs.get('orth_basis', True)
+            selected_index = kwargs.get('selected_index', self.selected_index)
+            row_adding     = []
+            self.selected_index = []
+            for _ in range(num_optimal_sets):
+                try:
+                    ### return a new set of indices, selected_index will be updated
+                    row_adding_ = self._get_quasi_optimal(n, X, selected_index, orth_basis)
+                except:
+                    print(selected_index)
+                    raise ValueError('_get_quasi_optimal failed')
+                if len(np.unique(row_adding_)) != n:
+                    print('Duplicate samples detected:')
+                    print(' -> len(selected_index) = {}'.format(len(selected_index)))
+                    print(' -> len(row_adding) = {}'.format(len(row_adding)))
+                    print(' -> len(np.unique(row_adding)) = {}'.format(len(np.unique(row_adding))))
+                self.selected_index.append(selected_index)
+                row_adding.append(row_adding_)
+            if len(row_adding) == 1:
+                row_adding = row_adding[0]
+                self.selected_index = self.selected_index[0]
+        elif self.optimality == 'D':
+            row_adding = self.D_Optimality(X, n, algorithm=algorithm, kwargs)
 
-        if optimality.upper() == 'S':
-            print('   > UQRA S-Optimality Design with {:s}'.format(algorithm))
-            optimal_samples = self.S_Optimality(n, algorithm=algorithm)
+        # print('current set: \n{}'.format(selected_index))
+        # print('new set: \n{}'.format(row_adding))
+        # print('intersection: \n{}'.format(set(row_adding) & set(selected_index)))
+        return row_adding 
 
-        self.optimal_samples   = self._list_union(self.optimal_samples, optimal_samples)
-        self.candidate_samples = self._list_diff(self.candidate_samples, optimal_samples)
-        return optimal_samples
-
-    def D_Optimality(self, n, algorithm='RRQR'):
+    def D_Optimality(self, X, n, algorithm='QR', **kwargs):
         """
         Optimal design with D-optimality
         Arguments:
+            X: ndarray of shape(n,P), design matrix
             n: int, number of samples to be returned
             Algorithm: str, algorithms used to generated D-optimal samples
                 Available in reference:
@@ -105,123 +107,131 @@ class OptimalDesign(ExperimentBase):
         Algorithms reference:  
             Triefenbach, F. (2008). Design of experiments: the D-optimal approach and its implementation as a computer algorithm. Bachelor's Thesis in Information and Communication Technology.
         """
-        if algorithm.upper() == 'RRQR':
+
+
+        """ D optimality based on rank revealing QR factorization  """
+
+        selected_index = kwargs.get('selected_index', self.selected_index)
+        if algorithm.lower == 'qr':
             try:
-                optimal_samples = self._get_samples_rrqr(n)
+                row_adding = self._get_rrqr_optimal(n, X, selected_index)
+                self.selected_index = selected_index + row_adding
             except:
-                print(self.optimal_samples)
-                raise ValueError('Error: UQRA.Experiment.OptimalDesign._get_samples_rrqr failed')
+                print(selected_index)
+                raise ValueError('_get_rrqr_optimal failed')
+            if len(np.unique(row_adding)) != n:
+                print('Duplicate samples detected:')
+                print(' -> len(selected_index) = {}'.format(len(selected_index)))
+                print(' -> len(row_adding) = {}'.format(len(row_adding)))
+                print(' -> len(np.unique(row_adding)) = {}'.format(len(np.unique(row_adding))))
         else:
-            print('NotImplementedError: UQRA.OptimalDesign.D_Optimality: algorithm {:s} not implemented...'.format(algorithm))
+            print('UQRA.OptimalDesign.D_Optimality: algorithm {:s} not implemented...'.format(algorithm))
             raise NotImplementedError
-        return optimal_samples
 
-    def S_Optimality(self, n, algorithm='AFP'):
+    def _get_rrqr_optimal(self, m, X, row_selected):
         """
-        Optimal design with S-optimality
+        Return selected rows from design matrix X based on D-optimality implemented by RRQR 
+
         Arguments:
-            n: int, number of samples to be returned
-            Algorithm: str, algorithms used to initialize S-optimal samples
-                1. 'TSM': truncated square matrices randomly choose first one and sequentially choose next sample with largest S-value
-                2. 'AFP': first n_feature samples are chosen as the Fekete points, calculated by Approximated Fekete Point algorithm
-                
-        Algorithms reference:  
-           Bos, L., De Marchi, S., Sommariva, A., & Vianello, M. (2010). Computing multivariate Fekete and Leja points by numerical linear algebra. SIAM Journal on Numerical Analysis, 48(5), 1984-1999.
+            row_selected: set of selected indices 
         """
+        m       = helpers.check_int(m)
+        X       = np.array(X, copy=False, ndmin=2)
+        row_adding = [] ## list of indices to be added in this run
+        ## list of candidate indices, note that these indices corresponding to the rows in original design matrix X
+        row_candidate= list(set(np.arange(X.shape[0])).difference(set(row_selected)))
+        X_candidate  = X[row_candidate, :]  ## return the candidate design matrix after removing selected rows
 
-        if len(self.optimal_samples)!=0:
-            ## if selected optimal samples are not empty, choose following samples that maximize S-values based on current selected samples
-            optimal_samples = self._get_samples_svalue(n,self.optimal_samples)
-        else:
-            ## Two algorithms to initialize optimal samples
-            X_rank = min(self.X.shape)
-            if algorithm.upper() in ['AFP', 'RRQR']:
-                try:
-                    optimal_samples = self._get_samples_rrqr(min(X_rank, n))
-                except:
-                    print(self.optimal_samples)
-                    raise ValueError('Error: UQRA.Experiment.OptimalDesign._get_samples_rrqr failed')
-            elif algorithm.upper() == 'TSM': ##
-                try:
-                    ### return a new set of indices, optimal_samples will be updated
-                    optimal_samples = self._get_samples_tsm(min(X_rank, n))
-                except:
-                    print(self.optimal_samples)
-                    raise ValueError('Error: UQRA.Experiment.OptimalDesign._get_samples_tsm failed')
+        ## each QR iteration returns rank(X_candidate) samples, which is min(X_candidate.shape)
+        ## to have m samples, need to run RRQR ceil(m/rnak(X_candidate)) times
+        for _ in tqdm(range(math.ceil(m/min(X_candidate.shape))), ascii=True, desc='    - [D-Optimal]',ncols=80):
+        # for _ in range(math.ceil(m/min(X_candidate.shape))):
+            ## remove the new selected indices from candidate 
+            row_candidate = list(set(row_candidate).difference(set(row_adding)))
+            if not row_candidate:
+                ## if candidate indices are empty, stop
+                break
             else:
-                print('UQRA.OptimalDesign.S_Optimality: algorithm {:s} not implemented...'.format(algorithm))
-                raise NotImplementedError
+                ## update candidate design matrix, note that X row_candidate is the indices in the original design matrix X
+                X_candidate  = X[row_candidate,:]
+                n, p    = X_candidate.shape
+                _,_,P   = sp.linalg.qr(X_candidate.T, pivoting=True)
+                ## P[i] is the index in X_candidate corresponding the largest |singular value|
+                ## need to find its corresponding index in the original matrix X
+                new_set_= [row_candidate[i] for i in P[:min(m,n,p)]]
+                ## check if there is any duplicate indices returned
+                if set(row_adding) & set(new_set_):
+                    raise ValueError('Duplicate samples returned')
+                row_adding = row_adding + new_set_ 
+        row_adding = row_adding[:m] if len(row_adding) > m else row_adding ## break case
+        if set(row_adding) & set(row_selected):
+            raise ValueError('Duplicate samples returned')
+        row_selected += row_adding
+        return row_adding 
+        
+    def S_Optimality(self, algorithm='QR', **kwargs):
 
-            if len(optimal_samples) < n:
-                optimal_samples1 = self._get_samples_svalue(n-len(optimal_samples),optimal_samples)
-                optimal_samples  = self._list_union(optimal_samples, optimal_samples1) 
-                if len(optimal_samples)!= n:
-                    raise ValueError('Requesting {:d} new samples but {:d} returned'.format(n, len(optimal_samples)))
-        return optimal_samples
-
-
-
-    def _get_samples_tsm(self,n):
-        """
-        return initial points for S-optimality based on Truncated Square matrices
-        """
-        n = helpers.check_int(n) 
-        optimal_samples = [np.random.randint(0, self.X.shape[0], size=1).item(),]
-        candidate_samples = self._list_diff(self.candidate_samples, optimal_samples)
-        for _ in tqdm(range(1,n), ascii=True, desc="   - [S-Optimal: (TSM)]",ncols=80):
-        # for _ in range(m):
-            ## find the next optimal index from Q which is not currently selected
-            ## split original design matrix Q into candidate matrix X_cand, and selected X_sltd
-            candidate_samples = self._list_diff(candidate_samples, optimal_samples)
-            X_cand  = self.X[candidate_samples,:]
-            X_sltd  = self.X[optimal_samples,:]
-            ## calculate (log)S values for each row in X_cand together with X_sltd
-            svalues = self._cal_svalue(X_cand,X_sltd)
-            if len(svalues) != len(self.candidate_samples):
-                raise ValueError('Expecting {:d} S values, but {:d} given'.format(len(candidate_samples), len(svalues)))
-            i = candidate_samples[np.argmax(svalues)] ## return the indices with largest s-value in original matrix Q
-            ## check if this index is already selected
-            if i in optimal_samples:
-                print('Row {:d} already selected'.format(i))
-                raise ValueError('Duplicate sample {:d} already exists'.format(i))
-            optimal_samples.append(i)
-        return optimal_samples
-
-    def _get_samples_svalue(self,n, optimal_samples):
+    def _get_quasi_optimal(self,m, X, row_selected=[], orth_basis=False):
         """
         return row indices for quasi optimal experimental design based on fast greedy algorithm 
 
         Arguments:
-        n -- size of 'new' quasi optimal subset
+        m -- size of 'new' quasi optimal subset
         X -- design matrix with candidates samples of shape (M,p)
              M: number of samples, p: number of features
-        row_selected -- indices, ndarray of shape (N,) corresponding row selection matrix of length n
-            if row_selected is None, an empty list will be created first and n items will be appended 
-            Otherwise, additional (n-m0) items (row index in design matrix X) will be appended 
-        is_orth_col -- Boolean indicating if the basis space is orthogonal
+        row_selected -- indices, ndarray of shape (N,) corresponding row selection matrix of length m
+            if row_selected is None, an empty list will be created first and m items will be appended 
+            Otherwise, additional (m-m0) items (row index in design matrix X) will be appended 
+        orth_basis -- Boolean indicating if the basis space is orthogonal
 
         Returns:
-        row selection matrix row_selected of shape (n, M)
+        row selection matrix row_selected of shape (m, M)
         """
-        candidate_samples = self._list_diff(self.candidate_samples, optimal_samples)
-        for _ in tqdm(range(n), ascii=True, desc="   - [S-values]",ncols=80):
-        # for _ in range(n):
+        m = helpers.check_int(m)
+        X = np.array(X, copy=False, ndmin=2)
+        if X.shape[0] < X.shape[1]:
+            raise ValueError('Quasi optimal sebset are designed for overdetermined problem only')
+        (Q, R)  = (X, None) if orth_basis else np.linalg.qr(X)
+        row_adding = []
+        for _ in tqdm(range(m), ascii=True, desc="   - [S-Optimal]",ncols=80):
+        # for _ in range(m):
             ## find the next optimal index from Q which is not currently selected
-            candidate_samples = self._list_diff(candidate_samples, optimal_samples)
-            X_cand  = self.X[candidate_samples,:]
-            X_sltd  = self.X[optimal_samples,:]
-            ## calculate (log)S values for each row in X_cand together with X_sltd
-            svalues = self._cal_svalue(X_cand,X_sltd)
-            if len(svalues) != len(candidate_samples):
-                raise ValueError('Expecting {:d} S values, but {:d} given'.format(len(candidate_samples), len(svalues)))
-            i = candidate_samples[np.argmax(svalues)] ## return the indices with largest s-value in original matrix Q
+            i = self._greedy_find_next_point(row_selected,Q)
             ## check if this index is already selected
-            if i in optimal_samples:
+            if i in row_selected:
                 print('Row {:d} already selected'.format(i))
                 raise ValueError('Duplicate sample {:d} already exists'.format(i))
-            optimal_samples.append(i)
-        return optimal_samples
+            row_selected.append(i)
+            row_adding.append(i)
+        return row_adding 
 
+    def _greedy_find_next_point(self, row_selected, Q):
+        """
+        find the next quasi optimal sample
+
+        Arguments:
+        row_selected -- list containing selected row indices from original design matrix Q
+        Q -- QR factorization of candidate design matrix X if basis is not orthogonal, otherwise is X
+
+        Return:
+        i -- integer, index with maximum svalue
+        """
+        ##  Find the index candidate set to chose from (remove those in row_selected from all (0-M))
+        
+        ## if row_selected is empty, choose one randomly
+        if not row_selected:
+            i = np.random.randint(0,Q.shape[0], size=1).item()
+        else:
+            row_candidate = list(set(range(Q.shape[0])).difference(set(row_selected)))
+            ## split original design matrix Q into candidate matrix Q_cand, and selected Q_sltd
+            Q_cand   = Q[np.array(row_candidate, dtype=np.int32),:]
+            Q_sltd   = Q[np.array(row_selected , dtype=np.int32),:]
+            ## calculate (log)S values for each row in Q_cand together with Q_sltd
+            svalues  = self._cal_svalue(Q_cand,Q_sltd)
+            if len(svalues) != len(row_candidate):
+                raise ValueError('Expecting {:d} S values, but {:d} given'.format(len(row_candidate), len(svalues)))
+            i = row_candidate[np.argmax(svalues)] ## return the indices with largest s-value in original matrix Q
+        return i
 
     def _cal_svalue(self,R,X):
         """
@@ -402,100 +412,8 @@ class OptimalDesign(ExperimentBase):
         return delta
 
 
-    def _get_samples_rrqr(self, n):
-        """
-        Return selected rows from design matrix X based on D-optimality implemented by RRQR 
-
-        Arguments:
-            row_selected: set of selected indices 
-        """
-        n = helpers.check_int(n)
-        candidate_samples = self.candidate_samples
-        optimal_samples   = []
-        ## each QR iteration returns rank(X) samples, which is min(candidate samples, n_features)
-        X_rank = min(len(candidate_samples), self.X.shape[1])
-        n_iterations = math.ceil(n/X_rank)
-        for i_iteration in tqdm(range(n_iterations), ascii=True, desc='   - [RRQR]',ncols=80):
-            ## remove the new selected indices from candidate 
-            X = self.X[candidate_samples, :]
-            n_samples = X_rank if i_iteration < n_iterations-1 else int(n-X_rank * i_iteration)
-            if X.shape[0] <= n_samples:
-                optimal_samples_ = candidate_samples
-                warnings.warn('Warning: UQRA.Experiment.OptimalDesign._get_samples_rrqr: requested {:d} optimal samples but only {:d} candidate samples available, returning all candiate samples'.format(n, X.shape[0]))
-            else:
-                ## update candidate design matrix, note that X row_candidate is the indices in the original design matrix X
-                _,_,Pivot   = sp.linalg.qr(X.T, pivoting=True)
-                ## Pivot[i] is the index in X corresponding the largest |singular value|
-                ## need to find its corresponding index in the original matrix X
-                optimal_samples_ = [candidate_samples[i] for i in Pivot[:n_samples]]
-                ## check if there is any duplicate indices returned
-            optimal_samples  = self._list_union(optimal_samples,  optimal_samples_)
-            candidate_samples= self._list_diff(candidate_samples, optimal_samples_)
-        if len(optimal_samples)!= n:
-            raise ValueError('Requesting {:d} new samples but {:d} returned'.format(n, n0))
-        return optimal_samples
-        
-    def _remove_rows_from_matrix(self, A, rows):
-        """
-        remove rows from matrix A
-        Arguments:
-            A: ndarray of shape(m,n)
-            rows: row index to be removed, len=k
-        Return:
-            matrix of shape(m-k,n)
-        """
-
-        A = np.array(A, copy=False, ndmin=2)
-        A = A[list(set(np.arange(A.shape[0])).difference(set(rows))), :]  
-        return A
-
-    def _argmax_svalues_greedy(self, optimal_samples, Q):
-        """
-        find the next quasi optimal sample
-
-        Arguments:
-        optimal_samples -- list containing selected row indices from original design matrix Q
-        Q -- QR factorization of candidate design matrix X if basis is not orthogonal, otherwise is X
-
-        Return:
-        i -- integer, index with maximum svalue
-        """
-        ##  Find the index candidate set to chose from (remove those in optimal_samples from all (0-M))
-        
-        ## if optimal_samples is empty, choose one randomly
-        row_candidate = list(set(range(Q.shape[0])).difference(set(optimal_samples)))
-        ## split original design matrix Q into candidate matrix Q_cand, and selected Q_sltd
-        Q_cand   = Q[np.array(row_candidate, dtype=np.int32),:]
-        Q_sltd   = Q[np.array(optimal_samples , dtype=np.int32),:]
-        ## calculate (log)S values for each row in Q_cand together with Q_sltd
-        svalues  = self._cal_svalue(Q_cand,Q_sltd)
-        if len(svalues) != len(row_candidate):
-            raise ValueError('Expecting {:d} S values, but {:d} given'.format(len(row_candidate), len(svalues)))
-        i = row_candidate[np.argmax(svalues)] ## return the indices with largest s-value in original matrix Q
-        return i
 
 
-    def _list_union(self, ls1, ls2):
-        """
-        return the union of two lists and remove duplicates
-        """
-        ls = list(set(ls1).union(set(ls2)))
-        return ls
-
-
-    def _list_diff(self, ls1, ls2):
-        """
-        return the difference of two lists and remove duplicates, ls1-ls2
-        """
-        ls = list(set(ls1).difference(set(ls2)))
-        return ls
-
-    def _list_inter(self, ls1, ls2):
-        """
-        return the difference of two lists and remove duplicates
-        """
-        ls = list(set(ls1).intersection(set(ls2)))
-        return ls
     # def _cal_svalue_over(self, X0, X1):
         # """
         # Calculate the S value (without determinant) of candidate vectors w.r.t selected subsets

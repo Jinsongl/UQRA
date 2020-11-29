@@ -94,7 +94,6 @@ class ExperimentBase(object):
         """
         raise NotImplementedError
 
-
     def _set_distributions(self, distributions):
         """
         return a list of distributions and set ndim
@@ -113,7 +112,6 @@ class ExperimentBase(object):
         return ndim, dists
 
     def _set_parameters(self, loc, scale):
-
         if np.ndim(loc) == 0: ## scalor
             locs = [loc] * self.ndim
         else: ## list/tuple, with 1 or more elements
