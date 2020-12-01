@@ -57,6 +57,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         print(r'   - {:<25s} : {:<20s}'.format('Surrogate Model Name', self.name))
         if self.deg is not None:
             print(r'     - {:<23s} : {}'.format('Askey-Wiener polynomial'   , self.orth_poly.name))
+            print(r'     - {:<23s} : {}'.format('Polynomial dimension ', self.ndim))
             print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.deg ))
             print(r'     - {:<23s} : {:d}'.format('No. polynomial basis(P)', self.num_basis))
             print(r'     - {:<23s} : {:d}'.format('No. active basis (s)', len(self.active_index)))
