@@ -2,12 +2,13 @@
 
 import uqra, unittest,warnings,os, sys, math
 from tqdm import tqdm
-import time
+import time, random
 import numpy as np, scipy as sp 
 import scipy.stats as stats
-
+import pickle
 sys.stdout  = uqra.utilities.classes.Logger()
 
+class Data(): pass
 def cdf_chebyshev(x):
     """
     x in [-1,1]
@@ -79,34 +80,61 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_Doptimality(self):
         """
-        Optimal Design
+        Test D-Optimality 
         """
-        # data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform'
-        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Normal'
-        filename = 'DoE_McsE6R0.npy'
-        data_set = np.load(os.path.join(data_dir, filename))
 
-        np.random.seed(100)
-        ndim= 2
-        p   = np.array([2])
+        # np.random.seed(100)
+        # ndim= 1
+        # deg = int(30)
+        # n   = int(1e5)
+        # print(' Asymptotic distribution (ndim,deg, n)=({:d},{:d}, {:d}) check against Chevyshev distribution'.format(ndim, deg, n))
+        # fname_cand = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/OED/DoE_McsE5R0_uniform.npy' 
+        # candidate_samples = np.arange(n)
+        # x = np.load(fname_cand)[:ndim, candidate_samples]
+        # poly = uqra.Legendre(ndim, deg)
+        # X = poly.vandermonde(x)
+        # doe = uqra.OptimalDesign(X, optimal_samples=[])
+        # SOptimal_samples0 = doe.get_samples('S', poly.num_basis, algorithm='RRQR')
+        # doe = uqra.OptimalDesign(X, optimal_samples=[])
+        # SOptimal_samples1 = doe.get_samples('S', poly.num_basis, algorithm='TSM')
+        # # print(idx)
 
-        curr_set = []
-        for p in np.array([10]):
-            orth_poly = uqra.Hermite(d=ndim,deg=p)
-            n_cand    = int(1e5)
-            u_samples = data_set[0:ndim, :n_cand]
-            design_matrix = orth_poly.vandermonde(u_samples)
-            # n_budget  = 10 * design_matrix.shape[1]
-            n_budget  = 2048 
-            # n_budget  =  int(np.exp2(math.ceil(np.log2(design_matrix.shape[1]))))
+        # data = Data()
+        # data.ndim = ndim
+        # data.deg  = deg
+        # data.candidate_data = fname_cand
+        # data.candidate_samples = np.array(candidate_samples)
+        # data.OptS_QR = np.array(SOptimal_samples0)
+        # data.OptS_TSM= np.array(SOptimal_samples1)
+        # with open(os.path.join(data_dir, out_fname), "wb") as output_file:
+            # pickle.dump(data, output_file)
+
+        # # data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform'
+        # data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Normal'
+        # filename = 'DoE_McsE6R0.npy'
+        # data_set = np.load(os.path.join(data_dir, filename))
+
+        # np.random.seed(100)
+        # ndim= 2
+        # p   = np.array([2])
+
+        # curr_set = []
+        # for p in np.array([10]):
+            # orth_poly = uqra.Hermite(d=ndim,deg=p)
+            # n_cand    = int(1e5)
+            # u_samples = data_set[0:ndim, :n_cand]
+            # design_matrix = orth_poly.vandermonde(u_samples)
+            # # n_budget  = 10 * design_matrix.shape[1]
+            # n_budget  = 2048 
+            # # n_budget  =  int(np.exp2(math.ceil(np.log2(design_matrix.shape[1]))))
             
-            start    = time.time()
-            doe      = uqra.OptimalDesign('D', curr_set=curr_set)
-            doe_index= doe.samples(design_matrix, n_samples=n_budget, orth_basis=True)
-            print(doe_index)
-            done     = time.time()
-            print('   >> OED-{:s} (n={:d}) time elapsed: {}'.format('S', n_cand, done - start))
-            np.save('DoE_McsE6R0_d2_p{:d}_D.npy'.format(p), doe_index)
+            # start    = time.time()
+            # doe      = uqra.OptimalDesign('D', curr_set=curr_set)
+            # doe_index= doe.samples(design_matrix, n_samples=n_budget, orth_basis=True)
+            # print(doe_index)
+            # done     = time.time()
+            # print('   >> OED-{:s} (n={:d}) time elapsed: {}'.format('S', n_cand, done - start))
+            # # np.save('DoE_McsE6R0_d2_p{:d}_D.npy'.format(p), doe_index)
 
     def test_CLS(self):
 
@@ -126,14 +154,18 @@ class BasicTestSuite(unittest.TestCase):
             # except NotImplementedError:
                 # pass
 
+        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
         ndim = 2
         doe_method = 'CLS1'
         print('{:s}, d={:d}'.format(doe_method, ndim))
         doe = uqra.CLS(doe_method,ndim)
         for r in range(10):
-            doe_x = doe.samples(size=1e7)
-            np.save('DoE_{:s}E7d{:d}R{:d}.npy'.format(doe_method.capitalize(), ndim, r), doe_x)
-
+            np.random.seed(None)
+            doe_x = doe.samples(size=1e5)
+            print('   - {:<25s} : {}'.format(' Dataset (U)', doe_x.shape))
+            print('   - {:<25s} : {}, {}'.format(' U [min(U), max(U)]', np.amin(doe_x, axis=1), np.amax(doe_x, axis=1)))
+            filename = 'DoE_{:s}E5D{:d}R{:d}.npy'.format(doe_method.capitalize(), ndim, r)
+            np.save(os.path.join(data_dir, filename), doe_x)
 
         
         # print('Testing: Random Sampling from Pluripotential Equilibrium ...')
@@ -195,36 +227,76 @@ class BasicTestSuite(unittest.TestCase):
 
 
     def test_Soptimality(slef):
-        x = np.linspace(-1,1,1000)
-        y = cdf_chebyshev(x)
-        ndim    = 2
-        n_cand  = int(1e7)
+        
+        np.random.seed(100)
+        ndim= 1
+        deg = int(30)
+        n   = int(1e5)
+        print(' Asymptotic distribution (ndim,deg, n)=({:d},{:d}, {:d}) check against Chevyshev distribution'.format(ndim, deg, n))
+        data_dir   = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/OED'
+        fname_cand = 'DoE_McsE6R0_uniform.npy' 
+        data_mcs   = np.load(os.path.join(data_dir, fname_cand))[:ndim, :]
+        candidate_samples= np.arange(data_mcs.shape[1])
+        random.seed(100)
+        # random.shuffle(candidate_samples)
+        candidate_samples= candidate_samples[:n]
+        print(candidate_samples[:5])
+        print(max(candidate_samples))
+        print(len(set(candidate_samples)))
+        x   = data_mcs[:ndim, candidate_samples]
+        poly= uqra.Legendre(ndim, deg)
+        X   = poly.vandermonde(x)
+        print(X[:3,:3])
+        doe = uqra.OptimalDesign(X, optimal_samples=[])
+        SOptimal_samples0 = doe.get_samples('D', poly.num_basis, algorithm='RRQR')
+        doe = uqra.OptimalDesign(X, optimal_samples=[])
+        SOptimal_samples1 = doe.get_samples('S', poly.num_basis, algorithm='TSM')
+        # print(idx)
 
-        data_dir= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform'
-        filename= r'DoE_McsE6R0.npy'
-        mcs_data_set  = np.load(os.path.join(data_dir, filename))
-        x_cand  = mcs_data_set[:ndim,:n_cand].reshape(ndim, -1)
 
-        for i, p in enumerate([5, ]):
-            mean_kappa = []
-            for _ in range(1):
-                np.random.seed(100)
-                orth_poly = uqra.Legendre(d=ndim,deg=p)
-                # orth_poly = uqra.Hermite(d=ndim,deg=p, hem_type='physicists')
-                doe     = uqra.OptimalDesign('S', selected_index=[3284,])
-                X       = orth_poly.vandermonde(x_cand)
-                idx     = doe.get_samples(X, n=math.ceil(1.2 * orth_poly.num_basis), orth_basis=True)
-                print('adding:')
-                print(idx)
-                print('current:')
-                print(doe.selected_index)
-                x_samples = x_cand[:,idx]
-                X_train = orth_poly.vandermonde(x_samples)
-                _, s, _ = np.linalg.svd(X_train)
-                ## condition number, kappa = max(svd)/min(svd)
-                kappa = max(abs(s)) / min(abs(s)) 
-                mean_kappa.append(kappa)
-                print('mean condition number: {}'.format(np.mean(mean_kappa)))
+        np.save(os.path.join(data_dir, 'test_S0.npy'), data_mcs[:,SOptimal_samples0])
+        np.save(os.path.join(data_dir, 'test_S1.npy'), data_mcs[:,SOptimal_samples1])
+
+        # data = Data()
+        # data.ndim = ndim
+        # data.deg  = deg
+        # data.candidate_data = fname_cand
+        # data.candidate_samples = np.array(candidate_samples)
+        # data.OptS_QR = np.array(SOptimal_samples0)
+        # data.OptS_TSM= np.array(SOptimal_samples1)
+        # with open(os.path.join(data_dir, 'test.pkl'), "wb") as output_file:
+            # pickle.dump(data, output_file)
+
+        # x = np.linspace(-1,1,1000)
+        # y = cdf_chebyshev(x)
+        # ndim    = 2
+        # n_cand  = int(1e7)
+
+        # data_dir= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform'
+        # filename= r'DoE_McsE6R0.npy'
+        # mcs_data_set  = np.load(os.path.join(data_dir, filename))
+        # x_cand  = mcs_data_set[:ndim,:n_cand].reshape(ndim, -1)
+
+        # for i, p in enumerate([5, ]):
+            # mean_kappa = []
+            # for _ in range(1):
+                # np.random.seed(100)
+                # orth_poly = uqra.Legendre(d=ndim,deg=p)
+                # # orth_poly = uqra.Hermite(d=ndim,deg=p, hem_type='physicists')
+                # doe     = uqra.OptimalDesign('S', selected_index=[3284,])
+                # X       = orth_poly.vandermonde(x_cand)
+                # idx     = doe.get_samples(X, n=math.ceil(1.2 * orth_poly.num_basis), orth_basis=True)
+                # print('adding:')
+                # print(idx)
+                # print('current:')
+                # print(doe.selected_index)
+                # x_samples = x_cand[:,idx]
+                # X_train = orth_poly.vandermonde(x_samples)
+                # _, s, _ = np.linalg.svd(X_train)
+                # ## condition number, kappa = max(svd)/min(svd)
+                # kappa = max(abs(s)) / min(abs(s)) 
+                # mean_kappa.append(kappa)
+                # print('mean condition number: {}'.format(np.mean(mean_kappa)))
 
 
     def test_gauss_quadrature(self):
