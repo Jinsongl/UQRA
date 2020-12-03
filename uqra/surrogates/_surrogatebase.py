@@ -18,10 +18,9 @@ class SurrogateBase(object):
     """
     Abstract class for Surrogate model 
     """
-    def __init__(self, random_seed = None):
-        self.random_seed = random_seed
-        self.name        = ''  # string, full name 
-        self.nickname    = ''  # string, short name, PCE, aPCE, GPR
+    def __init__(self):
+        self.name        = 'SurrogateBase'  # string, full name 
+        self.nickname    = 'SurrogateBase'  # string, short name, PCE, aPCE, GPR
         self.basis       = []  # list of metamodel basis functions. For PCE, list of polynomials, for GPR, list of kernels
 
     def fit(self,x,y,w=None):
