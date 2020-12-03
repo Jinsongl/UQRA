@@ -34,7 +34,7 @@ class Hermite(PolyBase):
         self.nickname  = 'Heme' if hem_type.startswith('prob') else 'Hem'
         self.dist_name = 'norm'
         self.dist_u    = self._wiener_askey_distribution()
-        self.coef = self.set_coef(coef)
+        self.set_coef(coef)
         self._update_basis()
 
     def gauss_quadrature(self, n, loc=[], scale=[]):
@@ -147,11 +147,12 @@ class Hermite(PolyBase):
         if coef is None:
             coef = None
         elif np.ndim(coef) == 0:
-            coef = np.ones(len(coef)) * coef + 0.0
+            coef = np.ones(self.num_basis) * coef + 0.0
         else:
             if len(coef) != self.num_basis:
                 raise TypeError('Expected coefficients has length {}, but {} is given'.format(self.num_basis, len(coef)))
-        return coef 
+        self.coef = coef
+
 
     def _wiener_askey_distribution(self):
         """
