@@ -25,7 +25,7 @@ class PolynomialChaosExpansion(SurrogateBase):
     """
 
     def __init__(self, orth_poly=None, random_seed=None):
-        super().__init__(random_seed=random_seed)
+        super().__init__()
         self.name           = 'Polynomial Chaos Expansion'
         self.nickname       = 'PCE'
         self.orth_poly      = orth_poly  ### UQRA.polynomial object
@@ -76,18 +76,62 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.tag          = '{:d}{:s}{:d}'.format(self.ndim, self.orth_poly.nickname,self.deg)
     
     def fit(self, method, x, y, w=None, **kwargs):
-        if method.lower().startswith('quad'):
-            self.fit_quadrature(x,w,y)
-        elif method.lower() == 'ols':
-            self.fit_ols(x,y,w=w, **kwargs)
-        elif method.lower() == 'olslars':
-            self.fit_olslars(x,y,w=w,**kwargs)
-        elif method.lower() == 'lassolars':
-            self.fit_lassolars(x,y,w=w,**kwargs)
-        else:
-            raise NotImplementedError
+        """
+        fit PCE model with data set(x,y) with specified method
+        """
 
-    def fit_quadrature(self, x, w, y):
+        self.fit_method = str(method).upper()
+
+        x = np.array(x, copy=False, ndmin=2)
+        y = np.array(y, copy=False, ndmin=2)
+        X = self.orth_poly.vandermonde(x)
+        y = np.squeeze(y)
+
+        if method.lower().startswith('quad'):
+            self._fit_quadrature(x,w,y)
+
+        elif method.lower() == 'ols':
+            fit_intercept = kwargs.get('fit_intercept'  , True )
+            normalize     = kwargs.get('normalize'      , False)
+            n_jobs        = kwargs.get('n_jobs'         , None ) 
+            active_basis  = kwargs.get('active_basis'   , None )
+            n_splits      = min(kwargs.get('n_splits'   , x.shape[1]), x.shape[1])  ## if not given, default is Leave-one-out
+            if active_basis is None or len(active_basis) == 0:
+                self.active_basis = self.orth_poly.basis_degree
+                self.active_index = np.arange(self.orth_poly.num_basis).tolist()
+            else:
+                self.active_basis = active_basis
+                self.active_index = [i for i, ibasis_degree in enumerate(self.orth_poly.basis_degree) if ibasis_degree in active_basis]
+            if len(self.active_index) == 0:
+                raise ValueError('UQRA.PCE.fit(OLS): active basis could not be empty ')
+            X = X[:, self.active_index]
+            ### build OLS model
+            ols_reg = linear_model.LinearRegression(fit_intercept=fit_intercept, normalize=normalize, n_jobs=n_jobs)
+            kfolder = model_selection.KFold(n_splits=n_splits,shuffle=True)
+            ## calculate k-folder cross-validation error
+            neg_mse = model_selection.cross_val_score(ols_reg, X, y, scoring='neg_mean_squared_error', cv=kfolder, n_jobs=n_jobs)
+            self.model = ols_reg.fit(X, y, sample_weight=w)
+            self.cv_error = -np.mean(neg_mse)
+            self.coef    = copy.deepcopy(ols_reg.coef_)
+            self.coef[0] = ols_reg.intercept_
+            self.score   = ols_reg.score(X,y,w)
+
+        elif method.lower() == 'olslars':
+            self._fit_olslars(X,y,w=w,**kwargs)
+
+        elif method.lower().startswith('lasso'):
+            fit_intercept = kwargs.get('fit_intercept'  , True )
+            normalize     = kwargs.get('normalize'      , False)
+            n_jobs        = kwargs.get('n_jobs'         , None ) 
+            max_iter      = kwargs.get('max_iter'       , 500  ) 
+            n_splits      = min(kwargs.get('n_splits', x.shape[1]), x.shape[1])  ## if not given, default is Leave-one-out
+
+            self._fit_lassolars(X,y,w=w, fit_intercept=fit_intercept, normalize=normalize, n_jobs=n_jobs, n_splits=n_splits)
+
+        else:
+            raise ValueError(' {:s} not defined for UQRA.PCE.fit method'.format(method)) 
+
+    def _fit_quadrature(self, x, w, y):
         """
         fit with quadrature points
         """
@@ -110,106 +154,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.active_index = range(self.num_basis)
         self.active_basis = self.orth_poly.basis_degree
 
-    def fit_ols(self,x,y,w=None,  **kwargs):
-        """
-        Fit PCE meta model with (weighted) Ordinary Least Error  
-
-        Arguments:
-            x: array-like of shape (ndim, nsamples) 
-                sample input values in zeta (selected Wiener-Askey distribution) space
-            y: array-like of shape (nsamples [,n_output_dims/nQoI])
-                QoI observations
-
-            w: array-like weights, optional
-            n_splits: number of folders used in cross validation, default nsamples, i.e.: leave one out 
-        Returns:
-
-        """
-        self.fit_method = 'OLS' 
-        x = np.array(x, copy=False, ndmin=2)
-        y = np.array(y, copy=False, ndmin=2)
-        X = self.orth_poly.vandermonde(x)
-        y = np.squeeze(y)
-        active_basis = kwargs.get('active_basis', None)
-        if active_basis is None or len(active_basis) == 0:
-            active_index = np.arange(self.orth_poly.num_basis).tolist()
-        else:
-            active_index = [i for i in range(self.orth_poly.num_basis) if self.orth_poly.basis_degree[i] in active_basis]
-        assert len(active_index) != 0
-        X = X[:, active_index]
-
-        n_splits= kwargs.get('n_splits', X.shape[0])
-        n_splits= min(n_splits, X.shape[0])
-        kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
-        cpu_count = kwargs.get('cpu_count', mp.cpu_count())
-
-        ## calculate k-folder cross-validation error
-        model   = linear_model.LinearRegression()
-        neg_mse = model_selection.cross_val_score(model, X, y, scoring = 'neg_mean_squared_error', cv=kf, n_jobs=cpu_count)
-        ## fit the model with all data 
-        ## X has a column with ones, and want return coefficients to incldue that column
-        model.fit(X, y, sample_weight=w)
-        self.cv_error= -np.mean(neg_mse)
-        self.model   = model 
-        self.coef    = copy.deepcopy(model.coef_)
-        self.coef[0] = model.intercept_
-        if active_basis is None:
-            self.active_index = range(self.num_basis)
-            self.active_basis = self.orth_poly.basis_degree
-        else:
-            self.active_index = active_index
-            self.active_basis = active_basis
-        self.score   = model.score(X,y,w)
-
-    def fit_olslars(self,x,y,w=None, **kwargs):
-        """
-        (weighted) Ordinary Least Error on selected orth_poly (LARs)
-        Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
-        Arguments:
-            x: array-like of shape (ndim, nsamples) 
-                sample input values in zeta (selected Wiener-Askey distribution) space
-            y: array-like of shape (nsamples [,n_output_dims/nQoI])
-                QoI observations
-
-            w: array-like weights, optional
-            n_splits: number of folders used in cross validation, default nsamples, i.e.: leave one out 
-        Returns:
-
-        """
-        self.fit_method = 'OLSLARS' 
-        x = np.array(x, copy=False, ndmin=2)
-        y = np.array(y, copy=False, ndmin=2)
-        X = self.orth_poly.vandermonde(x)
-        y = np.squeeze(y)
-        ## parameters for LassoLars 
-        n_splits= kwargs.get('n_splits', X.shape[0])
-        n_splits= min(n_splits, X.shape[0])
-        kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
-        cpu_count = kwargs.get('cpu_count', mp.cpu_count())
-
-        ### 1. Perform variable selection first
-        model_lars       = linear_model.Lars().fit(X,y)
-        ### 2. Perform linear regression on every set of first i basis 
-        n_active_basis = min(len(model_lars.active_), X.shape[0]-1)
-        for i in range(n_active_basis):
-            active_indices = model_lars.active_[:i+1]
-            # active_indices = np.unique(np.array([0, *active_indices])) ## always has column of ones
-            X_             = X[:, active_indices]
-            ### Calculate loo error for each basis set
-            model          = linear_model.LinearRegression()
-            neg_mse        = model_selection.cross_val_score(model, X_,y,scoring = 'neg_mean_squared_error', cv=kf, n_jobs=cpu_count)
-            error_loo      = -np.mean(neg_mse)
-            ### Fitting with all samples
-            model.fit(X_,y, w=w)
-
-            if error_loo < self.cv_error:
-                self.model    = model 
-                self.cv_error = error_loo
-                self.coef     = model.coef_
-                self.active_index = active_indices
-                self.active_basis = [self.orth_poly.basis_degree[i] for i in self.active_index]
-
-    def fit_lassolars(self,x,y,w=None, **kwargs):
+    def _fit_lassolars(self,x,y,w=None, **kwargs):
         """
         (weighted) Ordinary Least Error on selected basis (LARs)
         Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
@@ -225,17 +170,7 @@ class PolynomialChaosExpansion(SurrogateBase):
 
         """
         ## parameters for LassoLars 
-        self.fit_method = 'LASSOLARS' 
-        x = np.array(x, copy=False, ndmin=2)
-        y = np.squeeze(np.array(y, copy=False, ndmin=1))
-        n_splits= kwargs.get('n_splits', x.shape[1])
-        n_splits= min(n_splits, x.shape[1])
-        max_iter= kwargs.get('max_iter', 500)
-        epsilon = kwargs.get('epsilon', 1e-6)
-        cpu_count = kwargs.get('cpu_count', mp.cpu_count())
-        kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
-
-        X = self.orth_poly.vandermonde(x)
+        kf = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
         if y.ndim == 1:
             if w is not None:
@@ -297,6 +232,53 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.active_basis=active_basis_ls
             self.sparsity   = np.array(sparsity_ls)
             self.score      = np.array(score_ls)
+
+    def _fit_olslars(self,x,y,w=None, **kwargs):
+        """
+        (weighted) Ordinary Least Error on selected orth_poly (LARs)
+        Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
+        Arguments:
+            x: array-like of shape (ndim, nsamples) 
+                sample input values in zeta (selected Wiener-Askey distribution) space
+            y: array-like of shape (nsamples [,n_output_dims/nQoI])
+                QoI observations
+
+            w: array-like weights, optional
+            n_splits: number of folders used in cross validation, default nsamples, i.e.: leave one out 
+        Returns:
+
+        """
+        x = np.array(x, copy=False, ndmin=2)
+        y = np.array(y, copy=False, ndmin=2)
+        X = self.orth_poly.vandermonde(x)
+        y = np.squeeze(y)
+        ## parameters for LassoLars 
+        n_splits= kwargs.get('n_splits', X.shape[0])
+        n_splits= min(n_splits, X.shape[0])
+        kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
+        cpu_count = kwargs.get('cpu_count', mp.cpu_count())
+
+        ### 1. Perform variable selection first
+        model_lars       = linear_model.Lars().fit(X,y)
+        ### 2. Perform linear regression on every set of first i basis 
+        n_active_basis = min(len(model_lars.active_), X.shape[0]-1)
+        for i in range(n_active_basis):
+            active_indices = model_lars.active_[:i+1]
+            # active_indices = np.unique(np.array([0, *active_indices])) ## always has column of ones
+            X_             = X[:, active_indices]
+            ### Calculate loo error for each basis set
+            model          = linear_model.LinearRegression()
+            neg_mse        = model_selection.cross_val_score(model, X_,y,scoring = 'neg_mean_squared_error', cv=kf, n_jobs=cpu_count)
+            error_loo      = -np.mean(neg_mse)
+            ### Fitting with all samples
+            model.fit(X_,y, w=w)
+
+            if error_loo < self.cv_error:
+                self.model    = model 
+                self.cv_error = error_loo
+                self.coef     = model.coef_
+                self.active_index = active_indices
+                self.active_basis = [self.orth_poly.basis_degree[i] for i in self.active_index]
 
     def mean(self):
         return self.coef[0]
