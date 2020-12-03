@@ -32,7 +32,7 @@ class Legendre(PolyBase):
         self.nickname   = 'Leg'
         self.dist_name  = 'Uniform'
         self.dist_u     = None if self.ndim is None else [stats.uniform(-1,2), ] * self.ndim 
-        self.coef = self.set_coef(coef)
+        self.set_coef(coef)
         self._update_basis()
 
     def gauss_quadrature(self, n, loc=[], scale=[]):
@@ -121,12 +121,11 @@ class Legendre(PolyBase):
         if coef is None:
             coef = None
         elif np.ndim(coef) == 0:
-            coef = np.ones(len(coef)) * coef + 0.0
+            coef = np.ones(self.num_basis) * coef + 0.0
         else:
             if len(coef) != self.num_basis:
                 raise TypeError('Expected coefficients has length {}, but {} is given'.format(self.num_basis, len(coef)))
         self.coef = coef
-        return coef 
 
     def _update_basis(self):
         """
