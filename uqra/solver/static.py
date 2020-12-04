@@ -148,30 +148,19 @@ class xSinx(SolverBase):
             x = np.vstack(x)
         return x
 
-class SparsePoly(SolverBase):
+class OrthPoly(SolverBase):
     """
     Sparse Polynomial
     """
-    def __init__(self, orth_poly, coef=1, sparsity=None, seed=None):
-        self.name      = 'sparse polynomial'
-        self.nickname  = 'SparsePoly_{:d}{:s}{:d}'.format(orth_poly.ndim, orth_poly.nickname, orth_poly.deg)
+    def __init__(self, orth_poly, coef=1, seed=None):
+        self.name      = 'Orthogonal polynomial'
         self.orth_poly = orth_poly
         self.ndim      = orth_poly.ndim
         self.deg       = orth_poly.deg
         self.num_basis = orth_poly.num_basis
         self.dist_name = orth_poly.dist_name
         self.distributions = orth_poly.dist_u
-
-        # if sparsity is None:
-            # if np.ndim(coef) == 0:
-                # coef = np.ones(self.num_basis) * coef
-            # assert coef.size == self.num_basis
-        # else:
-            # if np.ndim(coef) == 0:
-                # coef = np.ones(sparsity) * coef
-            # coef = self._assign_coef(coef, seed=seed)
-            # assert coef.size == self.num_basis
-
+        self.nickname  = 'OrthPoly_{:d}{:s}{:d}'.format(orth_poly.ndim, orth_poly.nickname, orth_poly.deg)
         self.orth_poly.set_coef(coef)
         self.coef = coef 
 
@@ -181,7 +170,7 @@ class SparsePoly(SolverBase):
     def run(self, x, **kwargs):
         y = self.orth_poly(x)
         if np.isnan(y).any():
-            raise ValueError('nan in SparsePoly.run() result')
+            raise ValueError('nan in OrthPoly.run() result')
         return y
 
     def _assign_coef(self, coef, seed=None):
