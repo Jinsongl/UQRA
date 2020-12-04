@@ -113,7 +113,9 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.model = ols_reg.fit(X, y, sample_weight=w)
             self.cv_error = -np.mean(neg_mse)
             self.coef    = copy.deepcopy(ols_reg.coef_)
-            self.coef[0] = ols_reg.intercept_
+            # print('\n self.coef', ols_reg.coef_)
+            # print('\n self.intercept_', ols_reg.intercept_)
+            self.coef[0] = self.coef[0] + ols_reg.intercept_
             self.score   = ols_reg.score(X,y,w)
 
         elif method.lower() == 'olslars':
