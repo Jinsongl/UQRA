@@ -9,7 +9,7 @@
 """
 
 """
-import os, sys, math
+import os, sys, math, platform
 import numpy as np
 import uqra
 from scipy import sparse
@@ -108,7 +108,6 @@ class Modeling(object):
 
     def info(self):
         pass
-
 
     def _common_vectors(self, A, B):
         """
@@ -467,25 +466,126 @@ class Parameters(object):
             sys_def_params = np.array([0,0,1,1,1]).reshape(1,5) # x0,v0, zeta, omega_n, mu 
         normalize: 
     """
+    def __init__(self):
+        pass
 
-    def __init__(self, solver, doe_method=['MCS', None], fit_method='OLS'):
-        sys.stdout      = Logger()
-        self.solver     = solver
-        self.ndim       = self.solver.ndim
-        doe_method = [doe_method,] if not isinstance(doe_method, (list, tuple)) else doe_method
-        if len(doe_method) > 2 or len(doe_method) < 1:
-            raise ValueError('Initialize UQRA.Parameters error: given doe_method has {:d} elements'.format(len(doe_method)))
-        elif len(doe_method) == 1:
-            self.doe_candidate  = str(doe_method[0]).lower()
-            self.doe_optimality = None 
+    # def __init__(self, solver, doe_method=['MCS', None], fit_method='OLS'):
+        # sys.stdout      = Logger()
+        # self.solver     = solver
+        # self.ndim       = self.solver.ndim
+        # doe_method = [doe_method,] if not isinstance(doe_method, (list, tuple)) else doe_method
+        # if len(doe_method) > 2 or len(doe_method) < 1:
+            # raise ValueError('Initialize UQRA.Parameters error: given doe_method has {:d} elements'.format(len(doe_method)))
+        # elif len(doe_method) == 1:
+            # self.doe_candidate  = str(doe_method[0]).lower()
+            # self.doe_optimality = None 
+        # else:
+            # self.doe_candidate  = str(doe_method[0]).lower()
+            # self.doe_optimality = doe_method[1]
+
+        # self.fit_method = str(fit_method).lower()
+        # self.tag        = self._get_tag()
+        # self.update_dir()
+        # self.data_dir_precomputed_optimality = os.path.join(self.data_dir_sample, 'OED')
+
+    def update_filenames(self, s, fname_test=None):
+        """
+        Create/update filenames related to data in/output
+        """
+
+        ndim, deg   = self.ndim, self.deg
+        poly_name   = self.poly_name.capitalize()
+        doe_sampling= self.doe_sampling.capitalize()
+        _, dist_name= self._set_distributions()
+        data_dir    = self.update_data_dir()
+
+        if doe_sampling.lower() == 'lhs':
+            self.fname_cand   = None
+            self.fname_design = lambda n: os.path.join('LHS', r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim,dist_name))
+            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, dist_name)
+            if fname_test:
+                self.fname_test = lambda solver_name : fname_test
+            else:
+                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
+
+        elif doe_sampling[:3].lower() == 'mcs':
+            self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, dist_name)
+            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:d}.npy'.format(doe_sampling, s, ndim, poly_name[:3], deg)
+            self.fname_test_in= r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, (s+1)%10, dist_name)
+            if fname_test:
+                self.fname_test = lambda solver_name : fname_test
+            else:
+                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
+
+        elif doe_sampling[:3].lower() == 'cls':
+            self.fname_cand   = r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
+            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:d}.npy'.format(doe_sampling, s, ndim, poly_name[:3], deg)
+            self.fname_test_in= r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, (s+1)%10, dist_name)
+            if fname_test:
+                self.fname_test = lambda solver_name : fname_test
+            else:
+                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
+
         else:
-            self.doe_candidate  = str(doe_method[0]).lower()
-            self.doe_optimality = doe_method[1]
+            raise ValueError(' Experimental Design {:s} not defined'.format(doe_sampling))
 
-        self.fit_method = str(fit_method).lower()
-        self.tag        = self._get_tag()
-        self.update_dir()
-        self.data_dir_precomputed_optimality = os.path.join(self.data_dir_sample, 'OED')
+
+    def update_data_dir(self, data_dir=None):
+        if data_dir:
+            self.data_dir = data_dir
+        else:
+            ## Define data directory 
+            if platform.system() == 'Darwin':       ## Mac
+                self.data_dir = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign'
+            elif platform.system() == 'Windows':    ## Windows
+                self.data_dir = r'G:\My Drive\MUSE_UQ_DATA\ExperimentalDesign' 
+            elif platform.system() == 'Linux':      ## Ubuntu
+                self.data_dir = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign'
+            else:
+                raise ValueError('platform.system() not defined')
+        return self.data_dir
+
+    def doe_nickname(self,doe_optimality):
+        doe_sampling = self.doe_sampling
+        if str(doe_optimality).lower() == 'none':
+            self.doe_name = str(doe_sampling).capitalize()
+        elif doe_optimality.isalpha() and len(doe_optimality) == 1:
+            self.doe_name = str(doe_sampling).capitalize()+str(doe_optimality).upper()
+        else:
+            raise ValueError
+        return self.doe_name
+
+    def _set_distributions(self):
+        ndim         = self.ndim
+        doe_sampling = self.doe_sampling.lower()
+        poly_name    = self.poly_name.capitalize()
+
+        if doe_sampling == 'mcs' and poly_name == 'Leg':
+            self.dist = [stats.uniform(-1,2), ] * ndim
+            self.dist_name = 'uniform'
+
+        elif doe_sampling == 'mcs' and poly_name == 'Heme':
+            self.dist = [stats.norm(0,1), ] * ndim
+            self.dist_name = 'norm'
+
+        elif doe_sampling == 'cls1' and poly_name == 'Leg':
+            self.dist = [stats.uniform(-1,2), ] * ndim
+            self.dist_name = 'uniform'
+
+        elif doe_sampling == 'cls4' and poly_name == 'Hem':
+            self.dist = [stats.norm(0,0.5), ] * ndim
+            self.dist_name = 'norm'
+
+        elif doe_sampling == 'lhs'and poly_name == 'Leg':
+            self.dist = [stats.uniform(-1,2), ] * ndim
+            self.dist_name = 'uniform'
+
+        elif doe_sampling == 'lhs'and poly_name == 'Heme':
+            self.dist = [stats.norm(0,1), ] * ndim
+            self.dist_name = 'norm'
+        else:
+            raise ValueError(' Sampling method {:s} and polynomial name {:s} are not defined'.format(doe_sampling, poly_name))
+        return self.dist, self.dist_name
 
     def info(self):
         print(r'------------------------------------------------------------')
