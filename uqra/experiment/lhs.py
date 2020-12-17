@@ -24,17 +24,16 @@ class LatinHyperCube(ExperimentBase):
 
     def __init__(self, distributions, **kwargs):
         """
-        ndim: dimension of random variables
+        distributions: list of scipy distributions object samples are drawn 
 
         Optional: 
-            n: number of samples to generate at each dimension, default: ndim
-            criterion: a string that tells lhs how to sample the points
-               - default: “maximin” or “m”: maximize the minimum distance between points, but place the point in a randomized location within its interval
-               -  None, simply randomizes the points within the intervals
-               - 'center' or “c”: center the points within the sampling intervals
-               - 
-               - “centermaximin” or “cm”: same as “maximin”, but centered within the intervals
-               - “correlation” or “corr”: minimize the maximum correlation coefficient
+        criterion: a string that tells lhs how to sample the points
+           - default: “maximin” or “m”: maximize the minimum distance between points, but place the point in a randomized location within its interval
+           -  None, simply randomizes the points within the intervals
+           - 'center' or “c”: center the points within the sampling intervals
+           - 
+           - “centermaximin” or “cm”: same as “maximin”, but centered within the intervals
+           - “correlation” or “corr”: minimize the maximum correlation coefficient
         """
         ### return a list of distributions and set ndim
         self.ndim, self.distributions = super()._set_distributions(distributions)
