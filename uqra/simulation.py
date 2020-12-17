@@ -30,9 +30,8 @@ class Modeling(object):
         assert solver.ndim == model.ndim
         self.ndim = solver.ndim
         self.u_distname = params.u_distname
-        self.x_distname = params.x_dist.name
+        self.x_distname = solver.dist_name
         assert self.u_distname == model.orth_poly.dist_name.lower()
-
 
     def get_train_data(self, size, u_cand, u_train=None, active_basis=None, orth_poly=None):
         """
@@ -108,6 +107,23 @@ class Modeling(object):
 
     def info(self):
         pass
+
+    def christoffel(self, u, basis, active=None):
+        """
+        return normalized Christoffel function P/sum(phi(x)**2)
+
+        arguments:
+            u: ndarray of shape (ndim, nsamples), random input variable
+            basis: uqra.polynomial object, Space basis function
+            active: list of active indices of basis, (columns of vander(u))
+        """
+        u = np.array(u, ndmin=2)
+        U = basis.vandermonde(u) ## default normalized vandermonde
+        if active is not None:
+            U = U[:, active]
+        Kp= np.sum(U*U, axis=1)
+        w = U.shape[1]/Kp
+        return w
 
     def _common_vectors(self, A, B):
         """
@@ -496,22 +512,22 @@ class Parameters(object):
         ndim, deg   = self.ndim, self.deg
         poly_name   = self.poly_name.capitalize()
         doe_sampling= self.doe_sampling.capitalize()
-        _, dist_name= self._set_distributions()
+        _, u_distname= self._set_distributions()
         data_dir    = self.update_data_dir()
 
         if doe_sampling.lower() == 'lhs':
             self.fname_cand   = None
-            self.fname_design = lambda n: os.path.join('LHS', r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim,dist_name))
-            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, dist_name)
+            self.fname_design = lambda n: os.path.join('LHS', r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim,u_distname))
+            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
             if fname_test:
                 self.fname_test = lambda solver_name : fname_test
             else:
                 self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
 
         elif doe_sampling[:3].lower() == 'mcs':
-            self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, dist_name)
+            self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, u_distname)
             self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:d}.npy'.format(doe_sampling, s, ndim, poly_name[:3], deg)
-            self.fname_test_in= r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, (s+1)%10, dist_name)
+            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
             if fname_test:
                 self.fname_test = lambda solver_name : fname_test
             else:
@@ -520,7 +536,7 @@ class Parameters(object):
         elif doe_sampling[:3].lower() == 'cls':
             self.fname_cand   = r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
             self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:d}.npy'.format(doe_sampling, s, ndim, poly_name[:3], deg)
-            self.fname_test_in= r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, (s+1)%10, dist_name)
+            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
             if fname_test:
                 self.fname_test = lambda solver_name : fname_test
             else:
@@ -556,36 +572,39 @@ class Parameters(object):
         return self.doe_name
 
     def _set_distributions(self):
+        """
+        set underlying Askey-Wiener distributions
+        """
         ndim         = self.ndim
         doe_sampling = self.doe_sampling.lower()
         poly_name    = self.poly_name.capitalize()
 
         if doe_sampling == 'mcs' and poly_name == 'Leg':
-            self.dist = [stats.uniform(-1,2), ] * ndim
-            self.dist_name = 'uniform'
+            self.u_dist = [stats.uniform(-1,2), ] * ndim
+            self.u_distname = 'uniform'
 
         elif doe_sampling == 'mcs' and poly_name == 'Heme':
-            self.dist = [stats.norm(0,1), ] * ndim
-            self.dist_name = 'norm'
+            self.u_dist = [stats.norm(0,1), ] * ndim
+            self.u_distname = 'norm'
 
         elif doe_sampling == 'cls1' and poly_name == 'Leg':
-            self.dist = [stats.uniform(-1,2), ] * ndim
-            self.dist_name = 'uniform'
+            self.u_dist = [stats.uniform(-1,2), ] * ndim
+            self.u_distname = 'uniform'
 
         elif doe_sampling == 'cls4' and poly_name == 'Hem':
-            self.dist = [stats.norm(0,0.5), ] * ndim
-            self.dist_name = 'norm'
+            self.u_dist = [stats.norm(0,0.5), ] * ndim
+            self.u_distname = 'norm'
 
         elif doe_sampling == 'lhs'and poly_name == 'Leg':
-            self.dist = [stats.uniform(-1,2), ] * ndim
-            self.dist_name = 'uniform'
+            self.u_dist = [stats.uniform(-1,2), ] * ndim
+            self.u_distname = 'uniform'
 
         elif doe_sampling == 'lhs'and poly_name == 'Heme':
-            self.dist = [stats.norm(0,1), ] * ndim
-            self.dist_name = 'norm'
+            self.u_dist = [stats.norm(0,1), ] * ndim
+            self.u_distname = 'norm'
         else:
             raise ValueError(' Sampling method {:s} and polynomial name {:s} are not defined'.format(doe_sampling, poly_name))
-        return self.dist, self.dist_name
+        return self.u_dist, self.u_distname
 
     def info(self):
         print(r'------------------------------------------------------------')
@@ -1275,13 +1294,13 @@ class Parameters(object):
 
         # except FileNotFoundError:
             # ### 1. Get MCS samples for X
-            # if pce_model.basis.dist_name.lower() == 'uniform':
+            # if pce_model.basis.u_distname.lower() == 'uniform':
                 # data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Uniform')
                 # print('    - Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
                 # data_set = np.load(os.path.join(data_dir_sample,filename))
                 # z_test = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
                 # x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * ndim)
-            # elif pce_model.basis.dist_name.lower().startswith('norm'):
+            # elif pce_model.basis.u_distname.lower().startswith('norm'):
                 # data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Norm')
                 # print('    - Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
                 # data_set= np.load(os.path.join(data_dir_sample,filename))
