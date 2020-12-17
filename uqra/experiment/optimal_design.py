@@ -247,16 +247,16 @@ class OptimalDesign(ExperimentBase):
             X_sltd  = self.X[optimal_samples,:]
             ## calculate (log)S values for each row in X_cand together with X_sltd
             if optimality == 'S':
-                optimality_value = self._greedy_update_S_Optimality_truncate(X_sltd, X_cand)
+                optimality_values = self._greedy_update_S_Optimality_truncate(X_sltd, X_cand)
             elif optimality == 'D':
-                optimality_value = self._greedy_update_D_Optimality_truncate(X_sltd, X_cand)
+                optimality_values = self._greedy_update_D_Optimality_truncate(X_sltd, X_cand)
             else:
                 print('   > UQRA {:s}-Optimal Design for TSM{:s} NOT implemented'.format(optimality))
                 raise NotImplementedError
 
-            if len(optimality_value) != len(candidate_samples):
-                raise ValueError('Expecting {:d} S values, but {:d} given'.format(len(candidate_samples), len(optimality_value)))
-            i = candidate_samples[np.argmax(optimality_value)] ## return the indices with largest s-value in original matrix Q
+            if len(optimality_values) != len(candidate_samples):
+                raise ValueError('Expecting {:d} S values, but {:d} given'.format(len(candidate_samples), len(optimality_values)))
+            i = candidate_samples[np.argmax(optimality_values)] ## return the indices with largest s-value in original matrix Q
             ## check if this index is already selected
             if i in optimal_samples:
                 print('Row {:d} already selected'.format(i))
@@ -779,7 +779,7 @@ class OptimalDesign(ExperimentBase):
         """
         A = set(A)
         B = set(B)
-        U = set(np.arange(self.X.shape[0])) if U is None else U
+        U = set(np.arange(self.X.shape[0])) if U is None else set(U)
         if A.union(B) != U:
             raise ValueError(' Union of sets A and B are not the universe U')
         if len(A.intersection(B)) != 0:
