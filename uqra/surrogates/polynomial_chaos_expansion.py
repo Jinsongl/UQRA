@@ -458,4 +458,20 @@ class PolynomialChaosExpansion(SurrogateBase):
         else:
             raise NotImplementedError
 
+    def christoffel_weight(self, u, active=None):
+        """
+        return normalized Christoffel function P/sum(phi(x)**2)
+
+        arguments:
+            u: ndarray of shape (ndim, nsamples), random input variable
+            basis: uqra.polynomial object, Space basis function
+            active: list of active indices of basis, (columns of vander(u))
+        """
+        u = np.array(u, ndmin=2)
+        U = self.orth_poly.vandermonde(u) ## default normalized vandermonde
+        if active is not None:
+            U = U[:, active]
+        Kp= np.sum(U*U, axis=1)
+        w = U.shape[1]/Kp
+        return w
 
