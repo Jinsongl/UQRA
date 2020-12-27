@@ -60,40 +60,43 @@ class OptimalDesign(ExperimentBase):
         n          = helpers.check_int(n)
         optimality = str(optimality).upper()
         # self.filename = '_'.join(['DoE', optimality])
-
+        print('   > UQRA {:s}-Optimality Design: n={:d} ...'.format(optimality, n))
 
         if isinstance(initialization, str):
             ## selected optimal samples at this step must be empty
             assert len(self.optimal_samples) == 0
             n_initialization = min(self.X.shape[0], self.X.shape[1], n)
             if initialization.upper() in ['QR', 'RRQR', 'AFP', 'FEKETE']:
-                print('   > UQRA {:s}-Optimal Design Initialization ({:s}) ...'.format(optimality, initialization))
                 optimal_samples = self._initial_samples_rrqr(n_initialization)
+                print('    -> 1: Initialization ({:s}), n={:d} ...'.format(initialization, len(optimal_samples)))
 
             elif initialization.upper() in ['TSM', 'TRUNCATED', 'SQUARE']:
-                print('   > UQRA {:s}-Optimal Design Initialization ({:s}) ...'.format(optimality, initialization))
                 optimal_samples = self._initial_samples_greedy_tsm(n_initialization, optimality)
+                print('    -> 1: Initialization ({:s}), n={:d} ...'.format(initialization, len(optimal_samples)))
 
             else:
-                print('   > UQRA {:s}-Optimal Design Initialization {:s} NOT implemented'.format(initialization))
+                print('    -> UQRA {:s}-Optimality Design: Initialization {:s} NOT implemented'.format(initialization))
                 raise NotImplementedError
+            n = n - len(optimal_samples)
 
         elif isinstance(initialization, (list, tuple, np.ndarray, np.generic)):
-            print('   > UQRA {:s}-Optimal Design Initialization with pre-specified samples are NOT implemented yet')
+            optimal_samples = list(np.array(initialization).flatten())
+            print('    -> 1: Initialization with samples: n={:d} ...'.format(len(optimal_samples)))
+        else:
+            print('   > {} not implemented for UQRA.OptiamlDesign'.format(initialization))
             raise NotImplementedError
 
         self.optimal_samples   = optimal_samples
         self.candidate_samples = self._list_diff(self.candidate_samples, optimal_samples)
         assert self._check_complement(self.optimal_samples, self.candidate_samples)
 
-        if len(optimal_samples) < n:
+        if n>0:
+            print('    -> 2: Continue Optimality Design, n={:d} ...'.format(n))
             if optimality == 'D':
-                print('   > The rest D-Optimality Design with {:s} algorithm, {:d}->{:d}'.format(algorithm,len(optimal_samples),n))
-                optimal_samples = self.get_D_Optimality_samples(n-len(optimal_samples), algorithm=algorithm)
+                optimal_samples = self.get_D_Optimality_samples(n, algorithm=algorithm)
 
             if optimality.upper() == 'S':
-                print('   > The rest S-Optimality Design with {:s} algorithm, {:d}->{:d}'.format(algorithm,len(optimal_samples), n))
-                optimal_samples = self.get_S_Optimality_samples(n-len(optimal_samples), algorithm=algorithm)
+                optimal_samples = self.get_S_Optimality_samples(n, algorithm=algorithm)
         else:
             optimal_samples = []
 
@@ -127,7 +130,7 @@ class OptimalDesign(ExperimentBase):
 
             candidate_samples = copy.deepcopy(self.candidate_samples)
             optimal_samples   = copy.deepcopy(self.optimal_samples)
-            for _ in tqdm(range(n), ascii=True, desc="   - [Greedy D]",ncols=80):
+            for _ in tqdm(range(n), ascii=True, desc="          [Greedy D]",ncols=80):
                 ## find the next optimal index from Q which is not currently selected
                 candidate_samples = self._list_diff(candidate_samples, optimal_samples)
                 assert self._check_complement(optimal_samples, candidate_samples)
@@ -162,7 +165,7 @@ class OptimalDesign(ExperimentBase):
 
             candidate_samples = copy.deepcopy(self.candidate_samples)
             optimal_samples   = copy.deepcopy(self.optimal_samples)
-            for _ in tqdm(range(n), ascii=True, desc="   - [Greedy S]",ncols=80):
+            for _ in tqdm(range(n), ascii=True, desc="          [Greedy S]",ncols=80):
                 ## find the next optimal index from Q which is not currently selected
                 candidate_samples = self._list_diff(candidate_samples, optimal_samples)
                 assert self._check_complement(optimal_samples, candidate_samples)
@@ -196,7 +199,7 @@ class OptimalDesign(ExperimentBase):
         X = self.X[self.candidate_samples, :]
         if n > min(X.shape):
             raise ValueError('Can only return at most rank(X) samples')
-        print('   - [Initialization (RRQR)]'.ljust(80, '#'))
+        # print('   - [Initialization (RRQR)]'.ljust(80, '#'))
         _,_,Pivot = sp.linalg.qr(X.T, pivoting=True)
         optimal_samples = [self.candidate_samples[i] for i in Pivot[:n]]
 
@@ -772,7 +775,6 @@ class OptimalDesign(ExperimentBase):
         optimality_values = d1 - d2
         return np.squeeze(optimality_values)
 
-
     def _check_complement(self, A, B, U=None):
         """
         check if A.union(B) = U and A.intersection(B) = 0
@@ -815,6 +817,7 @@ class OptimalDesign(ExperimentBase):
         """
         ls = list(set(ls1).intersection(set(ls2)))
         return ls
+
     # def _cal_svalue_over(self, X0, X1):
         # """
         # Calculate the S value (without determinant) of candidate vectors w.r.t selected subsets
