@@ -355,7 +355,7 @@ class FourBranchSystem(SolverBase):
                   (x2 - x1) + 7/sqrt(2) 
                   }
 
-    This toy case allows us to test the ability of the rare event estimation methods to accurately estimate the probability in the case of disconnected failure region 􏱎f .
+    This toy case allows us to test the ability of the rare event estimation methods to accurately estimate the probability in the case of disconnected failure region.
 
     Benchmarks:
     prob(y > 10) = 2.22E-3
