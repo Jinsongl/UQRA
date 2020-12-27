@@ -13,25 +13,119 @@ import os, sys, math, platform
 import numpy as np
 import uqra
 from scipy import sparse
-from datetime import datetime
 from .utilities.classes import Logger
 from itertools import compress
 import scipy.stats as stats
 from tqdm import tqdm
 
-class Modeling(object):
+class Data(object):
+    def __init__(self):
+        pass
+
+class Parameters(object):
+    def __init__(self):
+        self.update_output_dir()
+
+    def update_filenames(self, s):
+        """
+        Create/update filenames related to data in/output
+        """
+        ndim, deg   = self.ndim, self.deg
+        poly_name   = self.poly_name
+        doe_sampling= self.doe_sampling.capitalize()
+        if poly_name.lower() in ['heme', 'hem']:
+            u_distname  = 'norm' 
+        elif poly_name.lower() in ['leg']:
+            u_distname  = 'uniform' 
+
+
+        if doe_sampling.lower() == 'lhs':
+            self.fname_cand   = None
+            self.fname_design = lambda n: os.path.join('LHS', r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim,u_distname))
+
+        elif doe_sampling[:3].lower() == 'mcs':
+            self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, u_distname)
+            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:s}.npy'.format(doe_sampling, s, ndim, poly_name[:3], str(deg))
+
+        elif doe_sampling[:3].lower() == 'cls':
+            self.fname_cand   = r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
+            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:s}.npy'.format(doe_sampling, s, ndim, poly_name[:3], str(deg))
+
+        else:
+            raise ValueError(' Experimental Design {:s} not defined'.format(doe_sampling))
+
+    def update_output_dir(self, **kwargs):
+        """
+        update directories for working and data saving.
+            Takes either a string argument or a dictionary argument
+
+        self.update_output_dir(MDOEL_NAME)  (set as default and has priority).
+            if solver.nickname is given, kwargs is ignored
+        self.update_output_dir(pwd=, data_dir_result=, figure_dir=)
+
+        Updating directories of
+            pwd: present working directory, self.pwd
+            data_dir_result: directory saving all data, self.data_dir_result
+            figure_dir: directory saving all figures, self.figure_dir
+        """
+        data_dir_random, data_dir_doe = self._make_output_dir()
+        self.pwd            = kwargs.get('pwd'              , os.getcwd()    )
+        self.data_dir_doe   = kwargs.get('data_dir_doe'     , data_dir_doe   )
+        self.data_dir_random= kwargs.get('data_dir_random'  , data_dir_random)
+
+    def _make_output_dir(self):
+        """
+        WORKING_DIR/
+        +-- MODEL_DIR
+        |   +-- FIGURE_DIR
+
+        /directory saving data depends on OS/
+        +-- MODEL_DIR
+        |   +-- DATA_DIR
+
+        """
+        current_os  = sys.platform
+        if current_os.upper()[:3] == 'WIN':
+            data_dir        = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'UQRA_Examples')
+            data_dir_doe    = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign')
+            data_dir_random = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
+        elif current_os.upper() == 'DARWIN':
+            data_dir        = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples'
+            data_dir_doe    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign'
+            data_dir_random = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
+        elif current_os.upper() == 'LINUX':
+            data_dir        = r'/home/jinsong/Documents/MUSE_UQ_DATA/UQRA_Examples'
+            data_dir_doe    = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign'
+            data_dir_random = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
+        else:
+            raise ValueError('Operating system {} not found'.format(current_os))    
+
+        return data_dir_random,data_dir_doe 
+
+    def doe_nickname(self, doe_sampling, doe_optimality=None):
+        if str(doe_optimality).lower() == 'none':
+            self.nickname = str(doe_sampling).capitalize()
+        elif doe_optimality.isalpha() and len(doe_optimality) == 1:
+            self.nickname = str(doe_sampling).capitalize()+str(doe_optimality).upper()
+        else:
+            raise ValueError (' {} and {} not defined'.format(doe_sampling, doe_optimality))
+        return self.nickname
+
+class Modeling(Parameters):
     """
 
     """
-    def __init__(self, solver, model, params):
-        self.solver = solver
-        self.model  = model
-        self.params = params
-        assert solver.ndim == model.ndim
-        self.ndim = solver.ndim
-        self.u_distname = params.u_distname
-        self.x_distname = solver.dist_name
-        assert self.u_distname == model.orth_poly.dist_name.lower()
+    def __init__(self):
+        pass
+    # def __init__(self, solver, model, params):
+        # self.solver = solver
+        # self.model  = model
+        # self.params = params
+        # assert solver.ndim == model.ndim
+        # self.ndim = solver.ndim
+        # self.u_distname = params.u_distname
+        # self.x_distname = solver.dist_name
+        # assert self.u_distname == model.orth_poly.dist_name.lower()
 
     def get_train_data(self, size, u_cand, u_train=None, active_basis=None, orth_poly=None):
         """
@@ -108,23 +202,6 @@ class Modeling(object):
     def info(self):
         pass
 
-    def christoffel(self, u, basis, active=None):
-        """
-        return normalized Christoffel function P/sum(phi(x)**2)
-
-        arguments:
-            u: ndarray of shape (ndim, nsamples), random input variable
-            basis: uqra.polynomial object, Space basis function
-            active: list of active indices of basis, (columns of vander(u))
-        """
-        u = np.array(u, ndmin=2)
-        U = basis.vandermonde(u) ## default normalized vandermonde
-        if active is not None:
-            U = U[:, active]
-        Kp= np.sum(U*U, axis=1)
-        w = U.shape[1]/Kp
-        return w
-
     def _common_vectors(self, A, B):
         """
         return the indices of each columns of array A in larger array B
@@ -179,6 +256,886 @@ class Modeling(object):
         X = sw_matrix @ X
         return X
 
+##################################################
+##################################################
+class Simulation(Parameters):
+    """
+    Simulation class with settings to run UQRA modeling
+
+    Arguments:
+        solver: solver to be run, function
+        doe_method: list/tuple of str/None specified [method to get candidate samples, doe_optimality]
+        doe_params  = [doe_method, doe_rule, doe_order]
+        time_params = [time_start, time_ramp, time_max, dt]
+        post_params = [out_responses=[0,], stats=[1,1,1,1,1,1,0]]
+            stats: [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
+        sys_def_params: array of parameter sets defining the solver
+            if no sys_def_params is required, sys_def_params = None
+            e.g. for duffing oscillator:
+            sys_def_params = np.array([0,0,1,1,1]).reshape(1,5) # x0,v0, zeta, omega_n, mu 
+        normalize: 
+    """
+    def __init__(self, solver, model, doe_params):
+        self.solver = solver
+        self.model  = model
+        self.doe_params = doe_params
+        if isinstance(model, uqra.surrogates.PolynomialChaosExpansion):
+            self.check_wiener_askey_distribution()
+        assert self.solver.ndim == self.model.ndim
+        self.update_output_dir()
+
+    def update_filenames(self, s, fname_test=None):
+        """
+        Create/update filenames related to data in/output
+        """
+        ndim, deg   = self.model.ndim, self.model.deg
+        poly_name   = self.model.orth_poly.nickname.capitalize()
+        doe_sampling= self.doe_params.doe_sampling.capitalize()
+        u_distname  = self.u_distname
+
+        if doe_sampling.lower() == 'lhs':
+            self.fname_cand   = None
+            self.fname_design = lambda n: os.path.join('LHS', r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim,u_distname))
+            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
+            if fname_test:
+                self.fname_test = lambda solver_name : fname_test
+            else:
+                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
+
+        elif doe_sampling[:3].lower() == 'mcs':
+            self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, u_distname)
+            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:s}.npy'.format(doe_sampling, s, ndim, poly_name[:3], str(deg))
+            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
+            if fname_test:
+                self.fname_test = lambda solver_name : fname_test
+            else:
+                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
+
+        elif doe_sampling[:3].lower() == 'cls':
+            self.fname_cand   = r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
+            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:s}.npy'.format(doe_sampling, s, ndim, poly_name[:3], str(deg))
+            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
+            if fname_test:
+                self.fname_test = lambda solver_name : fname_test
+            else:
+                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
+
+        else:
+            raise ValueError(' Experimental Design {:s} not defined'.format(doe_sampling))
+
+    def doe_nickname(self,doe_optimality):
+        doe_sampling = self.doe_sampling
+        if str(doe_optimality).lower() == 'none':
+            self.doe_name = str(doe_sampling).capitalize()
+        elif doe_optimality.isalpha() and len(doe_optimality) == 1:
+            self.doe_name = str(doe_sampling).capitalize()+str(doe_optimality).upper()
+        else:
+            raise ValueError
+        return self.doe_name
+
+    def check_wiener_askey_distribution(self):
+        """
+        check and set underlying Wiener-Askey distributions
+        """
+        ndim         = self.solver.ndim
+        doe_sampling = self.doe_params.doe_sampling.lower()
+        poly_name    = self.model.orth_poly.nickname.capitalize()
+
+        if doe_sampling == 'mcs' and poly_name == 'Leg':
+            self.u_dist = [stats.uniform(-1,2), ] * ndim
+            self.u_distname = 'uniform'
+
+        elif doe_sampling == 'mcs' and poly_name == 'Heme':
+            self.u_dist = [stats.norm(0,1), ] * ndim
+            self.u_distname = 'norm'
+
+        elif doe_sampling == 'cls1' and poly_name == 'Leg':
+            self.u_dist = [stats.uniform(-1,2), ] * ndim
+            self.u_distname = 'uniform'
+
+        elif doe_sampling == 'cls4' and poly_name == 'Hem':
+            self.u_dist = [stats.norm(0,0.5), ] * ndim
+            self.u_distname = 'norm'
+
+        elif doe_sampling == 'lhs'and poly_name == 'Leg':
+            self.u_dist = [stats.uniform(-1,2), ] * ndim
+            self.u_distname = 'uniform'
+
+        elif doe_sampling == 'lhs'and poly_name == 'Heme':
+            self.u_dist = [stats.norm(0,1), ] * ndim
+            self.u_distname = 'norm'
+        else:
+            raise ValueError(' Sampling method {:s} and polynomial name {:s} are not defined'.format(doe_sampling, poly_name))
+
+    def info(self):
+        print(r'------------------------------------------------------------')
+        print(r' > Parameters for Model: {}'.format(self.solver.name))
+        print(r'   - DoE candidate  : {}'.format(self.doe_candidate.upper()))
+        print(r'   - DoE optimality : {}'.format(self.doe_optimality.upper()))
+        print(r'   - fit method     : {}'.format(self.fit_method.capitalize()))
+        print(r'------------------------------------------------------------')
+        print(r' > Distributions: U,X')
+        print(r'   - X distribution : {}'.format(self.x_dist.name))
+        print(r'   - U distribution : {}, (mu, std)=({:.2f},{:.2f}), support={}'.format(
+            self.u_distname,self.u_dist[0].mean(), self.u_dist[0].std(), self.u_dist[0].support()))
+        print(r'------------------------------------------------------------')
+        print(r' > DIRECTORIES:')
+        print(r'   - Working Dir: {}'.format(os.getcwd()))
+        print(r'   - Figure  Dir: {}'.format(self.figure_dir))
+        print(r'   - Result  Dir: {}'.format(self.data_dir_result))
+        print(r'   - Samples Dir: {}'.format(self.data_dir_random))
+
+    def update_output_dir(self, **kwargs):
+        """
+        update directories for working and data saving.
+            Takes either a string argument or a dictionary argument
+
+        self.update_output_dir(MDOEL_NAME)  (set as default and has priority).
+            if solver.nickname is given, kwargs is ignored
+        self.update_output_dir(pwd=, data_dir_result=, figure_dir=)
+
+        Updating directories of
+            pwd: present working directory, self.pwd
+            data_dir_result: directory saving all data, self.data_dir_result
+            figure_dir: directory saving all figures, self.figure_dir
+        """
+        data_dir_random, data_dir_doe, data_dir_result, data_dir_test, figure_dir = self._make_output_dir()
+        self.pwd            = kwargs.get('pwd'              , os.getcwd()    )
+        self.figure_dir     = kwargs.get('figure_dir'       , figure_dir     )
+        self.data_dir_doe   = kwargs.get('data_dir_doe'     , data_dir_doe   )
+        self.data_dir_test  = kwargs.get('data_dir_test'    , data_dir_test  )
+        self.data_dir_random= kwargs.get('data_dir_random'  , data_dir_random)
+        self.data_dir_result= kwargs.get('data_dir_result'  , data_dir_result)
+
+    def set_udist(self, u_distname):
+        self.u_distname = u_distname.lower()
+        if self.u_distname == 'uniform':
+            self.pce_type   = 'legendre'
+            self.u_dist     = [stats.uniform(-1,2), ] * self.ndim 
+        elif self.u_distname == 'norm':
+            if self.doe_candidate.startswith('cls'):
+                self.pce_type = 'hermite'
+                self.u_dist   = [stats.norm(0,np.sqrt(0.5)), ] * self.ndim 
+            else: 
+                self.pce_type = 'hermite_e'
+                self.u_dist   = [stats.norm(0,1), ] * self.ndim 
+        elif self.u_distname ==  'beta':
+            if self.doe_candidate.startswith('cls'):
+                raise NotImplementedError
+            else:
+                self.pce_type = 'jacobi'
+                self.u_dist   = [stats.uniform(-1,2), ] * self.ndim 
+        else:
+            raise NotImplementedError
+
+    def get_init_samples(self, n, doe_candidate=None, random_state=None, **kwargs):
+        """
+        Get initial sample design, return samples in U space 
+
+        Arguments:
+            n: int, number of samples to return
+            doe_candidate: method to get candidate samples if optimality is used
+            pce_model: for LHS, provide the u distributions needed to be sampled
+                        for cls, need to know PCE.deg such that in unbounded case to scale u
+
+        """
+        doe_candidate = self.doe_candidate if doe_candidate is None else doe_candidate
+
+        if doe_candidate.lower() == 'lhs':
+            doe = uqra.LHS(self.u_dist)
+            u   = doe.samples(size=n, random_state=random_state)
+        else:
+            raise NotImplementedError
+        return u
+
+    def update_num_samples(self, P, **kwargs):
+        """
+        return array number of samples based on given oversampling ratio alphas or num_samples
+        alpha or num_samples = -1: 2 log(P) * P samples used as reference calculation
+        """
+        try:
+            alphas = kwargs['alphas']
+            self.alphas = np.array(alphas, dtype=np.float64).flatten()
+            ### alpha = -1 for reference: 2 * P * log(P)
+            if (self.alphas == -1).any():
+                self.alphas[self.alphas==-1] = 2.0 * np.log(P)
+            self.num_samples = np.array([math.ceil(P*ialpha) for ialpha in self.alphas])
+            self.alphas = self.num_samples / P
+        except KeyError:
+            try:
+                num_samples = kwargs['num_samples']
+                self.num_samples = np.array(num_samples, dtype=np.int32).flatten()
+                if (self.num_samples == -1).any():
+                    self.num_samples[self.num_samples == -1] = int(math.ceil(2 * np.log(P) * P))
+                self.alphas = self.num_samples /P
+            except NameError:
+                raise ValueError('Either alphas or num_samples should be defined')
+
+    def get_basis(self, deg, **kwargs):
+
+        if self.pce_type == 'legendre':
+            basis = uqra.Legendre(d=self.ndim, deg=deg)
+        elif self.pce_type == 'hermite_e':
+            basis = uqra.Hermite(d=self.ndim, deg=deg, hem_type='probabilists')
+        elif self.pce_type == 'hermite':
+            basis = uqra.Hermite(d=self.ndim,deg=deg, hem_type='phy')
+        elif self.pce_type == 'jacobi':
+            a = kwargs['a']
+            b = kwargs['b']
+            basis = uqra.Jacobi(a, b, d=self.ndim, deg=deg)
+        else:
+            raise ValueError('UQRA.Parameters.get_basis error: undefined value {} for pce_type'.format(self.pce_type))
+        return basis 
+
+    def set_params(self, **kwargs):
+        """
+        Taking key word arguments to set parameters like time, post process etc.
+        """
+
+        ## define parameters related to time steps in simulation 
+        self.time_params= kwargs.get('time_params'  , None)
+        self.time_start = kwargs.get('time_start'   , self.time_params)
+        self.time_ramp  = kwargs.get('time_ramp'    , self.time_params)
+        self.time_max   = kwargs.get('time_max'     , self.time_params)
+        self.dt         = kwargs.get('dt'           , self.time_params)
+
+        ## define parameters related to post processing
+        ### ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
+        self.post_params    = kwargs.get('post_params'  , [None, None])
+        self.out_responses   = kwargs.get('out_responses' , self.post_params[0]) 
+        self.stats          = kwargs.get('stats'        , self.post_params[1])
+
+        ###-------------Systerm input params ----------------------------
+        ### sys_def_params is of shape (m,n)
+        ##  - m: number of set, 
+        ##  - n: number of system parameters per set
+        self.sys_def_params     = kwargs.get('sys_def_params'   , None)
+
+        ### sys_excit_params = [sys_excit_func_name, sys_excit_func_kwargs]
+        self.sys_excit_params   = kwargs.get('sys_excit_params' , [None, None])  
+        self.sys_excit_params[0]= kwargs.get('sys_excit_func_name', None)
+        self.sys_excit_params[1]= kwargs.get('sys_excit_func_kwargs', None)
+
+    def check_overfitting(self, cv_error):
+        """
+        Return True if overfitting detected
+
+        """
+
+        ## Cross validation error used to check overfitting. 
+        ## At least three cv error are needed to check overfitting, [cv1, cv2, cv3]
+        ##  Return overfitting warning when 1: cv2 > (1+rel_cv)*cv1; 2: cv3 > cv2 
+        ##  two consecutive increasing of cv error, and previous increment is larger than rel_cv
+
+        if len(cv_error) < 3:
+            return False
+        else:
+            cv_error = np.array(cv_error)
+            if ((cv_error[-2]- cv_error[-3])/cv_error[-3] > self.rel_cv ) and (cv_error[-2] < cv_error[-1]):
+                return True
+            else:
+                return False
+
+    def set_adaptive_parameters(self, **kwargs):
+        self.is_adaptive=True
+        for ikey, ivalue in kwargs.items():
+            try:
+                setattr(self, ikey, ivalue)
+            except:
+                raise KeyError
+
+    def is_adaptive_continue(self, nsim_completed, poly_order, **kwargs):
+        """
+        Stopping criteria for adaptive algorithm
+            Algorithm will have a hard stop (return False) when one of following occurs:
+                1. nsim_completed >= n_budget
+                2. for PCE, poly_order exceeding the largest allowable, plim[-1]
+        Arguments:
+            nsim_completed: number of evaluations has been done (should be <= self.n_budget)
+        Optional:
+            poly_order: for PCE model, polynomial order (should be in range self.plim) 
+
+        Return:
+            Bool
+            return true when the algorithm should continue. i.e.
+                1. hard stop on n_budget and poly_order not met 
+                2. at least one of the given metric criteria is NOT met
+        """
+
+        ## Algorithm stop when nsim_completed >= n_budget 
+        if nsim_completed >= self.n_budget:
+            print(' >! Stopping... Reach simulation budget,  {:d} >= {:d} '.format(nsim_completed, self.n_budget))
+            return False
+
+        ## Algorithm stop when poly_order > self.plim[-1]
+        ## If poly_order is not given, setting the poly_order value to -inf, which will not affect the checking of other criteria 
+        if poly_order > self.plim[1]:
+            print(' >! Stopping... Exceed max polynomial order p({:d}) > {:d}'.format(poly_order, self.plim[1]))
+            return False
+
+
+        ### For following metrics, algorithm stop (False) when all of these met.
+        ### i.e. If any metric is True ( NOT met), algorithm will continue (return True) 
+        is_any_metrics_not_met = []
+
+        # for imetric_name, imetric_value in kwargs.items():
+            # threshold_value = getattr(self, imetric_name)
+            # if threshold_value is None:
+                # print(' Warning: {:s} provided but threshold value was not given'.format(imetric_name))
+                # continue
+
+
+        ## Algorithm continue when r2 <= min_r2 (NOT met, return True)
+
+        try: 
+            r2 = kwargs.pop('r2')
+        except KeyError:
+            try:
+                r2 = kwargs.pop('adj_r2')
+            except KeyError:
+                r2 = None
+
+        if r2 is None:
+            is_r2 = False  ## if not defined, then return False. is_any_metrics_not_met=[*, *, False, *, *].any() will not affect the continue of adaptive
+        else:
+            if self.min_r2 is None:
+                raise ValueError(' R squared value provided but R2 threshold was not given. min_r2 = None')
+            ## condition met when consecutive two runs meet condition
+            ## [r2 is empty (initial step), not defined, not engouth data] or one of last two R2 is less than min_r2
+            is_r2 = len(r2) < 2 or  r2[-2] < self.min_r2 or r2[-1] < self.min_r2 
+
+        is_any_metrics_not_met.append(is_r2)
+
+        ## Algorithm continue when mse continue when mse > mse_bound(NOT met, return True)
+        mse = kwargs.pop('mse', None)
+        if mse is None:
+            is_mse = False
+            is_any_metrics_not_met.append(is_mse)
+        else:
+            mse = np.array(mse)
+            if self.abs_mse is None and self.rel_mse is None:
+                raise ValueError(' MSE value provided but neither rel_mse or abs_mse was given')
+            if self.abs_mse:
+                is_mse = len(mse) < 2 or mse[-2] > self.abs_mse or mse[-1] > self.abs_mse
+                is_any_metrics_not_met.append(is_mse)
+            if self.rel_mse:
+                if len(mse) < 3:
+                    is_mse = True
+                else:
+                    rel_mse = abs((mse[1:] - mse[:-1])/mse[:-1])
+                    is_mse = rel_mse[-2] > self.rel_mse or rel_mse[-1] > self.rel_mse
+                is_any_metrics_not_met.append(is_mse)
+
+        ## Algorithm stop when rel_qoi continue when qdiff > self.rel_qoi
+        qoi = kwargs.pop('qoi', None)
+        if qoi is None:
+            is_qoi = False
+            is_any_metrics_not_met.append(is_qoi)
+        else:
+            qoi = np.array(qoi)
+            if self.abs_qoi is None and self.rel_qoi is None and self.qoi_val is None:
+                raise ValueError(' QoI value provided but none of rel_qoi, abs_qoi, qoi_val was given')
+
+            if self.qoi_val:
+                if len(qoi) < 1:
+                    is_qoi = True
+                else:
+                    is_qoi = qoi[-1] > self.qoi_val
+                is_any_metrics_not_met.append(is_qoi)
+            if self.abs_qoi:
+                if len(qoi) < 3:
+                    is_qoi = True
+                else:
+                    qoi_diff = abs((qoi[1:] - qoi[:-1]))
+                    is_qoi = qoi_diff[-2] > self.abs_qoi or qoi_diff[-1] > self.abs_qoi
+                is_any_metrics_not_met.append(is_qoi)
+            if self.rel_qoi:
+                if len(qoi) < 3:
+                    is_qoi = True
+                else:
+                    rel_qoi = abs((qoi[1:] - qoi[:-1])/qoi[:-1])
+                    is_qoi = rel_qoi[-2] > self.rel_qoi or rel_qoi[-1] > self.rel_qoi
+                is_any_metrics_not_met.append(is_qoi)
+
+        ### If any above metric is True ( NOT met), algorithm will continue (return True)
+        if not kwargs:
+            ### kwargs should be empty by now, otherwise raise valueerror
+            is_adaptive = np.array(is_any_metrics_not_met).any()
+            return is_adaptive
+        else:
+            raise ValueError('Given stopping criteria {} not defined'.format(kwargs.keys()))
+
+    def _make_output_dir(self):
+        """
+        WORKING_DIR/
+        +-- MODEL_DIR
+        |   +-- FIGURE_DIR
+
+        /directory saving data depends on OS/
+        +-- MODEL_DIR
+        |   +-- DATA_DIR
+
+        """
+        current_os  = sys.platform
+        if current_os.upper()[:3] == 'WIN':
+            data_dir        = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'UQRA_Examples')
+            data_dir_doe    = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign')
+            data_dir_random = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
+        elif current_os.upper() == 'DARWIN':
+            data_dir        = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples'
+            data_dir_doe    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign'
+            data_dir_random = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
+        elif current_os.upper() == 'LINUX':
+            data_dir        = r'/home/jinsong/Documents/MUSE_UQ_DATA/UQRA_Examples'
+            data_dir_doe    = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign'
+            data_dir_random = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
+        else:
+            raise ValueError('Operating system {} not found'.format(current_os))    
+        figure_dir      = os.path.join(data_dir, self.solver.nickname, 'Figures')
+        data_dir_result = os.path.join(data_dir, self.solver.nickname, 'Data')
+        data_dir_test   = os.path.join(data_dir, self.solver.nickname, 'TestData')
+        # Create directory for model  
+        try:
+            os.makedirs(data_dir_result)
+        except FileExistsError:
+            pass
+        try:
+            os.makedirs(data_dir_test)
+        except FileExistsError:
+            pass
+        try:
+            os.makedirs(figure_dir)
+        except FileExistsError:
+            pass
+
+        return data_dir_random,data_dir_doe, data_dir_result, data_dir_test, figure_dir
+
+    def _get_gdrive_folder_id(self, folder_name):
+        """
+        Check if the given folder_name exists in Google Drive. 
+        If not, create one and return the google drive ID
+        Else: return folder ID directly
+        """
+        # GDRIVE_DIR_ID = {
+                # 'BENCH1': '1d1CRxZ00f4CiwHON5qT_0ijgSGkSbfqv',
+                # 'BENCH4': '15KqRCXBwTTdHppRtDjfFZtmZq1HNHAGY',
+                # 'BENCH3': '1TcVfZ6riXh9pLoJE9H8ZCxXiHLH_jigc',
+                # }
+        command = os.path.join('/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA', folder_name)
+        try:
+            os.makedirs(command)
+        except FileExistsError:
+            pass
+        command = 'gdrive list --order folder |grep ' +  folder_name
+        folder_id = os.popen(command).read()
+        return folder_id[:33]
+
+    def _get_tag(self):
+        if self.doe_optimality:
+            tag = '{:s}{:s}'.format(self.doe_candidate.capitalize(), self.doe_optimality.capitalize())
+        else:
+            tag = '{:s}'.format(self.doe_candidate.capitalize())
+        return tag
+
+
+    # def get_candidate_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
+        # """
+        # Return canndidate samples 
+
+        # Arguments:
+            # filename: string of filename with candidate samples. data contains (u, x) values
+            # sampling_domain: domain (in sampling_space) of samples
+            # sampling_space:  'u' or 'x', defines
+            # support: support of x_dist
+
+        # """
+        # data = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
+        # u_cand, x_cand = data[:self.solver.ndim], data[self.solver.ndim:2*self.solver.ndim]
+
+    # def get_candidate_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
+        # """
+        # Return canndidate samples 
+
+        # Arguments:
+            # filename: string of filename with candidate samples.
+                # if cdf data is given, need to calculate corresponding u, x values
+                # otherwise, filename should have (u_cdf, x) values
+            # sampling_domain: domain (in sampling_space) of samples
+            # sampling_space:  'u' or 'x', defines
+            # support: support of x_dist
+
+        # """
+        # data = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
+        # u_cand, x_cand = data[:self.solver.ndim], data[self.solver.ndim:2*self.solver.ndim]
+        # ## maping u->x, or x->u 
+        # if sampling_space == 'u':
+            # x_cand = uqra.inverse_rosenblatt(self.x_dist, u_cand, self.u_dist, support=support)
+        # elif sampling_space == 'x':
+            # u_cand = uqra.rosenblatt(self.x_dist, x_cand, self.u_dist, support=support)
+
+        # ux_isnan = np.zeros(u_cand.shape[1])
+        # for ix, iu in zip(x_cand, u_cand):
+            # ux_isnan = np.logical_or(ux_isnan, np.isnan(ix))
+            # ux_isnan = np.logical_or(ux_isnan, np.isnan(iu))
+        # x_cand = x_cand[:, np.logical_not(ux_isnan)]
+        # u_cand = u_cand[:, np.logical_not(ux_isnan)]
+        # x_cand = x_cand[:, :self.n_cand]
+        # u_cand = u_cand[:, :self.n_cand]
+
+        # if sampling_domain is None:
+            # u = u_cand
+            # x = x_cand
+        # else:
+            # if sampling_space == 'u':
+                # assert self.check_samples_inside_domain(u_cand, sampling_domain)
+            # elif sampling_space == 'x':
+                # assert self.check_samples_inside_domain(x_cand, sampling_domain)
+            # else:
+                # raise ValueError("Undefined value {} for UQRA.Parameters.get_test_data.sampling_space".format(sampling_space))
+            # u = u_cand
+            # x = x_cand
+        # return u, x 
+
+    # def check_samples_inside_domain(self, data, domain):
+        # data = np.array(data, ndmin=2, copy=False)
+        # if self.u_distname == 'norm':
+            # if np.ndim(domain) == 0:
+                # r1, r2 = 0, domain
+            # else:
+                # r1, r2 = domain
+            # radius = np.linalg.norm(data, axis=0)
+            # res = r1 <= min(radius) and r2>= max(radius)
+
+        # elif self.u_distname == 'uniform':
+            # if data.shape[0] != len(domain):
+                # raise ValueError('Expecting {:d} intervals but only {:d} given'.format(data.shape[0], len(domain)))
+            # min_, max_ = np.amin(data, axis=1), np.amax(data, axis=1)
+            # res = True
+            # for imin_, imax_, idomain in zip(min_, max_, domain):
+                # if idomain is None:
+                    # res = res and True
+                # else:
+                    # res = res and (idomain[0] <= imin_) and (imax_ <= idomain[1])
+        # elif self.u_distname == 'beta':
+            # raise NotImplementedError
+        # else:
+            # raise ValueError('UQRA.Parameters.u_distname {:s} not defined'.format(self.u_distname)) 
+        # return res
+
+    # def separate_samples_by_domain(self, data, domain):
+        # """
+        # Return the index for data within the defined domain
+        # """
+
+        # data = np.array(data, ndmin=2, copy=False)
+        # if self.u_distname == 'norm':
+            # if np.ndim(domain) == 0:
+                # r1, r2 = 0, domain
+            # else:
+                # r1, r2 = domain
+            # idx_inside, idx_outside = uqra.samples_within_circle(data, r1, r2) 
+
+        # elif self.u_distname == 'uniform':
+            # if data.shape[0] != len(domain):
+                # raise ValueError('Expecting {:d} intervals but only {:d} given'.format(data.shape[0], len(domain)))
+            # idx_inside, idx_outside = uqra.samples_within_cubic(data, domain) 
+
+        # elif self.u_distname == 'beta':
+            # raise NotImplementedError
+        # else:
+            # raise ValueError('UQRA.Parameters.u_distname {:s} not defined'.format(self.u_distname)) 
+
+        # return idx_inside, idx_outside
+
+    # def get_predict_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
+        # """
+        # Return predict samples in x space
+        # sampling_domain: sampling sampling_domain, used to draw samples
+        # """
+        # print(' > Loading predict data: {:s}'.format(filename))
+        # if filename.lower().startswith('cdf'):
+            # u_cdf = np.load(os.path.join(self.data_dir_random, 'CDF', filename))
+            # u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
+            # u = np.array([idist.ppf(iu_cdf) for idist, iu_cdf in zip(self.u_dist, u_cdf_pred)])
+            # x = uqra.inverse_rosenblatt(self.x_dist, u, self.u_dist, support=support)
+            # u = np.array(u, ndmin=2, copy=False)
+            # x = np.array(x, ndmin=2, copy=False)
+        # else:
+            # data = np.load(filename)
+            # assert data.shape[0] == 2 * self.solver.ndim
+            # u = data[:self.solver.ndim]
+            # x = data[self.solver.ndim:]
+            # u = np.array(u, ndmin=2, copy=False)
+            # x = np.array(x, ndmin=2, copy=False)
+
+        # if sampling_domain is None:
+            # ux_isnan = np.zeros(u.shape[1])
+            # for iu, ix in zip(u, x):
+                # ux_isnan = np.logical_or(np.isnan(iu))
+                # ux_isnan = np.logical_or(np.isnan(ix))
+            # if np.sum(ux_isnan):
+                # print(' nan values found in predict U/X, dropping {:d} NAN'.format(np.sum(ux_isnan)))
+            # u0 = u[:,np.logical_not(ux_isnan)]
+            # x0 = x[:,np.logical_not(ux_isnan)]
+            # u1 = u[:,ux_isnan]
+            # x1 = x[:,ux_isnan]
+        # else:
+            # ux_isnan = np.zeros(u.shape[1])
+            # for iu, ix in zip(u, x):
+                # ux_isnan = np.logical_or(np.isnan(iu))
+                # ux_isnan = np.logical_or(np.isnan(ix))
+            # if sampling_space == 'u':
+                # idx_inside, idx_outside = self.separate_samples_by_domain(u, sampling_domain)
+                # u0 = u[:, idx_inside]
+                # x0 = x[:, idx_inside]
+                # # x0 = uqra.inverse_rosenblatt(self.x_dist, u0, self.u_dist, support=support)
+                # # if np.amax(abs(x0-x[:, idx_inside]), axis=None) > 1e-6:
+                    # # print(np.amax(abs(x0-x[:, idx_inside]), axis=None))
+                # u1 = u[:, np.logical_or(idx_outside, ux_isnan)] 
+                # x1 = x[:, np.logical_or(idx_outside, ux_isnan)]
+
+            # elif sampling_space == 'x':
+                # idx_inside, idx_outside = self.separate_samples_by_domain(x, sampling_domain)
+                # x0 = x[:, idx_inside]
+                # u0 = u[:, idx_inside]
+                # # u0 = uqra.rosenblatt(self.x_dist, x0, self.u_dist, support=support)
+                # # if np.amax(abs(u0-u[:, idx_inside]), axis=None) > 1e-6:
+                    # # print(np.amax(abs(u0-u[:, idx_inside]), axis=None))
+
+                # u1 = u[:, np.logical_or(idx_outside, ux_isnan)] 
+                # x1 = x[:, np.logical_or(idx_outside, ux_isnan)]
+                # # u1 = u[:, idx_outside] 
+                # # x1 = x[:, idx_outside]
+        # return u0, x0, u1, x1
+
+    # def get_test_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
+        # data    = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
+        # u       = data[                   :    self.solver.ndim, :self.n_test]
+        # x       = data[  self.solver.ndim : 2* self.solver.ndim, :self.n_test]
+        # y       = np.squeeze(data[2*self.solver.ndim :        , :self.n_test])
+        # u       = uqra.rosenblatt(self.x_dist, x, self.u_dist, support=support)
+
+
+        # if sampling_domain is None:
+            # return u, x, y
+        # else:
+            # if sampling_space == 'u':
+                # idx_inside, idx_outside = self.separate_samples_by_domain(u, sampling_domain)
+                # u = u[:, idx_inside]
+                # x = x[:, idx_inside]
+                # y = np.squeeze(np.array(y, ndmin=2,copy=False)[:, idx_inside]) 
+            # elif sampling_space == 'x':
+                # idx_inside, idx_outside = self.separate_samples_by_domain(x, sampling_domain)
+                # u = u[:, idx_inside]
+                # x = x[:, idx_inside]
+                # y = np.squeeze(np.array(y, ndmin=2,copy=False)[:, idx_inside]) 
+            # else:
+                # raise ValueError("Undefined value {} for UQRA.Parameters.get_test_data.sampling_space".format(sampling_space))
+
+            # return u, x, y
+        
+        # doe_candidate = self.doe_candidate.lower()
+        # data_dir = os.path.join(self.data_dir_random, doe_candidate.upper(), self.u_distname.capitalize()) 
+        # try:
+            # self.filename_candidates = kwargs['filename']
+            # try:
+                # data = np.load(self.filename_candidates)
+            # except FileNotFoundError:
+                # data = np.load(os.path.join(data_dir, self.filename_candidates))
+            # u_cand = data[:self.ndim,:n].reshape(self.ndim, -1) ## will raise error when samples files smaller than n
+            # self.filename_optimality = kwargs.get('filename_optimality', None)
+
+        # except KeyError:
+            # if doe_candidate.lower().startswith('mcs'):
+                # self.filename_candidates = r'DoE_McsE6R0.npy'
+                # data = np.load(os.path.join(data_dir, self.filename_candidates))
+                # u_cand = data[:self.ndim,:n].reshape(self.ndim, -1) ## will raise error when samples files smaller than n
+
+            # elif doe_candidate.lower().startswith('cls') or doe_candidate == 'reference':
+                # if self.u_distname.lower().startswith('norm'):
+                    # self.filename_candidates = r'DoE_ClsE6d{:d}R0.npy'.format(self.ndim)
+                # elif self.u_distname.lower().startswith('uniform'):
+                    # self.filename_candidates = r'DoE_ClsE6R0.npy'
+                # else:
+                    # raise ValueError('dist_x_name {} not defined'.format(self.dist_x_name))
+                # data  = np.load(os.path.join(data_dir, self.filename_candidates))
+                # u_cand = data[:self.ndim,:n].reshape(self.ndim, -1)
+            # else:
+                # raise ValueError('DoE method {:s} not defined'.format(doe_candidate))
+            # self.filename_optimality = kwargs.get('filename_optimality', None)
+
+        # return u_cand
+
+    # def get_test_data(self, solver, pce_model, filename = r'DoE_McsE6R9.npy', **kwargs):
+        # """
+        # Return test data. 
+
+        # Test data should always be in X-space. The correct sequence is X->y->u
+
+        # To be able to generate MCS samples for X, we use MCS samples in Samples/MCS, noted as z here
+
+        # If already exist in simparams.data_dir_result, then load and return
+        # else, run solver
+
+        # """
+        
+        # data_dir_result = os.path.join(self.params.data_dir_result, 'TestData')
+        # try: 
+            # os.makedirs(data_dir_result)
+        # except OSError as e:
+            # pass
+
+        # n       = kwargs.get('n'   , self.params.n_test)
+        # qoi     = kwargs.get('qoi' , solver.out_responses )
+        # n       = int(n)
+        # n_short_term = self.solver.n_short_term
+        # assert solver.ndim == pce_model.ndim
+        # ndim = solver.ndim
+        # try:
+            # nparams = solver.nparams
+        # except AttributeError:
+            # nparams = ndim
+        # self.filename_test = '{:s}_{:d}{:s}_'.format(solver.nickname, ndim, pce_model.basis.nickname) + filename
+        # if self.params.doe_candidate.lower() == 'cls':
+            # self.filename_test = self.filename_test.replace('Mcs', 'Cls')
+
+        # try:
+            # u_test = None 
+            # x_test = None
+            # y_test = []
+            # for iqoi in qoi:
+                # filename_iqoi = self.filename_test[:-4] + '_y{:d}.npy'.format(iqoi)
+                # data_set = np.load(os.path.join(data_dir_result, filename_iqoi))
+                # print('   - Retrieving test data from {}'.format(os.path.join(data_dir_result, filename_iqoi)))
+                # if not solver.nickname.lower().startswith('sdof'):
+                    # assert data_set.shape[0] == 2*ndim+1
+
+                # u_test_ = data_set[     :  ndim,:n] if n > 0 else data_set[     :  ndim, :]
+                # x_test_ = data_set[ndim :ndim+nparams,:n] if n > 0 else data_set[ndim :ndim+nparams, :]
+
+                # if u_test is None:
+                    # u_test  = u_test_
+                # else:
+                    # assert np.array_equal(u_test_, u_test)
+
+                # if x_test is None:
+                    # x_test  = x_test_
+                # else:
+                    # assert np.array_equal(x_test_, x_test)
+
+                # y_test_ = data_set[ndim+nparams: ndim+nparams+n_short_term,:n] if n > 0 else data_set[ndim+nparams: ndim+nparams+n_short_term, : ]
+                # y_test.append(y_test_)
+            # if len(y_test) == 1:
+                # y_test = y_test[0]
+
+        # except FileNotFoundError:
+            # ### 1. Get MCS samples for X
+            # if pce_model.basis.u_distname.lower() == 'uniform':
+                # data_dir_random = os.path.join(self.params.data_dir_random, 'MCS','Uniform')
+                # print('    - Solving test data from {} '.format(os.path.join(data_dir_random,filename)))
+                # data_set = np.load(os.path.join(data_dir_random,filename))
+                # z_test = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
+                # x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * ndim)
+            # elif pce_model.basis.u_distname.lower().startswith('norm'):
+                # data_dir_random = os.path.join(self.params.data_dir_random, 'MCS','Norm')
+                # print('    - Solving test data from {} '.format(os.path.join(data_dir_random,filename)))
+                # data_set= np.load(os.path.join(data_dir_random,filename))
+                # z_test  = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
+                # x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
+            # else:
+                # raise ValueError
+            # y_test = solver.run(x_test, out_responses='ALL', save_qoi=True, data_dir=data_dir_result)
+            # np.save('y_test.npy', np.array(y_test))
+
+            # ### 2. Mapping MCS samples from X to u
+            # ###     dist_u is defined by pce_model
+            # ### Bounded domain maps to [-1,1] for both mcs and cls methods. so u = z
+            # ### Unbounded domain, mcs maps to N(0,1), cls maps to N(0,sqrt(0.5))
+            # u_test = 0.0 + z_test * np.sqrt(0.5) if self.is_cls_unbounded() else z_test
+            # u_test = u_test[:,:n] if n > 0 else u_test
+            # x_test = x_test[:,:n] if n > 0 else x_test
+
+            # if y_test.ndim == 1:
+                # data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
+                # np.save(os.path.join(data_dir_result, self.filename_test), data)
+                # print('   > Saving test data to {} '.format(data_dir_result))
+                # y_test = y_test[  :n] if n > 0 else y_test
+            # elif y_test.ndim == 2:
+                # # if y_test.shape[0] == n:
+                    # # y_test = y_test.T
+                # # elif y_test.shape[1] == n:
+                    # # y_test = y_test
+                # # else:
+                # raise ValueError('Solver output format not understood: {}, expecting has {:d} in 1 dimensino'.format(n))
+            # elif y_test.ndim == 3:
+                # ### (n_short_term, n, nqoi)
+                # if solver.name.lower() == 'linear oscillator':
+                    # y = []
+                    # for i, iqoi_test in enumerate(y_test.T):
+                        # data = np.vstack((u_test, x_test, iqoi_test.T))
+                        # np.save(os.path.join(data_dir_result, self.filename_test[:-4]+'_y{:d}.npy'.format(i)), data)
+                        # if i in solver.out_responses:
+                            # y.append(iqoi_test[:n].T if n > 0 else iqoi_test)
+                    # print('   > Saving test data to {} '.format(data_dir_result))
+                    # y_test = y[0] if len(y) == 1 else y
+                # elif solver.name.lower() == 'duffing oscillator':
+                    # y = []
+                    # for i, iqoi_test in enumerate(y_test.T):
+                        # data = np.vstack((u_test, x_test, iqoi_test.T))
+                        # np.save(os.path.join(data_dir_result, self.filename_test[:-4]+'_y{:d}.npy'.format(i)), data)
+                        # if i in solver.out_responses:
+                            # y.append(iqoi_test[:n].T if n > 0 else iqoi_test)
+                    # print('   > Saving test data to {} '.format(data_dir_result))
+                    # y_test = y[0] if len(y) == 1 else y
+                # else:
+                    # raise NotImplementedError
+        # return u_test, x_test, y_test
+
+
+        # # self.solver = solver
+        # self.doe_optimality = None
+        # ###------------- Adaptive setting -----------------------------
+        # self.is_adaptive= False
+        # self.plim     = kwargs.get('plim'     , None  )  ## polynomial degree limit
+        # self.n_budget = kwargs.get('n_budget' , None  )
+        # self.min_r2   = kwargs.get('min_r2'   , None  )  ## minimum adjusted R-squared threshold value to take
+        # self.rel_mse  = kwargs.get('rel_mse'  , None  )  ## Relative mean square error 
+        # self.abs_mse  = kwargs.get('abs_mse'  , None  )  ## Absolute mean square error
+        # self.rel_qoi  = kwargs.get('rel_qoi'  , None  )  ## Relative error for QoI, i.e. percentage difference relative to previous simulation
+        # self.abs_qoi  = kwargs.get('abs_qoi'  , None  )  ## Absolute error for QoI, i.e. decimal accuracy 
+        # self.qoi_val  = kwargs.get('qoi_val'  , None  )  ## QoI value up to decimal accuracy 
+        # self.rel_cv   = kwargs.get('rel_cv'   , 0.05  )  ## percentage difference relative to previous simulation
+        # if self.plim is not None or self.n_budget is not None:
+            # self.is_adaptive = True
+        
+        # print(r' > Optional parameters:')
+        # if self.time_params:
+            # print(r'   * {:<15s} : '.format('time parameters'))
+            # print(r'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('start', self.time_start, 'end', self.time_max ))
+            # print(r'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('ramp ', self.time_ramp , 'dt ', self.dt ))
+        # if self.post_params:
+            # print(r'   * {:<15s} '.format('post analysis parameters'))
+            # out_responses = self.out_responses if self.out_responses is not None else 'All'
+            # print(r'     - {:<23s} : {} '.format('out_responses', out_responses))
+            # print(r'     - {:<23s} : {} '.format('statistics'  , self.stats)) 
+
+        # if self.is_adaptive:
+            # print(r'   * {:<15s} '.format('Adaptive parameters'))
+            # print(r'     - {:<23s} : {} '.format('Simulation budget', self.n_budget))
+            # print(r'     - {:<23s} : {} '.format('Poly degree limit', self.plim))
+            # print(r'     - {:<23s} : {} '.format('Relvative CV error', self.rel_cv))
+            # if self.min_r2:
+                # print(r'     - {:<23s} : {} '.format('R2 bound', self.min_r2))
+            # if self.rel_mse:
+                # print(r'     - {:<23s} : {} '.format('Relative MSE', self.rel_mse))
+            # if self.abs_mse:
+                # print(r'     - {:<23s} : {} '.format('Absolute MSE', self.abs_mse))
+            # if self.rel_qoi:
+                # print(r'     - {:<23s} : {} '.format('Relative QoI', self.rel_qoi))
+            # if self.abs_qoi:
+                # print(r'     - {:<23s} : {} '.format('QoI decimal accuracy', self.abs_qoi))
+            # if self.qoi_val:
+                # print(r'     - {:<23s} : {} '.format('QoI=0, decimal accuracy', self.qoi_val))
 
     # def test_data_reference(self):
         # """
@@ -465,26 +1422,6 @@ class Modeling(object):
         # w = sampling_pdf_p/sampling_pdf
         # return w
 
-class Parameters(object):
-    """
-    Parameters class with settings for simulation
-
-    Arguments:
-        solver: solver to be run, function
-        doe_method: list/tuple of str/None specified [method to get candidate samples, doe_optimality]
-        doe_params  = [doe_method, doe_rule, doe_order]
-        time_params = [time_start, time_ramp, time_max, dt]
-        post_params = [out_responses=[0,], stats=[1,1,1,1,1,1,0]]
-            stats: [mean, std, skewness, kurtosis, absmax, absmin, up_crossing]
-        sys_def_params: array of parameter sets defining the solver
-            if no sys_def_params is required, sys_def_params = None
-            e.g. for duffing oscillator:
-            sys_def_params = np.array([0,0,1,1,1]).reshape(1,5) # x0,v0, zeta, omega_n, mu 
-        normalize: 
-    """
-    def __init__(self):
-        pass
-
     # def __init__(self, solver, doe_method=['MCS', None], fit_method='OLS'):
         # sys.stdout      = Logger()
         # self.solver     = solver
@@ -501,189 +1438,8 @@ class Parameters(object):
 
         # self.fit_method = str(fit_method).lower()
         # self.tag        = self._get_tag()
-        # self.update_dir()
-        # self.data_dir_precomputed_optimality = os.path.join(self.data_dir_sample, 'OED')
-
-    def update_filenames(self, s, fname_test=None):
-        """
-        Create/update filenames related to data in/output
-        """
-
-        ndim, deg   = self.ndim, self.deg
-        poly_name   = self.poly_name.capitalize()
-        doe_sampling= self.doe_sampling.capitalize()
-        _, u_distname= self._set_distributions()
-        data_dir    = self.update_data_dir()
-
-        if doe_sampling.lower() == 'lhs':
-            self.fname_cand   = None
-            self.fname_design = lambda n: os.path.join('LHS', r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim,u_distname))
-            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
-            if fname_test:
-                self.fname_test = lambda solver_name : fname_test
-            else:
-                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
-
-        elif doe_sampling[:3].lower() == 'mcs':
-            self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, u_distname)
-            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:d}.npy'.format(doe_sampling, s, ndim, poly_name[:3], deg)
-            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
-            if fname_test:
-                self.fname_test = lambda solver_name : fname_test
-            else:
-                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
-
-        elif doe_sampling[:3].lower() == 'cls':
-            self.fname_cand   = r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
-            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:d}.npy'.format(doe_sampling, s, ndim, poly_name[:3], deg)
-            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
-            if fname_test:
-                self.fname_test = lambda solver_name : fname_test
-            else:
-                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
-
-        else:
-            raise ValueError(' Experimental Design {:s} not defined'.format(doe_sampling))
-
-
-    def update_data_dir(self, data_dir=None):
-        if data_dir:
-            self.data_dir = data_dir
-        else:
-            ## Define data directory 
-            if platform.system() == 'Darwin':       ## Mac
-                self.data_dir = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign'
-            elif platform.system() == 'Windows':    ## Windows
-                self.data_dir = r'G:\My Drive\MUSE_UQ_DATA\ExperimentalDesign' 
-            elif platform.system() == 'Linux':      ## Ubuntu
-                self.data_dir = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign'
-            else:
-                raise ValueError('platform.system() not defined')
-        return self.data_dir
-
-    def doe_nickname(self,doe_optimality):
-        doe_sampling = self.doe_sampling
-        if str(doe_optimality).lower() == 'none':
-            self.doe_name = str(doe_sampling).capitalize()
-        elif doe_optimality.isalpha() and len(doe_optimality) == 1:
-            self.doe_name = str(doe_sampling).capitalize()+str(doe_optimality).upper()
-        else:
-            raise ValueError
-        return self.doe_name
-
-    def _set_distributions(self):
-        """
-        set underlying Askey-Wiener distributions
-        """
-        ndim         = self.ndim
-        doe_sampling = self.doe_sampling.lower()
-        poly_name    = self.poly_name.capitalize()
-
-        if doe_sampling == 'mcs' and poly_name == 'Leg':
-            self.u_dist = [stats.uniform(-1,2), ] * ndim
-            self.u_distname = 'uniform'
-
-        elif doe_sampling == 'mcs' and poly_name == 'Heme':
-            self.u_dist = [stats.norm(0,1), ] * ndim
-            self.u_distname = 'norm'
-
-        elif doe_sampling == 'cls1' and poly_name == 'Leg':
-            self.u_dist = [stats.uniform(-1,2), ] * ndim
-            self.u_distname = 'uniform'
-
-        elif doe_sampling == 'cls4' and poly_name == 'Hem':
-            self.u_dist = [stats.norm(0,0.5), ] * ndim
-            self.u_distname = 'norm'
-
-        elif doe_sampling == 'lhs'and poly_name == 'Leg':
-            self.u_dist = [stats.uniform(-1,2), ] * ndim
-            self.u_distname = 'uniform'
-
-        elif doe_sampling == 'lhs'and poly_name == 'Heme':
-            self.u_dist = [stats.norm(0,1), ] * ndim
-            self.u_distname = 'norm'
-        else:
-            raise ValueError(' Sampling method {:s} and polynomial name {:s} are not defined'.format(doe_sampling, poly_name))
-        return self.u_dist, self.u_distname
-
-    def info(self):
-        print(r'------------------------------------------------------------')
-        print(r' > Parameters for Model: {}'.format(self.solver.name))
-        print(r'   - DoE candidate  : {}'.format(self.doe_candidate.upper()))
-        print(r'   - DoE optimality : {}'.format(self.doe_optimality.upper()))
-        print(r'   - fit method     : {}'.format(self.fit_method.capitalize()))
-        print(r'------------------------------------------------------------')
-        print(r' > Distributions: U,X')
-        print(r'   - X distribution : {}'.format(self.x_dist.name))
-        print(r'   - U distribution : {}, (mu, std)=({:.2f},{:.2f}), support={}'.format(
-            self.u_distname,self.u_dist[0].mean(), self.u_dist[0].std(), self.u_dist[0].support()))
-        print(r'------------------------------------------------------------')
-        print(r' > DIRECTORIES:')
-        print(r'   - Working Dir: {}'.format(os.getcwd()))
-        print(r'   - Figure  Dir: {}'.format(self.figure_dir))
-        print(r'   - Result  Dir: {}'.format(self.data_dir_result))
-        print(r'   - Samples Dir: {}'.format(self.data_dir_sample))
-
-    def update_dir(self, **kwargs):
-        """
-        update directories for working and data saving.
-            Takes either a string argument or a dictionary argument
-
-        self.update_dir(MDOEL_NAME)  (set as default and has priority).
-            if solver.nickname is given, kwargs is ignored
-        self.update_dir(pwd=, data_dir_result=, figure_dir=)
-
-        Updating directories of
-            pwd: present working directory, self.pwd
-            data_dir_result: directory saving all data, self.data_dir_result
-            figure_dir: directory saving all figures, self.figure_dir
-        """
-        data_dir_sample, data_dir_result, figure_dir =  self._make_output_dir()
-        self.pwd            = kwargs.get('pwd'              , os.getcwd()    )
-        self.figure_dir     = kwargs.get('figure_dir'       , figure_dir     )
-        self.data_dir_result= kwargs.get('data_dir_result'  , data_dir_result)
-        self.data_dir_sample= kwargs.get('data_dir_sample'  , data_dir_sample)
-
-    def set_udist(self, u_distname):
-        self.u_distname = u_distname.lower()
-        if self.u_distname == 'uniform':
-            self.pce_type   = 'legendre'
-            self.u_dist     = [stats.uniform(-1,2), ] * self.ndim 
-        elif self.u_distname == 'norm':
-            if self.doe_candidate.startswith('cls'):
-                self.pce_type = 'hermite'
-                self.u_dist   = [stats.norm(0,np.sqrt(0.5)), ] * self.ndim 
-            else: 
-                self.pce_type = 'hermite_e'
-                self.u_dist   = [stats.norm(0,1), ] * self.ndim 
-        elif self.u_distname ==  'beta':
-            if self.doe_candidate.startswith('cls'):
-                raise NotImplementedError
-            else:
-                self.pce_type = 'jacobi'
-                self.u_dist   = [stats.uniform(-1,2), ] * self.ndim 
-        else:
-            raise NotImplementedError
-
-    def get_init_samples(self, n, doe_candidate=None, random_state=None, **kwargs):
-        """
-        Get initial sample design, return samples in U space 
-
-        Arguments:
-            n: int, number of samples to return
-            doe_candidate: method to get candidate samples if optimality is used
-            pce_model: for LHS, provide the u distributions needed to be sampled
-                        for cls, need to know PCE.deg such that in unbounded case to scale u
-
-        """
-        doe_candidate = self.doe_candidate if doe_candidate is None else doe_candidate
-
-        if doe_candidate.lower() == 'lhs':
-            doe = uqra.LHS(self.u_dist)
-            u   = doe.samples(size=n, random_state=random_state)
-        else:
-            raise NotImplementedError
-        return u
+        # self.update_output_dir()
+        # self.data_dir_precomputed_optimality = os.path.join(self.data_dir_random, 'OED')
         # elif doe_candidate.lower() == 'mcs':
 
 
@@ -720,683 +1476,3 @@ class Parameters(object):
 
         # if doe_candidate.lower() == 'cls':
             # raise NotImplementedError
-
-    def update_num_samples(self, P, **kwargs):
-        """
-        return array number of samples based on given oversampling ratio alphas or num_samples
-        alpha or num_samples = -1: 2 log(P) * P samples used as reference calculation
-        """
-        try:
-            alphas = kwargs['alphas']
-            self.alphas = np.array(alphas, dtype=np.float64).flatten()
-            ### alpha = -1 for reference: 2 * P * log(P)
-            if (self.alphas == -1).any():
-                self.alphas[self.alphas==-1] = 2.0 * np.log(P)
-            self.num_samples = np.array([math.ceil(P*ialpha) for ialpha in self.alphas])
-            self.alphas = self.num_samples / P
-        except KeyError:
-            try:
-                num_samples = kwargs['num_samples']
-                self.num_samples = np.array(num_samples, dtype=np.int32).flatten()
-                if (self.num_samples == -1).any():
-                    self.num_samples[self.num_samples == -1] = int(math.ceil(2 * np.log(P) * P))
-                self.alphas = self.num_samples /P
-            except NameError:
-                raise ValueError('Either alphas or num_samples should be defined')
-
-    def get_basis(self, deg, **kwargs):
-
-        if self.pce_type == 'legendre':
-            basis = uqra.Legendre(d=self.ndim, deg=deg)
-        elif self.pce_type == 'hermite_e':
-            basis = uqra.Hermite(d=self.ndim, deg=deg, hem_type='probabilists')
-        elif self.pce_type == 'hermite':
-            basis = uqra.Hermite(d=self.ndim,deg=deg, hem_type='phy')
-        elif self.pce_type == 'jacobi':
-            a = kwargs['a']
-            b = kwargs['b']
-            basis = uqra.Jacobi(a, b, d=self.ndim, deg=deg)
-        else:
-            raise ValueError('UQRA.Parameters.get_basis error: undefined value {} for pce_type'.format(self.pce_type))
-        return basis 
-
-    def set_params(self, **kwargs):
-        """
-        Taking key word arguments to set parameters like time, post process etc.
-        """
-
-        ## define parameters related to time steps in simulation 
-        self.time_params= kwargs.get('time_params'  , None)
-        self.time_start = kwargs.get('time_start'   , self.time_params)
-        self.time_ramp  = kwargs.get('time_ramp'    , self.time_params)
-        self.time_max   = kwargs.get('time_max'     , self.time_params)
-        self.dt         = kwargs.get('dt'           , self.time_params)
-
-        ## define parameters related to post processing
-        ### ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing']
-        self.post_params    = kwargs.get('post_params'  , [None, None])
-        self.out_responses   = kwargs.get('out_responses' , self.post_params[0]) 
-        self.stats          = kwargs.get('stats'        , self.post_params[1])
-
-        ###-------------Systerm input params ----------------------------
-        ### sys_def_params is of shape (m,n)
-        ##  - m: number of set, 
-        ##  - n: number of system parameters per set
-        self.sys_def_params     = kwargs.get('sys_def_params'   , None)
-
-        ### sys_excit_params = [sys_excit_func_name, sys_excit_func_kwargs]
-        self.sys_excit_params   = kwargs.get('sys_excit_params' , [None, None])  
-        self.sys_excit_params[0]= kwargs.get('sys_excit_func_name', None)
-        self.sys_excit_params[1]= kwargs.get('sys_excit_func_kwargs', None)
-
-    def check_overfitting(self, cv_error):
-        """
-        Return True if overfitting detected
-
-        """
-
-        ## Cross validation error used to check overfitting. 
-        ## At least three cv error are needed to check overfitting, [cv1, cv2, cv3]
-        ##  Return overfitting warning when 1: cv2 > (1+rel_cv)*cv1; 2: cv3 > cv2 
-        ##  two consecutive increasing of cv error, and previous increment is larger than rel_cv
-
-        if len(cv_error) < 3:
-            return False
-        else:
-            cv_error = np.array(cv_error)
-            if ((cv_error[-2]- cv_error[-3])/cv_error[-3] > self.rel_cv ) and (cv_error[-2] < cv_error[-1]):
-                return True
-            else:
-                return False
-
-    def set_adaptive_parameters(self, **kwargs):
-        self.is_adaptive=True
-        for ikey, ivalue in kwargs.items():
-            try:
-                setattr(self, ikey, ivalue)
-            except:
-                raise KeyError
-
-    def is_adaptive_continue(self, nsim_completed, poly_order, **kwargs):
-        """
-        Stopping criteria for adaptive algorithm
-            Algorithm will have a hard stop (return False) when one of following occurs:
-                1. nsim_completed >= n_budget
-                2. for PCE, poly_order exceeding the largest allowable, plim[-1]
-        Arguments:
-            nsim_completed: number of evaluations has been done (should be <= self.n_budget)
-        Optional:
-            poly_order: for PCE model, polynomial order (should be in range self.plim) 
-
-        Return:
-            Bool
-            return true when the algorithm should continue. i.e.
-                1. hard stop on n_budget and poly_order not met 
-                2. at least one of the given metric criteria is NOT met
-        """
-
-        ## Algorithm stop when nsim_completed >= n_budget 
-        if nsim_completed >= self.n_budget:
-            print(' >! Stopping... Reach simulation budget,  {:d} >= {:d} '.format(nsim_completed, self.n_budget))
-            return False
-
-        ## Algorithm stop when poly_order > self.plim[-1]
-        ## If poly_order is not given, setting the poly_order value to -inf, which will not affect the checking of other criteria 
-        if poly_order > self.plim[1]:
-            print(' >! Stopping... Exceed max polynomial order p({:d}) > {:d}'.format(poly_order, self.plim[1]))
-            return False
-
-
-        ### For following metrics, algorithm stop (False) when all of these met.
-        ### i.e. If any metric is True ( NOT met), algorithm will continue (return True) 
-        is_any_metrics_not_met = []
-
-        # for imetric_name, imetric_value in kwargs.items():
-            # threshold_value = getattr(self, imetric_name)
-            # if threshold_value is None:
-                # print(' Warning: {:s} provided but threshold value was not given'.format(imetric_name))
-                # continue
-
-
-        ## Algorithm continue when r2 <= min_r2 (NOT met, return True)
-
-        try: 
-            r2 = kwargs.pop('r2')
-        except KeyError:
-            try:
-                r2 = kwargs.pop('adj_r2')
-            except KeyError:
-                r2 = None
-
-        if r2 is None:
-            is_r2 = False  ## if not defined, then return False. is_any_metrics_not_met=[*, *, False, *, *].any() will not affect the continue of adaptive
-        else:
-            if self.min_r2 is None:
-                raise ValueError(' R squared value provided but R2 threshold was not given. min_r2 = None')
-            ## condition met when consecutive two runs meet condition
-            ## [r2 is empty (initial step), not defined, not engouth data] or one of last two R2 is less than min_r2
-            is_r2 = len(r2) < 2 or  r2[-2] < self.min_r2 or r2[-1] < self.min_r2 
-
-        is_any_metrics_not_met.append(is_r2)
-
-        ## Algorithm continue when mse continue when mse > mse_bound(NOT met, return True)
-        mse = kwargs.pop('mse', None)
-        if mse is None:
-            is_mse = False
-            is_any_metrics_not_met.append(is_mse)
-        else:
-            mse = np.array(mse)
-            if self.abs_mse is None and self.rel_mse is None:
-                raise ValueError(' MSE value provided but neither rel_mse or abs_mse was given')
-            if self.abs_mse:
-                is_mse = len(mse) < 2 or mse[-2] > self.abs_mse or mse[-1] > self.abs_mse
-                is_any_metrics_not_met.append(is_mse)
-            if self.rel_mse:
-                if len(mse) < 3:
-                    is_mse = True
-                else:
-                    rel_mse = abs((mse[1:] - mse[:-1])/mse[:-1])
-                    is_mse = rel_mse[-2] > self.rel_mse or rel_mse[-1] > self.rel_mse
-                is_any_metrics_not_met.append(is_mse)
-
-        ## Algorithm stop when rel_qoi continue when qdiff > self.rel_qoi
-        qoi = kwargs.pop('qoi', None)
-        if qoi is None:
-            is_qoi = False
-            is_any_metrics_not_met.append(is_qoi)
-        else:
-            qoi = np.array(qoi)
-            if self.abs_qoi is None and self.rel_qoi is None and self.qoi_val is None:
-                raise ValueError(' QoI value provided but none of rel_qoi, abs_qoi, qoi_val was given')
-
-            if self.qoi_val:
-                if len(qoi) < 1:
-                    is_qoi = True
-                else:
-                    is_qoi = qoi[-1] > self.qoi_val
-                is_any_metrics_not_met.append(is_qoi)
-            if self.abs_qoi:
-                if len(qoi) < 3:
-                    is_qoi = True
-                else:
-                    qoi_diff = abs((qoi[1:] - qoi[:-1]))
-                    is_qoi = qoi_diff[-2] > self.abs_qoi or qoi_diff[-1] > self.abs_qoi
-                is_any_metrics_not_met.append(is_qoi)
-            if self.rel_qoi:
-                if len(qoi) < 3:
-                    is_qoi = True
-                else:
-                    rel_qoi = abs((qoi[1:] - qoi[:-1])/qoi[:-1])
-                    is_qoi = rel_qoi[-2] > self.rel_qoi or rel_qoi[-1] > self.rel_qoi
-                is_any_metrics_not_met.append(is_qoi)
-
-        ### If any above metric is True ( NOT met), algorithm will continue (return True)
-        if not kwargs:
-            ### kwargs should be empty by now, otherwise raise valueerror
-            is_adaptive = np.array(is_any_metrics_not_met).any()
-            return is_adaptive
-        else:
-            raise ValueError('Given stopping criteria {} not defined'.format(kwargs.keys()))
-
-    def _make_output_dir(self):
-        """
-        WORKING_DIR/
-        +-- MODEL_DIR
-        |   +-- FIGURE_DIR
-
-        /directory saving data depends on OS/
-        +-- MODEL_DIR
-        |   +-- DATA_DIR
-
-        """
-        working_dir = os.getcwd()
-        model_dir   = os.path.join(working_dir, self.solver.nickname)
-        figure_dir  = os.path.join(model_dir,r'Figures')
-        current_os  = sys.platform
-        if current_os.upper()[:3] == 'WIN':
-            data_dir_sample = r'G:\My Drive\MUSE_UQ_DATA\Samples' 
-            data_dir_result = os.path.join('G:','My Drive','MUSE_UQ_DATA')
-        elif current_os.upper() == 'DARWIN':
-            data_dir_sample = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
-            data_dir_result = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA'
-        elif current_os.upper() == 'LINUX':
-            data_dir_result = r'/home/jinsong/Documents/MUSE_UQ_DATA'
-            data_dir_sample = r'/home/jinsong/Documents/MUSE_UQ_DATA/Samples'
-        else:
-            raise ValueError('Operating system {} not found'.format(current_os))    
-        data_dir_result  = os.path.join(data_dir_result, self.solver.nickname)
-        # Create directory for model  
-        try:
-            os.makedirs(data_dir_result)
-            os.makedirs(figure_dir)
-        except FileExistsError:
-            pass
-        return data_dir_sample, data_dir_result, figure_dir
-
-    def _get_gdrive_folder_id(self, folder_name):
-        """
-        Check if the given folder_name exists in Google Drive. 
-        If not, create one and return the google drive ID
-        Else: return folder ID directly
-        """
-        # GDRIVE_DIR_ID = {
-                # 'BENCH1': '1d1CRxZ00f4CiwHON5qT_0ijgSGkSbfqv',
-                # 'BENCH4': '15KqRCXBwTTdHppRtDjfFZtmZq1HNHAGY',
-                # 'BENCH3': '1TcVfZ6riXh9pLoJE9H8ZCxXiHLH_jigc',
-                # }
-        command = os.path.join('/Users/jinsongliu/Google Drive File Stream/My Drive/MUSE_UQ_DATA', folder_name)
-        try:
-            os.makedirs(command)
-        except FileExistsError:
-            pass
-        command = 'gdrive list --order folder |grep ' +  folder_name
-        folder_id = os.popen(command).read()
-        return folder_id[:33]
-
-    def _get_tag(self):
-        if self.doe_optimality:
-            tag = '{:s}{:s}'.format(self.doe_candidate.capitalize(), self.doe_optimality.capitalize())
-        else:
-            tag = '{:s}'.format(self.doe_candidate.capitalize())
-        return tag
-
-
-
-    # def get_candidate_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
-        # """
-        # Return canndidate samples 
-
-        # Arguments:
-            # filename: string of filename with candidate samples. data contains (u, x) values
-            # sampling_domain: domain (in sampling_space) of samples
-            # sampling_space:  'u' or 'x', defines
-            # support: support of x_dist
-
-        # """
-        # data = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
-        # u_cand, x_cand = data[:self.solver.ndim], data[self.solver.ndim:2*self.solver.ndim]
-
-    # def get_candidate_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
-        # """
-        # Return canndidate samples 
-
-        # Arguments:
-            # filename: string of filename with candidate samples.
-                # if cdf data is given, need to calculate corresponding u, x values
-                # otherwise, filename should have (u_cdf, x) values
-            # sampling_domain: domain (in sampling_space) of samples
-            # sampling_space:  'u' or 'x', defines
-            # support: support of x_dist
-
-        # """
-        # data = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
-        # u_cand, x_cand = data[:self.solver.ndim], data[self.solver.ndim:2*self.solver.ndim]
-        # ## maping u->x, or x->u 
-        # if sampling_space == 'u':
-            # x_cand = uqra.inverse_rosenblatt(self.x_dist, u_cand, self.u_dist, support=support)
-        # elif sampling_space == 'x':
-            # u_cand = uqra.rosenblatt(self.x_dist, x_cand, self.u_dist, support=support)
-
-        # ux_isnan = np.zeros(u_cand.shape[1])
-        # for ix, iu in zip(x_cand, u_cand):
-            # ux_isnan = np.logical_or(ux_isnan, np.isnan(ix))
-            # ux_isnan = np.logical_or(ux_isnan, np.isnan(iu))
-        # x_cand = x_cand[:, np.logical_not(ux_isnan)]
-        # u_cand = u_cand[:, np.logical_not(ux_isnan)]
-        # x_cand = x_cand[:, :self.n_cand]
-        # u_cand = u_cand[:, :self.n_cand]
-
-        # if sampling_domain is None:
-            # u = u_cand
-            # x = x_cand
-        # else:
-            # if sampling_space == 'u':
-                # assert self.check_samples_inside_domain(u_cand, sampling_domain)
-            # elif sampling_space == 'x':
-                # assert self.check_samples_inside_domain(x_cand, sampling_domain)
-            # else:
-                # raise ValueError("Undefined value {} for UQRA.Parameters.get_test_data.sampling_space".format(sampling_space))
-            # u = u_cand
-            # x = x_cand
-        # return u, x 
-
-    # def check_samples_inside_domain(self, data, domain):
-        # data = np.array(data, ndmin=2, copy=False)
-        # if self.u_distname == 'norm':
-            # if np.ndim(domain) == 0:
-                # r1, r2 = 0, domain
-            # else:
-                # r1, r2 = domain
-            # radius = np.linalg.norm(data, axis=0)
-            # res = r1 <= min(radius) and r2>= max(radius)
-
-        # elif self.u_distname == 'uniform':
-            # if data.shape[0] != len(domain):
-                # raise ValueError('Expecting {:d} intervals but only {:d} given'.format(data.shape[0], len(domain)))
-            # min_, max_ = np.amin(data, axis=1), np.amax(data, axis=1)
-            # res = True
-            # for imin_, imax_, idomain in zip(min_, max_, domain):
-                # if idomain is None:
-                    # res = res and True
-                # else:
-                    # res = res and (idomain[0] <= imin_) and (imax_ <= idomain[1])
-        # elif self.u_distname == 'beta':
-            # raise NotImplementedError
-        # else:
-            # raise ValueError('UQRA.Parameters.u_distname {:s} not defined'.format(self.u_distname)) 
-        # return res
-
-    # def separate_samples_by_domain(self, data, domain):
-        # """
-        # Return the index for data within the defined domain
-        # """
-
-        # data = np.array(data, ndmin=2, copy=False)
-        # if self.u_distname == 'norm':
-            # if np.ndim(domain) == 0:
-                # r1, r2 = 0, domain
-            # else:
-                # r1, r2 = domain
-            # idx_inside, idx_outside = uqra.samples_within_circle(data, r1, r2) 
-
-        # elif self.u_distname == 'uniform':
-            # if data.shape[0] != len(domain):
-                # raise ValueError('Expecting {:d} intervals but only {:d} given'.format(data.shape[0], len(domain)))
-            # idx_inside, idx_outside = uqra.samples_within_cubic(data, domain) 
-
-        # elif self.u_distname == 'beta':
-            # raise NotImplementedError
-        # else:
-            # raise ValueError('UQRA.Parameters.u_distname {:s} not defined'.format(self.u_distname)) 
-
-        # return idx_inside, idx_outside
-
-    # def get_predict_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
-        # """
-        # Return predict samples in x space
-        # sampling_domain: sampling sampling_domain, used to draw samples
-        # """
-        # print(' > Loading predict data: {:s}'.format(filename))
-        # if filename.lower().startswith('cdf'):
-            # u_cdf = np.load(os.path.join(self.data_dir_sample, 'CDF', filename))
-            # u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
-            # u = np.array([idist.ppf(iu_cdf) for idist, iu_cdf in zip(self.u_dist, u_cdf_pred)])
-            # x = uqra.inverse_rosenblatt(self.x_dist, u, self.u_dist, support=support)
-            # u = np.array(u, ndmin=2, copy=False)
-            # x = np.array(x, ndmin=2, copy=False)
-        # else:
-            # data = np.load(filename)
-            # assert data.shape[0] == 2 * self.solver.ndim
-            # u = data[:self.solver.ndim]
-            # x = data[self.solver.ndim:]
-            # u = np.array(u, ndmin=2, copy=False)
-            # x = np.array(x, ndmin=2, copy=False)
-
-        # if sampling_domain is None:
-            # ux_isnan = np.zeros(u.shape[1])
-            # for iu, ix in zip(u, x):
-                # ux_isnan = np.logical_or(np.isnan(iu))
-                # ux_isnan = np.logical_or(np.isnan(ix))
-            # if np.sum(ux_isnan):
-                # print(' nan values found in predict U/X, dropping {:d} NAN'.format(np.sum(ux_isnan)))
-            # u0 = u[:,np.logical_not(ux_isnan)]
-            # x0 = x[:,np.logical_not(ux_isnan)]
-            # u1 = u[:,ux_isnan]
-            # x1 = x[:,ux_isnan]
-        # else:
-            # ux_isnan = np.zeros(u.shape[1])
-            # for iu, ix in zip(u, x):
-                # ux_isnan = np.logical_or(np.isnan(iu))
-                # ux_isnan = np.logical_or(np.isnan(ix))
-            # if sampling_space == 'u':
-                # idx_inside, idx_outside = self.separate_samples_by_domain(u, sampling_domain)
-                # u0 = u[:, idx_inside]
-                # x0 = x[:, idx_inside]
-                # # x0 = uqra.inverse_rosenblatt(self.x_dist, u0, self.u_dist, support=support)
-                # # if np.amax(abs(x0-x[:, idx_inside]), axis=None) > 1e-6:
-                    # # print(np.amax(abs(x0-x[:, idx_inside]), axis=None))
-                # u1 = u[:, np.logical_or(idx_outside, ux_isnan)] 
-                # x1 = x[:, np.logical_or(idx_outside, ux_isnan)]
-
-            # elif sampling_space == 'x':
-                # idx_inside, idx_outside = self.separate_samples_by_domain(x, sampling_domain)
-                # x0 = x[:, idx_inside]
-                # u0 = u[:, idx_inside]
-                # # u0 = uqra.rosenblatt(self.x_dist, x0, self.u_dist, support=support)
-                # # if np.amax(abs(u0-u[:, idx_inside]), axis=None) > 1e-6:
-                    # # print(np.amax(abs(u0-u[:, idx_inside]), axis=None))
-
-                # u1 = u[:, np.logical_or(idx_outside, ux_isnan)] 
-                # x1 = x[:, np.logical_or(idx_outside, ux_isnan)]
-                # # u1 = u[:, idx_outside] 
-                # # x1 = x[:, idx_outside]
-        # return u0, x0, u1, x1
-
-    # def get_test_data(self, filename, sampling_domain=None, sampling_space='u', support=None):
-        # data    = np.load(os.path.join(self.data_dir_result, 'TestData', filename))
-        # u       = data[                   :    self.solver.ndim, :self.n_test]
-        # x       = data[  self.solver.ndim : 2* self.solver.ndim, :self.n_test]
-        # y       = np.squeeze(data[2*self.solver.ndim :        , :self.n_test])
-        # u       = uqra.rosenblatt(self.x_dist, x, self.u_dist, support=support)
-
-
-        # if sampling_domain is None:
-            # return u, x, y
-        # else:
-            # if sampling_space == 'u':
-                # idx_inside, idx_outside = self.separate_samples_by_domain(u, sampling_domain)
-                # u = u[:, idx_inside]
-                # x = x[:, idx_inside]
-                # y = np.squeeze(np.array(y, ndmin=2,copy=False)[:, idx_inside]) 
-            # elif sampling_space == 'x':
-                # idx_inside, idx_outside = self.separate_samples_by_domain(x, sampling_domain)
-                # u = u[:, idx_inside]
-                # x = x[:, idx_inside]
-                # y = np.squeeze(np.array(y, ndmin=2,copy=False)[:, idx_inside]) 
-            # else:
-                # raise ValueError("Undefined value {} for UQRA.Parameters.get_test_data.sampling_space".format(sampling_space))
-
-            # return u, x, y
-        
-        # doe_candidate = self.doe_candidate.lower()
-        # data_dir = os.path.join(self.data_dir_sample, doe_candidate.upper(), self.u_distname.capitalize()) 
-        # try:
-            # self.filename_candidates = kwargs['filename']
-            # try:
-                # data = np.load(self.filename_candidates)
-            # except FileNotFoundError:
-                # data = np.load(os.path.join(data_dir, self.filename_candidates))
-            # u_cand = data[:self.ndim,:n].reshape(self.ndim, -1) ## will raise error when samples files smaller than n
-            # self.filename_optimality = kwargs.get('filename_optimality', None)
-
-        # except KeyError:
-            # if doe_candidate.lower().startswith('mcs'):
-                # self.filename_candidates = r'DoE_McsE6R0.npy'
-                # data = np.load(os.path.join(data_dir, self.filename_candidates))
-                # u_cand = data[:self.ndim,:n].reshape(self.ndim, -1) ## will raise error when samples files smaller than n
-
-            # elif doe_candidate.lower().startswith('cls') or doe_candidate == 'reference':
-                # if self.u_distname.lower().startswith('norm'):
-                    # self.filename_candidates = r'DoE_ClsE6d{:d}R0.npy'.format(self.ndim)
-                # elif self.u_distname.lower().startswith('uniform'):
-                    # self.filename_candidates = r'DoE_ClsE6R0.npy'
-                # else:
-                    # raise ValueError('dist_x_name {} not defined'.format(self.dist_x_name))
-                # data  = np.load(os.path.join(data_dir, self.filename_candidates))
-                # u_cand = data[:self.ndim,:n].reshape(self.ndim, -1)
-            # else:
-                # raise ValueError('DoE method {:s} not defined'.format(doe_candidate))
-            # self.filename_optimality = kwargs.get('filename_optimality', None)
-
-        # return u_cand
-
-    # def get_test_data(self, solver, pce_model, filename = r'DoE_McsE6R9.npy', **kwargs):
-        # """
-        # Return test data. 
-
-        # Test data should always be in X-space. The correct sequence is X->y->u
-
-        # To be able to generate MCS samples for X, we use MCS samples in Samples/MCS, noted as z here
-
-        # If already exist in simparams.data_dir_result, then load and return
-        # else, run solver
-
-        # """
-        
-        # data_dir_result = os.path.join(self.params.data_dir_result, 'TestData')
-        # try: 
-            # os.makedirs(data_dir_result)
-        # except OSError as e:
-            # pass
-
-        # n       = kwargs.get('n'   , self.params.n_test)
-        # qoi     = kwargs.get('qoi' , solver.out_responses )
-        # n       = int(n)
-        # n_short_term = self.solver.n_short_term
-        # assert solver.ndim == pce_model.ndim
-        # ndim = solver.ndim
-        # try:
-            # nparams = solver.nparams
-        # except AttributeError:
-            # nparams = ndim
-        # self.filename_test = '{:s}_{:d}{:s}_'.format(solver.nickname, ndim, pce_model.basis.nickname) + filename
-        # if self.params.doe_candidate.lower() == 'cls':
-            # self.filename_test = self.filename_test.replace('Mcs', 'Cls')
-
-        # try:
-            # u_test = None 
-            # x_test = None
-            # y_test = []
-            # for iqoi in qoi:
-                # filename_iqoi = self.filename_test[:-4] + '_y{:d}.npy'.format(iqoi)
-                # data_set = np.load(os.path.join(data_dir_result, filename_iqoi))
-                # print('   - Retrieving test data from {}'.format(os.path.join(data_dir_result, filename_iqoi)))
-                # if not solver.nickname.lower().startswith('sdof'):
-                    # assert data_set.shape[0] == 2*ndim+1
-
-                # u_test_ = data_set[     :  ndim,:n] if n > 0 else data_set[     :  ndim, :]
-                # x_test_ = data_set[ndim :ndim+nparams,:n] if n > 0 else data_set[ndim :ndim+nparams, :]
-
-                # if u_test is None:
-                    # u_test  = u_test_
-                # else:
-                    # assert np.array_equal(u_test_, u_test)
-
-                # if x_test is None:
-                    # x_test  = x_test_
-                # else:
-                    # assert np.array_equal(x_test_, x_test)
-
-                # y_test_ = data_set[ndim+nparams: ndim+nparams+n_short_term,:n] if n > 0 else data_set[ndim+nparams: ndim+nparams+n_short_term, : ]
-                # y_test.append(y_test_)
-            # if len(y_test) == 1:
-                # y_test = y_test[0]
-
-        # except FileNotFoundError:
-            # ### 1. Get MCS samples for X
-            # if pce_model.basis.u_distname.lower() == 'uniform':
-                # data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Uniform')
-                # print('    - Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
-                # data_set = np.load(os.path.join(data_dir_sample,filename))
-                # z_test = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
-                # x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * ndim)
-            # elif pce_model.basis.u_distname.lower().startswith('norm'):
-                # data_dir_sample = os.path.join(self.params.data_dir_sample, 'MCS','Norm')
-                # print('    - Solving test data from {} '.format(os.path.join(data_dir_sample,filename)))
-                # data_set= np.load(os.path.join(data_dir_sample,filename))
-                # z_test  = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
-                # x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
-            # else:
-                # raise ValueError
-            # y_test = solver.run(x_test, out_responses='ALL', save_qoi=True, data_dir=data_dir_result)
-            # np.save('y_test.npy', np.array(y_test))
-
-            # ### 2. Mapping MCS samples from X to u
-            # ###     dist_u is defined by pce_model
-            # ### Bounded domain maps to [-1,1] for both mcs and cls methods. so u = z
-            # ### Unbounded domain, mcs maps to N(0,1), cls maps to N(0,sqrt(0.5))
-            # u_test = 0.0 + z_test * np.sqrt(0.5) if self.is_cls_unbounded() else z_test
-            # u_test = u_test[:,:n] if n > 0 else u_test
-            # x_test = x_test[:,:n] if n > 0 else x_test
-
-            # if y_test.ndim == 1:
-                # data   = np.vstack((u_test, x_test, y_test.reshape(1,-1)))
-                # np.save(os.path.join(data_dir_result, self.filename_test), data)
-                # print('   > Saving test data to {} '.format(data_dir_result))
-                # y_test = y_test[  :n] if n > 0 else y_test
-            # elif y_test.ndim == 2:
-                # # if y_test.shape[0] == n:
-                    # # y_test = y_test.T
-                # # elif y_test.shape[1] == n:
-                    # # y_test = y_test
-                # # else:
-                # raise ValueError('Solver output format not understood: {}, expecting has {:d} in 1 dimensino'.format(n))
-            # elif y_test.ndim == 3:
-                # ### (n_short_term, n, nqoi)
-                # if solver.name.lower() == 'linear oscillator':
-                    # y = []
-                    # for i, iqoi_test in enumerate(y_test.T):
-                        # data = np.vstack((u_test, x_test, iqoi_test.T))
-                        # np.save(os.path.join(data_dir_result, self.filename_test[:-4]+'_y{:d}.npy'.format(i)), data)
-                        # if i in solver.out_responses:
-                            # y.append(iqoi_test[:n].T if n > 0 else iqoi_test)
-                    # print('   > Saving test data to {} '.format(data_dir_result))
-                    # y_test = y[0] if len(y) == 1 else y
-                # elif solver.name.lower() == 'duffing oscillator':
-                    # y = []
-                    # for i, iqoi_test in enumerate(y_test.T):
-                        # data = np.vstack((u_test, x_test, iqoi_test.T))
-                        # np.save(os.path.join(data_dir_result, self.filename_test[:-4]+'_y{:d}.npy'.format(i)), data)
-                        # if i in solver.out_responses:
-                            # y.append(iqoi_test[:n].T if n > 0 else iqoi_test)
-                    # print('   > Saving test data to {} '.format(data_dir_result))
-                    # y_test = y[0] if len(y) == 1 else y
-                # else:
-                    # raise NotImplementedError
-        # return u_test, x_test, y_test
-
-
-        # # self.solver = solver
-        # self.doe_optimality = None
-        # ###------------- Adaptive setting -----------------------------
-        # self.is_adaptive= False
-        # self.plim     = kwargs.get('plim'     , None  )  ## polynomial degree limit
-        # self.n_budget = kwargs.get('n_budget' , None  )
-        # self.min_r2   = kwargs.get('min_r2'   , None  )  ## minimum adjusted R-squared threshold value to take
-        # self.rel_mse  = kwargs.get('rel_mse'  , None  )  ## Relative mean square error 
-        # self.abs_mse  = kwargs.get('abs_mse'  , None  )  ## Absolute mean square error
-        # self.rel_qoi  = kwargs.get('rel_qoi'  , None  )  ## Relative error for QoI, i.e. percentage difference relative to previous simulation
-        # self.abs_qoi  = kwargs.get('abs_qoi'  , None  )  ## Absolute error for QoI, i.e. decimal accuracy 
-        # self.qoi_val  = kwargs.get('qoi_val'  , None  )  ## QoI value up to decimal accuracy 
-        # self.rel_cv   = kwargs.get('rel_cv'   , 0.05  )  ## percentage difference relative to previous simulation
-        # if self.plim is not None or self.n_budget is not None:
-            # self.is_adaptive = True
-        
-        # print(r' > Optional parameters:')
-        # if self.time_params:
-            # print(r'   * {:<15s} : '.format('time parameters'))
-            # print(r'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('start', self.time_start, 'end', self.time_max ))
-            # print(r'     - {:<8s} : {:.2f} - {:<8s} : {:.2f}'.format('ramp ', self.time_ramp , 'dt ', self.dt ))
-        # if self.post_params:
-            # print(r'   * {:<15s} '.format('post analysis parameters'))
-            # out_responses = self.out_responses if self.out_responses is not None else 'All'
-            # print(r'     - {:<23s} : {} '.format('out_responses', out_responses))
-            # print(r'     - {:<23s} : {} '.format('statistics'  , self.stats)) 
-
-        # if self.is_adaptive:
-            # print(r'   * {:<15s} '.format('Adaptive parameters'))
-            # print(r'     - {:<23s} : {} '.format('Simulation budget', self.n_budget))
-            # print(r'     - {:<23s} : {} '.format('Poly degree limit', self.plim))
-            # print(r'     - {:<23s} : {} '.format('Relvative CV error', self.rel_cv))
-            # if self.min_r2:
-                # print(r'     - {:<23s} : {} '.format('R2 bound', self.min_r2))
-            # if self.rel_mse:
-                # print(r'     - {:<23s} : {} '.format('Relative MSE', self.rel_mse))
-            # if self.abs_mse:
-                # print(r'     - {:<23s} : {} '.format('Absolute MSE', self.abs_mse))
-            # if self.rel_qoi:
-                # print(r'     - {:<23s} : {} '.format('Relative QoI', self.rel_qoi))
-            # if self.abs_qoi:
-                # print(r'     - {:<23s} : {} '.format('QoI decimal accuracy', self.abs_qoi))
-            # if self.qoi_val:
-                # print(r'     - {:<23s} : {} '.format('QoI=0, decimal accuracy', self.qoi_val))
