@@ -146,4 +146,13 @@ class ExperimentBase(object):
             size = tuple(map(int, i) for i in size)
         return size
 
+    def nickname(self, doe_sampling, doe_optimality=None):
+        if str(doe_optimality).lower() == 'none':
+            self.nickname = str(doe_sampling).capitalize()
+        elif doe_optimality.isalpha() and len(doe_optimality) == 1:
+            self.nickname = str(doe_sampling).capitalize()+str(doe_optimality).upper()
+        else:
+            raise ValueError (' {} and {} not defined'.format(doe_sampling, doe_optimality))
+        return self.nickname
+
 
