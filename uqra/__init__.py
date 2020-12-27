@@ -8,8 +8,11 @@ import importlib
 import numpy as np
 import pandas as pd
 
-from uqra.simulation import Parameters
-from uqra.simulation import Modeling
+from uqra.setting import Data
+from uqra.setting import Parameters
+from uqra.setting import Simulation
+from uqra.setting import Modeling
+
 from uqra.polynomial._polybase import PolyBase
 from uqra.polynomial.hermite import Hermite
 from uqra.polynomial.legendre import Legendre
@@ -21,6 +24,7 @@ from uqra.environment._envbase import EnvBase
 from uqra.environment.environment import Environment as Environment
 # from uqra.environment import *
 
+from uqra.experiment._experimentbase import ExperimentBase as Experiment
 from uqra.experiment.quadrature import QuadratureDesign
 from uqra.experiment.random_design import * 
 from uqra.experiment.lhs import LatinHyperCube as LHS
