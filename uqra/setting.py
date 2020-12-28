@@ -323,15 +323,15 @@ class Simulation(Parameters):
         else:
             raise ValueError(' Experimental Design {:s} not defined'.format(doe_sampling))
 
-    def doe_nickname(self,doe_optimality):
-        doe_sampling = self.doe_sampling
-        if str(doe_optimality).lower() == 'none':
-            self.doe_name = str(doe_sampling).capitalize()
-        elif doe_optimality.isalpha() and len(doe_optimality) == 1:
-            self.doe_name = str(doe_sampling).capitalize()+str(doe_optimality).upper()
-        else:
-            raise ValueError
-        return self.doe_name
+    # def doe_nickname(self,doe_sampling, doe_optimality):
+        # doe_sampling = self.doe_sampling
+        # if str(doe_optimality).lower() == 'none':
+            # self.doe_name = str(doe_sampling).capitalize()
+        # elif doe_optimality.isalpha() and len(doe_optimality) == 1:
+            # self.doe_name = str(doe_sampling).capitalize()+str(doe_optimality).upper()
+        # else:
+            # raise ValueError (' {} and {} not defined'.format(doe_sampling, doe_optimality))
+        # return self.doe_name
 
     def check_wiener_askey_distribution(self):
         """
@@ -365,7 +365,7 @@ class Simulation(Parameters):
             self.u_dist = [stats.norm(0,1), ] * ndim
             self.u_distname = 'norm'
         else:
-            raise ValueError(' Sampling method {:s} and polynomial name {:s} are not defined'.format(doe_sampling, poly_name))
+            raise ValueError(' Sampling method {:s} and polynomial name {:s} are not compatible or defined'.format(doe_sampling, poly_name))
 
     def info(self):
         print(r'------------------------------------------------------------')
