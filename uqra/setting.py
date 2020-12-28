@@ -86,9 +86,9 @@ class Parameters(object):
         """
         current_os  = sys.platform
         if current_os.upper()[:3] == 'WIN':
-            data_dir        = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'UQRA_Examples')
-            data_dir_doe    = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign')
-            data_dir_random = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
+            data_dir        = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'UQRA_Examples')
+            data_dir_doe    = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign')
+            data_dir_random = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
         elif current_os.upper() == 'DARWIN':
             data_dir        = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples'
             data_dir_doe    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign'
