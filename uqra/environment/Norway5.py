@@ -179,7 +179,8 @@ class Norway5(EnvBase):
         self.spectrum = spectrum
         self.is_arg_rand = [True, True, True] 
         self.ndim = int(3)
-        self.name = ['weibull','weibull','lognorm']
+        self.site = 'Norway5'
+        self.dist_name = ['weibull','weibull','lognorm']
 
     def dist_uw(self):
         return DistUw()

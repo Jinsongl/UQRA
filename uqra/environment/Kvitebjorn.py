@@ -22,7 +22,6 @@ from ._envbase import EnvBase
 ##################################################
 ##################################################
 class DistHs(object):
-
     def __init__(self):
 
         self.name     = 'lognorm_weibull'
@@ -95,12 +94,10 @@ class DistHs(object):
 
         else:
             raise ValueError('Key value: {} is not defined'.format(key))
-
 ##################################################
 ##################################################
 
 class DistTp(object):
-
     def __init__(self, hs):
 
         self.a1 = 1.134
@@ -153,7 +150,8 @@ class Kvitebjorn(EnvBase):
         self.spectrum = spectrum
         self.is_arg_rand = [True, True] 
         self.ndim = int(2)
-        self.name = ['lognorm_weibull','lognorm']
+        self.site = 'Kvitebjorn'
+        self.dist_name = ['lognorm_weibull','lognorm']
 
     def dist_hs(self):
         return DistHs()
