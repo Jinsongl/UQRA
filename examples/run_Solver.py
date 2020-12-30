@@ -195,9 +195,24 @@ def run_duffing():
 def run_FPSO():
     # uqra_env = uqra.environment.Kvitebjorn()
     uqra_env = uqra.environment.Norway5()
-    data_dir_random = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
+    current_os  = sys.platform
+    if current_os.upper()[:3] == 'WIN':
+        data_dir        = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'UQRA_Examples')
+        data_dir_doe    = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign')
+        data_dir_random = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
+    elif current_os.upper() == 'DARWIN':
+        data_dir        = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples'
+        data_dir_doe    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign'
+        data_dir_random = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
+    elif current_os.upper() == 'LINUX':
+        data_dir        = r'/home/jinsong/Documents/MUSE_UQ_DATA/UQRA_Examples'
+        data_dir_doe    = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign'
+        data_dir_random = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
+    else:
+        raise ValueError('Operating system {} not found'.format(current_os))    
+
     # data_dir_samples= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/FPSO_SRUGE/TestData'
-    data_dir_result = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/FPSO_SRUGE/TestData'
+    data_dir_result = data_dir
 
     # ------------------------ Basic Check ----------------- ###
     # solver = uqra.FPSO()
@@ -218,7 +233,7 @@ def run_FPSO():
     # np.save(os.path.join(data_dir_result, '{:s}_DoE_Lhs.npy'), data_lhs)
     ## ------------------------ MCS  ----------------- ###
     ##### MCS for DoE_McsE7R0
-    for r in range(10):
+    for r in range(1):
         data = uqra.Data()
         filename   = 'DoE_McsE6R{:d}_norm.npy'.format(r)
         data_mcs_u = np.load(os.path.join(data_dir_random, filename))[:uqra_env.ndim,:]
@@ -229,12 +244,13 @@ def run_FPSO():
         data.x     = os.path.join(data_dir_result, filename)
 
         data.y = []
-        for itheta in np.arange(5,8):
+        for itheta in np.arange(5):
             solver = uqra.FPSO(random_state=itheta)
             data_mcs_x = uqra_env.ppf(stats.norm.cdf(data_mcs_u))
             y = solver.run(data_mcs_x[1:,:], verbose=True) 
             data.y.append(y)
-        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname,r)
+        filename = '{:s}_McsE6R{:d}0.npy'.format(solver.nickname,r)
+        print('saving data: {}'.format(os.path.join(data_dir_result, filename)))
         np.save(os.path.join(data_dir_result, filename), data, allow_pickle=True)
 
     # ------------------------ Environmental Contour ----------------- ###
