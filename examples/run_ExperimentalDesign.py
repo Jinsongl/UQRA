@@ -95,10 +95,10 @@ def run_CLS():
             # pass
     data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign'
     ndim = 3
-    doe_method = 'CLS1'
+    doe_method = 'CLS4'
     print('{:s}, d={:d}'.format(doe_method, ndim))
     doe = uqra.CLS(doe_method,ndim)
-    for r in range(10):
+    for r in range(1):
         np.random.seed(None)
         doe_x = doe.samples(size=1e6)
         print('   - {:<25s} : {}'.format(' Dataset (U)', doe_x.shape))
@@ -264,13 +264,13 @@ def test_gauss_quadrature():
 
 def run_LHS():
     alpha1 = np.linspace(1, 2, 6)
-    alpha2 = np.linspace(2, 4, 5)
-    alpha3 = np.linspace(4,10, 7)
-    alpha  = np.unique(np.hstack((alpha1, alpha2, alpha3)))
+    alpha2 = np.linspace(2, 5, 7)
+    # alpha3 = np.linspace(4,10, 7)
+    alpha  = np.unique(np.hstack((alpha1, alpha2)))
     print('Running UQRA Latin Hypercube...')
     data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/LHS'
     # ndim_deg = [(2,10), (2,15), (4,4), (10, 2), (15,2), (2,2), (2,6)] 
-    ndim_deg = [(2,i) for i in np.arange(2,16)] 
+    ndim_deg = [(3,i) for i in np.arange(2,11)] 
     for ndim, deg in ndim_deg:
         poly = uqra.poly.orthogonal(ndim, deg, 'leg') ## just need total number of basis, either leg or hem works
 
