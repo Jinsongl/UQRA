@@ -86,16 +86,13 @@ class Parameters(object):
         """
         current_os  = sys.platform
         if current_os.upper()[:3] == 'WIN':
-            data_dir        = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'UQRA_Examples')
-            data_dir_doe    = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign')
+            data_dir_doe    = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random_Optimal')
             data_dir_random = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
         elif current_os.upper() == 'DARWIN':
-            data_dir        = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples'
-            data_dir_doe    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign'
+            data_dir_doe    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
             data_dir_random = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
         elif current_os.upper() == 'LINUX':
-            data_dir        = r'/home/jinsong/Documents/MUSE_UQ_DATA/UQRA_Examples'
-            data_dir_doe    = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign'
+            data_dir_doe    = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
             data_dir_random = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
         else:
             raise ValueError('Operating system {} not found'.format(current_os))    
@@ -284,7 +281,7 @@ class Simulation(Parameters):
         assert self.solver.ndim == self.model.ndim
         self.update_output_dir()
 
-    def update_filenames(self, s, fname_test=None):
+    def update_filenames(self, s, filename_lambda=None):
         """
         Create/update filenames related to data in/output
         """
@@ -679,15 +676,15 @@ class Simulation(Parameters):
         current_os  = sys.platform
         if current_os.upper()[:3] == 'WIN':
             data_dir        = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'UQRA_Examples')
-            data_dir_doe    = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign')
+            data_dir_doe    = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random_Optimal')
             data_dir_random = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
         elif current_os.upper() == 'DARWIN':
             data_dir        = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples'
-            data_dir_doe    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign'
+            data_dir_doe    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
             data_dir_random = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
         elif current_os.upper() == 'LINUX':
             data_dir        = r'/home/jinsong/Documents/MUSE_UQ_DATA/UQRA_Examples'
-            data_dir_doe    = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign'
+            data_dir_doe    = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
             data_dir_random = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
         else:
             raise ValueError('Operating system {} not found'.format(current_os))    
