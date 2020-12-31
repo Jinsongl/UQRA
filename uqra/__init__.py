@@ -22,7 +22,6 @@ from uqra.polynomial import poly
 
 from uqra.environment._envbase import EnvBase
 from uqra.environment.environment import Environment as Environment
-# from uqra.environment import *
 
 from uqra.experiment._experimentbase import ExperimentBase as Experiment
 from uqra.experiment.quadrature import QuadratureDesign
@@ -30,7 +29,6 @@ from uqra.experiment.random_design import *
 from uqra.experiment.lhs import LatinHyperCube as LHS
 from uqra.experiment.optimal_design import OptimalDesign 
 
-# from uqra.solver.dynamic import linear_oscillator, duffing_oscillator
 from uqra.solver.solver import Solver
 from uqra.solver.linear_oscillator import linear_oscillator as linear_oscillator
 from uqra.solver.duffing_oscillator import duffing_oscillator as duffing_oscillator
@@ -45,7 +43,4 @@ from uqra.surrogates.multiple_polynomial_chaos_expansion import mPCE
 from uqra.utilities import metrics as metrics
 from uqra.utilities.EllipsoidTool import EllipsoidTool
 from uqra.utilities.helpers import *
-# from uqra.utilities.helpers import get_stats
-# from uqra.utilities.helpers import blockPrint
-# from uqra.utilities.helpers import enablePrint
 
