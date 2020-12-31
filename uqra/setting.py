@@ -18,41 +18,104 @@ from itertools import compress
 import scipy.stats as stats
 from tqdm import tqdm
 
+### ----------------- Base Classes -----------------
 class Data(object):
     def __init__(self):
         pass
 
 class Parameters(object):
     def __init__(self):
-        self.update_output_dir()
+        pass
 
-    def update_filenames(self, s):
+### ----------------- Experiment Parameters() -----------------
+class ExperimentParameters(Parameters):
+    def __init__(self):
+        self._default_data_dir()
+
+    def update_filenames(self, s, filename_template=None, **kwargs):
         """
         Create/update filenames related to data in/output
         """
-        ndim, deg   = self.ndim, self.deg
-        poly_name   = self.poly_name
-        doe_sampling= self.doe_sampling.capitalize()
+        try:
+            ndim, deg   = self.ndim, self.deg
+            poly_name   = self.poly_name
+            doe_sampling= self.doe_sampling.capitalize()
+            num_cand    = self.num_cand
+        except AttributeError:
+            raise ValueError('Attributes: [ndim, deg, poly_name, doe_sampling, num_cand] must given to update filenames')
+
+        ### find distribution name corresponding to specified polynomials
         if poly_name.lower() in ['heme', 'hem']:
-            u_distname  = 'norm' 
+            u_distname = 'norm' 
         elif poly_name.lower() in ['leg']:
-            u_distname  = 'uniform' 
-
-
-        if doe_sampling.lower() == 'lhs':
-            self.fname_cand   = None
-            self.fname_design = lambda n: os.path.join('LHS', r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim,u_distname))
-
-        elif doe_sampling[:3].lower() == 'mcs':
-            self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, u_distname)
-            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:s}.npy'.format(doe_sampling, s, ndim, poly_name[:3], str(deg))
-
-        elif doe_sampling[:3].lower() == 'cls':
-            self.fname_cand   = r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
-            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:s}.npy'.format(doe_sampling, s, ndim, poly_name[:3], str(deg))
-
+            u_distname = 'uniform' 
         else:
-            raise ValueError(' Experimental Design {:s} not defined'.format(doe_sampling))
+            raise ValueError('Polynomial {} not defined'.format(poly_name))
+        self.u_distname = u_distname
+
+        ## 1 user defined filenames: direct assign, 1st priority
+        self.fname_cand  = kwargs.get('filename_cand'  , None)
+        self.fname_test  = kwargs.get('filename_test'  , None)
+        self.fname_design= kwargs.get('filename_design', None)
+
+        isFileNameAssigned = np.array([self.fname_cand, self.fname_design, self.fname_test]) != None
+        if isFileNameAssigned.all():
+            ## user defined filenames have first priority
+            pass
+
+        ## 2: filename template function is given
+        elif filename_template:
+            ### filenames are based on given template function
+            ### but user defined filenames are first priority
+            if self.fname_cand is None:
+                self.fname_cand = filename_template(s)+'.npy' 
+
+            if self.fname_design is None:
+                self.fname_design = filename_template(s)+'_{:d}{:s}{:s}.npy'.format(ndim, poly_name[:3], str(deg))
+            
+        ## 3: if none of above are given, will return system defined filenames 
+        else:
+            if doe_sampling.lower() == 'lhs':
+                self.fname_cand   = None
+                self.fname_design = lambda n: r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim,u_distname)
+
+            elif doe_sampling[:3].lower() == 'mcs':
+                self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, u_distname)
+                self.fname_design = r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
+                        doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
+
+            elif doe_sampling[:3].lower() == 'cls':
+                self.fname_cand   = r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
+                self.fname_design = r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
+                        doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
+            else:
+                self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, u_distname)
+                self.fname_design = r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
+                        doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
+
+    def update_nicknames(self):
+        """
+        Return a list of nickname(s) for doe_sampling and all the doe_optimality specified
+        """
+        try:
+            doe_sampling = self.doe_sampling
+            doe_optimality = self.optimality
+            if not isinstance(doe_optimality, (list, tuple)):
+                doe_optimality = [doe_optimality,]
+        except AttributeError:
+            raise ValueError(' doe_sampling and doe_optimality attributes must given to update nicknames')
+        self.nicknames = [self.doe_nickname(doe_sampling, ioptimality) for ioptimality in doe_optimality]
+
+    def doe_nickname(self, doe_sampling, doe_optimality):
+        """
+        Return DoE nickname for one specific doe_sampling and doe_optimality set
+        """
+        if str(doe_optimality).lower() == 'none':
+            nickname = str(doe_sampling).capitalize()
+        else:
+            assert doe_optimality.isalpha() and len(doe_optimality) ==1
+            nickname = str(doe_sampling).capitalize()+str(doe_optimality).upper()
+        return nickname
 
     def update_output_dir(self, **kwargs):
         """
@@ -68,12 +131,10 @@ class Parameters(object):
             data_dir_result: directory saving all data, self.data_dir_result
             figure_dir: directory saving all figures, self.figure_dir
         """
-        data_dir_random, data_dir_doe = self._make_output_dir()
-        self.pwd            = kwargs.get('pwd'              , os.getcwd()    )
-        self.data_dir_doe   = kwargs.get('data_dir_doe'     , data_dir_doe   )
-        self.data_dir_random= kwargs.get('data_dir_random'  , data_dir_random)
+        self.data_dir_cand    = kwargs.get('data_dir_cand'   , self.data_dir_cand    )
+        self.data_dir_optimal = kwargs.get('data_dir_optimal', self.data_dir_optimal )
 
-    def _make_output_dir(self):
+    def _default_data_dir(self):
         """
         WORKING_DIR/
         +-- MODEL_DIR
@@ -86,28 +147,21 @@ class Parameters(object):
         """
         current_os  = sys.platform
         if current_os.upper()[:3] == 'WIN':
-            data_dir_doe    = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random_Optimal')
-            data_dir_random = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
+            data_dir_optimal= os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random_Optimal')
+            data_dir_cand   = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
         elif current_os.upper() == 'DARWIN':
-            data_dir_doe    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
-            data_dir_random = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
+            data_dir_optimal= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
+            data_dir_cand   = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
         elif current_os.upper() == 'LINUX':
-            data_dir_doe    = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
-            data_dir_random = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
+            data_dir_optimal= r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
+            data_dir_cand   = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
         else:
             raise ValueError('Operating system {} not found'.format(current_os))    
 
-        return data_dir_random,data_dir_doe 
+        self.data_dir_cand    = data_dir_cand
+        self.data_dir_optimal = data_dir_optimal 
 
-    def doe_nickname(self, doe_sampling, doe_optimality=None):
-        if str(doe_optimality).lower() == 'none':
-            self.nickname = str(doe_sampling).capitalize()
-        elif doe_optimality.isalpha() and len(doe_optimality) == 1:
-            self.nickname = str(doe_sampling).capitalize()+str(doe_optimality).upper()
-        else:
-            raise ValueError (' {} and {} not defined'.format(doe_sampling, doe_optimality))
-        return self.nickname
-
+### ----------------- Modeling Parameters() -----------------
 class Modeling(Parameters):
     """
 
@@ -253,8 +307,7 @@ class Modeling(Parameters):
         X = sw_matrix @ X
         return X
 
-##################################################
-##################################################
+### ----------------- Simulation Parameters() -----------------
 class Simulation(Parameters):
     """
     Simulation class with settings to run UQRA modeling
@@ -280,55 +333,6 @@ class Simulation(Parameters):
             self.check_wiener_askey_distribution()
         assert self.solver.ndim == self.model.ndim
         self.update_output_dir()
-
-    def update_filenames(self, s, filename_lambda=None):
-        """
-        Create/update filenames related to data in/output
-        """
-        ndim, deg   = self.model.ndim, self.model.deg
-        poly_name   = self.model.orth_poly.nickname.capitalize()
-        doe_sampling= self.doe_params.doe_sampling.capitalize()
-        u_distname  = self.u_distname
-
-        if doe_sampling.lower() == 'lhs':
-            self.fname_cand   = None
-            self.fname_design = lambda n: os.path.join('LHS', r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim,u_distname))
-            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
-            if fname_test:
-                self.fname_test = lambda solver_name : fname_test
-            else:
-                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
-
-        elif doe_sampling[:3].lower() == 'mcs':
-            self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, u_distname)
-            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:s}.npy'.format(doe_sampling, s, ndim, poly_name[:3], str(deg))
-            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
-            if fname_test:
-                self.fname_test = lambda solver_name : fname_test
-            else:
-                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
-
-        elif doe_sampling[:3].lower() == 'cls':
-            self.fname_cand   = r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
-            self.fname_design = r'DoE_{:s}E5R{:d}_{:d}{:s}{:s}.npy'.format(doe_sampling, s, ndim, poly_name[:3], str(deg))
-            self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
-            if fname_test:
-                self.fname_test = lambda solver_name : fname_test
-            else:
-                self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
-
-        else:
-            raise ValueError(' Experimental Design {:s} not defined'.format(doe_sampling))
-
-    # def doe_nickname(self,doe_sampling, doe_optimality):
-        # doe_sampling = self.doe_sampling
-        # if str(doe_optimality).lower() == 'none':
-            # self.doe_name = str(doe_sampling).capitalize()
-        # elif doe_optimality.isalpha() and len(doe_optimality) == 1:
-            # self.doe_name = str(doe_sampling).capitalize()+str(doe_optimality).upper()
-        # else:
-            # raise ValueError (' {} and {} not defined'.format(doe_sampling, doe_optimality))
-        # return self.doe_name
 
     def check_wiener_askey_distribution(self):
         """
@@ -380,7 +384,66 @@ class Simulation(Parameters):
         print(r'   - Working Dir: {}'.format(os.getcwd()))
         print(r'   - Figure  Dir: {}'.format(self.figure_dir))
         print(r'   - Result  Dir: {}'.format(self.data_dir_result))
-        print(r'   - Samples Dir: {}'.format(self.data_dir_random))
+        print(r'   - Samples Dir: {}'.format(self.data_dir_cand))
+
+    def update_filenames(self, s, filename_template=None, **kwargs):
+        """
+        Create/update filenames for testing 
+        """
+        ndim, deg   = self.model.ndim, self.model.deg
+        poly_name   = self.model.orth_poly.nickname.capitalize()
+        doe_sampling= self.doe_params.doe_sampling.capitalize()
+        u_distname  = self.u_distname
+
+        ## 1 user defined filenames: direct assign, 1st priority
+        self.fname_test  = kwargs.get('filename_test'  , None)
+        self.fname_design= kwargs.get('filename_design', None)
+
+        isFileNameAssigned = np.array([self.fname_design, self.fname_test]) != None
+        if isFileNameAssigned.all():
+            ## user defined filenames have first priority
+            pass
+
+        ## 2: filename template function is given
+        elif filename_template:
+            ### filenames are based on given template function
+            ### but user defined filenames are first priority
+
+            if self.fname_design is None:
+                self.fname_design = filename_template(s)+'_{:d}{:s}{:s}.npy'.format(ndim, poly_name[:3], str(deg))
+            
+            if self.fname_test is None:
+                ### first try if fname_testin is given.
+                try:
+                    self.fname_test = '_'.join([solver_name, self.fname_testin])
+                except AttributeError:
+                    self.fname_test = '_'.join([solver_name, fname_cand])
+
+        ## 3: if none of above are given, will return system defined filenames 
+        else:
+            if doe_sampling.lower() == 'lhs':
+
+                self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
+                if fname_test:
+                    self.fname_test = lambda solver_name : fname_test
+                else:
+                    self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
+
+            elif doe_sampling[:3].lower() == 'mcs':
+
+                self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
+                if fname_test:
+                    self.fname_test = lambda solver_name : fname_test
+                else:
+                    self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
+
+            elif doe_sampling[:3].lower() == 'cls':
+
+                self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
+                if fname_test:
+                    self.fname_test = lambda solver_name : fname_test
+                else:
+                    self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
 
     def update_output_dir(self, **kwargs):
         """
@@ -396,13 +459,13 @@ class Simulation(Parameters):
             data_dir_result: directory saving all data, self.data_dir_result
             figure_dir: directory saving all figures, self.figure_dir
         """
-        data_dir_random, data_dir_doe, data_dir_result, data_dir_test, figure_dir = self._make_output_dir()
-        self.pwd            = kwargs.get('pwd'              , os.getcwd()    )
-        self.figure_dir     = kwargs.get('figure_dir'       , figure_dir     )
-        self.data_dir_doe   = kwargs.get('data_dir_doe'     , data_dir_doe   )
-        self.data_dir_test  = kwargs.get('data_dir_test'    , data_dir_test  )
-        self.data_dir_random= kwargs.get('data_dir_random'  , data_dir_random)
-        self.data_dir_result= kwargs.get('data_dir_result'  , data_dir_result)
+        data_dir_cand, data_dir_optimal, data_dir_result, data_dir_test, figure_dir = self._make_output_dir()
+        self.pwd                = kwargs.get('pwd'              , os.getcwd()    )
+        self.figure_dir         = kwargs.get('figure_dir'       , figure_dir     )
+        self.data_dir_optimal   = kwargs.get('data_dir_optimal' , data_dir_optimal)
+        self.data_dir_test      = kwargs.get('data_dir_test'    , data_dir_test  )
+        self.data_dir_cand      = kwargs.get('data_dir_cand'    , data_dir_cand  )
+        self.data_dir_result    = kwargs.get('data_dir_result'  , data_dir_result)
 
     def set_udist(self, u_distname):
         self.u_distname = u_distname.lower()
@@ -676,16 +739,16 @@ class Simulation(Parameters):
         current_os  = sys.platform
         if current_os.upper()[:3] == 'WIN':
             data_dir        = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'UQRA_Examples')
-            data_dir_doe    = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random_Optimal')
-            data_dir_random = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
+            data_dir_optimal    = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random_Optimal')
+            data_dir_cand = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
         elif current_os.upper() == 'DARWIN':
             data_dir        = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples'
-            data_dir_doe    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
-            data_dir_random = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
+            data_dir_optimal    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
+            data_dir_cand = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
         elif current_os.upper() == 'LINUX':
             data_dir        = r'/home/jinsong/Documents/MUSE_UQ_DATA/UQRA_Examples'
-            data_dir_doe    = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
-            data_dir_random = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
+            data_dir_optimal    = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
+            data_dir_cand = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
         else:
             raise ValueError('Operating system {} not found'.format(current_os))    
         figure_dir      = os.path.join(data_dir, self.solver.nickname, 'Figures')
@@ -705,7 +768,7 @@ class Simulation(Parameters):
         except FileExistsError:
             pass
 
-        return data_dir_random,data_dir_doe, data_dir_result, data_dir_test, figure_dir
+        return data_dir_cand,data_dir_optimal, data_dir_result, data_dir_test, figure_dir
 
     def _get_gdrive_folder_id(self, folder_name):
         """
@@ -851,7 +914,7 @@ class Simulation(Parameters):
         # """
         # print(' > Loading predict data: {:s}'.format(filename))
         # if filename.lower().startswith('cdf'):
-            # u_cdf = np.load(os.path.join(self.data_dir_random, 'CDF', filename))
+            # u_cdf = np.load(os.path.join(self.data_dir_cand, 'CDF', filename))
             # u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
             # u = np.array([idist.ppf(iu_cdf) for idist, iu_cdf in zip(self.u_dist, u_cdf_pred)])
             # x = uqra.inverse_rosenblatt(self.x_dist, u, self.u_dist, support=support)
@@ -932,7 +995,7 @@ class Simulation(Parameters):
             # return u, x, y
         
         # doe_candidate = self.doe_candidate.lower()
-        # data_dir = os.path.join(self.data_dir_random, doe_candidate.upper(), self.u_distname.capitalize()) 
+        # data_dir = os.path.join(self.data_dir_cand, doe_candidate.upper(), self.u_distname.capitalize()) 
         # try:
             # self.filename_candidates = kwargs['filename']
             # try:
@@ -1028,15 +1091,15 @@ class Simulation(Parameters):
         # except FileNotFoundError:
             # ### 1. Get MCS samples for X
             # if pce_model.basis.u_distname.lower() == 'uniform':
-                # data_dir_random = os.path.join(self.params.data_dir_random, 'MCS','Uniform')
-                # print('    - Solving test data from {} '.format(os.path.join(data_dir_random,filename)))
-                # data_set = np.load(os.path.join(data_dir_random,filename))
+                # data_dir_cand = os.path.join(self.params.data_dir_cand, 'MCS','Uniform')
+                # print('    - Solving test data from {} '.format(os.path.join(data_dir_cand,filename)))
+                # data_set = np.load(os.path.join(data_dir_cand,filename))
                 # z_test = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
                 # x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * ndim)
             # elif pce_model.basis.u_distname.lower().startswith('norm'):
-                # data_dir_random = os.path.join(self.params.data_dir_random, 'MCS','Norm')
-                # print('    - Solving test data from {} '.format(os.path.join(data_dir_random,filename)))
-                # data_set= np.load(os.path.join(data_dir_random,filename))
+                # data_dir_cand = os.path.join(self.params.data_dir_cand, 'MCS','Norm')
+                # print('    - Solving test data from {} '.format(os.path.join(data_dir_cand,filename)))
+                # data_set= np.load(os.path.join(data_dir_cand,filename))
                 # z_test  = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
                 # x_test  = solver.map_domain(z_test, [stats.norm(0,1),] * ndim)
             # else:
@@ -1436,7 +1499,7 @@ class Simulation(Parameters):
         # self.fit_method = str(fit_method).lower()
         # self.tag        = self._get_tag()
         # self.update_output_dir()
-        # self.data_dir_precomputed_optimality = os.path.join(self.data_dir_random, 'OED')
+        # self.data_dir_precomputed_optimality = os.path.join(self.data_dir_cand, 'OED')
         # elif doe_candidate.lower() == 'mcs':
 
 
