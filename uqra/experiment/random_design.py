@@ -14,6 +14,26 @@ import numpy as np
 import scipy.stats as stats
 from uqra.utilities.helpers import num2print
 
+def Uniform_ball(ndim, n, r=1):
+    """
+    sampling uniformly from d-dimensinal ball
+
+    Arguments:
+        ndim: int, dimension
+        n   : int, number of samples
+        r   : radius of ball, default unit radius
+
+    Reference: 
+        J. Hampton, A. Doostan, Compressive sampling of polynomial chaos expansions: Convergence analysis and sampling strategies, J. Comput. Phys. 280 (2015) 363–386.
+    """
+    ndim, n = int(ndim), int(n)
+
+    z = stats.norm(0,1).rvs(size=(ndim,n))
+    z = z / np.linalg.norm(z, axis=0)
+    u = stats.uniform(0,1).rvs(size=n)
+    x = z * u**(1.0/ndim) * r
+    return x
+
 class MCS(ExperimentBase):
     def __init__(self, distributions=None):
         """
@@ -123,9 +143,7 @@ class CLS(ExperimentBase):
         self.filename = self.filename + num2print(np.array(size, ndmin=2).shape[-1])
         return u
 
-                
 class QuasiMCS(ExperimentBase):
-
     """
     Quasi random sampling based on low-discrepency sequences 
     """
