@@ -112,10 +112,9 @@ class PolynomialChaosExpansion(SurrogateBase):
             neg_mse = model_selection.cross_val_score(ols_reg, X, y, scoring='neg_mean_squared_error', cv=kfolder, n_jobs=n_jobs)
             self.model = ols_reg.fit(X, y, sample_weight=w)
             self.cv_error = -np.mean(neg_mse)
-            self.coef    = copy.deepcopy(ols_reg.coef_)
-            # print('\n self.coef', ols_reg.coef_)
-            # print('\n self.intercept_', ols_reg.intercept_)
-            self.coef[0] = self.coef[0] + ols_reg.intercept_
+            self.coef    = np.array(copy.deepcopy(ols_reg.coef_), ndmin=2)
+            self.coef[:,0] = self.coef[:,0] + ols_reg.intercept_
+            self.coef    = np.squeeze(self.coef)
             self.score   = ols_reg.score(X,y,w)
 
         elif method.lower() == 'olslars':
