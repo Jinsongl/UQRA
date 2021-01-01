@@ -45,7 +45,8 @@ class FPSO(SolverBase):
         self.ndim       = int(2)
 
         np.random.seed(100)
-        RANDOM_SEEDS        = np.random.randint(0, int(2**31-1), size=10000)
+        ### collection of random seeds to be used later
+        RANDOM_SEEDS = np.random.randint(0, int(2**31-1), size=10000)
 
         self.random_states  = kwargs.get('random_state', None )
         if self.random_states is None:
@@ -66,7 +67,6 @@ class FPSO(SolverBase):
         self._FD_FPSO_LF()
         if len(kwargs) > 0:
             raise ValueError(' Unknown arguments: {} '.format(', '.join('"{}"'.format(key) for key in kwargs.keys())))
-
 
     def __str__(self):
         message1 = 'FPSO Surge: \n' +\
@@ -97,7 +97,7 @@ class FPSO(SolverBase):
                 uqra.blockPrint()
             with mp.Pool(processes=mp.cpu_count()) as p:
                 y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, irandom_state) for ix in x]),
-                    ncols=80, desc='   - [{}/{:d}]'.format(irandom_state, self.n_short_term), total=x.shape[0])))
+                    ncols=80, desc='   - [{:<10d}/{:d}]'.format(irandom_state, self.n_short_term), total=x.shape[0])))
             if not verbose: 
                 uqra.enablePrint()
             y.append(y_QoI_)
