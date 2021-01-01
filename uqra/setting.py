@@ -332,7 +332,7 @@ class Simulation(Parameters):
         if isinstance(model, uqra.surrogates.PolynomialChaosExpansion):
             self.check_wiener_askey_distribution()
         assert self.solver.ndim == self.model.ndim
-        self.update_output_dir()
+        self._default_output_dir()
 
     def check_wiener_askey_distribution(self):
         """
@@ -396,10 +396,10 @@ class Simulation(Parameters):
         u_distname  = self.u_distname
 
         ## 1 user defined filenames: direct assign, 1st priority
-        self.fname_test  = kwargs.get('filename_test'  , None)
-        self.fname_design= kwargs.get('filename_design', None)
+        self.fname_test  = kwargs.get('filename_test'   , None)
+        self.fname_testin= kwargs.get('fllename_testin' , None)
 
-        isFileNameAssigned = np.array([self.fname_design, self.fname_test]) != None
+        isFileNameAssigned = np.array([self.fname_test, self.fname_testin]) != None
         if isFileNameAssigned.all():
             ## user defined filenames have first priority
             pass
@@ -408,42 +408,16 @@ class Simulation(Parameters):
         elif filename_template:
             ### filenames are based on given template function
             ### but user defined filenames are first priority
+            if self.fname_testin is None:
+                self.fname_testin = filename_template(s)+'.npy' 
 
-            if self.fname_design is None:
-                self.fname_design = filename_template(s)+'_{:d}{:s}{:s}.npy'.format(ndim, poly_name[:3], str(deg))
-            
             if self.fname_test is None:
-                ### first try if fname_testin is given.
-                try:
-                    self.fname_test = '_'.join([solver_name, self.fname_testin])
-                except AttributeError:
-                    self.fname_test = '_'.join([solver_name, fname_cand])
+                self.fname_test = '_'.join([self.solver.nickname, self.fname_testin])
 
         ## 3: if none of above are given, will return system defined filenames 
         else:
-            if doe_sampling.lower() == 'lhs':
-
-                self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
-                if fname_test:
-                    self.fname_test = lambda solver_name : fname_test
-                else:
-                    self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
-
-            elif doe_sampling[:3].lower() == 'mcs':
-
-                self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
-                if fname_test:
-                    self.fname_test = lambda solver_name : fname_test
-                else:
-                    self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
-
-            elif doe_sampling[:3].lower() == 'cls':
-
-                self.fname_test_in= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
-                if fname_test:
-                    self.fname_test = lambda solver_name : fname_test
-                else:
-                    self.fname_test = lambda solver_name : r'{:s}_McsE6R{:d}.npy'.format(solver_name, (s+1) %10)
+            self.fname_testin= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
+            self.fname_test  = r'{:s}_McsE6R{:d}.npy'.format(self.solver.nickname, (s+1) %10)
 
     def update_output_dir(self, **kwargs):
         """
@@ -459,13 +433,10 @@ class Simulation(Parameters):
             data_dir_result: directory saving all data, self.data_dir_result
             figure_dir: directory saving all figures, self.figure_dir
         """
-        data_dir_cand, data_dir_optimal, data_dir_result, data_dir_test, figure_dir = self._make_output_dir()
-        self.pwd                = kwargs.get('pwd'              , os.getcwd()    )
-        self.figure_dir         = kwargs.get('figure_dir'       , figure_dir     )
-        self.data_dir_optimal   = kwargs.get('data_dir_optimal' , data_dir_optimal)
-        self.data_dir_test      = kwargs.get('data_dir_test'    , data_dir_test  )
-        self.data_dir_cand      = kwargs.get('data_dir_cand'    , data_dir_cand  )
-        self.data_dir_result    = kwargs.get('data_dir_result'  , data_dir_result)
+        self.figure_dir      = kwargs.get('figure_dir'       , self.figure_dir     )
+        self.data_dir_testin = kwargs.get('data_dir_testin'  , self.data_dir_testin)
+        self.data_dir_test   = kwargs.get('data_dir_test'    , self.data_dir_test  )
+        self.data_dir_result = kwargs.get('data_dir_result'  , self.data_dir_result)
 
     def set_udist(self, u_distname):
         self.u_distname = u_distname.lower()
@@ -532,7 +503,6 @@ class Simulation(Parameters):
                 raise ValueError('Either alphas or num_samples should be defined')
 
     def get_basis(self, deg, **kwargs):
-
         if self.pce_type == 'legendre':
             basis = uqra.Legendre(d=self.ndim, deg=deg)
         elif self.pce_type == 'hermite_e':
@@ -725,7 +695,7 @@ class Simulation(Parameters):
         else:
             raise ValueError('Given stopping criteria {} not defined'.format(kwargs.keys()))
 
-    def _make_output_dir(self):
+    def _default_output_dir(self):
         """
         WORKING_DIR/
         +-- MODEL_DIR
@@ -738,17 +708,14 @@ class Simulation(Parameters):
         """
         current_os  = sys.platform
         if current_os.upper()[:3] == 'WIN':
-            data_dir        = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'UQRA_Examples')
-            data_dir_optimal    = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random_Optimal')
-            data_dir_cand = os.path.join('G:','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
+            data_dir        = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'UQRA_Examples')
+            data_dir_testin = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'ExperimentalDesign', 'Random')
         elif current_os.upper() == 'DARWIN':
             data_dir        = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples'
-            data_dir_optimal    = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
-            data_dir_cand = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
+            data_dir_testin = r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
         elif current_os.upper() == 'LINUX':
             data_dir        = r'/home/jinsong/Documents/MUSE_UQ_DATA/UQRA_Examples'
-            data_dir_optimal    = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random_Optimal'
-            data_dir_cand = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
+            data_dir_testin = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
         else:
             raise ValueError('Operating system {} not found'.format(current_os))    
         figure_dir      = os.path.join(data_dir, self.solver.nickname, 'Figures')
@@ -768,7 +735,10 @@ class Simulation(Parameters):
         except FileExistsError:
             pass
 
-        return data_dir_cand,data_dir_optimal, data_dir_result, data_dir_test, figure_dir
+        self.figure_dir     = figure_dir
+        self.data_dir_test  = data_dir_test
+        self.data_dir_result= data_dir_result
+        self.data_dir_testin= data_dir_testin
 
     def _get_gdrive_folder_id(self, folder_name):
         """
