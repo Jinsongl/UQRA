@@ -194,7 +194,7 @@ def run_duffing():
 
 def run_FPSO():
     # uqra_env = uqra.environment.Kvitebjorn()
-    uqra_env = uqra.environment.Norway5()
+    uqra_env = uqra.environment.Norway5(ndim=2)
     current_os  = sys.platform
     if current_os.upper()[:3] == 'WIN':
         data_dir        = os.path.join('G:\\','My Drive','MUSE_UQ_DATA', 'UQRA_Examples')
@@ -237,19 +237,20 @@ def run_FPSO():
         data = uqra.Data()
         filename   = 'DoE_McsE6R{:d}_norm.npy'.format(r)
         data_mcs_u = np.load(os.path.join(data_dir_random, filename))[:uqra_env.ndim,:]
-        data.u     = os.path.join(data_dir_random, filename)
+        data.u     = data_mcs_u 
+        data.xi    = data_mcs_u*np.sqrt(0.5)
 
         data_mcs_x = uqra_env.ppf(stats.norm().cdf(data_mcs_u))
         filename   = '{:s}_McsE6R{:d}_norm.npy'.format(uqra_env.site.capitalize(), r)
-        data.x     = os.path.join(data_dir_result, filename)
+        data.x     = data_mcs_x 
 
         data.y = []
         for itheta in np.arange(5):
             solver = uqra.FPSO(random_state=itheta)
             data_mcs_x = uqra_env.ppf(stats.norm.cdf(data_mcs_u))
-            y = solver.run(data_mcs_x[1:,:], verbose=True) 
+            y = solver.run(data_mcs_x, verbose=True) 
             data.y.append(y)
-        filename = '{:s}_McsE6R{:d}0.npy'.format(solver.nickname,r)
+        filename = '{:s}_McsE6R{:d}{:d}.npy'.format(solver.nickname,r, itheta)
         print('saving data: {}'.format(os.path.join(data_dir_result, filename)))
         np.save(os.path.join(data_dir_result, filename), data, allow_pickle=True)
 
