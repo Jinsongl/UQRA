@@ -187,7 +187,6 @@ class OptimalDesign(ExperimentBase):
         optimal_samples = self._list_diff(optimal_samples, self.optimal_samples)
         return optimal_samples
 
-
     def _initial_samples_rrqr(self, n):
         """
         Return rows corresponding to largest absolute singular values in design matrix X based on RRQR 
@@ -542,6 +541,51 @@ class OptimalDesign(ExperimentBase):
             delta = -(d1 + d3 - d4)
         return delta
 
+    def _check_complement(self, A, B, U=None):
+        """
+        check if A.union(B) = U and A.intersection(B) = 0
+        """
+        A = set(A)
+        B = set(B)
+        U = set(np.arange(self.X.shape[0])) if U is None else set(U)
+        if A.union(B) != U:
+            raise ValueError(' Union of sets A and B are not the universe U')
+        if len(A.intersection(B)) != 0:
+            raise ValueError(' Sets A and B have common elements: {}'.format(A.intersection(B)))
+        return True
+
+    def _list_union(self, ls1, ls2):
+        """
+        append ls2 to ls1 and check if there exist duplicates
+        return the union of two lists and remove duplicates
+        """
+        ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
+        if len(ls) != len(set(ls1).union(set(ls2))):
+            raise ValueError('Duplicate elements found in list when append to each other')
+        return ls
+
+    def _list_diff(self, ls1, ls2):
+        """
+        returns a list that is the difference between two list, elements present in ls1 but not in ls2
+        """
+        ls1 = list(copy.deepcopy(ls1))
+        ls2 = list(copy.deepcopy(ls2))
+        for element in ls2:
+            try:
+                ls1.remove(element)
+            except ValueError:
+                pass
+        return ls1
+
+    def _list_inter(self, ls1, ls2):
+        """
+        return common elements between ls1 and ls2 
+        """
+        ls = list(set(ls1).intersection(set(ls2)))
+        return ls
+
+
+### ------------------- outdated functions -----------------------
     def _get_samples_svalue(self,n, candidate_samples, optimal_samples):
         """
         return row indices for quasi optimal experimental design based on fast greedy initialization 
@@ -774,49 +818,6 @@ class OptimalDesign(ExperimentBase):
         d2 = np.sum(np.log(X1_norms**2 + X0**2), axis=1) ## (n-k,)
         optimality_values = d1 - d2
         return np.squeeze(optimality_values)
-
-    def _check_complement(self, A, B, U=None):
-        """
-        check if A.union(B) = U and A.intersection(B) = 0
-        """
-        A = set(A)
-        B = set(B)
-        U = set(np.arange(self.X.shape[0])) if U is None else set(U)
-        if A.union(B) != U:
-            raise ValueError(' Union of sets A and B are not the universe U')
-        if len(A.intersection(B)) != 0:
-            raise ValueError(' Sets A and B have common elements: {}'.format(A.intersection(B)))
-        return True
-
-    def _list_union(self, ls1, ls2):
-        """
-        append ls2 to ls1 and check if there exist duplicates
-        return the union of two lists and remove duplicates
-        """
-        ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
-        if len(ls) != len(set(ls1).union(set(ls2))):
-            raise ValueError('Duplicate elements found in list when append to each other')
-        return ls
-
-    def _list_diff(self, ls1, ls2):
-        """
-        returns a list that is the difference between two list, elements present in ls1 but not in ls2
-        """
-        ls1 = list(copy.deepcopy(ls1))
-        ls2 = list(copy.deepcopy(ls2))
-        for element in ls2:
-            try:
-                ls1.remove(element)
-            except ValueError:
-                pass
-        return ls1
-
-    def _list_inter(self, ls1, ls2):
-        """
-        return common elements between ls1 and ls2 
-        """
-        ls = list(set(ls1).intersection(set(ls2)))
-        return ls
 
     # def _cal_svalue_over(self, X0, X1):
         # """
