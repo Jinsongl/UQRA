@@ -153,7 +153,6 @@ class Hermite(PolyBase):
                 raise TypeError('Expected coefficients has length {}, but {} is given'.format(self.num_basis, len(coef)))
         self.coef = coef
 
-
     def _wiener_askey_distribution(self):
         """
         Return Askey-Wiener distributions
@@ -162,9 +161,9 @@ class Hermite(PolyBase):
         if self.ndim is None:
             dist_u = None
         elif self.hem_type.lower().startswith('prob'):
-            dist_u = [stats.norm(0,1),] * self.ndim
+            dist_u = stats.norm(0,1)
         elif self.hem_type.lower().startswith('phy'):
-            dist_u = [stats.norm(0,np.sqrt(0.5)),] * self.ndim 
+            dist_u = stats.norm(0,np.sqrt(0.5))
         else:
             raise ValueError('UQRA.Hermite: {} not defined for hem_type '.format(hem_type))
         return dist_u
