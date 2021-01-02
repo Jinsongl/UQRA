@@ -23,8 +23,7 @@ from ._envbase import EnvBase
 ##################################################
 class DistHs(object):
     def __init__(self):
-
-        self.name     = 'lognorm_weibull'
+        self.name     = 'Lonowe'
         self.mu_Hs    = 0.77
         self.sigma_Hs = 0.6565
         self.Hs_shape = 1.503
@@ -99,7 +98,6 @@ class DistHs(object):
 
 class DistTp(object):
     def __init__(self, hs):
-
         self.a1 = 1.134
         self.a2 = 0.892
         self.a3 = 0.225
