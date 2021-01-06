@@ -92,12 +92,12 @@ class FPSO(SolverBase):
         x = np.array(x.T, copy=False, ndmin=2)
         random_states = kwargs.get('random_state', self.random_states)
         y = []
-        for irandom_state in random_states:
+        for i, irandom_state in enumerate(random_states):
             if not verbose: 
                 uqra.blockPrint()
             with mp.Pool(processes=mp.cpu_count()) as p:
                 y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, irandom_state) for ix in x]),
-                    ncols=80, desc='   - [{:<10d}/{:d}]'.format(irandom_state, self.n_short_term), total=x.shape[0])))
+                ncols=80, desc='   - [{:>2d}/{:<2d}: {:>10d}]'.format(i, self.n_short_term, irandom_state), total=x.shape[0])))
             if not verbose: 
                 uqra.enablePrint()
             y.append(y_QoI_)
