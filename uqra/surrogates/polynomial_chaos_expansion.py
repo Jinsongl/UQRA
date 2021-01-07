@@ -109,7 +109,11 @@ class PolynomialChaosExpansion(SurrogateBase):
             ols_reg = linear_model.LinearRegression(fit_intercept=fit_intercept, normalize=normalize, n_jobs=n_jobs)
             kfolder = model_selection.KFold(n_splits=n_splits,shuffle=True)
             ## calculate k-folder cross-validation error
-            neg_mse = model_selection.cross_val_score(ols_reg, X, y, scoring='neg_mean_squared_error', cv=kfolder, n_jobs=n_jobs)
+            if w is not None:
+                WX, Wy = self._rescale_data(X, y, w)
+            else:
+                WX, Wy = X, y
+            neg_mse = model_selection.cross_val_score(ols_reg, WX, Wy, scoring='neg_mean_squared_error', cv=kfolder, n_jobs=n_jobs)
             self.model = ols_reg.fit(X, y, sample_weight=w)
             self.cv_error = -np.mean(neg_mse)
             self.coef    = np.array(copy.deepcopy(ols_reg.coef_), ndmin=2)
@@ -406,11 +410,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         n_samples = X.shape[0]
         w = np.asarray(w)
         if w.ndim == 0:
-            w = np.full(n_samples, w,
-                                    dtype=w.dtype)
+            w = np.full(n_samples, w, dtype=w.dtype)
         w = np.sqrt(w)
-        sw_matrix = sparse.dia_matrix((w, 0),
-                                      shape=(n_samples, n_samples))
+        sw_matrix = sparse.dia_matrix((w, 0), shape=(n_samples, n_samples))
         X = sw_matrix @ X
         y = sw_matrix @ y
         return X, y
