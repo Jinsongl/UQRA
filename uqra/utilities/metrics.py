@@ -98,6 +98,11 @@ def mquantiles(a, prob=[0.25, 0.5, 0.75],axis=0,limit=(),multioutput='uniform_av
         res = np.squeeze(res)
     else:
         raise NotImplementedError
+    res = np.squeeze(res)
+    try:
+        res = res.item()
+    except ValueError:
+        res = res
     return res
 
 def moment(a, moment=1, axis=0, nan_policy='propagate',multioutput='uniform_average'):
