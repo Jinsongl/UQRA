@@ -89,7 +89,7 @@ def check_int(x):
             raise ValueError("deg must be non-negative, {} given".format(x))
         return int_x
 
-def ECDF(x,**kwargs):
+def ECDF(x, alpha, compress=False, **kwargs):
     """
     Extend the functionality of statsmodels.distributions.empirical_distribution.ECDF
     Parameters
@@ -106,10 +106,8 @@ def ECDF(x,**kwargs):
         Empirical CDF or a list of Empirical CDF as a step function.
     """
     x = np.array(x)
-    alpha    = kwargs.get('alpha', None)
     side     = kwargs.get('side', 'right')
     hinge    = kwargs.get('hinge' , np.inf)
-    compress = kwargs.get('compress', False) 
 
     if not compress:
         if x.ndim == 1:
@@ -452,28 +450,25 @@ def bootstrapping(data, num_bootstrap, bootstrap_size=None):
 
     """
     data = np.array(data, copy=False, ndmin=2)
+    if data.shape[0] == 1:
+        data = data.T
     pool_size, nsamples = data.shape
     bootstrap_size = pool_size if bootstrap_size is None else bootstrap_size
     res = [ _bootstrpping(data, bootstrap_size) for _ in range(int(num_bootstrap))]
-    res = np.array(res)
+    res = np.squeeze(res)
     return res
 
 def _bootstrpping(data, bootstrap_size):
     """
-    bootstrap sampling from given data set
-    bootstrap is performed along axis=0
-    i.e. for every sample (j column), boostrap samples are randomly chosen from its corresponding nobservations rows 
-    data: ndarray of shape(nobservations, nsamples)
-    
-
+    data: ndarray of shape(m, n), perform bootstrap on each column
+    bootstrap_size: int, size of bootstrapping data set
     """
     data = np.array(data, copy=False, ndmin=2)
-    pool_size, nsamples = data.shape
+    nrows, ncols = data.shape
     res = []
-    boots_idx = np.random.randint(0,pool_size,(bootstrap_size,nsamples))
-    for iboots in boots_idx:
-        res.append([data[i,j] for j,i in enumerate(iboots)])
-    res = np.array(res)
+    boots_idx = np.random.randint(0,nrows,(bootstrap_size,ncols))
+    res = np.array([idata[iboots_idx] for iboots_idx, idata in zip(boots_idx.T, data.T)]).T
+    assert res.shape == (bootstrap_size, ncols)
     return res
 
 

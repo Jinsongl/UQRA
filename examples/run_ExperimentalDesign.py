@@ -261,7 +261,6 @@ def test_gauss_quadrature():
         elif irule2test == 'jacobi':
             print('NOT TESTED YET')
 
-
 def run_LHS():
     alpha1 = np.linspace(1, 2, 6)
     alpha2 = np.linspace(2, 5, 7)
@@ -302,6 +301,21 @@ def run_LHS():
                 doe_x = np.array([doe.samples(size=n) for _ in range(50)])
                 np.save(os.path.join(data_dir, filename), doe_x)
 
+def run_UniformBall():
+
+    data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/UniformBall'
+    ndim = 3
+    print(' UQRA: drawing samples uniformly from {:d}-dimensional ball...'.format(ndim))
+    doe = uqra.CLS(doe_method,ndim)
+    for r in range(10):
+        np.random.seed(None)
+        x = uqra.experiment.utilities.Uniform_ball(ndim, 1e6,r=1)
+        doe_x = doe.samples(size=1e6)
+        print('   - {:<25s} : {}'.format(' Dataset (U)', doe_x.shape))
+        print('   - {:<25s} : {}, {}'.format(' U [min(U), max(U)]', np.amin(doe_x, axis=1), np.amax(doe_x, axis=1)))
+        filename = 'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_method.capitalize(), ndim, r)
+        np.save(os.path.join(data_dir, filename), doe_x)
+    
 def main():
     run_CLS()
     # run_LHS()

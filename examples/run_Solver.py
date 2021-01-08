@@ -455,5 +455,66 @@ def run_samples_same():
     # # uqra_dataio.save_data(samples_y_stats, 'run_linear_oscillator', os.getcwd(), filename_tags)
 
 
+def run_Ishigami():
+    solver = uqra.Ishigami()
+    data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
+    data_dir_test   = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/Ishigami/TestData' 
+    data_u = []
+    for r in range(10):
+        data = uqra.Data()
+        filename = 'CDF_McsE7R{:d}.npy'.format(r)
+        print(filename)
+        data.u = np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:]*2.0-1.0
+        data.xi= data.u
+        data.x = data.u*np.pi 
+        data.y = solver.run(data.x)
+        filename = '{:s}_CDF_McsE6R{:d}.npy'.format(solver.nickname, r)
+        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+def run_FourBranch():
+    solver = uqra.FourBranchSystem()
+    data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
+    data_dir_test   = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/Branches/TestData' 
+    data_u = []
+    for r in range(10):
+        data = uqra.Data()
+        # filename = 'CDF_McsE7R{:d}.npy'.format(r)
+        # data.u = stats.norm.ppf(np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:])
+        filename = 'DoE_McsE6R{:d}_norm.npy'.format(r)
+        data.u = np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:]
+        print(filename)
+        data.xi= data.u * np.sqrt(0.5)
+        data.x = data.u
+        data.y = solver.run(data.x)
+        print('u: {} {}'.format(np.mean(data.u, axis=-1), np.std(data.u, axis=-1)))
+        print('xi: {} {}'.format(np.mean(data.xi, axis=-1), np.std(data.xi, axis=-1)))
+        print('x: {} {}'.format(np.mean(data.x, axis=-1), np.std(data.x, axis=-1)))
+        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
+        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+def run_CornerPeak():
+    solver = uqra.FourBranchSystem()
+    data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
+    data_dir_test   = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/CornerPeak/TestData' 
+    data_u = []
+    for r in range(10):
+        data = uqra.Data()
+        # filename = 'CDF_McsE7R{:d}.npy'.format(r)
+        # data.u = stats.norm.ppf(np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:])
+        filename = 'DoE_McsE6R{:d}_norm.npy'.format(r)
+        data.u = np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:]
+        print(filename)
+        data.xi= data.u * np.sqrt(0.5)
+        data.x = data.u
+        data.y = solver.run(data.x)
+        print('u: {} {}'.format(np.mean(data.u, axis=-1), np.std(data.u, axis=-1)))
+        print('xi: {} {}'.format(np.mean(data.xi, axis=-1), np.std(data.xi, axis=-1)))
+        print('x: {} {}'.format(np.mean(data.x, axis=-1), np.std(data.x, axis=-1)))
+        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
+        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
 if __name__ == '__main__':
-    run_FPSO()
+    # run_FPSO()
+    # run_Ishigami()
+    # run_FourBranch()
+    run_CornerPeak()
