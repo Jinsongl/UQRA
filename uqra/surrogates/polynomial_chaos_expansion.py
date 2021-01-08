@@ -19,6 +19,7 @@ from sklearn.exceptions import ConvergenceWarning
 from ._surrogatebase import SurrogateBase
 import uqra, math
 from scipy import sparse
+import multiprocessing as mp
 class PolynomialChaosExpansion(SurrogateBase):
     """
     Class to build polynomial chaos expansion (PCE) model
@@ -313,6 +314,9 @@ class PolynomialChaosExpansion(SurrogateBase):
         """
         if x.shape[0] != self.ndim:
             raise ValueError('Expecting {:d}-D sampels, but {:d} given'.format(self.ndim, x.shape[0]))
+        
+        n_jobs = kwargs.get('n_jobs', 1)
+
         if self.fit_method == 'GLK':
             y = self.orth_poly(x)
 
@@ -321,7 +325,14 @@ class PolynomialChaosExpansion(SurrogateBase):
 
             if x.shape[1] * self.num_basis < size_of_array_4gb:
                 X = self.orth_poly.vandermonde(x)[:, self.active_index]
-                y = self.model.predict(X)
+                if n_jobs == 1:
+                    y = self.model.predict(X)
+                else:
+                    print('n_jobs: ', n_jobs)
+                    paralle_batch_size = math.ceil(x.shape[1]/n_jobs)
+                    with mp.Pool(processes=n_jobs) as p:
+                        y = list(p.imap(self.model.predict, [(X[i*paralle_batch_size:(i+1)*paralle_batch_size,:]) for i in range(n_jobs)]))
+                        y = np.concatenate(y, axis=0)
             else:
                 batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
                 y = []
@@ -330,9 +341,20 @@ class PolynomialChaosExpansion(SurrogateBase):
                     idx_end = min((i+1) * batch_size, x.shape[1])
                     x_      = x[:,idx_beg:idx_end]
                     X_      = self.orth_poly.vandermonde(x_)[:, self.active_index]
-                    y_      = self.model.predict(X_)
+                    if n_jobs == 1:
+                        y_ = self.model.predict(X_)
+                    else:
+                        print('n_jobs: ', n_jobs)
+                        paralle_batch_size = math.ceil(x_.shape[1]/n_jobs)
+                        with mp.Pool(processes=n_jobs) as p:
+                            y_ = list(p.imap(self.model.predict, [(X_[i*paralle_batch_size:(i+1)*paralle_batch_size,:]) for i in range(n_jobs)]))
+                            y_ = np.concatenate(y_, axis=0)
+                    # y_      = self.model.predict(X_)
                     y      += list(y_)
                 y = np.array(y) 
+
+
+
         elif self.fit_method in ['OLSLARS']:
             size_of_array_4gb = 1e8/2.0
             if x.shape[1] * self.num_basis < size_of_array_4gb:
