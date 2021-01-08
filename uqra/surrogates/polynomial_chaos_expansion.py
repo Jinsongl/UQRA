@@ -10,6 +10,7 @@
 
 """
 import numpy as np
+from tqdm import tqdm
 import copy
 import scipy.stats as stats
 import multiprocessing as mp
@@ -299,7 +300,24 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.active_index= [0,] + list(np.argsort(-self.coef[1:])[:n_pct_var_term+1]+1) ## +1 to always count phi_0
             self.active_basis  = [self.orth_poly.basis_degree[i] for i in self.active_index]
 
-    def predict(self,x, **kwargs):
+    def predict(self, x, **kwargs):
+        n_jobs = kwargs.get('n_jobs', 1)
+        if n_jobs == 1:
+            y = self.model._predict(x)
+        else:
+            parallel_batch_size = int(1e6)
+            parallel_batch_x    = []
+            idx0, idx1 = 0, min(parallel_batch_size, x.shape[1])
+            while idx1 <= x.shape[1] and idx0 < idx1:
+                parallel_batch_x.append(x[:, idx0:idx1])
+                idx0 = idx1
+                idx1 = min(idx1+parallel_batch_size, x.shape[1])
+            with mp.Pool(processes=n_jobs) as p:
+                y = list(p.imap(self._predict, parallel_batch_x))
+            y = np.concatenate(y, axis=0)
+        return y
+
+    def _predict(self,x, **kwargs):
         """
         Predict using surrogate models 
 
@@ -313,10 +331,12 @@ class PolynomialChaosExpansion(SurrogateBase):
         """
         if x.shape[0] != self.ndim:
             raise ValueError('Expecting {:d}-D sampels, but {:d} given'.format(self.ndim, x.shape[0]))
+
         if self.fit_method == 'GLK':
             y = self.orth_poly(x)
 
         elif self.fit_method in ['OLS']:
+
             size_of_array_4gb = 1e8/2.0
 
             if x.shape[1] * self.num_basis < size_of_array_4gb:
@@ -333,6 +353,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                     y_      = self.model.predict(X_)
                     y      += list(y_)
                 y = np.array(y) 
+
         elif self.fit_method in ['OLSLARS']:
             size_of_array_4gb = 1e8/2.0
             if x.shape[1] * self.num_basis < size_of_array_4gb:
@@ -349,6 +370,8 @@ class PolynomialChaosExpansion(SurrogateBase):
                     y_      = self.model.predict(X_)
                     y      += list(y_)
                 y = np.array(y) 
+
+
         elif self.fit_method in ['LASSOLARS']:
             size_of_array_4gb = 1e8/2.0
             if x.shape[1] * self.num_basis < size_of_array_4gb:
