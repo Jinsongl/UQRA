@@ -303,7 +303,7 @@ class PolynomialChaosExpansion(SurrogateBase):
     def predict(self, x, **kwargs):
         n_jobs = kwargs.get('n_jobs', 1)
         if n_jobs == 1:
-            y = self.model._predict(x)
+            y = self._predict(x)
         else:
             parallel_batch_size = int(1e6)
             parallel_batch_x    = []
