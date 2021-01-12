@@ -122,8 +122,31 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.coef    = np.squeeze(self.coef)
             self.score   = ols_reg.score(X,y,w)
 
-        elif method.lower() == 'olslars':
-            self._fit_olslars(X,y,w=w,**kwargs)
+        elif method.lower() == 'olslar':
+            """
+            (weighted) Ordinary Least Error on selected orth_poly (LARs)
+            Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
+            Arguments:
+                x: array-like of shape (ndim, nsamples) 
+                    sample input values in zeta (selected Wiener-Askey distribution) space
+                y: array-like of shape (nsamples [,n_output_dims/nQoI])
+                    QoI observations
+
+                w: array-like weights, optional
+                n_splits: number of folders used in cross validation, default nsamples, i.e.: leave one out 
+            Returns:
+
+            """
+            fit_intercept = kwargs.get('fit_intercept'  , True )
+            normalize     = kwargs.get('normalize'      , False)
+            n_jobs        = kwargs.get('n_jobs'         , None ) 
+            n_splits      = min(kwargs.get('n_splits'   , x.shape[1]), x.shape[1])  ## if not given, default is Leave-one-out
+            kfolder       = model_selection.KFold(n_splits=n_splits,shuffle=True)
+            model_lars    = linear_model.Lars(fit_intercept=fit_intercept, normalize=normalize).fit(X,y)
+            active_index  = model_lars.active_ + [0,]
+            active_basis  = [self.orth_poly.basis_degree[i] for i in active_index] 
+            w = self.christoffel_weight(x, active_index)
+            self.fit('OLS', x,y,w=w, active_basis=active_basis, **kwargs)
 
         elif method.lower().startswith('lasso'):
             fit_intercept = kwargs.get('fit_intercept'  , True )
