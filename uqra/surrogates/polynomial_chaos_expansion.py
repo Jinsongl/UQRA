@@ -110,7 +110,10 @@ class PolynomialChaosExpansion(SurrogateBase):
             ols_reg = linear_model.LinearRegression(fit_intercept=fit_intercept, normalize=normalize, n_jobs=n_jobs)
             kfolder = model_selection.KFold(n_splits=n_splits,shuffle=True)
             ## calculate k-folder cross-validation error
-            if w is not None:
+            if w.lower().startswith('cls') or w.lower() in ['cls', 'christoffel']:
+                w = self.christoffel_weight(x, active=self.active_index)
+                WX, Wy = self._rescale_data(X, y, w)
+            elif w is not None:
                 WX, Wy = self._rescale_data(X, y, w)
             else:
                 WX, Wy = X, y
@@ -142,10 +145,50 @@ class PolynomialChaosExpansion(SurrogateBase):
             n_jobs        = kwargs.get('n_jobs'         , None ) 
             n_splits      = min(kwargs.get('n_splits'   , x.shape[1]), x.shape[1])  ## if not given, default is Leave-one-out
             kfolder       = model_selection.KFold(n_splits=n_splits,shuffle=True)
-            model_lars    = linear_model.Lars(fit_intercept=fit_intercept, normalize=normalize).fit(X,y)
-            active_index  = model_lars.active_ + [0,]
+
+            if w.lower().startswith('cls') or w.lower() in ['cls', 'christoffel']:
+                full_weight = self.christoffel_weight(x, active=None)
+            else:
+                full_weight = w
+            if full_weight is not None:
+                WX, Wy = self._rescale_data(X, y, full_weight)
+            else:
+                WX, Wy = X, y
+            model_lars = linear_model.Lars(fit_intercept=fit_intercept, normalize=normalize).fit(WX,Wy)
+            ### OLS regression with all basis
+            ols_reg0= linear_model.LinearRegression(fit_intercept=True).fit(X, y, full_weight)
+            y_hat0  = ols_reg0.predict(X)
+            std0    = np.sqrt(np.linalg.norm(y-y_hat0)**2/(X.shape[0]-X.shape[1]-1))
+            cp_statistics = []
+            cv_err = []
+            for k in range(1, X.shape[1]+1):
+                kfolder = model_selection.KFold(n_splits=X.shape[0],shuffle=True)
+                reg_ols = linear_model.LinearRegression(fit_intercept=True)
+                X_      = X[:,model_lars.active_[:k]]
+                if w.lower().startswith('cls') or w.lower() in ['cls', 'christoffel']:
+                    k_weight = self.christoffel_weight(x, active=model_lars.active_[:k])
+                elif w is not None:
+                    k_weight = w[:, model_lars.active_[:k]]
+                else:
+                    k_weight = None
+                if k_weight is not None:
+                    WX_, Wy = self._rescale_data(X_, y, k_weight)
+                else:
+                    WX_, Wy = X, y
+                neg_mse = model_selection.cross_val_score(reg_ols, WX_, Wy, scoring='neg_mean_squared_error', cv=kfolder)
+                cv_err.append( -np.mean(neg_mse))
+
+                reg_ols.fit(X_, y, k_weight)
+                y_hat = reg_ols.predict(X_)
+                cp_statistics.append(np.linalg.norm(y-y_hat)**2/std0**2 - X_.shape[0] + 2*k)
+             
+            # k = np.argmin(cp_statistics)+ 1
+            k = np.argmin(cv_err) +1
+            active_index  = model_lars.active_[:k]
             active_basis  = [self.orth_poly.basis_degree[i] for i in active_index] 
-            w = self.christoffel_weight(x, active_index)
+            # print('Cp: {}->{}'.format(cp_statistics, np.argmin(cp_statistics)))
+            # print('log CV: {}->{}'.format(np.log(cv_err), np.argmin(cv_err)))
+            # print('Active index: {}'.format(active_index))
             self.fit('OLS', x,y,w=w, active_basis=active_basis, **kwargs)
 
         elif method.lower().startswith('lasso'):
