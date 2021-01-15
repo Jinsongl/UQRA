@@ -260,7 +260,8 @@ def main(s=0):
                     5*(deg == model_params.degs[0])+orth_poly.num_basis)
             optimal_samples = optimal_samples + optimal_samples_ideg
             # assert len(optimal_samples) == len(set(optimal_samples)) # no duplicates
-            print('     - Training FULL PCE with (n={:d}, alpha={:.2f}) samples'.format(
+            print('     - Total number of samples + {:d} -> {:d}'.format(len(optimal_samples_ideg), len(optimal_samples)))
+            print('     - LAR on FULL basis with (n={:d}, alpha={:.2f}) samples'.format(
                 len(optimal_samples), len(optimal_samples)/orth_poly.num_basis))
             u_train = data_cand[:, optimal_samples] 
             if idoe_sampling.lower()=='cls4':
@@ -284,22 +285,26 @@ def main(s=0):
             data_temp.score.append(pce_model.score)
             data_temp.cv_err.append(pce_model.cv_error)
             is_converge, y0, delta_y0 = check_converge(data_temp.cv_err)
-            print('     * y0: {}, delta y0: {}'.format(np.array(data_temp.y0_hat), delta_y0))
-
-            ### increase number of samples by n_new
             active_basis = pce_model.active_basis 
             active_index = pce_model.active_index
+            print('     - # Active basis: {:d}'.format(len(active_index)))
+            print('     > y0: {}, delta y0: {}'.format(np.array(data_temp.y0_hat), delta_y0))
+
+
             print('   2. Optimal samples based on SIGNIFICANT basis')
-            while len(optimal_samples_ideg)<2*orth_poly.num_basis:
+            while True:
+                ### increase number of samples by n_new
                 n_samples = len(active_index)
-                print('     - # Active basis: {:d}, Increase training set by {:d}'.format(n_samples, len(active_index)))
-                print('     - Training Sparse PCE with (n={:d}, alpha={:.2f}) samples'.format(
-                    len(optimal_samples), len(optimal_samples)/orth_poly.num_basis))
                 idx = run_UQRA_OptimalDesign(data_cand, orth_poly, idoe_sampling, ioptimality, n_samples, 
                         optimal_samples=optimal_samples_ideg, active_index=active_index)
                 optimal_samples      = optimal_samples      + idx
                 optimal_samples_ideg = optimal_samples_ideg + idx
-                u_train              = data_cand[:, optimal_samples] 
+                assert n_samples == len(idx)
+                print('     - Total number of samples increase by {:d} -> {:d}'.format(n_samples, len(optimal_samples)))
+                print('     - Number of samples for order {:d}: {:d}'.format(deg, len(optimal_samples_ideg)))
+                print('     - Training Sparse PCE with (n={:d}, alpha={:.2f}) samples'.format(
+                    len(optimal_samples), len(optimal_samples)/orth_poly.num_basis))
+                u_train = data_cand[:, optimal_samples] 
                 if idoe_sampling.lower()=='cls4':
                     u_train = u_train * deg **0.5
                 x_train = uqra_env.ppf(pce_model.orth_poly.dist_u.cdf(u_train))
@@ -323,8 +328,16 @@ def main(s=0):
                 active_basis = pce_model.active_basis 
                 isOverfitting(data_temp.cv_err) ## check Overfitting
                 is_converge, y0, delta_y0 = check_converge(data_temp.y0_hat)
-                print('     * y0: {}, delta y0: {}'.format(np.array(data_temp.y0_hat), delta_y0))
+                print('     - # Active basis: {:d}'.format(len(active_index)))
+                print('     > y0: {}, delta y0: {}'.format(np.array(data_temp.y0_hat), delta_y0))
+                print('    ==================================================' )
                 if is_converge:
+                    print('     !<>! Model converge for order {:d}'.format(deg))
+                    print('    ==================================================' )
+                    break
+                if len(optimal_samples_ideg)>=2*orth_poly.num_basis:
+                    print('     !<>! Number of samples exceeding 2P')
+                    print('    ==================================================' )
                     break
 
             deg_stop_cv_err.append(data_temp.cv_err[-1])
