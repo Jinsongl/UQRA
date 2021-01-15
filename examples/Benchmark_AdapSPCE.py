@@ -69,29 +69,30 @@ def main(s=0):
     np.set_printoptions(threshold=1000)
     np.set_printoptions(suppress=True)
     pf = np.array([1e-4])
+    n_jobs = mp.cpu_count()
     ## ------------------------ Define solver ----------------------- ###
     # solver      = uqra.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = uqra.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
     # solver      = uqra.CornerPeak(stats.uniform(-1,2), d=2)
     # solver      = uqra.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
     # solver      = uqra.Franke()
-    # solver      = uqra.Ishigami()
+    solver      = uqra.Ishigami()
 
     # solver      = uqra.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = uqra.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
     # solver      = uqra.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
     # solver      = uqra.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
     # solver      = uqra.ExpSum(stats.norm(0,1), d=3)
-    solver      = uqra.FourBranchSystem()
+    # solver      = uqra.FourBranchSystem()
 
     uqra_env = solver.distributions[0]
 
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling()
     model_params.name    = 'PCE'
-    model_params.degs    = np.arange(4,8) #[2,6,10]#
+    model_params.degs    = np.arange(2,8) #[2,6,10]#
     model_params.ndim    = solver.ndim
-    model_params.basis   = 'Hem'
+    model_params.basis   = 'Leg'
     model_params.fitting = 'OLSLAR' 
     model_params.n_splits= 50
     model_params.alpha   = 2
@@ -100,7 +101,7 @@ def main(s=0):
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
     doe_params = uqra.ExperimentParameters()
-    doe_params.doe_sampling = 'CLS4' 
+    doe_params.doe_sampling = 'CLS1' 
     doe_params.optimality   = ['S']
     doe_params.poly_name    = model_params.basis 
     doe_params.num_cand     = int(1e5)
@@ -227,7 +228,8 @@ def main(s=0):
             data_temp.score    = []
             data_temp.ypred_ecdf=[]
 
-            optimal_samples_ideg = run_UQRA_OptimalDesign(data_cand, orth_poly, idoe_sampling, ioptimality, 5+orth_poly.num_basis)
+            optimal_samples_ideg = run_UQRA_OptimalDesign(data_cand, orth_poly, idoe_sampling, ioptimality, 
+                    5*(deg == model_params.degs[0])+orth_poly.num_basis)
             optimal_samples = optimal_samples + optimal_samples_ideg
             # assert len(optimal_samples) == len(set(optimal_samples)) # no duplicates
             u_train = data_cand[:, optimal_samples] 
@@ -240,9 +242,9 @@ def main(s=0):
         
             print('   -> Training Sparse PCE with (n={:d}, alpha={:.2f}) samples'.format(
                 len(optimal_samples), len(optimal_samples)/orth_poly.num_basis))
-            pce_model.fit(model_params.fitting, u_train, y_train, w=idoe_sampling, n_jobs=4)
-            y_test = pce_model.predict(u_test, n_jobs=4)
-            y_pred = pce_model.predict(u_pred, n_jobs=4)
+            pce_model.fit(model_params.fitting, u_train, y_train, w=idoe_sampling, n_jobs=n_jobs)
+            y_test = pce_model.predict(u_test, n_jobs=n_jobs)
+            y_pred = pce_model.predict(u_pred, n_jobs=n_jobs)
             data_temp.rmse_y.append(uqra.metrics.mean_squared_error(data_test.y, y_test, squared=False))
             data_temp.model.append(pce_model)
             data_temp.y0_hat.append(uqra.metrics.mquantiles(y_pred, prob=1-pf))
@@ -274,9 +276,9 @@ def main(s=0):
                 # y_train = y_train + observation_error(y_train)
                 print('   -> Training with (n={:d}) samples'.format(len(optimal_samples)))
                 # w = pce_model.christoffel_weight(u_train, active=active_index) if idoe_sampling.lower().startswith('cls') else None
-                pce_model.fit(model_params.fitting, u_train, y_train, w=idoe_sampling, n_jobs=4)
-                y_test = pce_model.predict(u_test, n_jobs=4)
-                y_pred = pce_model.predict(u_pred, n_jobs=4)
+                pce_model.fit(model_params.fitting, u_train, y_train, w=idoe_sampling, n_jobs=n_jobs)
+                y_test = pce_model.predict(u_test, n_jobs=n_jobs)
+                y_pred = pce_model.predict(u_pred, n_jobs=n_jobs)
                 data_temp.rmse_y.append(uqra.metrics.mean_squared_error(data_test.y, y_test, squared=False))
                 data_temp.model.append(pce_model)
                 data_temp.y0_hat.append(uqra.metrics.mquantiles(y_pred, prob=1-pf))
