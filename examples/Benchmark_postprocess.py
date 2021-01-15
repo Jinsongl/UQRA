@@ -23,6 +23,41 @@ class Data():
 def observation_error(y, mu=0, cov=0.03, random_state=100):
     e = stats.norm(0, cov * abs(y)).rvs(size=len(y), random_state=random_state)
     return e
+def process_test_data(solver):
+    data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples'
+    data_dir_test = os.path.join(data_dir, solver.nickname, 'TestData')
+    print(' Processing test data...')
+    n     =int(1e8)
+    alpha = 1e-6
+    data0 = uqra.Data()
+    data0.y0     = []
+    data0.y_ecdf = []
+    data1 = uqra.Data()
+    data1.y0     = []
+    data1.y_ecdf = []
+
+    y = []
+    for r in range(10):
+        filename   = '{:s}_CDF_McsE6R{:d}.npy'.format(solver.nickname, r)
+        print(' > File: ',filename)
+        data_test_ = np.load(os.path.join(data_dir_test, filename), allow_pickle=True).tolist()
+        # u.append(data_test_.u)
+        # xi.append(data_test_.xi)
+        # x.append(data_test_.x)
+        y.append(data_test_.y)
+        data0.y0.append(uqra.metrics.mquantiles(data_test_.y, 1-alpha))
+        data0.y_ecdf.append(uqra.ECDF(data_test_.y, alpha, compress=True))
+    y = np.concatenate(y, axis=-1)
+    print(data0.y0)
+    np.save(os.path.join(data_dir_test, '{:s}_McsE7_Ecdf.npy'.format(solver.nickname)), data0, allow_pickle=True)
+
+    print('Boostraping')
+    for _ in tqdm(range(10)):
+        y_boots = uqra.bootstrapping(y, 1, bootstrap_size=n)
+        data1.y0.append(uqra.metrics.mquantiles(y_boots, 1-alpha))
+        data1.y_ecdf.append(uqra.ECDF(y_boots, alpha, compress=True))
+    print(data1.y0)
+    np.save(os.path.join(data_dir_test, '{:s}_McsE8_Ecdf.npy'.format(solver.nickname)), data1, allow_pickle=True)
 
 def main(s=0):
 
@@ -49,42 +84,20 @@ def main(s=0):
     # solver      = uqra.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
     # solver      = uqra.ExpSum(stats.norm(0,1), d=3)
     solver      = uqra.FourBranchSystem()
-    uqra_env = solver.distributions[0]
-    poly_name  = 'Hem'
+    uqra_env    = solver.distributions[0]
+    poly_name   = 'Hem'
 
     model_dir  = os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples', solver.nickname)
     data_dir   = os.path.join(model_dir, 'Data')
     figure_dir = os.path.join(model_dir, 'Figures')
     data_dir_test = os.path.join(model_dir, 'TestData')
 
-    n_pred = int(1e8)
+    n_pred = int(1e7)
     pf = np.array([1e-6])
     ## ----------- predict data set ----------- ###
     filename = '{:s}_{:d}{:s}.npy'.format(solver.nickname, solver.ndim, poly_name.capitalize())
     data_pce = np.load(os.path.join(data_dir, filename), allow_pickle=True)
     doe_sampling = ['Mcs','McsD','McsS', 'Cls4', 'Cls4S', 'Cls4D', 'Lhs']
-
-    mcs_cdf = stats.uniform(0,1).rvs(size=(2,n_pred))
-    u = []
-    x = []
-    xi= []
-    y = []
-    for r in range(10):
-        filename   = '{:s}_CDF_McsE6R{:d}.npy'.format(solver.nickname, r)
-        print(filename)
-        data_test_ = np.load(os.path.join(data_dir_test, filename), allow_pickle=True).tolist()
-        u.append(data_test_.u)
-        xi.append(data_test_.xi)
-        x.append(data_test_.x)
-        y.append(data_test_.y)
-    data_test = uqra.Data()
-    data_test.u = np.concatenate(u, axis=-1)
-    data_test.x = np.concatenate(x, axis=-1)
-    data_test.xi= np.concatenate(xi,axis=-1)
-    data_test.y = np.concatenate(y, axis=-1)
-
-    y_boots = np.squeeze(uqra.bootstrapping(data_test.y.reshape(-1,1), 10, bootstrap_size=n_pred)).T
-    print(y_boots.shape)
 
 
     data2plot = uqra.Data()
@@ -135,4 +148,6 @@ def main(s=0):
 
 
 if __name__ == '__main__':
-    main(0)
+    # process_test_data(uqra.FourBranchSystem())
+    process_test_data(uqra.Ishigami())
+    # main(0)

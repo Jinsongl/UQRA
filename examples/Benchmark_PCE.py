@@ -33,8 +33,7 @@ def main(s=0):
     np.set_printoptions(precision=4)
     np.set_printoptions(threshold=8)
     np.set_printoptions(suppress=True)
-    pf = np.array([1e-6])
-    np.random.seed(100)
+    pf = np.array([1e-4])
     ## ------------------------ Define solver ----------------------- ###
     # solver      = uqra.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = uqra.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
@@ -55,19 +54,19 @@ def main(s=0):
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling()
     model_params.name    = 'PCE'
-    model_params.degs    = np.arange(2,11) #[2,6,10]#
+    model_params.degs    = np.arange(2,8) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Hem'
     model_params.fitting = 'OLS' 
     model_params.n_splits= 50
     model_params.alpha   = 2
     model_params.num_test= int(1e6)
-    model_params.num_pred= int(1e8)
+    model_params.num_pred= int(1e7)
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
     doe_params = uqra.ExperimentParameters()
     doe_params.doe_sampling = 'CLS4' 
-    doe_params.optimality   = [None,'S', 'D']
+    doe_params.optimality   = ['S']
     doe_params.poly_name    = model_params.basis 
     doe_params.num_cand     = int(1e5)
     # data_dir_cand   = '/Users/jinsongliu/BoxSync/Research/Working_Papers/OE2020_LongTermExtreme/Data/FPSO_SURGE/UniformBall'
@@ -75,29 +74,13 @@ def main(s=0):
         data_dir_optimal = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/LHS'
         doe_params.update_output_dir(data_dir_optimal=data_dir_optimal)
 
-    u = []
-    xi= []
-    y = []
-    print('----------------------------------------------------------------------------------')
-    print('----------------------------------------------------------------------------------')
-    for r in range(10):
-        filename   = '{:s}_CDF_McsE6R{:d}.npy'.format(solver.nickname, r)
-        print(filename)
-        date_pred_ = np.load(os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples', \
-            solver.nickname, 'TestData', filename), allow_pickle=True).tolist()
-        u.append(date_pred_.u)
-        xi.append(date_pred_.xi)
-        y.append(date_pred_.y)
-    data_pred = uqra.Data()
-    data_pred.u = np.concatenate(u, axis=-1)
-    data_pred.xi= np.concatenate(xi,axis=-1)
-    data_pred.y = np.concatenate(y, axis=-1)
-    print(data_pred.y.shape)
-
     # with mp.Pool(processes=mp.cpu_count()) as p:
         # y0_ecdf= list(tqdm(p.imap(uqra.ECDF, [(uqra.bootstrapping(data_pred.y, 1, bootstrap_size=model_params.num_pred), pf, True) for _ in range(10)]), ncols=80, total=10, desc='  [Boostraping]'))
     # print(y0_ecdf)
 
+    u_train = np.empty((solver.ndim,0))
+    x_train = np.empty((solver.ndim,0))
+    y_train = np.empty((0))
     ndim_deg_cases = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
     output_ndim_deg= []
     for ndim, deg in ndim_deg_cases:
@@ -173,6 +156,10 @@ def main(s=0):
                 data_test.x.shape, data_test.y.shape))
         print('     ..{:<30s} shape: {} '.format(' Test data loaded,', data_test.y.shape))
 
+        ## ECDF, quantile values based on test data
+        data_pred = np.load(os.path.join(data_dir_test, '{:s}_CDF_McsE6R{:d}.npy'.format(solver.nickname, s)), allow_pickle=True).tolist()
+        data_pred_ecdf = np.load(os.path.join(data_dir_test, '{:s}_McsE7_Ecdf.npy'.format(solver.nickname)), allow_pickle=True).tolist()
+
         output_indim_ideg = uqra.Data()
         if idoe_params.doe_sampling.lower() == 'lhs':
             all_doe_cases = [(idoe_params.doe_sampling, None)]
@@ -200,7 +187,7 @@ def main(s=0):
             if idoe_sampling.lower() == 'lhs':
                 data_design = np.array(data_design)
                 assert data_design.shape == (ndim, n_samples) 
-                u_train = data_design 
+                u_train_ = data_design 
             else:
                 assert isinstance(data_design, (Data, uqra.Data)),'TypeError: expected uqra.Data, but {} given'.format(type(data_design))
                 assert data_design.deg == deg and data_design.ndim == model_params.ndim
@@ -208,15 +195,25 @@ def main(s=0):
                 if len(optimal_samples_idx) < n_samples:
                     raise ValueError(' Requesting {:d} samples but only {:d} available...'.format(
                         n_samples, len(optimal_samples_idx)))
-                u_train = data_cand[:model_params.ndim, optimal_samples_idx[:n_samples]]
+                u_train_ = data_cand[:model_params.ndim, optimal_samples_idx[:n_samples]]
                 if idoe_sampling.lower()=='cls4':
-                    u_train = u_train * deg **0.5
+                    u_train_ = u_train_ * deg **0.5
 
-            x_train = uqra_env.ppf(pce_model.orth_poly.dist_u.cdf(u_train))
+            x_train_ = uqra_env.ppf(pce_model.orth_poly.dist_u.cdf(u_train_))
+            y_train_ = solver.run(x_train_) 
+            # y_train = y_train + observation_error(y_train)
             ### 3. train model 
-            y_train = solver.run(x_train) 
-            y_train = y_train + observation_error(y_train)
+            # u_train = np.concatenate((u_train, u_train_), axis=-1)
+            # x_train = np.concatenate((x_train, x_train_), axis=-1)
+            # y_train = np.concatenate((y_train, y_train_), axis=-1)
+            u_train = u_train_
+            x_train = x_train_
+            y_train = y_train_
+
             U_train = pce_model.orth_poly.vandermonde(u_train)
+            print(' Train Data U: {}'.format(u_train.shape))
+            print(' Train Data X: {}'.format(x_train.shape))
+            print(' Train Data y: {}'.format(y_train.shape))
             # X_train = orth_poly.vandermonde(x_train)
             if idoe_sampling.lower().startswith('cls'):
                 ### reproducing kernel
@@ -228,31 +225,34 @@ def main(s=0):
             ## condition number, kappa = max(svd)/min(svd)
             _, sigular_values, _ = np.linalg.svd(WU_train)
             if idoe_sampling.lower().startswith('cls'):
-                data_test_u = data_test.xi
-                data_pred_u = data_pred.xi
+                u_test = data_test.xi
+                u_pred = data_pred.xi[:,:model_params.num_pred]
             elif idoe_sampling.lower().startswith('mcs'):
-                data_test_u = data_test.u
-                data_pred_u = data_pred.u
+                u_test = data_test.u
+                u_pred = data_pred.u[:,:model_params.num_pred]
             elif idoe_sampling.lower() == 'lhs':
-                data_test_u = data_test.u
-                data_pred_u = data_pred.u
+                u_test = data_test.u
+                u_pred = data_pred.u[:,:model_params.num_pred]
 
+        
             # pce_model.fit_lassolars(u_train, y_train, w=w)
             data = uqra.Data()
             data.kappa  = max(abs(sigular_values)) / min(abs(sigular_values))
             pce_model.fit(model_params.fitting, u_train, y_train, w=w, n_jobs=4)
-            y_test      = pce_model.predict(data_test_u, n_jobs=4)
-            y_pred      = pce_model.predict(data_pred_u, n_jobs=4)
+            y_test      = pce_model.predict(u_test, n_jobs=4)
+            y_pred      = pce_model.predict(u_pred, n_jobs=4)
             data.rmse_y = uqra.metrics.mean_squared_error(data_test.y, y_test, squared=False)
             data.model  = pce_model
             data.y0_hat = uqra.metrics.mquantiles(y_pred, prob=1-pf)
-            data.y0     = uqra.metrics.mquantiles(data_pred.y, prob=1-pf)
+            print(uqra.metrics.mquantiles(y_test, prob=1-pf))
+            print(uqra.metrics.mquantiles(y_pred, prob=1-pf))
+            print(uqra.metrics.mquantiles(solver.run(data_pred.x), prob=1-pf))
             data.ypred_ecdf = uqra.ECDF(y_pred, alpha=pf, compress=True)
             # data.y0_ecdf=y0_ecdf
             data.score  = pce_model.score
             data.cv_error = pce_model.cv_error
 
-
+            print(pce_model.coef)
             tqdm.write(' > Summary')
             with np.printoptions(precision=4):
                 # tqdm.write('     - {:<15s} : {}'.format( 'QoI'       , QoI))
@@ -260,7 +260,7 @@ def main(s=0):
                 tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'  , data.cv_error))
                 tqdm.write('     - {:<15s} : {}'.format( 'Score '  , data.score))
                 tqdm.write('     - {:<15s} : {}'.format( 'kappa '   , data.kappa))
-                tqdm.write('     - {:<15s} : {} [{}]'.format( 'y0 ' , data.y0_hat, data.y0))
+                tqdm.write('     - {:<15s} : {} [{}]'.format( 'y0 ' , data.y0_hat, data_pred_ecdf.y0[s]))
             setattr(output_indim_ideg, idoe_nickname, data)
         output_ndim_deg.append(output_indim_ideg)
 
