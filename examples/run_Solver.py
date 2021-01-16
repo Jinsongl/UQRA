@@ -213,26 +213,6 @@ def run_FPSO():
 
     # data_dir_samples= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/FPSO_SRUGE/TestData'
     data_dir_result = data_dir
-
-    # ------------------------ Basic Check ----------------- ###
-    # solver = uqra.FPSO()
-    # x = np.array([2,4]).reshape(2,-1)
-    # y = solver.run(x) 
-    # print('Hs = {}, Tp={} => y={}'.format(np.around(x[0]), np.around(x[1]), y))
-
-    ## ------------------------ LHS ----------------- ###
-    # n_initial = 20
-    # solver    = uqra.FPSO(phase=np.arange(20))
-    # Kvitebjorn= uqra.environment.Kvitebjorn()
-    # doe   = uqra.LHS([stats.norm(),] * solver.ndim)
-    # u_lhs = doe.samples(size=n_initial, loc=0, scale=1, random_state=100)
-    # x_lhs = Kvitebjorn.ppf(stats.norm.cdf(u_lhs)) 
-    # y_lhs = solver.run(x_lhs)
-    # print(y_lhs.shape)
-    # data_lhs = np.concatenate((u_lhs, x_lhs, y_lhs), axis=0)
-    # np.save(os.path.join(data_dir_result, '{:s}_DoE_Lhs.npy'), data_lhs)
-    ## ------------------------ MCS  ----------------- ###
-    ##### MCS for DoE_McsE7R0
     for r in range(1):
         data = uqra.Data()
         filename   = 'DoE_McsE6R{:d}_norm.npy'.format(r)
@@ -254,6 +234,26 @@ def run_FPSO():
         print('saving data: {}'.format(os.path.join(data_dir_result, filename)))
         np.save(os.path.join(data_dir_result, filename), data, allow_pickle=True)
 
+
+    # ------------------------ Basic Check ----------------- ###
+    # solver = uqra.FPSO()
+    # x = np.array([2,4]).reshape(2,-1)
+    # y = solver.run(x) 
+    # print('Hs = {}, Tp={} => y={}'.format(np.around(x[0]), np.around(x[1]), y))
+
+    ## ------------------------ LHS ----------------- ###
+    # n_initial = 20
+    # solver    = uqra.FPSO(phase=np.arange(20))
+    # Kvitebjorn= uqra.environment.Kvitebjorn()
+    # doe   = uqra.LHS([stats.norm(),] * solver.ndim)
+    # u_lhs = doe.samples(size=n_initial, loc=0, scale=1, random_state=100)
+    # x_lhs = Kvitebjorn.ppf(stats.norm.cdf(u_lhs)) 
+    # y_lhs = solver.run(x_lhs)
+    # print(y_lhs.shape)
+    # data_lhs = np.concatenate((u_lhs, x_lhs, y_lhs), axis=0)
+    # np.save(os.path.join(data_dir_result, '{:s}_DoE_Lhs.npy'), data_lhs)
+    ## ------------------------ MCS  ----------------- ###
+    ##### MCS for DoE_McsE7R0
     # ------------------------ Environmental Contour ----------------- ###
     # solver = uqra.FPSO(random_state = np.arange(20))
     # data_ec = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Kvitebjorn_EC_50yr.npy')
@@ -514,7 +514,7 @@ def run_CornerPeak():
         np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 
 if __name__ == '__main__':
-    # run_FPSO()
+    run_FPSO()
     # run_Ishigami()
     # run_FourBranch()
-    run_CornerPeak()
+    # run_CornerPeak()
