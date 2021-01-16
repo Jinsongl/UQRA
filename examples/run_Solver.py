@@ -213,7 +213,7 @@ def run_FPSO():
 
     # data_dir_samples= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/FPSO_SRUGE/TestData'
     data_dir_result = data_dir
-    for r in range(1):
+    for r in range(3):
         data = uqra.Data()
         filename   = 'DoE_McsE6R{:d}_norm.npy'.format(r)
         data_mcs_u = np.load(os.path.join(data_dir_random, filename))[:uqra_env.ndim,:]
@@ -225,14 +225,19 @@ def run_FPSO():
         data.x     = data_mcs_x 
 
         data.y = []
-        for itheta in np.arange(5):
+        for itheta in np.arange(10):
             solver = uqra.FPSO(random_state=itheta)
             data_mcs_x = uqra_env.ppf(stats.norm.cdf(data_mcs_u))
             y = solver.run(data_mcs_x, verbose=True) 
             data.y.append(y)
-        filename = '{:s}_McsE6R{:d}{:d}.npy'.format(solver.nickname,r, itheta)
-        print('saving data: {}'.format(os.path.join(data_dir_result, filename)))
-        np.save(os.path.join(data_dir_result, filename), data, allow_pickle=True)
+
+        try:
+            filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname,r)
+            print('saving data: {}'.format(os.path.join(data_dir_result, filename)))
+            np.save(os.path.join(data_dir_result, filename), data, allow_pickle=True)
+        except:
+            np.save('SDOF_SURGE_McsE6.npy', data, allow_pickle=True)
+            
 
 
     # ------------------------ Basic Check ----------------- ###
