@@ -212,7 +212,7 @@ def run_FPSO():
         raise ValueError('Operating system {} not found'.format(current_os))    
 
     # data_dir_samples= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/FPSO_SRUGE/TestData'
-    # data_dir_result = data_dir
+    data_dir_result = os.path.join(data_dir, 'FPSO_SURGE', 'TestData')
     # ------------------------ MCS ----------------- ###
     # for r in range(1):
         # data = uqra.Data()
