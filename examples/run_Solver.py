@@ -247,11 +247,16 @@ def run_FPSO():
                 # np.save('SDOF_SURGE_McsE6.npy', data, allow_pickle=True)
 
     # ------------------------ Grid for contour plot----------------- ###
-    data = uqra.Data()
-    data.x = np.array([np.arange(0,20,0.1),]*2)
-    data.u = stats.norm(0, 0.5**0.5).ppf(uqra_env.cdf(data.x))
     solver = uqra.FPSO(random_state=np.arange(100))
-    data.y = solver.run(data.x)
+    x0 = x1 = np.arange(0,20,0.1)
+    x0, x1  = np.meshgrid(x0, x1)
+    x = np.array([x0.flatten(),x1.flatten()])
+    u = stats.norm(0, 0.5**0.5).ppf(uqra_env.cdf(x))
+    y = solver.run(x)
+    data = uqra.Data()
+    data.x = (x0, x1)
+    data.u = (u[0].reshape(x0.shape), u[1].reshape(x1.shape))
+    data.y = y.reshape(x0.shape)
     np.save(os.path.join(data_dir_result, 'SDOF_SURGE_Grid200.npy'), data, allow_pickle=True)
     
 
@@ -274,24 +279,15 @@ def run_FPSO():
     # np.save(os.path.join(data_dir_result, '{:s}_DoE_Lhs.npy'), data_lhs)
 
     # ------------------------ Environmental Contour ----------------- ###
-    U, X = uqra_env.environment_contour(50, T=1800, n=360, q=0.5)
-    solver = uqra.FPSO(random_state=np.arange(20))
-    data = uqra.Data()
-    data.u = U
-    data.x = X
-    data.y = solver.run(X)
-    filename = '{:s}_Norway5_EC2D_50yr.npy'.format(solver.nickname) 
-    np.save(filename, data, allow_pickle=True)
-    # EC_u, EC_x = data_ec[:2], data_ec[2:]
-    # EC_y = solver.run(EC_x, verbose=True) 
-    # EC2D_median = np.median(EC_y, axis=0)
-    # EC2D_data = np.concatenate((EC_u,EC_x,EC2D_median.reshape(1,-1)), axis=0)
-    # y50_EC_idx = np.argmax(EC2D_median)
-    # y50_EC     = EC2D_data[:,y50_EC_idx]
-    # print('Extreme reponse from EC:')
-    # print('   {}'.format(y50_EC))
-    # np.save(os.path.join(data_dir_result, '{:s}_Kvitebjorn_EC2D_50yr.npy'.format(solver.nickname)  ), EC2D_data)
-    # np.save(os.path.join(data_dir_result, '{:s}_Kvitebjorn_EC2D_50yr_y.npy'.format(solver.nickname)), EC_y)
+    # U, X = uqra_env.environment_contour(50, T=1800, n=360, q=0.5)
+    # solver = uqra.FPSO(random_state=np.arange(20))
+    # data = uqra.Data()
+    # data.u = U
+    # data.x = X
+    # data.y = solver.run(X)
+    # filename = '{:s}_Norway5_EC2D_50yr.npy'.format(solver.nickname) 
+    # np.save(filename, data, allow_pickle=True)
+
 
 
     ## ------------------------ Environmental Contour ----------------- ###
