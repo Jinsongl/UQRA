@@ -213,30 +213,39 @@ def run_FPSO():
 
     # data_dir_samples= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/FPSO_SRUGE/TestData'
     data_dir_result = data_dir
-    for r in range(1):
-        data = uqra.Data()
-        filename   = 'DoE_McsE6R{:d}_norm.npy'.format(r)
-        data_mcs_u = np.load(os.path.join(data_dir_random, filename))[:uqra_env.ndim,:]
-        data.u     = data_mcs_u 
-        data.xi    = data_mcs_u*np.sqrt(0.5)
 
-        data_mcs_x = uqra_env.ppf(stats.norm().cdf(data_mcs_u))
-        filename   = '{:s}_McsE6R{:d}_norm.npy'.format(uqra_env.site.capitalize(), r)
-        data.x     = data_mcs_x 
+    # ------------------------ MCS ----------------- ###
+    # for r in range(1):
+        # data = uqra.Data()
+        # filename   = 'DoE_McsE6R{:d}_norm.npy'.format(r)
+        # data_mcs_u = np.load(os.path.join(data_dir_random, filename))[:uqra_env.ndim,:]
+        # data.u     = data_mcs_u 
+        # data.xi    = data_mcs_u*np.sqrt(0.5)
 
-        for itheta in np.arange(10,20):
-            solver = uqra.FPSO(random_state=itheta)
-            data_mcs_x = uqra_env.ppf(stats.norm.cdf(data_mcs_u))
-            data.y = solver.run(data_mcs_x, verbose=True) 
+        # data_mcs_x = uqra_env.ppf(stats.norm().cdf(data_mcs_u))
+        # filename   = '{:s}_McsE6R{:d}_norm.npy'.format(uqra_env.site.capitalize(), r)
+        # data.x     = data_mcs_x 
 
-            try:
-                filename = '{:s}_McsE6R{:d}_{:d}.npy'.format(solver.nickname,r, itheta)
-                print('saving data: {}'.format(os.path.join(data_dir_result, filename)))
-                np.save(os.path.join(data_dir_result, filename), data, allow_pickle=True)
-            except:
-                np.save('SDOF_SURGE_McsE6.npy', data, allow_pickle=True)
-                
+        # for itheta in np.arange(10,20):
+            # solver = uqra.FPSO(random_state=itheta)
+            # data_mcs_x = uqra_env.ppf(stats.norm.cdf(data_mcs_u))
+            # data.y = solver.run(data_mcs_x, verbose=True) 
 
+            # try:
+                # filename = '{:s}_McsE6R{:d}_{:d}.npy'.format(solver.nickname,r, itheta)
+                # print('saving data: {}'.format(os.path.join(data_dir_result, filename)))
+                # np.save(os.path.join(data_dir_result, filename), data, allow_pickle=True)
+            # except:
+                # np.save('SDOF_SURGE_McsE6.npy', data, allow_pickle=True)
+
+    # ------------------------ Grid for contour plot----------------- ###
+    data = uqra.Data()
+    data.x = np.array([np.arange(0,20,0.1),]*2)
+    data.u = stats.norm(0, 0.5**0.5).ppf(uqra_env.cdf(data.x))
+    solver = uqra.FPSO(random_state=np.arange(100))
+    data.y = solver.run(data.x)
+    np.save(os.path.join(data_dir_result, 'SDOF_SURGE_Grid200.npy'), data, allow_pickle=True)
+    
 
     # ------------------------ Basic Check ----------------- ###
     # solver = uqra.FPSO()
