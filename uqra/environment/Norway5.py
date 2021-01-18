@@ -430,8 +430,7 @@ class Norway5(EnvBase):
     def support(self):
         return ((0, np.inf),) * self.ndim
 
-
-    def environment_contour(self, P,T=1000,n=100):
+    def environment_contour(self, P, T=1000, n=100, q=0.5):
         """
         Return samples for Environment Contours method
         
@@ -439,18 +438,28 @@ class Norway5(EnvBase):
             P: return period in years
             T: simulation duration in seconds
             n: no. of samples on the contour
+            q: fractile for the response variable. q=0.5 corresponds the median response
 
         Returns:
             ndarray of shape (4, n)
         """
-        print(r'Calculating Environment Contour samples for Norway5:')
+        print(r'Calculating Environment Contour samples for Norway5: {}-D'.format(self.ndim))
         print(r' - {:<25s}: {}'.format('Return period (years)', P))
-        print(r' - {:<25s}: {}'.format('Simulation duration (s)', T))
+        print(r' - {:<25s}: {}'.format('Simulation duration (sec)', T))
+        print(r' - {:<25s}: {}'.format('Response fractile ', q))
         prob_fail   = 1.0/(P * 365.25*24*3600/T)
         beta        = -stats.norm().ppf(prob_fail) ## reliability index
+        r           = np.sqrt(beta**2-stats.norm(0,1).ppf(q)**2)
         print(r' - {:<25s}: {:.2e}'.format('Failure probability', prob_fail))
         print(r' - {:<25s}: {:.2f}'.format('Reliability index', beta))
-        U = self._make_circles(beta,n=n)
+        print(r' - {:<25s}: {:.2f}'.format('Circle radius', r))
+        if self.ndim == 2:
+            U = self._create_circle(r, n=n)
+        elif self.ndim ==3:
+            U = self._create_sphere(r, n=n)
+        else:
+            raise NotImplementedError
+
         X = self.ppf(stats.norm().cdf(U)) 
         return U, X
 
@@ -473,9 +482,7 @@ class Norway5(EnvBase):
     # Sequence of conditional distributions based on Rosenblatt transformation 
     # ===========================================================  
 
-
-
-    def _make_circles(self, r,n=100):
+    def _create_circle(self, r, n=100):
         """
         return coordinates of points on a 2D circle with radius r
 
@@ -489,6 +496,16 @@ class Norway5(EnvBase):
         t = np.linspace(0, np.pi * 2.0, n)
         x = r * np.cos(t)
         y = r * np.sin(t)
-        z = x/x * 0 ## median value
-        return np.array([x, y, z])
+        res = np.array([x, y])
+        return res 
 
+    def _create_sphere(self, r, n=10):
+        lst = []
+        for phi in [(pi*i)/(n-1) for i in range(n)]:
+            M = int(sin(phi)*(n-1))+1
+            for theta in [(2*pi*i)/M for i in range(M)]:
+                x = r * sin(phi) * cos(theta)
+                y = r * sin(phi) * sin(theta)
+                z = r * cos(phi)
+                lst.append((x, y, z))
+        return np.array(lst).T
