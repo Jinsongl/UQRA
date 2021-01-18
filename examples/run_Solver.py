@@ -248,16 +248,20 @@ def run_FPSO():
 
     # ------------------------ Grid for contour plot----------------- ###
     solver = uqra.FPSO(random_state=np.arange(100))
-    x0 = x1 = np.arange(0,20,0.1)
+    x0 = np.linspace(0,20,210)
+    x1 = np.linspace(0,35,360)
     x0, x1  = np.meshgrid(x0, x1)
     x = np.array([x0.flatten(),x1.flatten()])
     u = stats.norm(0, 0.5**0.5).ppf(uqra_env.cdf(x))
     y = solver.run(x)
     data = uqra.Data()
-    data.x = (x0, x1)
-    data.u = (u[0].reshape(x0.shape), u[1].reshape(x1.shape))
-    data.y = y.reshape(x0.shape)
-    np.save(os.path.join(data_dir_result, 'SDOF_SURGE_Grid200.npy'), data, allow_pickle=True)
+    data.x = np.array([x0, x1])
+    data.u = np.array([u[0].reshape(x0.shape), u[1].reshape(x1.shape)])
+    data.y = np.array([iy.reshape(x0.shape) for iy in y])
+    try:
+        np.save(os.path.join(data_dir_result, 'SDOF_SURGE_Grid.npy'), data, allow_pickle=True)
+    except:
+        np.save('SDOF_SURGE_Grid.npy', data, allow_pickle=True)
     
 
     # ------------------------ Basic Check ----------------- ###
