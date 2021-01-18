@@ -212,34 +212,27 @@ def run_FPSO():
         raise ValueError('Operating system {} not found'.format(current_os))    
 
     # data_dir_samples= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/FPSO_SRUGE/TestData'
-    data_dir_result = data_dir
-    for r in range(1):
-        data = uqra.Data()
-        filename   = 'DoE_McsE6R{:d}_norm.npy'.format(r)
-        data_mcs_u = np.load(os.path.join(data_dir_random, filename))[:uqra_env.ndim,:]
-        data.u     = data_mcs_u 
-        data.xi    = data_mcs_u*np.sqrt(0.5)
+    # data_dir_result = data_dir
+    # for r in range(1):
+        # data = uqra.Data()
+        # filename   = 'DoE_McsE6R{:d}_norm.npy'.format(r)
+        # data_mcs_u = np.load(os.path.join(data_dir_random, filename))[:uqra_env.ndim,:]
+        # data.u     = data_mcs_u 
+        # data.xi    = data_mcs_u*np.sqrt(0.5)
 
-        data_mcs_x = uqra_env.ppf(stats.norm().cdf(data_mcs_u))
-        filename   = '{:s}_McsE6R{:d}_norm.npy'.format(uqra_env.site.capitalize(), r)
-        data.x     = data_mcs_x 
+        # data_mcs_x = uqra_env.ppf(stats.norm().cdf(data_mcs_u))
+        # filename   = '{:s}_McsE6R{:d}_norm.npy'.format(uqra_env.site.capitalize(), r)
+        # data.x     = data_mcs_x 
 
-        data.y = []
-        for itheta in np.arange(5):
-            solver = uqra.FPSO(random_state=itheta)
-            data_mcs_x = uqra_env.ppf(stats.norm.cdf(data_mcs_u))
-            y = solver.run(data_mcs_x, verbose=True) 
-            data.y.append(y)
-        filename = '{:s}_McsE6R{:d}{:d}.npy'.format(solver.nickname,r, itheta)
-        print('saving data: {}'.format(os.path.join(data_dir_result, filename)))
-        np.save(os.path.join(data_dir_result, filename), data, allow_pickle=True)
-
-
-    # ------------------------ Basic Check ----------------- ###
-    # solver = uqra.FPSO()
-    # x = np.array([2,4]).reshape(2,-1)
-    # y = solver.run(x) 
-    # print('Hs = {}, Tp={} => y={}'.format(np.around(x[0]), np.around(x[1]), y))
+        # data.y = []
+        # for itheta in np.arange(5):
+            # solver = uqra.FPSO(random_state=itheta)
+            # data_mcs_x = uqra_env.ppf(stats.norm.cdf(data_mcs_u))
+            # y = solver.run(data_mcs_x, verbose=True) 
+            # data.y.append(y)
+        # filename = '{:s}_McsE6R{:d}{:d}.npy'.format(solver.nickname,r, itheta)
+        # print('saving data: {}'.format(os.path.join(data_dir_result, filename)))
+        # np.save(os.path.join(data_dir_result, filename), data, allow_pickle=True)
 
     ## ------------------------ LHS ----------------- ###
     # n_initial = 20
@@ -252,11 +245,16 @@ def run_FPSO():
     # print(y_lhs.shape)
     # data_lhs = np.concatenate((u_lhs, x_lhs, y_lhs), axis=0)
     # np.save(os.path.join(data_dir_result, '{:s}_DoE_Lhs.npy'), data_lhs)
-    ## ------------------------ MCS  ----------------- ###
-    ##### MCS for DoE_McsE7R0
+
     # ------------------------ Environmental Contour ----------------- ###
-    # solver = uqra.FPSO(random_state = np.arange(20))
-    # data_ec = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Kvitebjorn_EC_50yr.npy')
+    U, X = uqra_env.environment_contour(50, T=1800, n=360, q=0.5)
+    solver = uqra.FPSO(random_state=np.arange(20))
+    data = uqra.Data()
+    data.u = U
+    data.x = X
+    data.y = solver.run(X)
+    filename = '{:s}_Norway5_EC2D_50yr.npy'.format(solver.nickname) 
+    np.save(filename, data, allow_pickle=True)
     # EC_u, EC_x = data_ec[:2], data_ec[2:]
     # EC_y = solver.run(EC_x, verbose=True) 
     # EC2D_median = np.median(EC_y, axis=0)
@@ -270,7 +268,8 @@ def run_FPSO():
 
 
     ## ------------------------ Environmental Contour ----------------- ###
-    # solver  = uqra.FPSO(phase=np.arange(21))
+
+    # solver  = uqra.FPSO(phase=np.arange(20))
     # dataset = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SDOF/Data/FPSO_Test_McsE7R0.npy')
     # u, x    = dataset[:2], dataset[2:4]
     # y       = solver.run(x, verbose=True) 
