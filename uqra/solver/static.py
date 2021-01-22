@@ -14,6 +14,9 @@ import scipy.stats as stats
 from uqra.solver._solverbase import SolverBase
 from uqra.utilities.helpers import isfromstats
 import random
+import multiprocessing as mp
+from tqdm import tqdm
+import time
 
 """
 Benchmark problems:
@@ -28,6 +31,8 @@ Return:
 
 class Ishigami(SolverBase):
     """
+    The Ishigami function is commonly used as a test function to benchmark global sensitivity analysis methods (Ishigami and Homma, 1990; Sobol’ and Levitan, 1999; Marrel et al., 2009).
+
     The ishigami function of ishigami & Homma (1990) is used as an example for uncertainty and sensitivity analysis methods, because it exhibits strong nonlinearity and nonmonotonicity. It also has a peculiar dependence on x3, as described by Sobol' & Levitan (1999). 
 
     The values of a and b used by Crestaux et al. (2007) and Marrel et al. (2009) are: a = 7 and b = 0.1. Sobol' & Levitan (1999) use a = 7 and b = 0.05. 
@@ -38,7 +43,7 @@ class Ishigami(SolverBase):
     References:
     Crestaux, T., Martinez, J.-M., Le Maitre, O., & Lafitte, O. (2007). Polynomial chaos expansion for uncertainties quantification and sensitivity analysis [PowerPoint slides]. Retrieved from SAMO 2007 website: http://samo2007.chem.elte.hu/lectures/Crestaux.pdf.
 
-    I3shigami, T., & Homma, T. (1990, December). An importance quantification technique in uncertainty analysis for computer models. In Uncertainty Modeling and Analysis, 1990. Proceedings., First International Symposium on (pp. 398-403). IEEE.
+    Ishigami, T., & Homma, T. (1990, December). An importance quantification technique in uncertainty analysis for computer models. In Uncertainty Modeling and Analysis, 1990. Proceedings., First International Symposium on (pp. 398-403). IEEE.
 
     Marrel, A., Iooss, B., Laurent, B., & Roustant, O. (2009). Calculations of sobol indices for the gaussian process metamodel. Reliability Engineering & System Safety, 94(3), 742-751.
 
@@ -66,8 +71,15 @@ class Ishigami(SolverBase):
 
     def run(self, x, **kwargs):
         x = np.array(x, copy=False, ndmin=2)
+        parallel = kwargs.get('parallel', False)
         assert x.shape[0] == int(3), 'Ishigami function expecting 3 random variables, {:d} given'.format(x.shape[0])
-        y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
+
+        if parallel:
+            with mp.Pool(processes=mp.cpu_count()) as p:
+                y = np.array(list(tqdm(p.imap(self._function , x.T, chunksize=10000), ncols=80, total=x.shape[1])))
+        else:
+            y = self._function(x)
+            # np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
 
         if np.isnan(y).any():
             raise ValueError('nan in solver.run() result')
@@ -77,6 +89,10 @@ class Ishigami(SolverBase):
             # y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
         # else:
             # y = np.sin(x[0,:]) + self.p[0] * np.sin(x[1,:])**2 + self.p[1]*x[2,:]**4 * np.sin(x[0,:])
+
+    def _function(self, x):
+        y = np.sin(x[0]) + self.p[0] * np.sin(x[1])**2 + self.p[1]*x[2]**4 * np.sin(x[0])
+        return y
 
     def map_domain(self, u, u_cdf):
         """
@@ -349,17 +365,15 @@ class PolySquareRoot(SolverBase):
 
 class FourBranchSystem(SolverBase):
     """
-    y = 10 - min{ 3 + 0.1(x1 - x2)**2 - (x1+x2)/sqrt(2)
+    y = min{ 3 + 0.1(x1 - x2)**2 - (x1+x2)/sqrt(2)
                   3 + 0.1(x1 - x2)**2 + (x1+x2)/sqrt(2)
-                  (x1 - x2) + 7/sqrt(2) 
-                  (x2 - x1) + 7/sqrt(2) 
+                  (x1 - x2) + 6/sqrt(2) 
+                  (x2 - x1) + 6/sqrt(2) 
                   }
 
     This toy case allows us to test the ability of the rare event estimation methods to accurately estimate the probability in the case of disconnected failure region.
 
     Benchmarks:
-    prob(y > 10) = 2.22E-3
-    prob(y > 12) = 1.18E-6
 
     """
 
@@ -381,11 +395,11 @@ class FourBranchSystem(SolverBase):
 
         y1 = 3 + 0.1*(x1 - x2)**2 - (x1+x2)/np.sqrt(2)
         y2 = 3 + 0.1*(x1 - x2)**2 + (x1+x2)/np.sqrt(2)
-        y3 = (x1 - x2) + 7.0/np.sqrt(2) 
-        y4 = (x2 - x1) + 7.0/np.sqrt(2) 
+        y3 = (x1 - x2) + 6.0/np.sqrt(2) 
+        y4 = (x2 - x1) + 6.0/np.sqrt(2) 
 
         y = np.array([y1, y2, y3, y4]).min(axis=0)
-        y = 10 - y 
+        # y = 10 - y 
         if np.isnan(y).any():
             np.set_printoptions(threshold=1000)
             print(x)
@@ -909,3 +923,491 @@ class ProductPeak(SolverBase):
                     x.append((iu-mean_u)/std_u * std_x + mean_x)
             x = np.vstack(x)
         return x
+
+class LiqudHydrogenTank(SolverBase):
+
+    """
+    The 5-dimensional liquid hydrogen tank problem is a reliability analysis benchmark problem (Bichon et al., 2011). The problem consists in quantifying the failure probability of a liquid hydrogen fuel tank on a space launch vehicle. The structure of the tank is subjected to stresses caused by ullage pressure, head pressure, axial forces due to acceleration, and bending and shear stresses caused by the weight of the fuel.
+    References
+    B. J. Bichon, J. M. McFarland, and S. Mahadevan, “Efficient surrogate models for reliability analysis of systems with multiple failure modes,” Reliability Engineering & System Safety, vol. 96, no. 10, pp. 1386-1395, 2011. DOI:10.1016/j.ress.2011.05.008
+    """
+    def __init__(self):
+        super().__init__()
+        self.name = 'LiqudHydrogenTank'
+        self.ndim = int(5)
+        self.distributions = [
+                stats.norm(0.07433, 0.005),
+                stats.norm(0.1    , 0.01 ),
+                stats.norm(13     , 60   ),
+                stats.norm(4751   , 48   ),
+                stats.norm(-648   , 11   ),
+                ] 
+        self.dist_name = 'norm' 
+        self.nickname = 'LiqudHydrogenTank'
+
+    def __str__(self):
+        return 'Solver: Product peak function'
+
+    def run(self, x, c=None, w=None, **kwargs):
+        x = np.array(x, copy=False, ndmin=2)
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
+        t_plate, t_h, Nx, Ny, Nxy = x 
+        x1 = 4*(t_plate - 0.075)
+        x2 = 20*(t_h - 0.1)
+        x3 = -6* 10**3 * (1.0/Nxy + 0.003)
+
+        PVM= (8.4 * 10**4 * t_plate)/np.sqrt(Nx**2 + Ny**2 - Nx * Ny + 3* Nxy**2) - 1
+        PIS= (8.4 * 10**4 * t_plate)/abs(Ny) - 1
+        PHB= 0.847 + 0.96*x1 + 0.986*x2 - 0.216*x3 + 0.077*x1**2 + 0.11*x2**2 + 0.007*x3**2 + 0.378*x1*x2 - 0.106*x1*x3 - 0.11*x2*x3
+
+        y = np.amin(np.array([PVM, PIS, PHB]), axis=0)
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
+        return y
+
+    def map_domain(self,u, u_cdf):
+        """
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
+        Argument:
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
+        """
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(
+                    self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                assert idist_u.dist.name == idist_x.dist.name
+                if idist_u.dist.name == 'uniform':
+                    ua, ub = idist_u.support()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.support()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+
+                elif idist_u.dist.name == 'norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+            x = np.vstack(x)
+        return x
+
+class InfiniteSlope(SolverBase):
+
+    """
+    The 5-dimensional liquid hydrogen tank problem is a reliability analysis benchmark problem (Bichon et al., 2011). The problem consists in quantifying the failure probability of a liquid hydrogen fuel tank on a space launch vehicle. The structure of the tank is subjected to stresses caused by ullage pressure, head pressure, axial forces due to acceleration, and bending and shear stresses caused by the weight of the fuel.
+    References
+    B. J. Bichon, J. M. McFarland, and S. Mahadevan, “Efficient surrogate models for reliability analysis of systems with multiple failure modes,” Reliability Engineering & System Safety, vol. 96, no. 10, pp. 1386-1395, 2011. DOI:10.1016/j.ress.2011.05.008
+    """
+    def __init__(self):
+        super().__init__()
+        self.name = 'InfiniteSlope'
+        self.ndim = int(6)
+        self.distributions = [
+                stats.uniform(2, 6),
+                stats.uniform(0, 1),
+                stats.lognorm(s=np.sqrt(np.log(1.0064)), scale=np.exp(np.log(35/np.sqrt(1.0064)))),
+                stats.lognorm(s=np.sqrt(np.log(1.0025)), scale=np.exp(np.log(20/np.sqrt(1.0025)))),
+                stats.uniform(2.5, 0.2),
+                stats.uniform(0.3, 0.3),
+                ] 
+        self.dist_name = 'norm_lognorm' 
+        self.nickname = 'InfiniteSlope'
+
+    def __str__(self):
+        return 'Solver: Product peak function'
+
+    def run(self, x, **kwargs):
+        x = np.array(x, copy=False, ndmin=2)
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
+        k = 0.2
+        gammw_w = 9.81
+        H, Uh, phi, theta, Gs, e =  x
+        h = H * Uh
+        gamma     = gammw_w * (Gs + k * e)/(1+e)
+        gamma_sat = gammw_w * (Gs + e)/(1+e)
+
+        R = (gamma * (H-h) + h*(gamma_sat - gammw_w)) * np.cos(theta/180*np.pi) * np.tan(phi/180*np.pi)
+        S = (gamma * (H-h) + h*gamma_sat) * np.sin(theta/180*np.pi)
+
+        y = R/S - 1
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
+        return y
+
+    def map_domain(self,u, u_cdf):
+        """
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
+        Argument:
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
+        """
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(
+                    self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            # dist_u: list of scipy.stats
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                if idist_u.dist.name == 'uniform' and idist_x.dist.name=='uniform':
+                    ua, ub = idist_u.support()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.support()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+
+                elif idist_u.dist.name == 'norm'and idist_x.dist.name=='norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+                else:
+                    x.append(idist_x.ppf(idist_u.cdf(iu)))
+            x = np.vstack(x)
+        return x
+
+class GaytonHat(SolverBase):
+
+    """
+    The Gayton hat function is a two-dimensional limit state function used in Echard et al. (2013) as a test function for reliability analysis algorithms.
+    References
+    B. Echard, N. Gayton, M. Lemaire, and N. Relun, “A combined Importance Sampling and Kriging reliability method for small failure probabilities with time-demanding numerical models”, Reliability Engineering and System Safety, vol. 111, pp. 232-240, 2013. DOI:10.1016/j.ress.2012.10.008.
+    """
+    def __init__(self):
+        super().__init__()
+        self.name = 'GaytonHat'
+        self.ndim = int(2)
+        self.distributions = [
+                stats.norm(0,1),
+                stats.norm(0,1),
+                ] 
+        self.dist_name = 'norm' 
+        self.nickname = 'GaytonHat'
+
+    def __str__(self):
+        return 'Solver: Product peak function'
+
+    def run(self, x, **kwargs):
+        x = np.array(x, copy=False, ndmin=2)
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
+        y = 0.5* (x[0]-2)**2 - 1.5*(x[1]-5)**3 - 3
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
+        return y
+
+    def map_domain(self,u, u_cdf):
+        """
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
+        Argument:
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
+        """
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(
+                    self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            # dist_u: list of scipy.stats
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                if idist_u.dist.name == 'uniform' and idist_x.dist.name=='uniform':
+                    ua, ub = idist_u.support()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.support()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+
+                elif idist_u.dist.name == 'norm'and idist_x.dist.name=='norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+                else:
+                    x.append(idist_x.ppf(idist_u.cdf(iu)))
+            x = np.vstack(x)
+        return x
+
+class CompositeGaussian(SolverBase):
+
+    """
+    The Gayton hat function is a two-dimensional limit state function used in Echard et al. (2013) as a test function for reliability analysis algorithms.
+    References
+    B. Echard, N. Gayton, M. Lemaire, and N. Relun, “A combined Importance Sampling and Kriging reliability method for small failure probabilities with time-demanding numerical models”, Reliability Engineering and System Safety, vol. 111, pp. 232-240, 2013. DOI:10.1016/j.ress.2012.10.008.
+    """
+    def __init__(self):
+        super().__init__()
+        self.name = 'CompositeGaussian'
+        self.ndim = int(2)
+        self.distributions = [
+                stats.norm(5.5,1.0),
+                stats.norm(5.0,1.0),
+                ] 
+        self.dist_name = 'norm' 
+        self.nickname = 'CompositeGaussian'
+
+    def __str__(self):
+        return 'Solver: Product peak function'
+
+    def run(self, x, **kwargs):
+        x = np.array(x, copy=False, ndmin=2)
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
+        y1 = x[0]**2 + x[1] -8
+        y2 = x[0]/5.0+ x[1] -6
+        y  = np.amax(np.array([y1,y2]), axis=0) 
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
+        return y
+
+    def map_domain(self,u, u_cdf):
+        """
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
+        Argument:
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
+        """
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(
+                    self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            # dist_u: list of scipy.stats
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                if idist_u.dist.name == 'uniform' and idist_x.dist.name=='uniform':
+                    ua, ub = idist_u.support()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.support()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+
+                elif idist_u.dist.name == 'norm'and idist_x.dist.name=='norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+                else:
+                    x.append(idist_x.ppf(idist_u.cdf(iu)))
+            x = np.vstack(x)
+        return x
+
+class ExpTanh(SolverBase):
+
+    """
+    In Owen et al. (2017), the Exp-Tanh function is used to test metamodeling approaches, namely polynomial chaos expansions and Gaussian process modeling.
+    References
+N. E. Owen, P. Challenor, P. P. Menon, and S. Bennani, “Comparison of surrogate-based uncertainty quantification methods for computationally expensive simulators,” SIAM/ASA Journal on Uncertainty Quantification, vol. 5, no. 1, pp. 403–435, 2017. DOI:10.1137/15M1046812
+    """
+    def __init__(self):
+        super().__init__()
+        self.name = 'CompositeGaussian'
+        self.ndim = int(2)
+        self.distributions = [
+                stats.uniform(-1,2),
+                stats.uniform(-1,2),
+                ] 
+        self.dist_name = 'uniform' 
+        self.nickname = 'ExpTanh'
+
+    def __str__(self):
+        return 'Solver: Product peak function'
+
+    def run(self, x, **kwargs):
+        x = np.array(x, copy=False, ndmin=2)
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
+        y = np.exp(-x[0])*np.tanh(5*x[1])
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
+        return y
+
+    def map_domain(self,u, u_cdf):
+        """
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
+        Argument:
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
+        """
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(
+                    self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            # dist_u: list of scipy.stats
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                if idist_u.dist.name == 'uniform' and idist_x.dist.name=='uniform':
+                    ua, ub = idist_u.support()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.support()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+
+                elif idist_u.dist.name == 'norm'and idist_x.dist.name=='norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+                else:
+                    x.append(idist_x.ppf(idist_u.cdf(iu)))
+            x = np.vstack(x)
+        return x
+
+class Rastrigin(SolverBase):
+
+    """
+
+    The 2-dimensional modified Rastrigin function is a test function for reliability analysis algorithms (Echard et al., 2011). It is a modification of the Rastrigin function (Mühlenbein et al. 1991) to include positive and negative values (i.e., safe and failed points, respectively). It features a highly non-linear limit state function with non-convex and non-connex failure domains (Echard et al., 2011).
+
+    References
+    H. Mühlenbein, M. Schomisch, and J. Born, “The parallel genetic algorithm as function optimizer,” Parallel Computing, vol. 17, pp. 619–632, 1991. DOI:10.1016/S0167-8191(05)80052-3
+    B. Echard, N. Gayton, and M. Lemaire, “AK-MCS: An active learning reliability method combining Kriging and Monte Carlo Simulation,” Structural Safety, vol. 33, pp. 145–154, 2011. DOI:10.1016/j.strusafe.2011.01.002
+    """
+    def __init__(self):
+        super().__init__()
+        self.name = 'Rastrigin'
+        self.ndim = int(2)
+        self.distributions = [
+                stats.norm(0,1),
+                stats.norm(0,1),
+                ] 
+        self.dist_name = 'norm' 
+        self.nickname = 'Rastrigin'
+
+    def __str__(self):
+        return 'Solver: Product peak function'
+
+    def run(self, x, **kwargs):
+        x = np.array(x, copy=False, ndmin=2)
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
+        y = 10 - (x[0]**2 - 5 * np.cos(2*np.pi*x[0])) - (x[1]**2 - 5 * np.cos(2*np.pi*x[1]))
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
+        return y
+
+    def map_domain(self,u, u_cdf):
+        """
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
+        Argument:
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
+        """
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(
+                    self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            # dist_u: list of scipy.stats
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                if idist_u.dist.name == 'uniform' and idist_x.dist.name=='uniform':
+                    ua, ub = idist_u.support()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.support()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+
+                elif idist_u.dist.name == 'norm'and idist_x.dist.name=='norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+                else:
+                    x.append(idist_x.ppf(idist_u.cdf(iu)))
+            x = np.vstack(x)
+        return x
+
+
+
+class Borehole(SolverBase):
+    """
+    The 8-dimensional borehole function models water flow through a borehole that is drilled from the ground surface through the two aquifers. The water flow rate is described by the borehole and the aquifer’s properties. The borehole function is typically used to benchmark metamodeling and sensitivity analysis methods (Harper and Gupta, 1983; Morris, 1993; An and Owen, 2001; Kersaudy et al., 2015).
+    References
+    W. V. Harper and S. K. Gupta, “Sensitivity/Uncertainty Analysis of a Borehole Scenario Comparing Latin Hypercube Sampling and Deterministic Sensitivity Approaches”, Office of Nuclear Waste Isolation, Battelle Memorial Institute, Columbus, Ohio, BMI/ONWI-516, 1983. URL
+    M. D. Morris, T. J. Mitchell, and D. Ylvisaker, “Bayesian design and analysis of computer experiments: Use of derivatives in surface prediction,” Technometrics, vol. 35, no. 3, pp. 243–255, 1993. DOI:10.1080/00401706.1993.10485320
+    J. An and A. Owen, “Quasi-regression,” Journal of Complexity, vol. 17, pp. 588–607, 2001. DOI:10.1006/jcom.2001.0588
+    P. Kersaudy, B. Sudret, N. Varsier, O. Picon, and J. Wiart, “A new surrogate modeling technique combining Kriging and polynomial chaos expansions – Application to uncertainty analysis in computational dosimetry,” Journal of Computational Physics, vol. 286, pp. 103–117, 2015. DOI:10.1016/j.jcp.2015.01.034
+
+    """
+    def __init__(self):
+        super().__init__()
+        self.name = 'Borehole'
+        self.ndim = int(8)
+        self.distributions = [
+                stats.uniform(0.05  , 0.1           ),
+                stats.uniform(100   , 50000-100     ),
+                stats.uniform(63070 , 115600-63070  ),
+                stats.uniform(990   , 1100-990      ),
+                stats.uniform(63.1  , 116-63.1      ),
+                stats.uniform(700   , 820-700       ),
+                stats.uniform(1120  , 1680-1120     ),
+                stats.uniform(9885  , 12045-9885    ),
+                ] 
+        self.dist_name = 'uniform' 
+        self.nickname = 'Borehole'
+
+    def __str__(self):
+        return 'Solver: Product peak function'
+
+    def run(self, x, **kwargs):
+        x = np.array(x, copy=False, ndmin=2)
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
+        rw, r, Tu, Hu, Tl, Hl, L , Kw = x
+        y1 = 2*np.pi*Tu * (Tu - Hl)
+        y2 = 2*L * Tu /(np.log(r/rw) * rw**2 * Kw)
+        y3 = Tu / Tl
+        y  = y1/(np.log(r/rw) * (1+y2 + y3))
+
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
+        return y
+
+    def map_domain(self,u, u_cdf):
+        """
+        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
+        Argument:
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
+        """
+        if isinstance(u_cdf, np.ndarray):
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(
+                    self.name, self.ndim, u_cdf.shape[0])
+            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        else:
+            u, dist_u = super().map_domain(u, u_cdf) 
+            # dist_u: list of scipy.stats
+            x = []
+            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                if idist_u.dist.name == 'uniform' and idist_x.dist.name=='uniform':
+                    ua, ub = idist_u.support()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.support()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+
+                elif idist_u.dist.name == 'norm'and idist_x.dist.name=='norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+                else:
+                    x.append(idist_x.ppf(idist_u.cdf(iu)))
+            x = np.vstack(x)
+        return x
+
+
