@@ -219,8 +219,8 @@ def main(r=0):
         print('     ..{:<23s} : {} '.format(' Test data', np.array(data_test.y).shape))
 
         ## ECDF, quantile values based on test data
-        data_pred = np.load(os.path.join(data_dir_test, '{:s}_CDF_McsE7R{:d}.npy'.format(solver.nickname, r)), allow_pickle=True).tolist()
-        data_pred_ecdf = np.load(os.path.join(data_dir_test, '{:s}_McsE7_Ecdf.npy'.format(solver.nickname)), allow_pickle=True).tolist()
+        data_pred = np.load(os.path.join(data_dir_test, '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)), allow_pickle=True).tolist()
+        # data_pred_ecdf = np.load(os.path.join(data_dir_test, '{:s}_McsE7_Ecdf.npy'.format(solver.nickname)), allow_pickle=True).tolist()
         if idoe_params.doe_sampling.lower().startswith('cls'):
             u_test = data_test.xi[:,:model_params.num_test]
             u_pred = data_pred.xi[:,:model_params.num_pred]

@@ -512,9 +512,11 @@ def run_FourBranch():
         data.xi= data.u * np.sqrt(0.5)
         data.x = data.u
         data.y = solver.run(data.x)
+        print(np.sum(data.y<0)/len(data.y))
         print('u: {} {}'.format(np.mean(data.u, axis=-1), np.std(data.u, axis=-1)))
         print('xi: {} {}'.format(np.mean(data.xi, axis=-1), np.std(data.xi, axis=-1)))
         print('x: {} {}'.format(np.mean(data.x, axis=-1), np.std(data.x, axis=-1)))
+        # filename = '{:s}_CDF_McsE7R{:d}.npy'.format(solver.nickname, r)
         filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
         np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 
@@ -539,8 +541,177 @@ def run_CornerPeak():
         filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
         np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 
+def run_LiqudHydrogenTank():
+    solver = uqra.LiqudHydrogenTank()
+    data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
+    data_dir_test   = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/LiqudHydrogenTank/TestData' 
+    data_u = []
+    for r in range(10):
+        data = uqra.Data()
+        # filename = 'CDF_McsE7R{:d}.npy'.format(r)
+        # data.u = stats.norm.ppf(np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:])
+        filename = 'DoE_McsE6R{:d}_norm.npy'.format(r)
+        data.u = np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:]
+        # data.u = stats.norm.rvs(size= (5, int(1e7)))
+        print(filename)
+        data.xi= data.u * np.sqrt(0.5)
+        data.x = solver.map_domain(data.u, stats.norm())
+        data.y = solver.run(data.x)
+        print('u: {} {}'.format(np.mean(data.u, axis=-1), np.std(data.u, axis=-1)))
+        print('xi: {} {}'.format(np.mean(data.xi, axis=-1), np.std(data.xi, axis=-1)))
+        print('x: {} {}'.format(np.mean(data.x, axis=-1), np.std(data.x, axis=-1)))
+        print('Probability of failure {:.2e}'.format(np.sum(data.y<0)/len(data.y)))
+        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
+        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+def run_InfiniteSlope():
+    solver = uqra.InfiniteSlope()
+    data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
+    data_dir_test   = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/LiqudHydrogenTank/TestData' 
+    data_u = []
+    for r in range(10):
+        data = uqra.Data()
+        filename = 'DoE_McsE6R{:d}_uniform.npy'.format(r)
+        data.u = np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:]
+        print(data.u.shape)
+        # data.u = stats.norm.rvs(size= (5, int(1e7)))
+        print(filename)
+        data.xi= data.u
+        data.x = solver.map_domain(data.u, stats.uniform(-1,2))
+        data.y = solver.run(data.x)
+        np.set_printoptions(precision=4)
+        print('u: {} {}'.format(np.mean(data.u, axis=-1), np.std(data.u, axis=-1)))
+        print('xi: {} {}'.format(np.mean(data.xi, axis=-1), np.std(data.xi, axis=-1)))
+        print('x: {} {} {}'.format(np.mean(data.x, axis=-1), np.amin(data.x, axis=-1),np.amax(data.x, axis=-1)))
+        print('x: {} {}'.format(np.mean(np.log(data.x[2:4]), axis=-1), np.std(np.log(data.x[2:4]), axis=-1)))
+        theta_deg, phi_deg = data.x[2:4]
+        print(np.mean(theta_deg), np.std(theta_deg), np.std(theta_deg)/np.mean(theta_deg))
+        print(np.mean(phi_deg), np.std(phi_deg), np.std(phi_deg)/np.mean(phi_deg))
+        print('Probability of failure {:.2e}'.format(np.sum(data.y<0)/len(data.y)))
+        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
+        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+def run_GaytonHat():
+    solver = uqra.GaytonHat()
+    data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
+    data_dir_test   = os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples', solver.nickname, 'TestData')
+    data_u = []
+    if not os.path.exists(data_dir_test):
+        os.makedirs(data_dir_test)
+    for r in range(10):
+        data = uqra.Data()
+        data.u = stats.norm.rvs(size= (solver.ndim, int(5e7)))
+        filename = '{:s}_Mcs5E7R{:d}.npy'.format(solver.nickname, r)
+        print(filename)
+        print(data.u.shape)
+        # data.xi= data.u * np.sqrt(0.5)
+        # data.x = solver.map_domain(data.u, stats.norm(0,1))
+        data.x = data.u
+        data.y = solver.run(data.x)
+        np.set_printoptions(precision=4)
+        print('Probability of failure {:.2e}'.format(np.sum(data.y<0)/len(data.y)))
+        data.pf = np.sum(data.y<0)/len(data.y)
+        data.ecdf = uqra.ECDF(data.y, data.pf, compress=True)
+        del data.x
+        del data.y
+        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+def run_CompositeGaussian():
+    solver = uqra.CompositeGaussian()
+    data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
+    data_dir_test   = os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples', solver.nickname, 'TestData')
+    if not os.path.exists(data_dir_test):
+        os.makedirs(data_dir_test)
+    data_u = []
+    for r in range(10):
+        data = uqra.Data()
+        data.u = stats.norm.rvs(size= (solver.ndim, int(1e7)))
+        filename = '{:s}_McsE7R{:d}.npy'.format(solver.nickname, r)
+        print(filename)
+        data.x = solver.map_domain(data.u, stats.norm(0,1))
+        data.y = solver.run(data.x)
+        print('Probability of failure {:.2e}'.format(np.sum(data.y<0)/len(data.y)))
+        data.pf = np.sum(data.y<0)/len(data.y)
+        data.ecdf = uqra.ECDF(data.y, data.pf, compress=True)
+        del data.x
+        del data.y
+
+        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+def run_Rastrigin():
+    solver = uqra.Rastrigin()
+    data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
+    data_dir_test   = os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples', solver.nickname, 'TestData')
+    if not os.path.exists(data_dir_test):
+        os.makedirs(data_dir_test)
+    data_u = []
+    for r in range(10):
+        data = uqra.Data()
+        data.u = stats.norm.rvs(size= (solver.ndim, int(1e6)))
+        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
+        print(filename)
+        data.x = solver.map_domain(data.u, stats.norm(0,1))
+        data.y = solver.run(data.x)
+        print('Probability of failure {:.2e}'.format(np.sum(data.y<0)/len(data.y)))
+        data.pf = np.sum(data.y<0)/len(data.y)
+        data.ecdf = uqra.ECDF(data.y, data.pf, compress=True)
+        del data.x
+        del data.y
+
+        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+def run_Borehole():
+    solver = uqra.Borehole()
+    data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
+    data_dir_test   = os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples', solver.nickname, 'TestData')
+    if not os.path.exists(data_dir_test):
+        os.makedirs(data_dir_test)
+    data_u = []
+    for r in range(10):
+        data = uqra.Data()
+        data.u = stats.uniform(-1,2).rvs(size= (solver.ndim, int(1e6)))
+        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
+        print(filename)
+        data.x = solver.map_domain(data.u, stats.uniform(-1,2))
+        data.y = solver.run(data.x)
+        # print('Probability of failure {:.2e}'.format(np.sum(data.y<0)/len(data.y)))
+        # data.pf = np.sum(data.y<0)/len(data.y)
+        # data.ecdf = uqra.ECDF(data.y, data.pf, compress=True)
+        del data.x
+        del data.y
+        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+def run_ExpTanh():
+    solver = uqra.ExpTanh()
+    data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
+    data_dir_test   = os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples', solver.nickname, 'TestData')
+    if not os.path.exists(data_dir_test):
+        os.makedirs(data_dir_test)
+    data_u = []
+    for r in range(10):
+        data = uqra.Data()
+        data.u = stats.uniform(-1,2).rvs(size= (solver.ndim, int(1e6)))
+        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
+        print(filename)
+        data.x = solver.map_domain(data.u, stats.uniform(-1,2))
+        data.y = solver.run(data.x)
+        # print('Probability of failure {:.2e}'.format(np.sum(data.y<0)/len(data.y)))
+        # data.pf = np.sum(data.y<0)/len(data.y)
+        # data.ecdf = uqra.ECDF(data.y, data.pf, compress=True)
+        del data.x
+        del data.y
+        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
 if __name__ == '__main__':
-    run_FPSO()
+    # run_FPSO()
     # run_Ishigami()
     # run_FourBranch()
     # run_CornerPeak()
+    # run_LiqudHydrogenTank()
+    # run_InfiniteSlope()
+    # run_GaytonHat()
+    # run_CompositeGaussian()
+    # run_Rastrigin()
+    # run_Borehole()
+    run_ExpTanh()
+

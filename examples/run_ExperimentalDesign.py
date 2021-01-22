@@ -94,11 +94,11 @@ def run_CLS():
         # except NotImplementedError:
             # pass
     data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign'
-    ndim = 3
-    doe_method = 'CLS4'
+    ndim = 8
+    doe_method = 'CLS1'
     print('{:s}, d={:d}'.format(doe_method, ndim))
     doe = uqra.CLS(doe_method,ndim)
-    for r in range(1):
+    for r in range(10):
         np.random.seed(None)
         doe_x = doe.samples(size=1e6)
         print('   - {:<25s} : {}'.format(' Dataset (U)', doe_x.shape))

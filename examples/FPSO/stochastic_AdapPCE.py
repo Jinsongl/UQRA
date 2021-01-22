@@ -32,7 +32,7 @@ def main(theta):
     pf = 0.5/(50*365.25*24)
 
     ## ------------------------ Simulation Parameters ----------------- ###
-    solver    = uqra.FPSO(random_state =theta)
+    solver    = uqra.FPSO(random_state=theta)
     simparams = uqra.Parameters(solver, doe_method=['CLS4', 'D'], fit_method='LASSOLARS')
     simparams.set_udist('norm')
     simparams.x_dist     = Kvitebjorn
