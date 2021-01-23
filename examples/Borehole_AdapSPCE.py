@@ -15,6 +15,7 @@ import scipy.stats as stats
 from tqdm import tqdm
 import itertools, copy, math, collections
 import multiprocessing as mp
+import random
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 class Data():
@@ -100,56 +101,7 @@ def check_converge(y0, e=0.025):
         res = (False,y0    , rel_change)
     return res
 
-def main(r=0):
-    ## ------------------------ Displaying set up ------------------- ###
-    print('\n#################################################################################')
-    print(' >>>  Start UQRA : {:d}'.format(r), __file__)
-    print('#################################################################################\n')
-    np.random.seed(100)
-    np.set_printoptions(precision=4)
-    np.set_printoptions(threshold=1000)
-    np.set_printoptions(suppress=True)
-    pf = np.array([1e-4])
-    n_jobs = mp.cpu_count()
-    ## ------------------------ Define solver ----------------------- ###
-    # solver      = uqra.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
-    # solver      = uqra.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
-    # solver      = uqra.CornerPeak(stats.uniform(-1,2), d=2)
-    # solver      = uqra.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
-    # solver      = uqra.Franke()
-    # solver      = uqra.Ishigami()
-    solver      = uqra.Borehole()
-
-    # solver      = uqra.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
-    # solver      = uqra.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
-    # solver      = uqra.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
-    # solver      = uqra.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
-    # solver      = uqra.ExpSum(stats.norm(0,1), d=3)
-    # solver      = uqra.FourBranchSystem()
-    # solver      = uqra.LiqudHydrogenTank()
-
-    ## ------------------------ UQRA Modeling Parameters ----------------- ###
-    model_params = uqra.Modeling()
-    model_params.name    = 'PCE'
-    model_params.degs    = np.arange(2,15) #[2,6,10]#
-    model_params.ndim    = solver.ndim
-    model_params.basis   = 'Leg'
-    model_params.fitting = 'OLSLAR' 
-    model_params.n_splits= 50
-    model_params.alpha   = 2
-    model_params.num_test= int(1e6)
-    model_params.num_pred= int(1e6)
-    model_params.info()
-    ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters()
-    doe_params.doe_sampling = 'CLS1' 
-    doe_params.optimality   = ['S']
-    doe_params.poly_name    = model_params.basis 
-    doe_params.num_cand     = int(1e5)
-    # data_dir_cand   = '/Users/jinsongliu/BoxSync/Research/Working_Papers/OE2020_LongTermExtreme/Data/FPSO_SURGE/UniformBall'
-    if doe_params.doe_sampling.lower() == 'lhs':
-        data_dir_optimal = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/LHS'
-        doe_params.update_output_dir(data_dir_optimal=data_dir_optimal)
+def main(model_params, doe_params, solver, r=0):
 
     optimal_samples = []
     ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
@@ -210,7 +162,12 @@ def main(r=0):
         print('     - {:<23s} : {}'.format(' Test input data'   , filename_testin))
         print('     - {:<23s} : {}'.format(' Test output data'  , filename_test  ))
         if filename_cand:
-            data_cand = np.load(os.path.join(data_dir_cand, filename_cand))[:ndim, :idoe_params.num_cand]
+            data_cand = np.load(os.path.join(data_dir_cand, filename_cand))
+            idx_cand  = np.arange(data_cand.shape[1])
+            random.seed(None)
+            random.shuffle(idx_cand)
+            idx_cand = idx_cand[:idoe_params.num_cand]
+            data_cand = data_cand[:ndim,idx_cand]
             print('     ..{:<23s} : {}'.format(' Candidate samples', data_cand.shape))
 
         ### 2. Get test data set
@@ -221,7 +178,7 @@ def main(r=0):
         data_test.y = solver.run(data_test.x)
         u_test      = data_test.xi[:, :model_params.num_test] 
         y_test      = data_test.y
-        y0_test     = uqra.metrics.mquantiles(y_test, 1-pf)
+        y0_test     = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
         print('{:<23s}: {}'.format('U  Test', u_test.shape))
         print('{:<23s}: {}'.format('Y  Test', y_test.shape))
         print('{:<23s}: {}'.format('y0 Test', y0_test))
@@ -266,14 +223,14 @@ def main(r=0):
             x_train = solver.map_domain(u_train, dist_xi)
             y_train = solver.run(x_train)
         
-            pce_model.fit(model_params.fitting, u_train, y_train, w=idoe_sampling, n_jobs=n_jobs, n_splits=50)
-            y_test_hat = pce_model.predict(u_test, n_jobs=n_jobs)
+            pce_model.fit(model_params.fitting, u_train, y_train, w=idoe_sampling, n_jobs=model_params.n_jobs, n_splits=10)
+            y_test_hat = pce_model.predict(u_test, n_jobs=model_params.n_jobs)
             data_temp.model.append(pce_model)
             data_temp.rmse_y.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
-            data_temp.y0_hat.append(uqra.metrics.mquantiles(y_test_hat, 1-pf))
+            data_temp.y0_hat.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
             data_temp.score.append(pce_model.score)
             data_temp.cv_err.append(pce_model.cv_error)
-            data_temp.yhat_ecdf.append(uqra.ECDF(y_test_hat, pf, compress=True))
+            data_temp.yhat_ecdf.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
             is_converge, y0_hat, y0_hat_err = check_converge(data_temp.y0_hat, e=0.025)
             active_basis = pce_model.active_basis 
             active_index = pce_model.active_index
@@ -282,7 +239,6 @@ def main(r=0):
             print('     - # Active basis: {:d}'.format(len(active_index)))
             print('     > y0: {}, y0 abs_err: {}'.format(np.array(data_temp.y0_hat), y0_hat_err))
             print('     ------------------------------')
-
 
             print('   2. Optimal samples based on SIGNIFICANT basis')
             while True:
@@ -305,15 +261,14 @@ def main(r=0):
                 x_train = solver.map_domain(u_train, dist_xi)
                 y_train = solver.run(x_train)
                 # y_train = y_train + observation_error(y_train)
-                # w = pce_model.christoffel_weight(u_train, active=active_index) if idoe_sampling.lower().startswith('cls') else None
-                pce_model.fit(model_params.fitting, u_train, y_train, w=idoe_sampling, n_jobs=n_jobs, n_splits=50)
-                y_test_hat = pce_model.predict(u_test, n_jobs=n_jobs)
+                pce_model.fit(model_params.fitting, u_train, y_train, w=idoe_sampling, n_jobs=model_params.n_jobs, n_splits=10)
+                y_test_hat = pce_model.predict(u_test, n_jobs=model_params.n_jobs)
                 data_temp.model.append(pce_model)
                 data_temp.rmse_y.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
-                data_temp.y0_hat.append(uqra.metrics.mquantiles(y_test_hat, 1-pf))
+                data_temp.y0_hat.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
                 data_temp.score.append(pce_model.score)
                 data_temp.cv_err.append(pce_model.cv_error)
-                data_temp.yhat_ecdf.append(uqra.ECDF(y_test_hat, pf, compress=True))
+                data_temp.yhat_ecdf.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
                 isOverfitting(data_temp.cv_err) ## check Overfitting
                 is_converge, y0_hat, y0_hat_err = check_converge(data_temp.y0_hat, e=0.025)
                 active_index = pce_model.active_index
@@ -342,7 +297,7 @@ def main(r=0):
             data.u_train= u_train
             data.x_train= x_train
             data.y_train= y_train
-            data.rmse_y= data_temp.rmse_y[-1]
+            data.rmse_y = data_temp.rmse_y[-1]
             data.y0_hat = data_temp.y0_hat[-1]
             data.cv_err = data_temp.cv_err[-1]
             data.model  = data_temp.model[-1]
@@ -367,14 +322,61 @@ def main(r=0):
             print('     ------------------------------')
             break
 
-    ## ============ Saving QoIs ============
-    filename = '{:s}_Adap{:s}_{:s}E5R{:d}'.format(solver.nickname, pce_model.tag, doe_params.doe_sampling.capitalize(), r)
-    try:
-        np.save(os.path.join(data_dir_result, filename), output_ndim_deg, allow_pickle=True)
-        print(' >> Simulation Done! Data saved to {:s}'.format(os.path.join(data_dir_result, filename)))
-    except:
-        np.save(os.path.join(os.getcwd(), filename), output_ndim_deg, allow_pickle=True)
-        print(' >> Simulation Done! Data saved to {:s}'.format(os.path.join(os.getcwd(), filename)))
+    return output_ndim_deg
 
 if __name__ == '__main__':
-    main(0)
+    ## ------------------------ Displaying set up ------------------- ###
+    r = 0
+    print('\n#################################################################################')
+    print(' >>>  Start UQRA : {:d}'.format(r), __file__)
+    print('#################################################################################\n')
+    np.random.seed(100)
+    np.set_printoptions(precision=4)
+    np.set_printoptions(threshold=1000)
+    np.set_printoptions(suppress=True)
+    ## ------------------------ Define solver ----------------------- ###
+    # solver      = uqra.ExpAbsSum(stats.uniform(-1,2),d=2,c=[-2,1],w=[0.25,-0.75])
+    # solver      = uqra.ExpSquareSum(stats.uniform(-1,2),d=2,c=[1,1],w=[1,0.5])
+    # solver      = uqra.CornerPeak(stats.uniform(-1,2), d=2)
+    # solver      = uqra.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
+    # solver      = uqra.Franke()
+    # solver      = uqra.Ishigami()
+    solver      = uqra.Borehole()
+
+    # solver      = uqra.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
+    # solver      = uqra.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
+    # solver      = uqra.CornerPeak(stats.norm(0,1), d=3, c=np.array([1,2,3]), w=[0.5,]*3)
+    # solver      = uqra.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
+    # solver      = uqra.ExpSum(stats.norm(0,1), d=3)
+    # solver      = uqra.FourBranchSystem()
+    # solver      = uqra.LiqudHydrogenTank()
+
+    ## ------------------------ UQRA Modeling Parameters ----------------- ###
+    model_params = uqra.Modeling()
+    model_params.name    = 'PCE'
+    model_params.degs    = np.arange(2,15) #[2,6,10]#
+    model_params.ndim    = solver.ndim
+    model_params.basis   = 'Leg'
+    model_params.fitting = 'OLSLAR' 
+    model_params.n_splits= 50
+    model_params.alpha   = 2
+    model_params.num_test= int(1e6)
+    model_params.num_pred= int(1e6)
+    model_params.pf      = np.array([1e-4])
+    model_params.n_jobs  = mp.cpu_count()
+    model_params.info()
+    ## ------------------------ UQRA DOE Parameters ----------------- ###
+    doe_params = uqra.ExperimentParameters()
+    doe_params.doe_sampling = 'CLS1' 
+    doe_params.optimality   = ['S']
+    doe_params.poly_name    = model_params.basis 
+    doe_params.num_cand     = int(1e5)
+    # data_dir_cand   = '/Users/jinsongliu/BoxSync/Research/Working_Papers/OE2020_LongTermExtreme/Data/FPSO_SURGE/UniformBall'
+    if doe_params.doe_sampling.lower() == 'lhs':
+        data_dir_optimal = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/LHS'
+        doe_params.update_output_dir(data_dir_optimal=data_dir_optimal)
+
+    res = [main(model_params, doe_params, solver, r=r) for _ in range(50)]
+    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}'.format(solver.nickname, solver.ndim, model_params.basis,doe_params.doe_sampling.capitalize(), r)
+    print(filename)
+    np.save(filename, res, allow_pickle=True)
