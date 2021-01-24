@@ -14,8 +14,7 @@ from tqdm import tqdm
 import copy
 import scipy.stats as stats
 import multiprocessing as mp
-from sklearn import linear_model
-from sklearn import model_selection
+from sklearn import linear_model, preprocessing, model_selection
 from sklearn.exceptions import ConvergenceWarning
 from ._surrogatebase import SurrogateBase
 import uqra, math
@@ -143,52 +142,65 @@ class PolynomialChaosExpansion(SurrogateBase):
             fit_intercept = kwargs.get('fit_intercept'  , True )
             normalize     = kwargs.get('normalize'      , False)
             n_jobs        = kwargs.get('n_jobs'         , None ) 
-            n_splits      = min(kwargs.get('n_splits'   , x.shape[1]), x.shape[1])  ## if not given, default is Leave-one-out
-            kfolder       = model_selection.KFold(n_splits=n_splits,shuffle=True)
+            shrinkage     = kwargs.get('shrinkage'      , 'CV')
 
             if w.lower().startswith('cls') or w.lower() in ['cls', 'christoffel']:
                 full_weight = self.christoffel_weight(x, active=None)
             else:
                 full_weight = w
+
             if full_weight is not None:
                 WX, Wy = self._rescale_data(X, y, full_weight)
             else:
                 WX, Wy = X, y
+            ### standardize data: zero mean, unit variance for each predictor
+            # scaler     = preprocessing.StandardScaler().fit(WX)
+            # WX_scaled  = scaler.transform(WX) 
+            # Wy_scaled  = Wy - np.mean(Wy)  ## just zero mean, not unit variance
+            # model_lars = linear_model.Lars(fit_intercept=fit_intercept, normalize=normalize).fit(WX_scaled,Wy_scaled)
             model_lars = linear_model.Lars(fit_intercept=fit_intercept, normalize=normalize).fit(WX,Wy)
-            ### OLS regression with all basis
-            ols_reg0= linear_model.LinearRegression(fit_intercept=True).fit(X, y, full_weight)
-            y_hat0  = ols_reg0.predict(X)
-            std0    = np.sqrt(np.linalg.norm(y-y_hat0)**2/(X.shape[0]-X.shape[1]-1))
-            cp_statistics = []
-            cv_err = []
-            for k in range(1, X.shape[1]+1):
-                kfolder = model_selection.KFold(n_splits=X.shape[0],shuffle=True)
-                reg_ols = linear_model.LinearRegression(fit_intercept=True)
-                X_      = X[:,model_lars.active_[:k]]
-                if w.lower().startswith('cls') or w.lower() in ['cls', 'christoffel']:
-                    k_weight = self.christoffel_weight(x, active=model_lars.active_[:k])
-                elif w is not None:
-                    k_weight = w[:, model_lars.active_[:k]]
-                else:
-                    k_weight = None
-                if k_weight is not None:
-                    WX_, Wy = self._rescale_data(X_, y, k_weight)
-                else:
-                    WX_, Wy = X, y
-                neg_mse = model_selection.cross_val_score(reg_ols, WX_, Wy, scoring='neg_mean_squared_error', cv=kfolder)
-                cv_err.append( -np.mean(neg_mse))
+            if shrinkage.upper() in ['CV', 'CROSS VALIDATION', 'CROSS-VALIDATION']:
+                ### if not given, default is Leave-one-out
+                n_splits = kwargs.get('n_splits', x.shape[1]) 
+                n_splits = min(n_splits, x.shape[1])  ## avoid number of samples less than # folders
+                kfolder  = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-                reg_ols.fit(X_, y, k_weight)
-                y_hat = reg_ols.predict(X_)
-                cp_statistics.append(np.linalg.norm(y-y_hat)**2/std0**2 - X_.shape[0] + 2*k)
-             
-            # k = np.argmin(cp_statistics)+ 1
-            k = np.argmin(cv_err) +1
-            active_index  = model_lars.active_[:k]
-            active_basis  = [self.orth_poly.basis_degree[i] for i in active_index] 
-            # print('Cp: {}->{}'.format(cp_statistics, np.argmin(cp_statistics)))
-            # print('log CV: {}->{}'.format(np.log(cv_err), np.argmin(cv_err)))
-            # print('Active index: {}'.format(active_index))
+                ### OLS regression with all basis
+                ols_reg0= linear_model.LinearRegression(fit_intercept=True).fit(X, y, full_weight)
+                y_hat0  = ols_reg0.predict(X)
+                std0    = np.sqrt(np.linalg.norm(y-y_hat0)**2/(X.shape[0]-X.shape[1]-1))
+                cp_statistics = []
+                cv_err = []
+                for k in range(1, X.shape[1]+1):
+                    kfolder = model_selection.KFold(n_splits=n_splits,shuffle=True)
+                    reg_ols = linear_model.LinearRegression(fit_intercept=True)
+                    X_      = X[:,model_lars.active_[:k]]
+                    if w.lower().startswith('cls') or w.lower() in ['cls', 'christoffel']:
+                        k_weight = self.christoffel_weight(x, active=model_lars.active_[:k])
+                    elif w is not None:
+                        k_weight = w[:, model_lars.active_[:k]]
+                    else:
+                        k_weight = None
+                    if k_weight is not None:
+                        WX_, Wy = self._rescale_data(X_, y, k_weight)
+                    else:
+                        WX_, Wy = X, y
+                    neg_mse = model_selection.cross_val_score(reg_ols, WX_, Wy, scoring='neg_mean_squared_error', cv=kfolder)
+                    cv_err.append( -np.mean(neg_mse))
+
+                    reg_ols.fit(X_, y, k_weight)
+                    y_hat = reg_ols.predict(X_)
+                    cp_statistics.append(np.linalg.norm(y-y_hat)**2/std0**2 - X_.shape[0] + 2*k)
+                 
+                # k = np.argmin(cp_statistics)+ 1
+                k = np.argmin(cv_err) +1
+                active_index  = model_lars.active_[:k]
+                active_basis  = [self.orth_poly.basis_degree[i] for i in active_index] 
+                # print('Cp: {}->{}'.format(cp_statistics, np.argmin(cp_statistics)))
+                # print('log CV: {}->{}'.format(np.log(cv_err), np.argmin(cv_err)))
+                # print('Active index: {}'.format(active_index))
+            elif shrinkage.upper() in ['CP', 'CP-STATISTICS', 'CPSTATISTICS']:
+                raise NotImplementedError
             self.fit('OLS', x,y,w=w, active_basis=active_basis, **kwargs)
 
         elif method.lower().startswith('lasso'):
@@ -305,52 +317,52 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.sparsity   = np.array(sparsity_ls)
             self.score      = np.array(score_ls)
 
-    def _fit_olslars(self,x,y,w=None, **kwargs):
-        """
-        (weighted) Ordinary Least Error on selected orth_poly (LARs)
-        Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
-        Arguments:
-            x: array-like of shape (ndim, nsamples) 
-                sample input values in zeta (selected Wiener-Askey distribution) space
-            y: array-like of shape (nsamples [,n_output_dims/nQoI])
-                QoI observations
+    # def _fit_olslars(self,x,y,w=None, **kwargs):
+        # """
+        # (weighted) Ordinary Least Error on selected orth_poly (LARs)
+        # Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
+        # Arguments:
+            # x: array-like of shape (ndim, nsamples) 
+                # sample input values in zeta (selected Wiener-Askey distribution) space
+            # y: array-like of shape (nsamples [,n_output_dims/nQoI])
+                # QoI observations
 
-            w: array-like weights, optional
-            n_splits: number of folders used in cross validation, default nsamples, i.e.: leave one out 
-        Returns:
+            # w: array-like weights, optional
+            # n_splits: number of folders used in cross validation, default nsamples, i.e.: leave one out 
+        # Returns:
 
-        """
-        x = np.array(x, copy=False, ndmin=2)
-        y = np.array(y, copy=False, ndmin=2)
-        X = self.orth_poly.vandermonde(x)
-        y = np.squeeze(y)
-        ## parameters for LassoLars 
-        n_splits= kwargs.get('n_splits', X.shape[0])
-        n_splits= min(n_splits, X.shape[0])
-        kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
-        cpu_count = kwargs.get('cpu_count', mp.cpu_count())
+        # """
+        # x = np.array(x, copy=False, ndmin=2)
+        # y = np.array(y, copy=False, ndmin=2)
+        # X = self.orth_poly.vandermonde(x)
+        # y = np.squeeze(y)
+        # ## parameters for LassoLars 
+        # n_splits= kwargs.get('n_splits', X.shape[0])
+        # n_splits= min(n_splits, X.shape[0])
+        # kf      = model_selection.KFold(n_splits=n_splits,shuffle=True)
+        # cpu_count = kwargs.get('cpu_count', mp.cpu_count())
 
-        ### 1. Perform variable selection first
-        model_lars       = linear_model.Lars().fit(X,y)
-        ### 2. Perform linear regression on every set of first i basis 
-        n_active_basis = min(len(model_lars.active_), X.shape[0]-1)
-        for i in range(n_active_basis):
-            active_indices = model_lars.active_[:i+1]
-            # active_indices = np.unique(np.array([0, *active_indices])) ## always has column of ones
-            X_             = X[:, active_indices]
-            ### Calculate loo error for each basis set
-            model          = linear_model.LinearRegression()
-            neg_mse        = model_selection.cross_val_score(model, X_,y,scoring = 'neg_mean_squared_error', cv=kf, n_jobs=cpu_count)
-            error_loo      = -np.mean(neg_mse)
-            ### Fitting with all samples
-            model.fit(X_,y, w=w)
+        # ### 1. Perform variable selection first
+        # model_lars = linear_model.Lars().fit(X,y)
+        # ### 2. Perform linear regression on every set of first i basis 
+        # n_active_basis = min(len(model_lars.active_), X.shape[0]-1)
+        # for i in range(n_active_basis):
+            # active_indices = model_lars.active_[:i+1]
+            # # active_indices = np.unique(np.array([0, *active_indices])) ## always has column of ones
+            # X_             = X[:, active_indices]
+            # ### Calculate loo error for each basis set
+            # model          = linear_model.LinearRegression()
+            # neg_mse        = model_selection.cross_val_score(model, X_,y,scoring = 'neg_mean_squared_error', cv=kf, n_jobs=cpu_count)
+            # error_loo      = -np.mean(neg_mse)
+            # ### Fitting with all samples
+            # model.fit(X_,y, w=w)
 
-            if error_loo < self.cv_error:
-                self.model    = model 
-                self.cv_error = error_loo
-                self.coef     = model.coef_
-                self.active_index = active_indices
-                self.active_basis = [self.orth_poly.basis_degree[i] for i in self.active_index]
+            # if error_loo < self.cv_error:
+                # self.model    = model 
+                # self.cv_error = error_loo
+                # self.coef     = model.coef_
+                # self.active_index = active_indices
+                # self.active_basis = [self.orth_poly.basis_degree[i] for i in self.active_index]
 
     def mean(self):
         return self.coef[0]
