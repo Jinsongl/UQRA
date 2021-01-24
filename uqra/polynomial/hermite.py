@@ -33,7 +33,7 @@ class Hermite(PolyBase):
         self.name      = 'Hermite_e' if hem_type.startswith('prob') else 'Hermite'
         self.nickname  = 'Heme' if hem_type.startswith('prob') else 'Hem'
         self.dist_name = 'norm'
-        self.dist_u    = self._wiener_askey_distribution()
+        self.weight    = self._wiener_askey_distribution()
         self.set_coef(coef)
         self._update_basis()
 
@@ -159,14 +159,14 @@ class Hermite(PolyBase):
         """
 
         if self.ndim is None:
-            dist_u = None
+            weight = None
         elif self.hem_type.lower().startswith('prob'):
-            dist_u = stats.norm(0,1)
+            weight = stats.norm(0,1)
         elif self.hem_type.lower().startswith('phy'):
-            dist_u = stats.norm(0,np.sqrt(0.5))
+            weight = stats.norm(0,np.sqrt(0.5))
         else:
             raise ValueError('UQRA.Hermite: {} not defined for hem_type '.format(hem_type))
-        return dist_u
+        return weight
 
     def _update_basis(self):
         """

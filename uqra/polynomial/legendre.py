@@ -31,7 +31,7 @@ class Legendre(PolyBase):
         self.name       = 'Legendre'
         self.nickname   = 'Leg'
         self.dist_name  = 'Uniform'
-        self.dist_u     = None if self.ndim is None else stats.uniform(-1,2)
+        self.weight     = None if self.ndim is None else stats.uniform(-1,2)
         self.set_coef(coef)
         self._update_basis()
 
