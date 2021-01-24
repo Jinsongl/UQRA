@@ -325,7 +325,7 @@ if __name__ == '__main__':
 
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = np.arange(2,15) #[2,6,10]#
+    model_params.degs    = np.arange(2,5) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Leg'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
@@ -369,7 +369,7 @@ if __name__ == '__main__':
 
     res = []
     ith_batch  = 0
-    batch_size = 15
+    batch_size = 5
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
