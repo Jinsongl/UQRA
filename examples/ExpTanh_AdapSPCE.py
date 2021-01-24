@@ -368,11 +368,12 @@ if __name__ == '__main__':
     y0_test     = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
 
     res = []
-    nrepeat = 25
-    for irepeat in range(nrepeat):
+    ith_batch  = 0
+    batch_size = 25
+    for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
-        print(' >>>  Start UQRA : {:d}/{:d}'.format(irepeat, nrepeat))
+        print(' >>>  Start UQRA : {:d}[{:d}]/{:d} x {:d}'.format(i, irepeat, batch_size, ith_batch))
         print(' >>>  Test data R={:d}'.format(r))
         print('#################################################################################\n')
         print('   > {:<25s}'.format('Input/Output Directories:'))
@@ -386,7 +387,8 @@ if __name__ == '__main__':
         print('     - {:<23s} : {}'.format(' Test input data'   , filename_testin))
         print('     - {:<23s} : {}'.format(' Test output data'  , filename_test  ))
         res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
-    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}'.format(solver.nickname, solver.ndim, model_params.basis,doe_params.doe_sampling.capitalize(), r)
+    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}_{:d}{:d}'.format(solver.nickname, 
+            solver.ndim, model_params.basis,doe_params.doe_sampling.capitalize(), r, batch_size, ith_batch)    # ## ============ Saving QoIs ============
     # ## ============ Saving QoIs ============
     try:
         np.save(os.path.join(data_dir_result, filename), res, allow_pickle=True)
