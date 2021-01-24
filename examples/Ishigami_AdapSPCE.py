@@ -373,7 +373,7 @@ if __name__ == '__main__':
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
-        print(' >>>  Start UQRA : {:d}/{:d} x {:d}'.format(i, batch_size, ith_batch))
+        print(' >>>  Start UQRA : {:d}[{:d}]/{:d} x {:d}'.format(i, irepeat, batch_size, ith_batch))
         print(' >>>  Test data R={:d}'.format(r))
         print('#################################################################################\n')
         print('   > {:<25s}'.format('Input/Output Directories:'))

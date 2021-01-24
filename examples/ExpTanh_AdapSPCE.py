@@ -388,7 +388,7 @@ if __name__ == '__main__':
         print('     - {:<23s} : {}'.format(' Test output data'  , filename_test  ))
         res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
     filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}_{:d}{:d}'.format(solver.nickname, 
-            solver.ndim, model_params.basis,doe_params.doe_sampling.capitalize(), r, batch_size, ith_batch)    # ## ============ Saving QoIs ============
+            solver.ndim, model_params.basis,doe_params.doe_sampling.capitalize(), r, batch_size, ith_batch)
     # ## ============ Saving QoIs ============
     try:
         np.save(os.path.join(data_dir_result, filename), res, allow_pickle=True)
