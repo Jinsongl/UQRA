@@ -180,4 +180,16 @@ def leave_one_out_error(X,y, is_adjusted=True):
         error_loo =  error_loo * correcting_factor
     return error_loo
 
+def mean_squared_relative_error(y_true, y_pred, sample_weight=None, multioutput='uniform_average', squared=True):
 
+    output_errors = np.average(((y_true - y_pred)/y_true) ** 2, axis=0, weights=sample_weight)
+    if not squared:
+        output_errors = np.sqrt(output_errors)
+
+    if isinstance(multioutput, str):
+        if multioutput == 'raw_values':
+            return output_errors
+        elif multioutput == 'uniform_average':
+            # pass None as weights to np.average: uniform mean
+            multioutput = None
+    return np.average(output_errors, weights=multioutput)
