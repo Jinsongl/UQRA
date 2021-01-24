@@ -29,36 +29,49 @@ class Parameters(object):
 
 ### ----------------- Experiment Parameters() -----------------
 class ExperimentParameters(Parameters):
-    def __init__(self):
-        self._default_data_dir()
+    """
+    UQRA Parameters for Experimental Design
+    """
+    def __init__(self, doe_sampling, optimality=None):
+        self.doe_sampling = doe_sampling.upper()
+        self.optimality   = optimality.upper() if isinstance(optimality, str) else optimality
+        if self.doe_sampling == 'LHS' and self.optimality is not None:
+            print(" [WARNING]: Optimality {:s} not applicable for LHS, set 'optimaltiy' to None")
+            self.optimality = None
 
-    def update_filenames(self, s, filename_template=None, **kwargs):
+        self._default_data_dir()
+        self._check_wiener_askey_polynomials()
+
+    def update_filenames(self, filename_template=None, **kwargs):
         """
         Create/update filenames related to data in/output
         """
-        try:
-            ndim, deg   = self.ndim, self.deg
-            poly_name   = self.poly_name
-            doe_sampling= self.doe_sampling.capitalize()
-            num_cand    = self.num_cand
-        except AttributeError:
-            raise ValueError('Attributes: [ndim, deg, poly_name, doe_sampling, num_cand] must given to update filenames')
-
-        ### find distribution name corresponding to specified polynomials
-        if poly_name.lower() in ['heme', 'hem']:
-            u_distname = 'norm' 
-        elif poly_name.lower() in ['leg']:
-            u_distname = 'uniform' 
+        ### Check for parameters
+        self._check_wiener_askey_polynomials() ### also return distribution name to specified polynomials
+        if self.optimality is not None:
+            try:
+                ndim, deg   = self.ndim, self.deg
+                poly_name   = self.poly_name
+                doe_sampling= self.doe_sampling.capitalize()
+                num_cand    = self.num_cand
+            except AttributeError:
+                raise ValueError('ExperimentParameters.update_filenames: missing attributes:  \
+                        [ndim, deg, poly_name, doe_sampling, num_cand] ')
         else:
-            raise ValueError('Polynomial {} not defined'.format(poly_name))
-        self.u_distname = u_distname
+            try:
+                ndim   = self.ndim
+                poly_name   = self.poly_name
+                doe_sampling= self.doe_sampling.capitalize()
+            except AttributeError:
+                raise ValueError('ExperimentParameters.update_filenames: missing attributes:  \
+                        [ndim, poly_name, doe_sampling] ')
+
 
         ## 1 user defined filenames: direct assign, 1st priority
         self.fname_cand  = kwargs.get('filename_cand'  , None)
-        self.fname_test  = kwargs.get('filename_test'  , None)
         self.fname_design= kwargs.get('filename_design', None)
 
-        isFileNameAssigned = np.array([self.fname_cand, self.fname_design, self.fname_test]) != None
+        isFileNameAssigned = np.array([self.fname_cand, self.fname_design]) != None
         if isFileNameAssigned.all():
             ## user defined filenames have first priority
             pass
@@ -68,29 +81,42 @@ class ExperimentParameters(Parameters):
             ### filenames are based on given template function
             ### but user defined filenames are first priority
             if self.fname_cand is None:
-                self.fname_cand = filename_template(s)+'.npy' 
+                self.fname_cand = filename_template
 
             if self.fname_design is None:
-                self.fname_design = filename_template(s)+'_{:d}{:s}{:s}.npy'.format(ndim, poly_name[:3], str(deg))
+                def fname_design(s):
+                    if callable(self.fname_cand):
+                        fname_design = os.path.splitext(self.fname_cand(s))[0]
+                    else:
+                        fname_design = os.path.splitext(self.fname_cand)[0]  ## remove extension .npy if any
+                    res = fname_design + '_{:d}{:s}{:s}.npy'.format(ndim, poly_name[:3], str(deg))
+                    return res 
+                self.fname_design = fname_design
             
         ## 3: if none of above are given, will return system defined filenames 
         else:
+            if poly_name.lower().startswith('leg'):
+                distname = 'uniform'
+            elif poly_name.lower().startswith('hem'):
+                distname = 'norm'
+            else:
+                raise NotImplementedError
             if doe_sampling.lower() == 'lhs':
-                self.fname_cand   = None
-                self.fname_design = lambda n: r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim,u_distname)
+                self.fname_cand   = lambda r: None
+                self.fname_design = lambda n: r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim, distname)
 
             elif doe_sampling[:3].lower() == 'mcs':
-                self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, u_distname)
-                self.fname_design = r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
+                self.fname_cand   = lambda s: r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, distname)
+                self.fname_design = lambda s: r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
                         doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
 
             elif doe_sampling[:3].lower() == 'cls':
-                self.fname_cand   = r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
-                self.fname_design = r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
+                self.fname_cand   = lambda s: r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
+                self.fname_design = lambda s: r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
                         doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
             else:
-                self.fname_cand   = r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, u_distname)
-                self.fname_design = r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
+                self.fname_cand   = lambda s : r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, distname)
+                self.fname_design = lambda s : r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
                         doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
 
     def update_nicknames(self):
@@ -106,10 +132,12 @@ class ExperimentParameters(Parameters):
             raise ValueError(' doe_sampling and doe_optimality attributes must given to update nicknames')
         self.nicknames = [self.doe_nickname(doe_sampling, ioptimality) for ioptimality in doe_optimality]
 
-    def doe_nickname(self, doe_sampling, doe_optimality):
+    def doe_nickname(self):
         """
         Return DoE nickname for one specific doe_sampling and doe_optimality set
         """
+        doe_sampling = self.doe_sampling
+        doe_optimality=self.optimality
         if str(doe_optimality).lower() == 'none':
             nickname = str(doe_sampling).capitalize()
         else:
@@ -157,26 +185,71 @@ class ExperimentParameters(Parameters):
             data_dir_cand   = r'/home/jinsong/Documents/MUSE_UQ_DATA/ExperimentalDesign/Random'
         else:
             raise ValueError('Operating system {} not found'.format(current_os))    
+        try:
+            if self.doe_sampling.lower() == 'lhs':
+                data_dir_optimal = os.path.join(os.path.split(data_dir_optimal)[0], 'LHS')
+                data_dir_cand    = None
+            else:
+                pass
+        except AttributeError as message:
+            print(message)
 
         self.data_dir_cand    = data_dir_cand
         self.data_dir_optimal = data_dir_optimal 
+
+    def _check_wiener_askey_polynomials(self):
+        """
+        check and set underlying Wiener-Askey distributions
+        """
+        try:
+            doe_sampling = self.doe_sampling.upper()
+            poly_name    = self.poly_name.upper()
+
+            if doe_sampling == 'MCS' and poly_name == 'LEG':
+                self.dist_xi     = stats.uniform(-1,2)
+                self.xi_distname = 'uniform'
+
+            elif doe_sampling == 'MCS' and poly_name == 'HEME':
+                self.dist_xi     = stats.norm(0,1)
+                self.xi_distname = 'norm'
+
+            elif doe_sampling == 'CLS1' and poly_name == 'LEG':
+                self.dist_xi     = stats.uniform(-1,2)
+                self.xi_distname = 'uniform'
+
+            elif doe_sampling == 'CLS4' and poly_name == 'HEM':
+                self.dist_xi     = stats.norm(0,np.sqrt(0.5))
+                self.xi_distname = 'norm'
+
+            elif doe_sampling == 'LHS'and poly_name == 'LEG':
+                self.dist_xi     = stats.uniform(-1,2)
+                self.xi_distname = 'uniform'
+
+            elif doe_sampling == 'LHS'and poly_name == 'HEME':
+                self.dist_xi     = stats.norm(0,1)
+                self.xi_distname = 'norm'
+            else:
+                raise ValueError(' {:s}-{:s} is either not compatible or defined'.format(doe_sampling, poly_name))
+        except:
+            pass
 
 ### ----------------- Modeling Parameters() -----------------
 class Modeling(Parameters):
     """
 
     """
-    def __init__(self):
-        pass
+    def __init__(self, name):
+        self.name = name.upper()
+
     # def __init__(self, solver, model, params):
         # self.solver = solver
         # self.model  = model
         # self.params = params
         # assert solver.ndim == model.ndim
         # self.ndim = solver.ndim
-        # self.u_distname = params.u_distname
+        # self.xi_distname = params.xi_distname
         # self.x_distname = solver.dist_name
-        # assert self.u_distname == model.orth_poly.dist_name.lower()
+        # assert self.xi_distname == model.orth_poly.dist_name.lower()
 
     def get_train_data(self, size, u_cand, u_train=None, active_basis=None, orth_poly=None):
         """
@@ -228,6 +301,36 @@ class Modeling(Parameters):
             row_index_adding = doe.get_samples(X, size, orth_basis=True)
             u_new = u_cand[:,row_index_adding]
         return u_new
+
+    def update_basis(self):
+        if self.name == 'PCE':
+            self._update_pce_dist(self.basis)
+        else:
+            raise NotImplementedError
+
+    def _update_pce_dist(self, poly_name):
+        """
+        set xi distributions
+        """
+        poly_name = poly_name.upper()
+        if poly_name == 'LEG':
+            self.dist_xi     = stats.uniform(-1, 2) 
+            self.xi_distname = 'uniform'
+        elif poly_name == 'HEM':
+            self.dist_xi     = stats.norm(0, np.sqrt(0.5))
+            self.xi_distname = 'norm'
+        elif poly_name == 'HEME':
+            self.dist_xi     = stats.norm(0, 1)
+            self.xi_distname = 'norm'
+        else:
+            raise NotImplementedError
+    def map_domain(self, u, dist_u=stats.uniform(0,1)):
+        """
+        mapping random varaibles u from dist_u to dist_xi
+        """
+        xi = self.dist_xi.ppf(dist_u.cdf(u))
+        return xi
+
 
     def cal_weight(self, u, active_basis=None, orth_poly=None):
         """
@@ -325,48 +428,11 @@ class Simulation(Parameters):
             sys_def_params = np.array([0,0,1,1,1]).reshape(1,5) # x0,v0, zeta, omega_n, mu 
         normalize: 
     """
-    def __init__(self, solver, model, doe_params):
-        self.solver = solver
-        self.model  = model
+    def __init__(self, solver, model_params, doe_params):
+        self.solver     = solver
         self.doe_params = doe_params
-        if isinstance(model, uqra.surrogates.PolynomialChaosExpansion):
-            self.check_wiener_askey_distribution()
-        assert self.solver.ndim == self.model.ndim
+        self.model_params= model_params
         self._default_output_dir()
-
-    def check_wiener_askey_distribution(self):
-        """
-        check and set underlying Wiener-Askey distributions
-        """
-        ndim         = self.solver.ndim
-        doe_sampling = self.doe_params.doe_sampling.lower()
-        poly_name    = self.model.orth_poly.nickname.capitalize()
-
-        if doe_sampling == 'mcs' and poly_name == 'Leg':
-            self.u_dist = [stats.uniform(-1,2), ] * ndim
-            self.u_distname = 'uniform'
-
-        elif doe_sampling == 'mcs' and poly_name == 'Heme':
-            self.u_dist = [stats.norm(0,1), ] * ndim
-            self.u_distname = 'norm'
-
-        elif doe_sampling == 'cls1' and poly_name == 'Leg':
-            self.u_dist = [stats.uniform(-1,2), ] * ndim
-            self.u_distname = 'uniform'
-
-        elif doe_sampling == 'cls4' and poly_name == 'Hem':
-            self.u_dist = [stats.norm(0,0.5), ] * ndim
-            self.u_distname = 'norm'
-
-        elif doe_sampling == 'lhs'and poly_name == 'Leg':
-            self.u_dist = [stats.uniform(-1,2), ] * ndim
-            self.u_distname = 'uniform'
-
-        elif doe_sampling == 'lhs'and poly_name == 'Heme':
-            self.u_dist = [stats.norm(0,1), ] * ndim
-            self.u_distname = 'norm'
-        else:
-            raise ValueError(' Sampling method {:s} and polynomial name {:s} are not compatible or defined'.format(doe_sampling, poly_name))
 
     def info(self):
         print(r'------------------------------------------------------------')
@@ -378,7 +444,7 @@ class Simulation(Parameters):
         print(r' > Distributions: U,X')
         print(r'   - X distribution : {}'.format(self.x_dist.name))
         print(r'   - U distribution : {}, (mu, std)=({:.2f},{:.2f}), support={}'.format(
-            self.u_distname,self.u_dist[0].mean(), self.u_dist[0].std(), self.u_dist[0].support()))
+            self.xi_distname,self.dist_xi[0].mean(), self.dist_xi[0].std(), self.dist_xi[0].support()))
         print(r'------------------------------------------------------------')
         print(r' > DIRECTORIES:')
         print(r'   - Working Dir: {}'.format(os.getcwd()))
@@ -386,14 +452,14 @@ class Simulation(Parameters):
         print(r'   - Result  Dir: {}'.format(self.data_dir_result))
         print(r'   - Samples Dir: {}'.format(self.data_dir_cand))
 
-    def update_filenames(self, s, filename_template=None, **kwargs):
+    def update_filenames(self, filename_template=None, **kwargs):
         """
         Create/update filenames for testing 
         """
-        ndim, deg   = self.model.ndim, self.model.deg
-        poly_name   = self.model.orth_poly.nickname.capitalize()
+        ndim        = self.solver.ndim
+        poly_name   = self.doe_params.poly_name.capitalize()
         doe_sampling= self.doe_params.doe_sampling.capitalize()
-        u_distname  = self.u_distname
+        xi_distname = self.model_params.xi_distname
 
         ## 1 user defined filenames: direct assign, 1st priority
         self.fname_test  = kwargs.get('filename_test'   , None)
@@ -409,15 +475,19 @@ class Simulation(Parameters):
             ### filenames are based on given template function
             ### but user defined filenames are first priority
             if self.fname_testin is None:
-                self.fname_testin = filename_template(s)+'.npy' 
+                self.fname_testin = lambda s: filename_template(s)+'.npy' 
 
             if self.fname_test is None:
-                self.fname_test = '_'.join([self.solver.nickname, self.fname_testin])
+                def fname_test(s):
+                    fname_testin = self.fname_testin(s) if callable(self.fname_testin) else self.fname_testin
+                    res = '_'.join([self.solver.nickname, fname_testin])
+                    return res 
+                self.fname_test = fname_test
 
         ## 3: if none of above are given, will return system defined filenames 
         else:
-            self.fname_testin= r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, u_distname)
-            self.fname_test  = r'{:s}_McsE6R{:d}.npy'.format(self.solver.nickname, (s+1) %10)
+            self.fname_testin= lambda s: r'DoE_McsE6R{:d}_{:s}.npy'.format((s+1)%10, xi_distname)
+            self.fname_test  = lambda s: r'{:s}_McsE6R{:d}.npy'.format(self.solver.nickname, (s+1) %10)
 
     def update_output_dir(self, **kwargs):
         """
@@ -438,26 +508,6 @@ class Simulation(Parameters):
         self.data_dir_test   = kwargs.get('data_dir_test'    , self.data_dir_test  )
         self.data_dir_result = kwargs.get('data_dir_result'  , self.data_dir_result)
 
-    def set_udist(self, u_distname):
-        self.u_distname = u_distname.lower()
-        if self.u_distname == 'uniform':
-            self.pce_type   = 'legendre'
-            self.u_dist     = [stats.uniform(-1,2), ] * self.ndim 
-        elif self.u_distname == 'norm':
-            if self.doe_candidate.startswith('cls'):
-                self.pce_type = 'hermite'
-                self.u_dist   = [stats.norm(0,np.sqrt(0.5)), ] * self.ndim 
-            else: 
-                self.pce_type = 'hermite_e'
-                self.u_dist   = [stats.norm(0,1), ] * self.ndim 
-        elif self.u_distname ==  'beta':
-            if self.doe_candidate.startswith('cls'):
-                raise NotImplementedError
-            else:
-                self.pce_type = 'jacobi'
-                self.u_dist   = [stats.uniform(-1,2), ] * self.ndim 
-        else:
-            raise NotImplementedError
 
     def get_init_samples(self, n, doe_candidate=None, random_state=None, **kwargs):
         """
@@ -473,7 +523,7 @@ class Simulation(Parameters):
         doe_candidate = self.doe_candidate if doe_candidate is None else doe_candidate
 
         if doe_candidate.lower() == 'lhs':
-            doe = uqra.LHS(self.u_dist)
+            doe = uqra.LHS(self.dist_xi)
             u   = doe.samples(size=n, random_state=random_state)
         else:
             raise NotImplementedError
@@ -799,9 +849,9 @@ class Simulation(Parameters):
         # u_cand, x_cand = data[:self.solver.ndim], data[self.solver.ndim:2*self.solver.ndim]
         # ## maping u->x, or x->u 
         # if sampling_space == 'u':
-            # x_cand = uqra.inverse_rosenblatt(self.x_dist, u_cand, self.u_dist, support=support)
+            # x_cand = uqra.inverse_rosenblatt(self.x_dist, u_cand, self.dist_xi, support=support)
         # elif sampling_space == 'x':
-            # u_cand = uqra.rosenblatt(self.x_dist, x_cand, self.u_dist, support=support)
+            # u_cand = uqra.rosenblatt(self.x_dist, x_cand, self.dist_xi, support=support)
 
         # ux_isnan = np.zeros(u_cand.shape[1])
         # for ix, iu in zip(x_cand, u_cand):
@@ -828,7 +878,7 @@ class Simulation(Parameters):
 
     # def check_samples_inside_domain(self, data, domain):
         # data = np.array(data, ndmin=2, copy=False)
-        # if self.u_distname == 'norm':
+        # if self.xi_distname == 'norm':
             # if np.ndim(domain) == 0:
                 # r1, r2 = 0, domain
             # else:
@@ -836,7 +886,7 @@ class Simulation(Parameters):
             # radius = np.linalg.norm(data, axis=0)
             # res = r1 <= min(radius) and r2>= max(radius)
 
-        # elif self.u_distname == 'uniform':
+        # elif self.xi_distname == 'uniform':
             # if data.shape[0] != len(domain):
                 # raise ValueError('Expecting {:d} intervals but only {:d} given'.format(data.shape[0], len(domain)))
             # min_, max_ = np.amin(data, axis=1), np.amax(data, axis=1)
@@ -846,10 +896,10 @@ class Simulation(Parameters):
                     # res = res and True
                 # else:
                     # res = res and (idomain[0] <= imin_) and (imax_ <= idomain[1])
-        # elif self.u_distname == 'beta':
+        # elif self.xi_distname == 'beta':
             # raise NotImplementedError
         # else:
-            # raise ValueError('UQRA.Parameters.u_distname {:s} not defined'.format(self.u_distname)) 
+            # raise ValueError('UQRA.Parameters.xi_distname {:s} not defined'.format(self.xi_distname)) 
         # return res
 
     # def separate_samples_by_domain(self, data, domain):
@@ -858,22 +908,22 @@ class Simulation(Parameters):
         # """
 
         # data = np.array(data, ndmin=2, copy=False)
-        # if self.u_distname == 'norm':
+        # if self.xi_distname == 'norm':
             # if np.ndim(domain) == 0:
                 # r1, r2 = 0, domain
             # else:
                 # r1, r2 = domain
             # idx_inside, idx_outside = uqra.samples_within_circle(data, r1, r2) 
 
-        # elif self.u_distname == 'uniform':
+        # elif self.xi_distname == 'uniform':
             # if data.shape[0] != len(domain):
                 # raise ValueError('Expecting {:d} intervals but only {:d} given'.format(data.shape[0], len(domain)))
             # idx_inside, idx_outside = uqra.samples_within_cubic(data, domain) 
 
-        # elif self.u_distname == 'beta':
+        # elif self.xi_distname == 'beta':
             # raise NotImplementedError
         # else:
-            # raise ValueError('UQRA.Parameters.u_distname {:s} not defined'.format(self.u_distname)) 
+            # raise ValueError('UQRA.Parameters.xi_distname {:s} not defined'.format(self.xi_distname)) 
 
         # return idx_inside, idx_outside
 
@@ -886,8 +936,8 @@ class Simulation(Parameters):
         # if filename.lower().startswith('cdf'):
             # u_cdf = np.load(os.path.join(self.data_dir_cand, 'CDF', filename))
             # u_cdf_pred = u_cdf[:self.solver.ndim, :self.n_pred]
-            # u = np.array([idist.ppf(iu_cdf) for idist, iu_cdf in zip(self.u_dist, u_cdf_pred)])
-            # x = uqra.inverse_rosenblatt(self.x_dist, u, self.u_dist, support=support)
+            # u = np.array([idist.ppf(iu_cdf) for idist, iu_cdf in zip(self.dist_xi, u_cdf_pred)])
+            # x = uqra.inverse_rosenblatt(self.x_dist, u, self.dist_xi, support=support)
             # u = np.array(u, ndmin=2, copy=False)
             # x = np.array(x, ndmin=2, copy=False)
         # else:
@@ -918,7 +968,7 @@ class Simulation(Parameters):
                 # idx_inside, idx_outside = self.separate_samples_by_domain(u, sampling_domain)
                 # u0 = u[:, idx_inside]
                 # x0 = x[:, idx_inside]
-                # # x0 = uqra.inverse_rosenblatt(self.x_dist, u0, self.u_dist, support=support)
+                # # x0 = uqra.inverse_rosenblatt(self.x_dist, u0, self.dist_xi, support=support)
                 # # if np.amax(abs(x0-x[:, idx_inside]), axis=None) > 1e-6:
                     # # print(np.amax(abs(x0-x[:, idx_inside]), axis=None))
                 # u1 = u[:, np.logical_or(idx_outside, ux_isnan)] 
@@ -928,7 +978,7 @@ class Simulation(Parameters):
                 # idx_inside, idx_outside = self.separate_samples_by_domain(x, sampling_domain)
                 # x0 = x[:, idx_inside]
                 # u0 = u[:, idx_inside]
-                # # u0 = uqra.rosenblatt(self.x_dist, x0, self.u_dist, support=support)
+                # # u0 = uqra.rosenblatt(self.x_dist, x0, self.dist_xi, support=support)
                 # # if np.amax(abs(u0-u[:, idx_inside]), axis=None) > 1e-6:
                     # # print(np.amax(abs(u0-u[:, idx_inside]), axis=None))
 
@@ -943,7 +993,7 @@ class Simulation(Parameters):
         # u       = data[                   :    self.solver.ndim, :self.n_test]
         # x       = data[  self.solver.ndim : 2* self.solver.ndim, :self.n_test]
         # y       = np.squeeze(data[2*self.solver.ndim :        , :self.n_test])
-        # u       = uqra.rosenblatt(self.x_dist, x, self.u_dist, support=support)
+        # u       = uqra.rosenblatt(self.x_dist, x, self.dist_xi, support=support)
 
 
         # if sampling_domain is None:
@@ -965,7 +1015,7 @@ class Simulation(Parameters):
             # return u, x, y
         
         # doe_candidate = self.doe_candidate.lower()
-        # data_dir = os.path.join(self.data_dir_cand, doe_candidate.upper(), self.u_distname.capitalize()) 
+        # data_dir = os.path.join(self.data_dir_cand, doe_candidate.upper(), self.xi_distname.capitalize()) 
         # try:
             # self.filename_candidates = kwargs['filename']
             # try:
@@ -982,9 +1032,9 @@ class Simulation(Parameters):
                 # u_cand = data[:self.ndim,:n].reshape(self.ndim, -1) ## will raise error when samples files smaller than n
 
             # elif doe_candidate.lower().startswith('cls') or doe_candidate == 'reference':
-                # if self.u_distname.lower().startswith('norm'):
+                # if self.xi_distname.lower().startswith('norm'):
                     # self.filename_candidates = r'DoE_ClsE6d{:d}R0.npy'.format(self.ndim)
-                # elif self.u_distname.lower().startswith('uniform'):
+                # elif self.xi_distname.lower().startswith('uniform'):
                     # self.filename_candidates = r'DoE_ClsE6R0.npy'
                 # else:
                     # raise ValueError('dist_x_name {} not defined'.format(self.dist_x_name))
@@ -1060,13 +1110,13 @@ class Simulation(Parameters):
 
         # except FileNotFoundError:
             # ### 1. Get MCS samples for X
-            # if pce_model.basis.u_distname.lower() == 'uniform':
+            # if pce_model.basis.xi_distname.lower() == 'uniform':
                 # data_dir_cand = os.path.join(self.params.data_dir_cand, 'MCS','Uniform')
                 # print('    - Solving test data from {} '.format(os.path.join(data_dir_cand,filename)))
                 # data_set = np.load(os.path.join(data_dir_cand,filename))
                 # z_test = data_set[:ndim,:n] if n > 0 else data_set[:ndim,:]
                 # x_test = solver.map_domain(z_test, [stats.uniform(-1,2),] * ndim)
-            # elif pce_model.basis.u_distname.lower().startswith('norm'):
+            # elif pce_model.basis.xi_distname.lower().startswith('norm'):
                 # data_dir_cand = os.path.join(self.params.data_dir_cand, 'MCS','Norm')
                 # print('    - Solving test data from {} '.format(os.path.join(data_dir_cand,filename)))
                 # data_set= np.load(os.path.join(data_dir_cand,filename))
@@ -1171,10 +1221,10 @@ class Simulation(Parameters):
         # """
         # Validate the distributions of test data
         # """
-        # if self.u_distname.lower() == 'uniform':
+        # if self.xi_distname.lower() == 'uniform':
             # u_mean = 0.0
             # u_std  = 0.5773
-        # elif self.u_distname.lower().startswith('norm'):
+        # elif self.xi_distname.lower().startswith('norm'):
             # if self.params.doe_candidate.lower() == 'cls':
                 # u_mean = 0.0
                 # u_std  = np.sqrt(0.5)
@@ -1193,19 +1243,19 @@ class Simulation(Parameters):
         # Validate the distributions of test data
         # """
         # if self.params.doe_candidate.lower() == 'mcs':
-            # if self.u_distname.lower() == 'uniform':
+            # if self.xi_distname.lower() == 'uniform':
                 # u_mean = 0.0
                 # u_std  = 0.58
-            # elif self.u_distname.lower().startswith('norm'):
+            # elif self.xi_distname.lower().startswith('norm'):
                 # u_mean = 0.0
                 # u_std  = 1.0
             # else:
                 # raise ValueError
         # elif self.params.doe_candidate.lower() == 'cls':
-            # if self.u_distname.lower() == 'uniform':
+            # if self.xi_distname.lower() == 'uniform':
                 # u_mean = 0.0
                 # u_std  = 0.71
-            # elif self.u_distname.lower().startswith('norm'):
+            # elif self.xi_distname.lower().startswith('norm'):
                 # u_mean = 0.0
                 # if self.ndim == 1:
                     # u_std = 0.71
@@ -1226,28 +1276,28 @@ class Simulation(Parameters):
 
     # def sampling_density(self, u, p):
         # if self.params.doe_candidate.lower().startswith('mcs'):
-            # if self.u_distname.lower().startswith('norm'):
+            # if self.xi_distname.lower().startswith('norm'):
                 # pdf = np.prod(stats.norm(0,1).pdf(u), axis=0)
-            # elif self.u_distname.lower().startswith('uniform'):
+            # elif self.xi_distname.lower().startswith('uniform'):
                 # pdf = np.prod(stats.uniform(-1,2).pdf(u), axis=0)
             # else:
-                # raise ValueError('{:s} not defined for MCS'.format(self.u_distname))
+                # raise ValueError('{:s} not defined for MCS'.format(self.xi_distname))
 
         # elif self.params.doe_candidate.lower().startswith('cls'):
-            # if self.u_distname.lower().startswith('norm'):
+            # if self.xi_distname.lower().startswith('norm'):
                 # pdf = 1.0/(self.ndim*np.pi * np.sqrt(p))*(2 - np.linalg.norm(u/np.sqrt(p),2, axis=0)**2)**(self.ndim/2.0) 
                 # pdf[pdf<0] = 0
-            # elif self.u_distname.lower().startswith('uniform'):
+            # elif self.xi_distname.lower().startswith('uniform'):
                 # pdf = 1.0/np.prod(np.sqrt(1-u**2), axis=0)/np.pi**self.ndim
             # else:
-                # raise ValueError('{:s} not defined for CLS'.format(self.u_distname))
+                # raise ValueError('{:s} not defined for CLS'.format(self.xi_distname))
         # else:
             # raise ValueError('{:s} not defined '.format(self.params.doe_candidate))
         # return pdf
 
 
     # def is_cls_unbounded(self):
-        # return  self.params.doe_candidate.lower().startswith('cls') and self.u_distname.lower().startswith('norm')
+        # return  self.params.doe_candidate.lower().startswith('cls') and self.xi_distname.lower().startswith('norm')
     # def _choose_samples_from_candidates(self, n, u_cand, u_selected=None, active_basis=None, precomputed=False, precomputed_index=None):
         # """
         # Return train data from candidate data set. All samples are in U-space (with pluripotential equilibrium measure nv(x))
@@ -1478,7 +1528,7 @@ class Simulation(Parameters):
             # u_cand = kwargs.get('u_cand', None)
             # if u_cand is None:
                 # u_cdf = stats.uniform(0,1).rvs(size=(self.solver.ndim, n))
-                # u   = np.array([iu_dist.ppf(iu) for iu_dist, iu in zip(self.u_dist, u)]) 
+                # u   = np.array([ixi_dist.ppf(iu) for ixi_dist, iu in zip(self.dist_xi, u)]) 
             # else:
                 # u = u_cand[:, np.random.randint(0, u_cand.shape[1], size=n)]
             # return u
