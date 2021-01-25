@@ -992,7 +992,6 @@ class LiqudHydrogenTank(SolverBase):
             u, dist_u = super().map_domain(u, u_cdf) 
             x = []
             for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
-                assert idist_u.dist.name == idist_x.dist.name
                 if idist_u.dist.name == 'uniform':
                     ua, ub = idist_u.support()
                     loc_u, scl_u = ua, ub-ua
