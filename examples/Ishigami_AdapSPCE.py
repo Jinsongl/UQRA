@@ -86,6 +86,43 @@ def isConverge(y0, e=0.025):
     else:
         return True
 
+def threshold_converge(y, threshold=0.95):
+    y = np.array(y)
+    status = True if y[-1]> threshold else False
+    return status, threshold
+
+def relative_converge(y, err=1e-4):
+    """ 
+    check if y is converge in relative error
+    return: (status, error)
+        status: Boolean for convergeing or not
+        error: absolute error
+
+    """
+    y = np.array(y)
+    if len(y) < 2:
+        res = (False, np.nan)
+    else:
+        error = abs((y[-2]-y[-1])/ y[-1])
+        res = (error < err, error)
+    return res 
+
+def absolute_converge(y, err=1e-4):
+    """ 
+    check if y is converge in absolute error
+    return: (status, error)
+        status: Boolean for convergeing or not
+        error: absolute error
+
+    """
+    y = np.array(y)
+    if len(y) < 2:
+        res = (False, np.nan)
+    else:
+        error = abs(y[-2]-y[-1])
+        res = (error < err, error)
+    return res 
+
 def check_converge(data, rel_err= 0.025, abs_err=1e-4, threshold=0.95):
     """
     self-defined coverge function
@@ -116,6 +153,7 @@ def check_converge(data, rel_err= 0.025, abs_err=1e-4, threshold=0.95):
     res['score'] = (score, np.nan)
     is_converge = np.array(status).all()
     return is_converge, res
+
 
 def main(model_params, doe_params, solver, r=0, random_state=None):
     data = uqra.Data()
@@ -190,8 +228,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         optimal_samples_ideg = optimal_samples_ideg + idx
         optimal_samples      = optimal_samples      + idx 
         assert n_samples == len(idx)
-        print('     - # optimal samples [p={:d}]: {:d}'.format(deg, len(optimal_samples_ideg)))
-        print('     - Total number of optimal samples: {:d}'.format(len(optimal_samples)))
+        print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(optimal_samples_ideg)))
+        print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
         print('     - {:s} with (n={:d}, alpha={:.2f}) samples'.format(model_params.fitting.upper(),
             len(optimal_samples), len(optimal_samples)/orth_poly.num_basis))
         xi_train = data_cand[:, optimal_samples] 
@@ -213,9 +251,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('       #|Active basis|: {:d}'.format(len(active_index)))
         print('       y0 test [PCE ] : {:.4e}'.format(data_temp.y0_hat[-1]))
         print('       y0 test [TRUE] : {:.4e}'.format(y0_test))
-        is_converge, check_res = check_converge(data_temp)
-        for ikey, ivalue in check_res.items():
-            print('     > {}: {}, {:.2e}'.format(ikey, np.array(ivalue[0]), ivalue[1]))
         print('     ------------------------------------------------------------')
 
         print('   2. Optimal samples based on SIGNIFICANT basis')
@@ -229,8 +264,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             optimal_samples      = optimal_samples      + idx
             optimal_samples_ideg = optimal_samples_ideg + idx
             assert n_samples == len(idx)
-            print('     - # optimal samples [p={:d}]: {:d}'.format(deg, len(optimal_samples_ideg)))
-            print('     - Total number of optimal samples: {:d}'.format(len(optimal_samples)))
+            print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(optimal_samples_ideg)))
+            print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
             print('     - {:s} with (n={:d}, alpha={:.2f}) samples'.format(model_params.fitting.upper(),
                 len(optimal_samples), len(optimal_samples)/orth_poly.num_basis))
             xi_train = data_cand[:, optimal_samples] 
@@ -253,15 +288,16 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('       #|Active basis|: {:d}'.format(len(active_index)))
             print('       y0 test [PCE ] : {:.4e}'.format(data_temp.y0_hat[-1]))
             print('       y0 test [TRUE] : {:.4e}'.format(y0_test))
-            is_converge, check_res = check_converge(data_temp)
-            for ikey, ivalue in check_res.items():
-                print('     > {}: {}, {:.2e}'.format(ikey, np.array(ivalue[0]), ivalue[1]))
+            isConverge, error_converge = relative_converge(data_temp.y0_hat)
+            print('     !<>! Converge check ...')
+            print('         > Value : {} [{:.4e}]'.format(np.array(data_temp.y0_hat), y0_test))
+            print('         > Error : {:.2e}'.format(np.array(error_converge)))
             print('     ------------------------------------------------------------')
-            if is_converge:
-                print('  !<>! Model converge for order {:d}'.format(deg))
+            if isConverge:
+                print('     !<>! Model converge for order {:d}'.format(deg))
                 break
             if len(optimal_samples_ideg)>=2*orth_poly.num_basis:
-                print('  !<>! Number of samples exceeding 2P')
+                print('     !<>! Number of samples exceeding 2P')
                 break
         print('     ------------------------------------------------------------')
         tqdm.write('    > Summary PCE: ndim={:d}, p={:d}'.format(ndim, deg))
@@ -269,6 +305,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         tqdm.write('     - {:<15s} : {:.4e}'.format( 'CV MSE'  , data_temp.cv_err[-1]))
         tqdm.write('     - {:<15s} : {:.4f}'.format( 'Score '  , data_temp.score[-1] ))
         tqdm.write('     - {:<15s} : {:.4e} [{:.4e}]'.format( 'y0 ' , data_temp.y0_hat[-1], y0_test))
+        print('     ------------------------------------------------------------')
 
         data.ndim.append(ndim)
         data.deg.append(deg)
@@ -283,10 +320,13 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data.yhat_ecdf.append(data_temp.yhat_ecdf[-1])
 
         isOverfitting(data.cv_err) ## check Overfitting
-        is_converge, check_res = check_converge(data)
-        for ikey, ivalue in check_res.items():
-            print('     > {}: {}, {:.2e}'.format(ikey, np.array(ivalue[0]), ivalue[1]))
-        if is_converge:
+        isConverge0, error_converge0 = relative_converge(data.y0_hat)
+        isConverge1, error_converge1 = threshold_converge(data.score)
+        isConverge = [isConverge0, isConverge1]
+        error_converge = [error_converge0, error_converge1]
+        for i, (ikey, ivalue) in enumerate(zip(isConverge, error_converge)):
+            print('     >  Checking #{:d} : {}, {:.2e}'.format(i, ikey, ivalue))
+        if np.array(isConverge).all():
             tqdm.write('###############################################################################')
             tqdm.write('         Model Converge ')
             tqdm.write('    > Summary PCE: ndim={:d}, p={:d}'.format(ndim, deg))
@@ -294,8 +334,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'  , np.array(data.cv_err)))
             tqdm.write('     - {:<15s} : {}'.format( 'Score '  , np.array(data.score)))
             tqdm.write('     - {:<15s} : {} [{:.2e}]'.format( 'y0 ' , np.array(data.y0_hat), y0_test))
-            for ikey, ivalue in check_res.items():
-                tqdm.write('     > {}: {}, {:.2e}'.format(ikey, np.array(ivalue[0]), ivalue[1]))
+            for i, (ikey, ivalue) in enumerate(zip(isConverge, error_converge)):
+                print('     >  Checking #{:d} : {}, {:.2e}'.format(i, ikey, ivalue))
             tqdm.write('###############################################################################')
             # break
     return data
