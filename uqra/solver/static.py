@@ -406,28 +406,40 @@ class FourBranchSystem(SolverBase):
             raise ValueError('nan in solver.run() result')
         return y
 
-    def map_domain(self, u, u_cdf):
+    def map_domain(self,u, u_cdf):
         """
         mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
         Argument:
-            u and u_cdf
+            u: np.ndarray of shape(ndim, nsamples)
+            u_cdf: list of distributions from scipy.stats
         """
         if isinstance(u_cdf, np.ndarray):
-            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(
+                    self.name, self.ndim, u_cdf.shape[0])
             x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
         else:
             u, dist_u = super().map_domain(u, u_cdf) 
+            # dist_u: list of scipy.stats
             x = []
             for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
-                assert idist_u.dist.name == idist_x.dist.name
-                mean_u = idist_u.mean()
-                mean_x = idist_x.mean()
-                std_u  = idist_u.std()
-                std_x  = idist_x.std()
-                x.append((iu-mean_u)/std_u * std_x + mean_x)
+                if idist_u.dist.name == 'uniform' and idist_x.dist.name=='uniform':
+                    ua, ub = idist_u.support()
+                    loc_u, scl_u = ua, ub-ua
+                    xa, xb = idist_x.support()
+                    loc_x, scl_x = xa, xb-xa 
+                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+
+                elif idist_u.dist.name == 'norm'and idist_x.dist.name=='norm':
+                    mean_u = idist_u.mean()
+                    mean_x = idist_x.mean()
+                    std_u  = idist_u.std()
+                    std_x  = idist_x.std()
+                    x.append((iu-mean_u)/std_u * std_x + mean_x)
+                else:
+                    x.append(idist_x.ppf(idist_u.cdf(iu)))
             x = np.vstack(x)
         return x
-    
+
 class PolyProduct(SolverBase):
     """
     y = 1/2 * sum( xi**4 + xi**2 + 5xi), i = 1, ..., d
@@ -1330,8 +1342,6 @@ class Rastrigin(SolverBase):
                     x.append(idist_x.ppf(idist_u.cdf(iu)))
             x = np.vstack(x)
         return x
-
-
 
 class Borehole(SolverBase):
     """
