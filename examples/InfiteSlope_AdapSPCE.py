@@ -388,7 +388,7 @@ if __name__ == '__main__':
 
     res = []
     ith_batch  = 0
-    batch_size = 10
+    batch_size = 13
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
