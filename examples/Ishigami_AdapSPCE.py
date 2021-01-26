@@ -18,8 +18,7 @@ import multiprocessing as mp
 import random
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
-class Data():
-    pass
+
 def observation_error(y, mu=0, cov=0.03, random_state=100):
     e = stats.norm(0, cov * abs(y)).rvs(size=len(y), random_state=random_state)
     return e
@@ -45,46 +44,12 @@ def run_UQRA_OptimalDesign(x, poly, doe_sampling, optimality, n_samples, optimal
     assert len(idx) == n_samples
     return idx
 
-
 def isOverfitting(cv_err):
     if len(cv_err) < 3 :
         return False
     if cv_err[-1] > cv_err[-2] and cv_err[-2] > cv_err[0]:
         print('WARNING: Overfitting')
         return False
-
-# def isConverge(pf, abs_tol=1e-4):
-    # if len(pf) < 2:
-        # return False
-    # if abs(pf[-2]-pf[-1]) > abs_tol:
-        # return False
-    # else:
-        # return True
-
-# def check_converge(pf, abs_tol=1e-4):
-    # """
-    # Return Y/N, converged pf/ raw pf, relative changes 
-    # """
-    # is_converge = isConverge(pf, abs_tol)
-    # if len(pf) >= 2:
-        # abs_err = abs(pf[-2]-pf[-1])
-    # else:
-        # abs_err = None
-
-    # if is_converge:
-        # res = (True,  pf[-1], abs_err)
-    # else:
-        # res = (False, pf    , abs_err)
-
-    # return res
-
-def isConverge(y0, e=0.025):
-    if len(y0) < 2:
-        return False
-    if abs(y0[-2]-y0[-1])/abs(y0[-2]) > e:
-        return False
-    else:
-        return True
 
 def threshold_converge(y, threshold=0.95):
     y = np.array(y)
@@ -122,38 +87,6 @@ def absolute_converge(y, err=1e-4):
         error = abs(y[-2]-y[-1])
         res = (error < err, error)
     return res 
-
-def check_converge(data, rel_err= 0.025, abs_err=1e-4, threshold=0.95):
-    """
-    self-defined coverge function
-    """
-    
-    status  = []
-    res     = {}
-    ### check exceedance value
-    is_converge = False
-    y0 = np.array(data.y0_hat)
-    if len(y0) < 2:
-        is_converge = False
-        rel_error  = np.nan
-    else:
-        rel_error = abs(y0[-2]-y0[-1])/abs(y0[-2])
-        if rel_error < rel_err:
-            is_converge=True
-        else:
-            is_converge=False
-
-    status.append(is_converge)
-    res['y0'] = (list(y0), rel_error)
-
-    ### check fitting score 
-    score = data.score[-1]
-    is_converge= True if score > threshold else False
-    status.append(is_converge)
-    res['score'] = (score, np.nan)
-    is_converge = np.array(status).all()
-    return is_converge, res
-
 
 def main(model_params, doe_params, solver, r=0, random_state=None):
     data = uqra.Data()
