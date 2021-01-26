@@ -80,8 +80,13 @@ class OptimalDesign(ExperimentBase):
             n = n - len(optimal_samples)
 
         elif isinstance(initialization, (list, tuple, np.ndarray, np.generic)):
+            n_min = min(self.X.shape)
             optimal_samples = list(np.array(initialization).flatten())
-            print('    -> 1: Initialization with samples: n={:d} ...'.format(len(optimal_samples)))
+            print('    -> 1: Initialization with selected samples: n={:d} ...'.format(len(optimal_samples)))
+            if len(optimal_samples) < n_min:
+                optimal_samples = self._initial_samples_greedy_tsm(n_min-len(optimal_samples), optimality,
+                    optimal_samples=optimal_samples)
+            n = n - len(optimal_samples)
         else:
             print('   > {} not implemented for UQRA.OptiamlDesign'.format(initialization))
             raise NotImplementedError
@@ -226,7 +231,7 @@ class OptimalDesign(ExperimentBase):
             # raise ValueError('Requesting {:d} new samples but {:d} returned'.format(n, n0))
         return optimal_samples
         
-    def _initial_samples_greedy_tsm(self, n, optimality):
+    def _initial_samples_greedy_tsm(self, n, optimality, optimal_samples=None):
         """
         return initial samples selected based with truncated square matrices
         """
@@ -235,7 +240,8 @@ class OptimalDesign(ExperimentBase):
             raise ValueError('Can only return at most rank(X) samples')
         ## if no samples are selected currectly, then first sample is drawn randomly
         ## the rest n-1 samples are draw with greedy algorithm successfully
-        optimal_samples = [np.random.randint(0, self.X.shape[0], size=1).item(),]
+        if optimal_samples is None:
+            optimal_samples = [np.random.randint(0, self.X.shape[0], size=1).item(),]
 
         candidate_samples = copy.deepcopy(self.candidate_samples)
         optimal_samples   = copy.deepcopy(optimal_samples)
