@@ -142,7 +142,8 @@ class PolynomialChaosExpansion(SurrogateBase):
             fit_intercept = kwargs.get('fit_intercept'  , True )
             normalize     = kwargs.get('normalize'      , False)
             n_jobs        = kwargs.get('n_jobs'         , None ) 
-            shrinkage     = kwargs.get('shrinkage'      , 'CV')
+            shrinkage     = kwargs.get('shrinkage'      , 'CV' )
+            n_splits      = kwargs.get('n_splits'  , x.shape[1]) 
 
             if w.lower().startswith('cls') or w.lower() in ['cls', 'christoffel']:
                 full_weight = self.christoffel_weight(x, active=None)
@@ -161,7 +162,6 @@ class PolynomialChaosExpansion(SurrogateBase):
             model_lars = linear_model.Lars(fit_intercept=fit_intercept, normalize=normalize).fit(WX,Wy)
             if shrinkage.upper() in ['CV', 'CROSS VALIDATION', 'CROSS-VALIDATION']:
                 ### if not given, default is Leave-one-out
-                n_splits = kwargs.get('n_splits', x.shape[1]) 
                 n_splits = min(n_splits, x.shape[1])  ## avoid number of samples less than # folders
                 kfolder  = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
