@@ -84,9 +84,10 @@ class OptimalDesign(ExperimentBase):
             optimal_samples = list(np.array(initialization).flatten())
             print('    -> 1: Initialization with selected samples: n={:d} ...'.format(len(optimal_samples)))
             if len(optimal_samples) < n_min:
-                optimal_samples = self._initial_samples_greedy_tsm(n_min-len(optimal_samples), optimality,
+                optimal_samples0 = self._initial_samples_greedy_tsm(min(n_min-len(optimal_samples),n), optimality,
                     optimal_samples=optimal_samples)
-            n = n - len(optimal_samples)
+                n = n - len(optimal_samples0) + len(optimal_samples)
+                optimal_samples = optimal_samples0
         else:
             print('   > {} not implemented for UQRA.OptiamlDesign'.format(initialization))
             raise NotImplementedError
@@ -242,11 +243,12 @@ class OptimalDesign(ExperimentBase):
         ## the rest n-1 samples are draw with greedy algorithm successfully
         if optimal_samples is None:
             optimal_samples = [np.random.randint(0, self.X.shape[0], size=1).item(),]
+            n = n-1
 
         candidate_samples = copy.deepcopy(self.candidate_samples)
         optimal_samples   = copy.deepcopy(optimal_samples)
 
-        for _ in tqdm(range(1,n), ascii=True, desc="   - [Initialization (TSM)-{:s}]".format(optimality),ncols=80):
+        for _ in tqdm(range(n), ascii=True, desc="   - [Initialization (TSM)-{:s}]".format(optimality),ncols=80):
         # for _ in range(n):
             ## find the next optimal index from Q which is not currently selected
             candidate_samples = self._list_diff(candidate_samples, optimal_samples)
@@ -289,7 +291,7 @@ class OptimalDesign(ExperimentBase):
         B = np.array(B, copy=False, ndmin=2)
 
         if A.shape[0] < A.shape[1]:
-            raise ValueError('Updating formula for S-value only works for overdetermined system')
+            raise ValueError('S-value updating formula only works for overdetermined system, however given {}'.format(A.shape))
         if A.shape[1] != B.shape[1]:
             raise ValueError('matrix A, B must have same number of columns')
 
