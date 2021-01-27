@@ -111,15 +111,16 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data.model      = []
     data.score      = []
     data.yhat_ecdf  = [] 
+    data.boundary_data_candidate = []
+    data.boundary_data_optimal   = []
 
     optimal_samples = []
     ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
 
-    rrrr = 0
     for i, (ndim, deg) in enumerate(ndim_deg_cases):
-        print('==================================================================================')
-        print('     Iteration No. {:d} '.format(i))
-        print('==================================================================================')
+        print('\n==================================================================================')
+        print('         <<<< Global iteration No. {:d}: ndim={:d}, p={:d} >>>>'.format(i+1, ndim, deg))
+        print('==================================================================================\n')
         ## ------------------------ UQRA Surrogate model----------------- ###
         orth_poly = uqra.poly.orthogonal(ndim, deg, model_params.basis)
         pce_model = uqra.PCE(orth_poly)
@@ -152,8 +153,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         idoe_sampling = idoe_params.doe_sampling.lower()
         idoe_nickname = idoe_params.doe_nickname()
         ioptimality   = idoe_params.optimality
-        print('   --------------------------------------------------------------------------------')
-        print('   >> UQRA Training with Experimental Design {} '.format(idoe_nickname))
+        print('     - {:<23s} : {}'.format(' UQRA DoE '  , idoe_nickname))
         ### temp data object containing results from intermedia steps
         data_temp = uqra.Data()
         data_temp.pf_hat   = []
@@ -164,9 +164,13 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_temp.score    = []
         data_temp.yhat_ecdf= []
         optimal_samples_ideg=[]
+        boundary_data = uqra.Data() 
+        boundary_data_candidate = []
+        boundary_data_optimal   = []
 
-        ### increase number of samples by n_new
-        print('   1. Adding optimal samples based on FULL basis')
+        print(' ------------------------------------------------------------')
+        print(' > Adding optimal samples in global domain... ')
+        print('   1. optimal samples based on FULL basis')
         active_index = pce_model.active_index
         active_basis = pce_model.active_basis
         if deg == model_params.degs[0]:
@@ -180,13 +184,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 optimal_samples=optimal_samples_ideg, active_index=None)
         optimal_samples      = list_union(optimal_samples     , idx)
         optimal_samples_ideg = list_union(optimal_samples_ideg, idx)
-        # assert n_samples == len(idx)
         print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(optimal_samples_ideg)))
         print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
 
         # print('   2. Sparsity estimation with {:s}'.format(model_params.fitting.upper()))
-        # optimal_samples      = list(set(optimal_samples))
-        # optimal_samples_ideg = list(set(optimal_samples_ideg))
+        print('   2. Training with {} '.format(model_params.fitting))
         xi_train = data_cand[:, optimal_samples] 
         if idoe_sampling.lower()=='cls4':
             xi_train = xi_train * deg **0.5
@@ -194,49 +196,65 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         y_train = solver.run(x_train)
         pce_model.fit(model_params.fitting, xi_train, y_train, w=idoe_sampling,
                 n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
-        print('     - X train   : ({},{}), Alpha: {:.2f}'.format(x_train.shape[1], pce_model.num_basis, 
+        print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
+        print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
                         x_train.shape[1]/pce_model.num_basis))
-        print('     - Y train   : {}'.format(y_train.shape))
-        print('     - Sparisity : {:d}'.format(len(pce_model.active_index)))
+        print('     - {:<32s} : {}'.format('Y train'    , y_train.shape))
+        print('     - {:<32s} : {}'.format('Sparsity'   , len(pce_model.active_index)))
 
+        print('   3. Prediction with {} samples '.format(xi_test.shape))
+        y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
+        data_temp.model.append(pce_model)
+        data_temp.rmse_y.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
+        data_temp.pf_hat.append(np.sum(y_test_hat<0)/len(y_test_hat))
+        data_temp.score.append(pce_model.score)
+        data_temp.cv_err.append(pce_model.cv_error)
+        data_temp.yhat_ecdf.append(uqra.ECDF(y_test_hat, pf_test, compress=True))
+        # isOverfitting(data_temp.cv_err) ## check Overfitting
+        print('     - {:<32s} : {:.4e}'.format('pf test [ PCE ]', data_temp.pf_hat[-1]))
+        print('     - {:<32s} : {:.4e}'.format('pf test [TRUE ]', pf_test))
+        # isConverge, error_converge = relative_converge(data_temp.pf_hat, err=model_params.rel_err)
+        # isConverge, error_converge = absolute_converge(data_temp.pf_hat, err=model_params.abs_err)
+        # print('   4. Converge check ...')
+        # print('      - Value : {} [Ref: {:e}]'.format(np.array(data_temp.pf_hat), pf_test))
+        # print('      - Error : {:.2e}'.format(np.array(error_converge)))
+        print(' ------------------------------------------------------------')
+        print(' > Adding optimal samples in domain of interest... ')
+        i_iteration = 1
         while True:
             ####-------------------------------------------------------------------------------- ####
+            print('                 ------------------------------')
+            print('                 <  Local iteration No. {:d}  >'.format(i_iteration))
+            print('                 ------------------------------')
             active_index = pce_model.active_index
             active_basis = pce_model.active_basis 
             sparsity     = len(pce_model.active_index)
-            n_samples    = min(2*sparsity, pce_model.num_basis)
+            n_samples    = sparsity# 5#min(2*sparsity, pce_model.num_basis)
 
-            print('   2. Adding optimal samples near failure boundary ')
+            print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
             if idoe_sampling.lower()=='cls4':
                 xi_data_cand = data_cand*deg **0.5
-            y_data_cand  = pce_model.predict(xi_data_cand, n_jobs=model_params.n_jobs)
+            else:
+                xi_data_cand = data_cand 
+            y_data_cand = pce_model.predict(xi_data_cand, n_jobs=model_params.n_jobs)
 
-            
             data_cand_boundary_idx = np.argwhere(abs(y_data_cand-0) < 0.1).flatten().tolist()
             if len(data_cand_boundary_idx) < n_samples:
                 data_cand_boundary_idx = np.argsort(abs(y_data_cand-0))[:1000].tolist()
-            data_cand_boundary     = data_cand[:, data_cand_boundary_idx]
+            data_cand_boundary = data_cand[:, data_cand_boundary_idx]
 
-            data_ = uqra.Data()
-            data_.xi_train= xi_train
-            data_.x_train = x_train
-            data_.y_train = y_train
-            # data_.modelssss    = pce_model
-            data_.xi_data_cand = xi_data_cand
-            data_.x_data_cand  = solver.map_domain(xi_data_cand, dist_xi)
-            data_.x_data_cand_boundary  = solver.map_domain(xi_data_cand[:, data_cand_boundary_idx], dist_xi)
-            data_.y  = y_data_cand
-            np.save('boundary{:d}.npy'.format(rrrr), data_, allow_pickle=True)
-            # np.save('boundary{:d}.npy'.format(rrrr), data_cand_boundary)
-            rrrr +=1
             print('     - {:<32s} : {:d}'.format('No. boundary candidate samples', len(data_cand_boundary_idx)))
             print('     - {:<32s} : {:d}'.format('Adding optimal boundary samples', n_samples))
+
 
             boundary_idx = run_UQRA_OptimalDesign(data_cand_boundary, orth_poly, idoe_sampling, ioptimality, n_samples, 
                     optimal_samples=[], active_index=active_index)
             idx = [data_cand_boundary_idx[i] for i in boundary_idx if data_cand_boundary_idx[i] not in optimal_samples]
             optimal_samples      = list_union(optimal_samples, idx)
             optimal_samples_ideg = list_union(optimal_samples_ideg, idx)
+
+            boundary_data_candidate.append(solver.map_domain(xi_data_cand[:, data_cand_boundary_idx], dist_xi))
+            boundary_data_optimal.append(solver.map_domain(xi_data_cand[:, idx], dist_xi))
 
             print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(optimal_samples_ideg)))
             print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
@@ -248,12 +266,13 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 xi_train = xi_train * deg **0.5
             x_train = solver.map_domain(xi_train, dist_xi)
             y_train = solver.run(x_train)
+            print('   2. Training with {} '.format(model_params.fitting))
             pce_model.fit(model_params.fitting, xi_train, y_train, w=idoe_sampling,
                     n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
-            print('     - X train   : ({},{}), Alpha: {:.2f}'.format(x_train.shape[1], pce_model.num_basis, 
+            print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
                             x_train.shape[1]/pce_model.num_basis))
-            print('     - Y train   : {}'.format(y_train.shape))
-            print('     - Sparisity : {:d}'.format(sparsity))
+            print('     - {:<32s} : {}'.format('Y train'    , y_train.shape))
+            print('     - {:<32s} : {}'.format('Sparsity'   , len(pce_model.active_index)))
 
             print('   3. Prediction with {} samples '.format(xi_test.shape))
             y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
@@ -264,27 +283,29 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_temp.cv_err.append(pce_model.cv_error)
             data_temp.yhat_ecdf.append(uqra.ECDF(y_test_hat, pf_test, compress=True))
             # isOverfitting(data_temp.cv_err) ## check Overfitting
-            print('     - y0 test [ PCE ] : {:.4e}'.format(data_temp.pf_hat[-1]))
-            print('     - y0 test [TRUE ] : {:.4e}'.format(pf_test))
+            print('     - {:<32s} : {:.4e}'.format('pf test [ PCE ]', data_temp.pf_hat[-1]))
+            print('     - {:<32s} : {:.4e}'.format('pf test [TRUE ]', pf_test))
             # isConverge, error_converge = relative_converge(data_temp.pf_hat, err=model_params.rel_err)
             isConverge, error_converge = absolute_converge(data_temp.pf_hat, err=model_params.abs_err)
-            print('   !<>! Converge check ...')
+            print('   4. Converge check ...')
             print('      - Value : {} [Ref: {:e}]'.format(np.array(data_temp.pf_hat), pf_test))
             print('      - Error : {:.2e}'.format(np.array(error_converge)))
             print('   ------------------------------------------------------------')
+            i_iteration +=1
             if isConverge:
-                print('   !<>! Model converge for order {:d}'.format(deg))
+                print('         !< Model converge for order {:d} >!'.format(deg))
                 break
             if len(optimal_samples_ideg)>=2*orth_poly.num_basis:
-                print('   !<>! Number of samples exceeding 2P')
+                print('         !< Number of samples exceeding 2P >!')
                 break
-        print('   ------------------------------------------------------------')
-        tqdm.write('    > Summary PCE: ndim={:d}, p={:d}'.format(ndim, deg))
-        tqdm.write('     - {:<15s} : {:.4e}'.format( 'RMSE y ' , data_temp.rmse_y[-1]))
-        tqdm.write('     - {:<15s} : {:.4e}'.format( 'CV MSE'  , data_temp.cv_err[-1]))
-        tqdm.write('     - {:<15s} : {:.4f}'.format( 'Score '  , data_temp.score[-1] ))
-        tqdm.write('     - {:<15s} : {:.4e} [{:.4e}]'.format( 'pf ' , data_temp.pf_hat[-1], pf_test))
-        print('   ------------------------------------------------------------')
+
+        print(' ------------------------------------------------------------')
+        tqdm.write(' > Summary PCE: ndim={:d}, p={:d}'.format(ndim, deg))
+        tqdm.write('  - {:<15s} : {:.4e}'.format( 'RMSE y ' , data_temp.rmse_y[-1]))
+        tqdm.write('  - {:<15s} : {:.4e}'.format( 'CV MSE'  , data_temp.cv_err[-1]))
+        tqdm.write('  - {:<15s} : {:.4f}'.format( 'Score '  , data_temp.score[-1] ))
+        tqdm.write('  - {:<15s} : {:.4e} [{:.4e}]'.format( 'pf ' , data_temp.pf_hat[-1], pf_test))
+        print(' ------------------------------------------------------------')
 
         data.ndim.append(ndim)
         data.deg.append(deg)
@@ -297,6 +318,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data.model.append  ( data_temp.model [-1])
         data.score.append  ( data_temp.score [-1])
         data.yhat_ecdf.append(data_temp.yhat_ecdf[-1])
+        data.boundary_data_candidate.append(boundary_data_candidate)
+        data.boundary_data_optimal.append(boundary_data_optimal)
 
         isOverfitting(data.cv_err) ## check Overfitting
         # isConverge0, error_converge0 = relative_converge(data.pf_hat, err=model_params.rel_err)
@@ -305,7 +328,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         isConverge = [isConverge0, isConverge1]
         error_converge = [error_converge0, error_converge1]
         for i, (ikey, ivalue) in enumerate(zip(isConverge, error_converge)):
-            print('     >  Checking #{:d} : {}, {:.2e}'.format(i, ikey, ivalue))
+            print('  >  Checking #{:d} : {}, {:.2e}'.format(i, ikey, ivalue))
         if np.array(isConverge).all():
             tqdm.write('###############################################################################')
             tqdm.write('         Model Converge ')
@@ -334,6 +357,7 @@ if __name__ == '__main__':
     # solver      = uqra.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
     # solver      = uqra.Franke()
     # solver      = uqra.ExpTanh()
+    # solver      = uqra.InfiniteSlope()
 
     # solver      = uqra.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = uqra.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
@@ -345,7 +369,7 @@ if __name__ == '__main__':
 
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = np.arange(2,9) #[2,6,10]#
+    model_params.degs    = np.arange(2,11) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Hem'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
@@ -354,8 +378,8 @@ if __name__ == '__main__':
     model_params.alpha   = 2
     model_params.num_test= int(1e6)
     model_params.num_pred= int(1e6)
-    model_params.abs_err = 1e-3
-    model_params.rel_err = 1e-3
+    model_params.abs_err = 1e-4
+    model_params.rel_err = 1e-4
     model_params.n_jobs  = mp.cpu_count()
     model_params.update_basis()
     model_params.info()
