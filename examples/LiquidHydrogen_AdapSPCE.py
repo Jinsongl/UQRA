@@ -196,7 +196,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         x_train = solver.map_domain(xi_train, dist_xi)
         y_train = solver.run(x_train)
         pce_model.fit(model_params.fitting, xi_train, y_train, w=idoe_sampling,
-                n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+                n_jobs=model_params.n_jobs, n_splits=model_params.n_splits) #
         print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
         print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
                         x_train.shape[1]/pce_model.num_basis))
@@ -266,7 +266,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             y_train = solver.run(x_train)
             print('   2. Training with {} '.format(model_params.fitting))
             pce_model.fit(model_params.fitting, xi_train, y_train, w=idoe_sampling,
-                    n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+                    n_jobs=model_params.n_jobs, n_splits=model_params.n_splits) #
             print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
                             x_train.shape[1]/pce_model.num_basis))
             print('     - {:<32s} : {}'.format('Y train'    , y_train.shape))
@@ -413,8 +413,8 @@ if __name__ == '__main__':
     pf_test     = np.sum(y_test < 0) / len(y_test)
 
     res = []
-    ith_batch  = 0
-    batch_size = 1
+    ith_batch  = 3
+    batch_size = 10
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
