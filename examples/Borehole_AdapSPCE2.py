@@ -361,9 +361,10 @@ if __name__ == '__main__':
     # solver      = uqra.CornerPeak(stats.uniform(-1,2), d=2)
     # solver      = uqra.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
     # solver      = uqra.Franke()
-    solver      = uqra.ExpTanh()
+    # solver      = uqra.ExpTanh()
     # solver      = uqra.Ishigami()
     # solver      = uqra.InfiniteSlope()
+    solver      = uqra.Borehole()
 
     # solver      = uqra.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = uqra.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
@@ -375,7 +376,7 @@ if __name__ == '__main__':
 
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = np.arange(2,11) #[2,6,10]#
+    model_params.degs    = np.arange(2,5) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Leg'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples

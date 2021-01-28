@@ -113,6 +113,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data.yhat_ecdf  = [] 
     data.DoI_data_candidate = []
     data.DoI_data_optimal   = []
+    data.path       = []
 
     optimal_samples = []
     ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
@@ -195,7 +196,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         x_train = solver.map_domain(xi_train, dist_xi)
         y_train = solver.run(x_train)
         pce_model.fit(model_params.fitting, xi_train, y_train, w=idoe_sampling,
-                n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+                n_jobs=model_params.n_jobs, n_splits=model_params.n_splits) #
         print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
         print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
                         x_train.shape[1]/pce_model.num_basis))
@@ -243,6 +244,9 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             for idx in idx_DoI_data_test:
                 xi = xi_test[:, idx].reshape(ndim, -1)
                 idx_DoI_data_cand_ = np.argwhere(np.linalg.norm(xi_data_cand -xi, axis=0) < 0.1).flatten().tolist()
+                ### xi is outside data cand 
+                if len(idx_DoI_data_cand_) == 0:
+                    idx_DoI_data_cand_ = np.argsort(np.linalg.norm(xi_data_cand -xi, axis=0))[:100].tolist()
                 idx_DoI_data_cand = list(set(idx_DoI_data_cand + idx_DoI_data_cand_))
             data_cand_DoI = data_cand[:, idx_DoI_data_cand] 
             print('     - {:<32s} : {}'.format('DoI candidate samples', data_cand_DoI.shape ))
@@ -267,7 +271,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             y_train = solver.run(x_train)
             print('   2. Training with {} '.format(model_params.fitting))
             pce_model.fit(model_params.fitting, xi_train, y_train, w=idoe_sampling,
-                    n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+                    n_jobs=model_params.n_jobs, n_splits=model_params.n_splits) #
             print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
                             x_train.shape[1]/pce_model.num_basis))
             print('     - {:<32s} : {}'.format('Y train'    , y_train.shape))
@@ -319,6 +323,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data.yhat_ecdf.append(data_temp.yhat_ecdf[-1])
         data.DoI_data_candidate.append(DoI_data_candidate)
         data.DoI_data_optimal.append(DoI_data_optimal)
+        del data_temp.yhat_ecdf
+        data.path.append(data_temp)
 
         isOverfitting(data.cv_err) ## check Overfitting
         isConverge0, error_converge0 = relative_converge(data.y0_hat, err=model_params.rel_err)
