@@ -37,12 +37,12 @@ def run_UQRA_OptimalDesign(x, poly, doe_sampling, optimality, n_samples, optimal
         X = X[:, active_index]
     uqra.blockPrint()
     doe = uqra.OptimalDesign(X)
-    idx = doe.samples(optimality, n_samples, initialization=optimal_samples) ## additional n_samples new samples
+    idx_optimal = doe.samples(optimality, n_samples, initialization=optimal_samples) ## additional n_samples new samples
     uqra.enablePrint()
     if isinstance(optimal_samples, (list, tuple)):
-        idx = [i for i in idx if i not in optimal_samples]
-    # assert len(idx) == n_samples, 'expecting'
-    return idx
+        idx_optimal = [i for i in idx_optimal if i not in optimal_samples]
+    # assert len(idx_optimal) == n_samples, 'expecting'
+    return idx_optimal
 def list_union(ls1, ls2):
     """
     append ls2 to ls1 and check if there exist duplicates
@@ -164,6 +164,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_temp.model    = []
         data_temp.score    = []
         data_temp.yhat_ecdf= []
+        data_temp.x_train  = []
         optimal_samples_ideg=[]
         boundary_data = uqra.Data() 
         DoI_data_candidate = []
@@ -181,10 +182,10 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
         print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
 
-        idx = run_UQRA_OptimalDesign(data_cand, orth_poly, idoe_sampling, ioptimality, n_samples, 
+        idx_optimal = run_UQRA_OptimalDesign(data_cand, orth_poly, idoe_sampling, ioptimality, n_samples, 
                 optimal_samples=optimal_samples_ideg, active_index=None)
-        optimal_samples      = list_union(optimal_samples     , idx)
-        optimal_samples_ideg = list_union(optimal_samples_ideg, idx)
+        optimal_samples      = list_union(optimal_samples     , idx_optimal)
+        optimal_samples_ideg = list_union(optimal_samples_ideg, idx_optimal)
         print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(optimal_samples_ideg)))
         print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
 
@@ -211,6 +212,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_temp.score.append(pce_model.score)
         data_temp.cv_err.append(pce_model.cv_error)
         data_temp.yhat_ecdf.append(uqra.ECDF(y_test_hat, pf_test, compress=True))
+        data_temp.x_train.append(data_cand[:, idx_optimal])
         # isOverfitting(data_temp.cv_err) ## check Overfitting
         print('     - {:<32s} : {:.4e}'.format('pf test [ PCE ]', data_temp.pf_hat[-1]))
         print('     - {:<32s} : {:.4e}'.format('pf test [TRUE ]', pf_test))
@@ -249,12 +251,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
             idx_optimal_DoI = run_UQRA_OptimalDesign(data_cand_DoI, orth_poly, idoe_sampling, ioptimality, n_samples, 
                     optimal_samples=[], active_index=active_index)
-            idx = [idx_DoI_data_cand[i] for i in idx_optimal_DoI if idx_DoI_data_cand[i] not in optimal_samples]
-            optimal_samples      = list_union(optimal_samples     , idx)
-            optimal_samples_ideg = list_union(optimal_samples_ideg, idx)
+            idx_optimal = [idx_DoI_data_cand[i] for i in idx_optimal_DoI if idx_DoI_data_cand[i] not in optimal_samples]
+            optimal_samples      = list_union(optimal_samples     , idx_optimal)
+            optimal_samples_ideg = list_union(optimal_samples_ideg, idx_optimal)
 
             DoI_data_candidate.append(solver.map_domain(xi_data_cand[:, idx_DoI_data_cand], dist_xi))
-            DoI_data_optimal.append(solver.map_domain(xi_data_cand[:, idx], dist_xi))
+            DoI_data_optimal.append(solver.map_domain(xi_data_cand[:, idx_optimal], dist_xi))
 
             print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(optimal_samples_ideg)))
             print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
@@ -280,6 +282,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_temp.score.append(pce_model.score)
             data_temp.cv_err.append(pce_model.cv_error)
             data_temp.yhat_ecdf.append(uqra.ECDF(y_test_hat, pf_test, compress=True))
+            data_temp.x_train.append(data_cand[:, idx_optimal])
             # isOverfitting(data_temp.cv_err) ## check Overfitting
             print('     - {:<32s} : {:.4e}'.format('pf test [ PCE ]', data_temp.pf_hat[-1]))
             print('     - {:<32s} : {:.4e}'.format('pf test [TRUE ]', pf_test))
