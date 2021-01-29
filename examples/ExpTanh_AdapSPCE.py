@@ -420,8 +420,8 @@ if __name__ == '__main__':
     y0_test     = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
 
     res = []
-    ith_batch  = 0
-    batch_size = 1
+    ith_batch  = 4
+    batch_size = 10
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
