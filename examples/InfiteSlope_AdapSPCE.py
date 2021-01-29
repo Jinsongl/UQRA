@@ -37,12 +37,12 @@ def run_UQRA_OptimalDesign(x, poly, doe_sampling, optimality, n_samples, optimal
         X = X[:, active_index]
     uqra.blockPrint()
     doe = uqra.OptimalDesign(X)
-    idx = doe.samples(optimality, n_samples, initialization=optimal_samples) ## additional n_samples new samples
+    idx_optimal = doe.samples(optimality, n_samples, initialization=optimal_samples) ## additional n_samples new samples
     uqra.enablePrint()
     if isinstance(optimal_samples, (list, tuple)):
-        idx = [i for i in idx if i not in optimal_samples]
-    # assert len(idx) == n_samples, 'expecting'
-    return idx
+        idx_optimal = [i for i in idx_optimal if i not in optimal_samples]
+    # assert len(idx_optimal) == n_samples, 'expecting'
+    return idx_optimal
 def list_union(ls1, ls2):
     """
     append ls2 to ls1 and check if there exist duplicates
@@ -111,9 +111,10 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data.model      = []
     data.score      = []
     data.yhat_ecdf  = [] 
-    data.DoI_data_candidate = []
-    data.DoI_data_optimal   = []
     data.path       = []
+    data.DoI_candidate = []
+    data.DoI_optimal   = []
+    data.global_optimal= []
 
     optimal_samples = []
     ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
@@ -166,8 +167,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_temp.yhat_ecdf= []
         optimal_samples_ideg=[]
         boundary_data = uqra.Data() 
-        DoI_data_candidate = []
-        DoI_data_optimal   = []
+        DoI_candidate = []
+        DoI_optimal   = []
 
         print(' ------------------------------------------------------------')
         print(' > Adding optimal samples in global domain... ')
@@ -181,22 +182,25 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
         print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
 
-        idx = run_UQRA_OptimalDesign(data_cand, orth_poly, idoe_sampling, ioptimality, n_samples, 
+        idx_optimal = run_UQRA_OptimalDesign(data_cand, orth_poly, idoe_sampling, ioptimality, n_samples, 
                 optimal_samples=optimal_samples_ideg, active_index=None)
-        optimal_samples      = list_union(optimal_samples     , idx)
-        optimal_samples_ideg = list_union(optimal_samples_ideg, idx)
+        optimal_samples      = list_union(optimal_samples     , idx_optimal)
+        optimal_samples_ideg = list_union(optimal_samples_ideg, idx_optimal)
         print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(optimal_samples_ideg)))
         print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
 
         # print('   2. Sparsity estimation with {:s}'.format(model_params.fitting.upper()))
         print('   2. Training with {} '.format(model_params.fitting))
-        xi_train = data_cand[:, optimal_samples] 
+        xi_train       = data_cand[:, optimal_samples] 
+        global_optimal = data_cand[:, idx_optimal]
         if idoe_sampling.lower()=='cls4':
-            xi_train = xi_train * deg **0.5
+            xi_train       = xi_train       * deg **0.5
+            global_optimal = global_optimal * deg **0.5
         x_train = solver.map_domain(xi_train, dist_xi)
         y_train = solver.run(x_train)
         pce_model.fit(model_params.fitting, xi_train, y_train, w=idoe_sampling,
                 n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+        data.global_optimal.append(global_optimal)
         print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
         print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
                         x_train.shape[1]/pce_model.num_basis))
@@ -249,12 +253,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
             idx_optimal_DoI = run_UQRA_OptimalDesign(data_cand_DoI, orth_poly, idoe_sampling, ioptimality, n_samples, 
                     optimal_samples=[], active_index=active_index)
-            idx = [idx_DoI_data_cand[i] for i in idx_optimal_DoI if idx_DoI_data_cand[i] not in optimal_samples]
-            optimal_samples      = list_union(optimal_samples     , idx)
-            optimal_samples_ideg = list_union(optimal_samples_ideg, idx)
+            idx_optimal = [idx_DoI_data_cand[i] for i in idx_optimal_DoI if idx_DoI_data_cand[i] not in optimal_samples]
+            optimal_samples      = list_union(optimal_samples     , idx_optimal)
+            optimal_samples_ideg = list_union(optimal_samples_ideg, idx_optimal)
 
-            DoI_data_candidate.append(solver.map_domain(xi_data_cand[:, idx_DoI_data_cand], dist_xi))
-            DoI_data_optimal.append(solver.map_domain(xi_data_cand[:, idx], dist_xi))
+            DoI_candidate.append(solver.map_domain(xi_data_cand[:, idx_DoI_data_cand], dist_xi))
+            DoI_optimal.append(solver.map_domain(xi_data_cand[:, idx_optimal], dist_xi))
 
             print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(optimal_samples_ideg)))
             print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
@@ -316,8 +320,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data.model.append  ( data_temp.model [-1])
         data.score.append  ( data_temp.score [-1])
         data.yhat_ecdf.append(data_temp.yhat_ecdf[-1])
-        data.DoI_data_candidate.append(DoI_data_candidate)
-        data.DoI_data_optimal.append(DoI_data_optimal)
+        data.DoI_candidate.append(DoI_candidate)
+        data.DoI_optimal.append(DoI_optimal)
         del data_temp.yhat_ecdf
         data.path.append(data_temp)
 
