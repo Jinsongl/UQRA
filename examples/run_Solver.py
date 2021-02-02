@@ -650,10 +650,14 @@ def run_Rastrigin():
     data_u = []
     for r in range(10):
         data = uqra.Data()
-        data.u = stats.norm.rvs(size= (solver.ndim, int(1e6)))
-        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
+        filename = 'McsE6R{:d}.npy'.format(r)
         print(filename)
-        data.x = solver.map_domain(data.u, stats.norm(0,1))
+        data.u = np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:]
+        print('u: {} {}'.format(np.mean(data.u, axis=-1), np.std(data.u, axis=-1)))
+        print('min ,max: {} {}'.format(np.amin(data.u, axis=-1), np.amax(data.u, axis=-1)))
+
+        data.x = solver.map_domain(data.u, stats.uniform(0,1))
+        print('x: {} {}'.format(np.mean(data.x, axis=-1), np.std(data.x, axis=-1)))
         data.y = solver.run(data.x)
         print('Probability of failure {:.2e}'.format(np.sum(data.y<0)/len(data.y)))
         data.pf = np.sum(data.y<0)/len(data.y)
@@ -661,6 +665,7 @@ def run_Rastrigin():
         del data.x
         del data.y
 
+        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
         np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 
 def run_Borehole():
@@ -710,11 +715,11 @@ if __name__ == '__main__':
     # run_Ishigami()
     # run_FourBranch()
     # run_CornerPeak()
-    run_LiqudHydrogenTank()
+    # run_LiqudHydrogenTank()
     # run_InfiniteSlope()
     # run_GaytonHat()
     # run_CompositeGaussian()
-    # run_Rastrigin()
+    run_Rastrigin()
     # run_Borehole()
     # run_ExpTanh()
 

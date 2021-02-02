@@ -41,7 +41,6 @@ def run_UQRA_OptimalDesign(x, poly, doe_sampling, optimality, n_samples, optimal
     uqra.enablePrint()
     if isinstance(optimal_samples, (list, tuple)):
         idx_optimal = [i for i in idx_optimal if i not in optimal_samples]
-    # assert len(idx_optimal) == n_samples, 'expecting'
     return idx_optimal
 def list_union(ls1, ls2):
     """
