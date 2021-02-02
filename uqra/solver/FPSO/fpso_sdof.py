@@ -57,12 +57,15 @@ class FPSO(SolverBase):
             self.random_states = [RANDOM_SEEDS[istate] for istate in self.random_states] 
         else:
             raise ValueError('random_state {} not defined'.format(self.random_states))
+        self.distributions  = kwargs.get('distributions', None)
         try:
             kwargs.pop('random_state')
+            kwargs.pop('distributions')
         except KeyError:
             pass
 
         self.n_short_term   = len(self.random_states) 
+
         self._load_freq_mat('freq_data.mat')
         self._FD_FPSO_LF()
         if len(kwargs) > 0:
@@ -152,7 +155,6 @@ class FPSO(SolverBase):
         self.Hx[:self.w_LF.size] = 1.0 / ( -self.w_LF**2 * self.M + 1j * self.w_LF * self.B + self.K )
 
     def _Glimitmax(self, args):
-
 
         # ------------------
         # Environmental data

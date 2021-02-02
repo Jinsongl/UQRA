@@ -771,7 +771,6 @@ class CompositeGaussian(SolverBase):
         return y
 
 class ExpTanh(SolverBase):
-
     """
     In Owen et al. (2017), the Exp-Tanh function is used to test metamodeling approaches, namely polynomial chaos expansions and Gaussian process modeling.
     References
@@ -824,7 +823,8 @@ class Rastrigin(SolverBase):
 
     def run(self, x, **kwargs):
         x = np.array(x, copy=False, ndmin=2)
-        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
+        assert x.shape[0] == self.ndim, 'Function {:s} expects {:d} random varaibles, but {:d} given'.format(
+                self.nickname, self.ndim, x.shape[0])
         y = 10 - (x[0]**2 - 5 * np.cos(2*np.pi*x[0])) - (x[1]**2 - 5 * np.cos(2*np.pi*x[1]))
         if np.isnan(y).any():
             raise ValueError('nan in solver.run() result')
