@@ -17,6 +17,7 @@ from .utilities.classes import Logger
 from itertools import compress
 import scipy.stats as stats
 from tqdm import tqdm
+import copy
 
 ### ----------------- Base Classes -----------------
 class Data(object):
@@ -233,6 +234,91 @@ class ExperimentParameters(Parameters):
         except:
             pass
 
+    def sampling_weight(self, w=None):
+        """
+        Return a weight function due to sampling
+        If w is given, then has the highest priority. 
+        otherwise, return based on doe_sampling
+        """
+        if w is not None:
+            # if callable(w):
+                # return w
+            # else:
+                # w = lambda x: w
+            return w
+        elif self.doe_sampling.lower().startswith('cls'):
+            return 'christoffel'
+        elif self.doe_sampling.lower()[:3] in ['mcs', 'lhs']:
+            return None
+        else:
+            raise ValueError('Sampling weight function is not defined')
+
+    def get_samples(self, x, poly, n, x0=[], active_index=None,  
+            initialization='RRQR', return_index=False):
+        """
+
+        return samples based on UQRA
+        """
+        ### check arguments
+        n = uqra.check_int(n)
+        if self.doe_sampling.lower().startswith('lhs'):
+            assert self.optimality is None
+            dist_xi = poly.weight
+            doe = uqra.LHS([dist_xi, ] *self.ndim)
+            x_optimal = doe.samples(size=n)
+            res = x_optimal
+
+        else:
+            x = np.array(x, copy=False, ndmin=2)
+            d, N = x.shape
+            assert d == self.ndim 
+            ## expand samples if it is unbounded cls
+            x = poly.deg**0.5 * x if self.doe_sampling in ['CLS4', 'CLS5'] else x
+            if len(x0) == 0:
+                x0 = np.empty((d,0))
+            else:
+                x0 = np.array(x0, copy=False, ndmin=2)
+                assert d == x0.shape[0]
+
+            x_optimal      = []
+            idx_selected   = list(uqra.common_vectors(x0, x))
+            initialization = initialization if len(idx_selected) == 0 else idx_selected
+
+            if self.doe_sampling.lower().startswith('mcs'):
+                if str(self.optimality).lower() == 'none':
+                    idx = list(set(np.arange(self.num_cand)).difference(set(idx_selected)))[:n] 
+                else:
+                    X = poly.vandermonde(x_)
+                    X = X if active_index is None else X[:, active_index]
+                    uqra.blockPrint()
+                    doe = uqra.OptimalDesign(X)
+                    idx = doe.samples(self.optimality, n, initialization=initialization) 
+                    uqra.enablePrint()
+
+                idx = uqra.list_diff(idx, idx_selected)
+                assert len(idx) == n
+                x_optimal = x[:, idx]
+
+            elif self.doe_sampling.lower().startswith('cls'):
+                if str(self.optimality).lower() == 'none':
+                    idx = list(set(np.arange(self.num_cand)).difference(set(idx_selected)))[:n] 
+                else:
+                    X = poly.vandermonde(x_)
+                    X = X if active_index is None else X[:, active_index]
+                    X = poly.num_basis**0.5*(X.T / np.linalg.norm(X, axis=1)).T
+                    uqra.blockPrint()
+                    doe = uqra.OptimalDesign(X)
+                    idx = doe.samples(self.optimality, n, initialization=initialization) 
+                    uqra.enablePrint()
+
+                idx = uqra.list_diff(idx, idx_selected)
+                assert len(idx) == n
+                x_optimal = x[:, idx]
+            else:
+                raise ValueError
+            res = (x_optimal, idx) if return_index else x_optimal
+        return res
+
 ### ----------------- Modeling Parameters() -----------------
 class Modeling(Parameters):
     """
@@ -274,7 +360,7 @@ class Modeling(Parameters):
         assert len(active_index) > 0
 
         ### get theindices of already selected train samples in candidate samples 
-        selected_index = list(self._common_vectors(u_train, u_cand))
+        selected_index = list(uqra.common_vectors(u_train, u_cand))
 
         if self.params.doe_optimality is None:
             ### for non doe_optimality design, design matrix X is irrelative
@@ -324,13 +410,6 @@ class Modeling(Parameters):
             self.xi_distname = 'norm'
         else:
             raise NotImplementedError
-    def map_domain(self, u, dist_u=stats.uniform(0,1)):
-        """
-        mapping random varaibles u from dist_u to dist_xi
-        """
-        xi = self.dist_xi.ppf(dist_u.cdf(u))
-        return xi
-
 
     def cal_weight(self, u, active_basis=None, orth_poly=None):
         """
@@ -356,46 +435,6 @@ class Modeling(Parameters):
     def info(self):
         pass
 
-    def _common_vectors(self, A, B):
-        """
-        return the indices of each columns of array A in larger array B
-        """
-        B = np.array(B, ndmin=2)
-        if A is None or A.size == 0:
-            return np.array([])
-        if A.shape[1] > B.shape[1]:
-            raise ValueError('A must have less columns than B')
-
-        ## check if A is unique
-        duplicate_idx_A = self._get_duplicate_rows(A.T)
-        if len(duplicate_idx_A) > 0:
-            raise ValueError('Array A have duplicate vectors: {}'.format(duplicate_idx_A))
-        ## check if B is unique
-        duplicate_idx_B = self._get_duplicate_rows(B.T)
-        if len(duplicate_idx_B) > 0:
-            raise ValueError('Array B have duplicate vectors: {}'.format(duplicate_idx_B))
-        BA= np.hstack((B, A))
-        duplicate_idx_BA = self._get_duplicate_rows(BA.T)
-
-        return duplicate_idx_BA
-
-    def _get_duplicate_rows(self, A):
-        """
-        Return the index of duplicate rows in A:
-        check column by column, 
-            1. check the first column, return index of same elments
-            2. check the next column with all previous elements are same
-
-        """
-        ## initialization assuming all rows are same
-        duplicate_idx = np.arange(A.shape[0])
-        j_col = 0  ## column counter
-        while len(duplicate_idx) > 0 and j_col < A.shape[1]:
-            icol = A[duplicate_idx,j_col]
-            uniques, uniq_idx, counts = np.unique(icol,return_index=True,return_counts=True)
-            duplicate_idx = uniq_idx[counts>=2] 
-            j_col+=1
-        return duplicate_idx
 
     def rescale_data(self, X, sample_weight):
         """Rescale data so as to support sample_weight"""
@@ -410,6 +449,25 @@ class Modeling(Parameters):
         X = sw_matrix @ X
         return X
 
+    def map_domain(self, u, dist_u):
+
+        if self.dist_xi.dist.name == 'uniform' and dist_u.dist.name == 'uniform':
+            ua, ub = dist_u.support()
+            loc_u, scl_u = ua, ub-ua
+            xa, xb = self.dist_xi.support()
+            loc_x, scl_x = xa, xb-xa 
+            x = (u-loc_u)/scl_u * scl_x + loc_x
+
+        elif self.dist_xi.dist.name == 'norm' and dist_u.dist.name == 'norm':
+            mean_u = dist_u.mean()
+            mean_x = self.dist_xi.mean()
+            std_u  = dist_u.std()
+            std_x  = self.dist_xi.std()
+            x = (u-mean_u)/std_u * std_x + mean_x
+        else:
+            x = self.dist_xi.ppf(dist_u.cdf(u))
+        return x
+ 
 ### ----------------- Simulation Parameters() -----------------
 class Simulation(Parameters):
     """

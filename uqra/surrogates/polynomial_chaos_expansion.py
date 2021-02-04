@@ -75,6 +75,22 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.basis_degree = self.orth_poly.basis_degree 
             self.tag          = '{:d}{:s}{:d}'.format(self.ndim, self.orth_poly.nickname,self.deg)
     
+    def weight_func(self, x, w, *args, **kwargs):
+        if callable(w):
+            return w(x, *args, **kwargs)
+        elif w is None:
+            return None
+        elif isinstance(w, str):
+            if w.lower().startswith('cls') or w.lower() == 'christoffel':
+                w = self.christoffel_weight(x, **kwargs)
+                return w
+            elif w.lower()[:3] in ['mcs', 'lhs']:
+                return None
+            else:
+                raise ValueError(' weight {} not defined'.format(w))
+        else:
+            return w
+
     def fit(self, method, x, y, w=None, **kwargs):
         """
         fit PCE model with data set(x,y) with specified method
@@ -109,14 +125,12 @@ class PolynomialChaosExpansion(SurrogateBase):
             ols_reg = linear_model.LinearRegression(fit_intercept=fit_intercept, normalize=normalize, n_jobs=n_jobs)
             kfolder = model_selection.KFold(n_splits=n_splits,shuffle=True)
             ## calculate k-folder cross-validation error
-            if w.lower().startswith('cls') or w.lower() in ['cls', 'christoffel']:
-                w = self.christoffel_weight(x, active=self.active_index)
-                WX, Wy = self._rescale_data(X, y, w)
-            elif w is not None:
-                WX, Wy = self._rescale_data(X, y, w)
-            else:
-                WX, Wy = X, y
-            neg_mse = model_selection.cross_val_score(ols_reg, WX, Wy, scoring='neg_mean_squared_error', cv=kfolder, n_jobs=n_jobs)
+
+            w = self.weight_func(x, w, active=self.active_index)
+            WX, Wy = self._rescale_data(X, y, w) if w is not None else (X, y)
+
+            neg_mse = model_selection.cross_val_score(ols_reg, WX, Wy, 
+                    scoring='neg_mean_squared_error', cv=kfolder, n_jobs=n_jobs)
             self.model = ols_reg.fit(X, y, sample_weight=w)
             self.cv_error = -np.mean(neg_mse)
             self.coef    = np.array(copy.deepcopy(ols_reg.coef_), ndmin=2)
@@ -145,15 +159,9 @@ class PolynomialChaosExpansion(SurrogateBase):
             shrinkage     = kwargs.get('shrinkage'      , 'CV' )
             n_splits      = kwargs.get('n_splits'  , x.shape[1]) 
 
-            if w.lower().startswith('cls') or w.lower() in ['cls', 'christoffel']:
-                full_weight = self.christoffel_weight(x, active=None)
-            else:
-                full_weight = w
+            full_weight = self.weight_func(x, w, active=self.active_index)
+            WX, Wy = self._rescale_data(X, y, full_weight) if full_weight is not None else (X, y)
 
-            if full_weight is not None:
-                WX, Wy = self._rescale_data(X, y, full_weight)
-            else:
-                WX, Wy = X, y
             ### standardize data: zero mean, unit variance for each predictor
             # scaler     = preprocessing.StandardScaler().fit(WX)
             # WX_scaled  = scaler.transform(WX) 
@@ -169,23 +177,17 @@ class PolynomialChaosExpansion(SurrogateBase):
                 ols_reg0= linear_model.LinearRegression(fit_intercept=True).fit(X, y, full_weight)
                 y_hat0  = ols_reg0.predict(X)
                 std0    = np.sqrt(np.linalg.norm(y-y_hat0)**2/(X.shape[0]-X.shape[1]-1))
+                cv_err  = []
                 cp_statistics = []
-                cv_err = []
                 for k in range(1, X.shape[1]+1):
                     kfolder = model_selection.KFold(n_splits=n_splits,shuffle=True)
                     reg_ols = linear_model.LinearRegression(fit_intercept=True)
                     X_      = X[:,model_lars.active_[:k]]
-                    if w.lower().startswith('cls') or w.lower() in ['cls', 'christoffel']:
-                        k_weight = self.christoffel_weight(x, active=model_lars.active_[:k])
-                    elif w is not None:
-                        k_weight = w[:, model_lars.active_[:k]]
-                    else:
-                        k_weight = None
-                    if k_weight is not None:
-                        WX_, Wy = self._rescale_data(X_, y, k_weight)
-                    else:
-                        WX_, Wy = X, y
-                    neg_mse = model_selection.cross_val_score(reg_ols, WX_, Wy, scoring='neg_mean_squared_error', cv=kfolder)
+                    k_weight= self.weight_func(x, w, active=model_lars.active_[:k]) 
+                    WX_, Wy = self._rescale_data(X_, y, k_weight) if k_weight is not None else (X_, y) 
+
+                    neg_mse = model_selection.cross_val_score(reg_ols, WX_, Wy, 
+                            scoring='neg_mean_squared_error', cv=kfolder)
                     cv_err.append( -np.mean(neg_mse))
 
                     reg_ols.fit(X_, y, k_weight)
