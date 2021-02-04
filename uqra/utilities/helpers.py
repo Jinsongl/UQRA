@@ -608,3 +608,77 @@ def samples_within_cubic(data, domain):
     samples_idx_outside_domain= np.logical_not(samples_idx_within_domain)
     return samples_idx_within_domain, samples_idx_outside_domain
 
+def list_union(ls1, ls2):
+    """
+    append ls2 to ls1 and check if there exist duplicates
+    return the union of two lists and remove duplicates
+    """
+    ls_common = list_inter(ls1, ls2)
+    if len(ls_common) != 0:
+        print('list 1: {} '.format(ls1))
+        print('list 2: {} '.format(ls2))
+        raise ValueError('_list_union: Duplicate elements {} found in two lists'.format(ls_common))
+    ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
+
+    return ls
+
+def list_diff(ls1, ls2):
+    """
+    returns a list of elements in ls1 but not in ls2
+    """
+    ls1 = list(copy.deepcopy(ls1))
+    ls2 = list(copy.deepcopy(ls2))
+    for element in ls2:
+        try:
+            ls1.remove(element)
+        except ValueError:
+            pass
+    return ls1
+
+def list_inter(ls1, ls2):
+    """
+    return common elements between ls1 and ls2 
+    """
+    ls = list(set(ls1).intersection(set(ls2)))
+    return ls
+
+def common_vectors(A, B):
+    """
+    return the indices of each columns of array A in larger array B
+    """
+    B = np.array(B, ndmin=2)
+    if A is None or A.size == 0:
+        return np.array([])
+    if A.shape[1] > B.shape[1]:
+        raise ValueError('A must have less columns than B')
+
+    ## check if A is unique
+    duplicate_idx_A = get_duplicate_rows(A.T)
+    if len(duplicate_idx_A) > 0:
+        raise ValueError('Array A have duplicate vectors: {}'.format(duplicate_idx_A))
+    ## check if B is unique
+    duplicate_idx_B = get_duplicate_rows(B.T)
+    if len(duplicate_idx_B) > 0:
+        raise ValueError('Array B have duplicate vectors: {}'.format(duplicate_idx_B))
+    BA= np.hstack((B, A))
+    duplicate_idx_BA = get_duplicate_rows(BA.T)
+
+    return duplicate_idx_BA
+
+def get_duplicate_rows(A):
+    """
+    Return the index of duplicate rows in A:
+    check column by column, 
+        1. check the first column, return index of same elments
+        2. check the next column with all previous elements are same
+
+    """
+    ## initialization assuming all rows are same
+    duplicate_idx = np.arange(A.shape[0])
+    j_col = 0  ## column counter
+    while len(duplicate_idx) > 0 and j_col < A.shape[1]:
+        icol = A[duplicate_idx,j_col]
+        uniques, uniq_idx, counts = np.unique(icol,return_index=True,return_counts=True)
+        duplicate_idx = uniq_idx[counts>=2] 
+        j_col+=1
+    return duplicate_idx
