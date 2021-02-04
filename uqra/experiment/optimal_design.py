@@ -44,7 +44,7 @@ class OptimalDesign(ExperimentBase):
         Return n new samples from X : Design matrix X(u) of shape(n_samples, n_features)
         Arguments:
             optimality: str, alphabetic optimal design
-            n: int, number of new samples to be added
+            n: int, number of new samples TO BE ADDED
             initialization: method to initialize optimal sample sets
                 1. 'TSM': truncated square matrices 
                 2. 'AFP': Approximated Fekete Point 
@@ -63,7 +63,7 @@ class OptimalDesign(ExperimentBase):
         print('   > UQRA {:s}-Optimality Design: n={:d} ...'.format(optimality, n))
 
         if isinstance(initialization, str):
-            ## selected optimal samples at this step must be empty
+            ## selected optimal samples must be empty
             assert len(self.optimal_samples) == 0
             n_initialization = min(self.X.shape[0], self.X.shape[1], n)
             if initialization.upper() in ['QR', 'RRQR', 'AFP', 'FEKETE']:
@@ -80,12 +80,15 @@ class OptimalDesign(ExperimentBase):
             n = n - len(optimal_samples)
 
         elif isinstance(initialization, (list, tuple, np.ndarray, np.generic)):
-            n_min = min(self.X.shape)
+            ## Initialize with preselected sampels
+            X_rank = min(self.X.shape) ## rank of design matrix
             optimal_samples = list(np.array(initialization).flatten())
             print('    -> 1: Initialization with selected samples: n={:d} ...'.format(len(optimal_samples)))
-            if len(optimal_samples) < n_min:
-                optimal_samples0 = self._initial_samples_greedy_tsm(min(n_min-len(optimal_samples),n), optimality,
+            ## if preselected samples is less than X_rank, truncated square matrix is used
+            if len(optimal_samples) < X_rank:
+                optimal_samples0 = self._initial_samples_greedy_tsm(min(X_rank-len(optimal_samples),n), optimality,
                     optimal_samples=optimal_samples)
+                ### optimal_samples0 includes preselected samples in optimal_samples
                 n = n - len(optimal_samples0) + len(optimal_samples)
                 optimal_samples = optimal_samples0
         else:
@@ -98,16 +101,21 @@ class OptimalDesign(ExperimentBase):
 
         if n>0:
             print('    -> 2: Continue Optimality Design, n={:d} ...'.format(n))
-            if optimality == 'D':
+            if optimality.upper == 'D':
                 optimal_samples = self.get_D_Optimality_samples(n, algorithm=algorithm)
 
-            if optimality.upper() == 'S':
+            elif optimality.upper() == 'S':
                 optimal_samples = self.get_S_Optimality_samples(n, algorithm=algorithm)
+
+            else:
+                raise ValueError('optimality {} not defined'.format(optimality))
+
         else:
             optimal_samples = []
 
-        self.optimal_samples   = self._list_union(self.optimal_samples, optimal_samples)
-        self.candidate_samples = self._list_diff(self.candidate_samples, optimal_samples)
+        self.optimal_samples   = self._list_union(self.optimal_samples  , optimal_samples)
+        self.candidate_samples = self._list_diff (self.candidate_samples, optimal_samples)
+
         assert self._check_complement(self.optimal_samples, self.candidate_samples)
         return self.optimal_samples
 
@@ -567,14 +575,18 @@ class OptimalDesign(ExperimentBase):
         append ls2 to ls1 and check if there exist duplicates
         return the union of two lists and remove duplicates
         """
+        ls_common = self._list_inter(ls1, ls2)
+        if len(ls_common) != 0:
+            print('list 1: {} '.format(ls1))
+            print('list 2: {} '.format(ls2))
+            raise ValueError('_list_union: Duplicate elements {} found in two lists'.format(ls_common))
         ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
-        if len(ls) != len(set(ls1).union(set(ls2))):
-            raise ValueError('Duplicate elements found in list when append to each other')
+
         return ls
 
     def _list_diff(self, ls1, ls2):
         """
-        returns a list that is the difference between two list, elements present in ls1 but not in ls2
+        returns a list of elements in ls1 but not in ls2
         """
         ls1 = list(copy.deepcopy(ls1))
         ls2 = list(copy.deepcopy(ls2))
