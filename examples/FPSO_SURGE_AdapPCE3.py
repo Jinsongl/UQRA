@@ -36,12 +36,18 @@ def run_UQRA_OptimalDesign(x, poly, doe_sampling, optimality, n_samples, optimal
     else:
         X = X[:, active_index]
     uqra.blockPrint()
-    doe = uqra.OptimalDesign(X)
-    idx_optimal = doe.samples(optimality, n_samples, initialization=optimal_samples) ## additional n_samples new samples
+    if str(optimality).upper() == 'NONE':
+        idx_cand  = np.arange(X.shape[0])
+        random.shuffle(idx_cand)
+        idx_optimal = idx_cand[:n_samples]
+    else:
+        doe = uqra.OptimalDesign(X)
+        idx_optimal = doe.samples(optimality, n_samples, initialization=optimal_samples) ## additional n_samples new samples
     uqra.enablePrint()
     if isinstance(optimal_samples, (list, tuple)):
         idx_optimal = [i for i in idx_optimal if i not in optimal_samples]
     return idx_optimal
+
 def list_union(ls1, ls2):
     """
     append ls2 to ls1 and check if there exist duplicates
@@ -197,7 +203,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             global_optimal = global_optimal * deg **0.5
         x_train = solver.map_domain(xi_train, dist_xi)
         y_train = solver.run(x_train)
-        pce_model.fit(model_params.fitting, xi_train, y_train, w=idoe_sampling,
+        weight  = doe_params.sampling_weight()   ## weight function
+        pce_model.fit(model_params.fitting, xi_train, y_train, w=weight,
                 n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
         data.global_optimal.append(global_optimal)
         print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
@@ -228,7 +235,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         while True:
             ####-------------------------------------------------------------------------------- ####
             print('                 ------------------------------')
-            print('                 <  Local iteration No. {:d}  >'.format(i_iteration))
+            print('                  <  Local iteration No. {:d} >'.format(i_iteration))
             print('                 ------------------------------')
             active_index = pce_model.active_index
             active_basis = pce_model.active_basis 
@@ -273,7 +280,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             x_train = solver.map_domain(xi_train, dist_xi)
             y_train = solver.run(x_train)
             print('   2. Training with {} '.format(model_params.fitting))
-            pce_model.fit(model_params.fitting, xi_train, y_train, w=idoe_sampling,
+            pce_model.fit(model_params.fitting, xi_train, y_train, w=weight,
                     n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
             print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
                             x_train.shape[1]/pce_model.num_basis))
@@ -369,12 +376,12 @@ if __name__ == '__main__':
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Hem'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
-    model_params.fitting = 'OLSLAR' 
+    model_params.fitting = 'OLS' 
     model_params.n_splits= 50
     model_params.alpha   = 2
     model_params.num_test= int(1e6)
     model_params.num_pred= int(1e6)
-    model_params.pf      = np.array([1e-4])
+    model_params.pf      = np.array([0.5/(365.25*24*50)])
     model_params.abs_err = 1e-4
     model_params.rel_err = 2.5e-2
     model_params.n_jobs  = mp.cpu_count()
@@ -402,11 +409,6 @@ if __name__ == '__main__':
 
     ### 1. Get test data set
     data_test   = np.load(os.path.join(data_dir_test, filename_test), allow_pickle=True).tolist()
-    print(os.path.join(data_dir_test, filename_test))
-    print(data_test.u.shape)
-    print(np.amin(data_test.u, axis=-1))
-    print(np.amax(data_test.u, axis=-1))
-    print(data_test.__dict__.keys())
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
     data_test.y = solver.run(data_test.x) if not hasattr(data_test, 'y') else data_test.y
