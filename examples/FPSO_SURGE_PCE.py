@@ -23,7 +23,8 @@ def observation_error(y, mu=0, cov=0.03, random_state=100):
     e = stats.norm(0, cov * abs(y)).rvs(size=len(y), random_state=random_state)
     return e
 
-def run_UQRA_OptimalDesign(x, poly, doe_sampling, optimality, n_samples, optimal_samples=[], active_index=None, random_state=None):
+def run_UQRA_OptimalDesign(x, poly, doe_sampling, optimality, n_samples, 
+        optimal_samples=[], active_index=None, random_state=None):
     optimal_samples = 'RRQR' if len(optimal_samples) == 0 else copy.deepcopy(optimal_samples)
     x = poly.deg**0.5 * x if doe_sampling.lower() in ['cls4', 'cls5'] else x
     if doe_sampling.lower().startswith('cls'):
@@ -221,7 +222,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         y_train  = np.concatenate((y_train , y_train_ ), axis=0)
 
         weight  = doe_params.sampling_weight()   ## weight function
-        pce_model.fit(model_params.fitting, xi_train, y_train, w=weight, n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+        pce_model.fit(model_params.fitting, xi_train, y_train, w=weight,
+                n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
         data.global_optimal.append(xi_train_)
         print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(optimal_samples)))
         print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
@@ -395,10 +397,10 @@ if __name__ == '__main__':
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLS' 
     model_params.n_splits= 50
-    model_params.alpha   = 10
+    model_params.alpha   = 4
     model_params.num_test= int(1e6)
     model_params.num_pred= int(1e6)
-    model_params.pf      = np.array([1e-5])
+    model_params.pf      = np.array([1e-4])
     # model_params.pf      = np.array([0.5/(365.25*24*50)])
     model_params.abs_err = 1e-4
     model_params.rel_err = 2.5e-2
@@ -407,7 +409,7 @@ if __name__ == '__main__':
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
     # doe_params = uqra.ExperimentParameters('CLS4', 'S')
-    doe_params = uqra.ExperimentParameters('LHS', None)
+    doe_params = uqra.ExperimentParameters('MCS', None)
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
 
@@ -434,9 +436,9 @@ if __name__ == '__main__':
         data_test.y = data_test.y[theta]
     except:
         pass
-    xi_test     = data_test.xi[:, :model_params.num_test] 
-    y_test      = data_test.y [   :model_params.num_test] 
-    y0_test     = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
+    xi_test = data_test.xi[:, :model_params.num_test] 
+    y_test  = data_test.y [   :model_params.num_test] 
+    y0_test = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
 
     res = []
     ith_batch  = 0
@@ -458,8 +460,9 @@ if __name__ == '__main__':
         print('     - {:<23s} : {}'.format(' Test input data'   , filename_testin))
         print('     - {:<23s} : {}'.format(' Test output data'  , filename_test  ))
         res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
-    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}_{:d}{:d}_Alpha{:d}'.format(solver.nickname, 
-            solver.ndim, model_params.basis,doe_params.doe_sampling.capitalize(), r, batch_size, ith_batch, model_params.alpha)
+    filename = '{:s}_{:d}{:s}_{:s}E5R{:d}_{:d}{:d}_Alpha{:d}'.format(solver.nickname, 
+            solver.ndim, model_params.basis,doe_params.doe_sampling.capitalize(), r, 
+            batch_size, ith_batch, model_params.alpha)
     # ## ============ Saving QoIs ============
     try:
         np.save(os.path.join(data_dir_result, filename), res, allow_pickle=True)
