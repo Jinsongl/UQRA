@@ -288,7 +288,7 @@ class ExperimentParameters(Parameters):
                 if str(self.optimality).lower() == 'none':
                     idx = list(set(np.arange(self.num_cand)).difference(set(idx_selected)))[:n] 
                 else:
-                    X = poly.vandermonde(x_)
+                    X = poly.vandermonde(x)
                     X = X if active_index is None else X[:, active_index]
                     uqra.blockPrint()
                     doe = uqra.OptimalDesign(X)
@@ -303,7 +303,7 @@ class ExperimentParameters(Parameters):
                 if str(self.optimality).lower() == 'none':
                     idx = list(set(np.arange(self.num_cand)).difference(set(idx_selected)))[:n] 
                 else:
-                    X = poly.vandermonde(x_)
+                    X = poly.vandermonde(x)
                     X = X if active_index is None else X[:, active_index]
                     X = poly.num_basis**0.5*(X.T / np.linalg.norm(X, axis=1)).T
                     uqra.blockPrint()
@@ -318,6 +318,33 @@ class ExperimentParameters(Parameters):
                 raise ValueError
             res = (x_optimal, idx) if return_index else x_optimal
         return res
+
+    def samples_nearby(self, y0, data_xi, data_y, data_cand, deg, n0=10, epsilon=0.1, return_index=True):
+
+        if self.doe_sampling.lower()=='cls4':
+            data_cand_xi = data_cand *deg **0.5
+        else:
+            data_cand_xi = data_cand
+        ### locate samples close to estimated y0 (domain of interest)
+        idx_DoI_data_test = np.argsort(abs(data_y-y0))[:n0] 
+        idx_DoI_data_cand = []
+        for idx_ in idx_DoI_data_test:
+            xi = data_xi[:, idx_].reshape(-1, 1)
+            idx_DoI_data_cand_ = np.argwhere(np.linalg.norm(data_cand_xi -xi, axis=0) < epsilon).flatten().tolist()
+            ### xi is outside data cand 
+            if len(idx_DoI_data_cand_) == 0:
+                idx_DoI_data_cand_ = np.argsort(np.linalg.norm(data_cand_xi -xi, axis=0))[:100].tolist()
+            idx_DoI_data_cand = list(set(idx_DoI_data_cand + idx_DoI_data_cand_))
+        data_cand_DoI = data_cand[:, idx_DoI_data_cand] 
+        if return_index:
+            res = (data_cand_DoI, idx_DoI_data_cand)
+        else:
+            res = data_cand_DoI
+
+        return res 
+
+
+
 
 ### ----------------- Modeling Parameters() -----------------
 class Modeling(Parameters):

@@ -148,12 +148,12 @@ class Legendre1(PolyBase):
                 v[i] = (v[i-1]*x*(2*i - 1) - v[i-2]*(i - 1))/i
         return np.moveaxis(v, 0, -1)
 
-    def vandermonde(self, x, normed=True):
+    def vandermonde(self, x, normalize=True):
         """
             Pseudo-Vandermonde matrix of given degree.
         Arguments:
             x, ndarray of shape(ndim, nsamples)
-            normed: boolean. If true, each column is normalized such that \int_-1,1 Pm(x) Pm(x) f(x)dx = 1 w.r.t distribution f(x)
+            normalize: boolean. If true, each column is normalized such that \int_-1,1 Pm(x) Pm(x) f(x)dx = 1 w.r.t distribution f(x)
         """
         x        = np.array(x, copy=0, ndmin=2) + 0.0
         vander   = np.ones((x.shape[1], self.num_basis), x.dtype)
@@ -167,7 +167,7 @@ class Legendre1(PolyBase):
             for idim, ideg in enumerate(ibasis_degree):
                 vander1d_idim = vander1d[idim]
                 vander[:,i] = vander[:,i] * vander1d_idim[:,ideg]
-        if normed:
+        if normalize:
             vander = vander / np.sqrt(self.basis_norms)
         return vander
 
@@ -211,12 +211,12 @@ class Legendre1(PolyBase):
         w = np.squeeze(w)
         return x, w
 
-    def vandermonde(self, x, normed=True):
+    def vandermonde(self, x, normalize=True):
         """
             Pseudo-Vandermonde matrix of given degree.
         Arguments:
             x, ndarray of shape(ndim, nsamples)
-            normed: boolean. If true, each column is normalized such that \int_-1,1 Pm(x) Pm(x) dx = 1
+            normalize: boolean. If true, each column is normalized such that \int_-1,1 Pm(x) Pm(x) dx = 1
         """
         x    = np.array(x, copy=0, ndmin=2) + 0.0
         d, n = x.shape
@@ -231,7 +231,7 @@ class Legendre1(PolyBase):
             ### ith polynomial, it is composed of ibasis_degree = (l,m,n)
             for idim, ideg in enumerate(ibasis_degree):
                 vander[:,i] = vander[:,i] * vander_ind[idim,:,ideg]
-        if normed:
+        if normalize:
             vander = vander / np.sqrt(self.basis_norms)
         return vander
 
