@@ -391,17 +391,17 @@ if __name__ == '__main__':
     solver = uqra.FPSO(random_state=theta, distributions=uqra_env)
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = np.arange(2,10) #[2,6,10]#
+    model_params.degs    = np.arange(2,16) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLS' 
     model_params.n_splits= 50
-    model_params.alpha   = 4
-    model_params.num_test= int(1e6)
-    model_params.num_pred= int(1e6)
-    model_params.pf      = np.array([1e-4])
-    # model_params.pf      = np.array([0.5/(365.25*24*50)])
+    model_params.alpha   = 2
+    model_params.num_test= int(1e7)
+    model_params.num_pred= int(1e7)
+    # model_params.pf      = np.array([1e-4])
+    model_params.pf      = np.array([0.5/(365.25*24*50)])
     model_params.abs_err = 1e-4
     model_params.rel_err = 2.5e-2
     model_params.n_jobs  = mp.cpu_count()
@@ -415,7 +415,7 @@ if __name__ == '__main__':
 
     ## ------------------------ UQRA Simulation Parameters ----------------- ###
     sim_params = uqra.Simulation(solver, model_params, doe_params)
-    filename_test   = lambda r: r'McsE6R{:d}'.format(r)
+    filename_test   = lambda r: r'McsE7R{:d}'.format(r)
     sim_params.update_filenames(filename_test)
 
     data_dir_cand   = doe_params.data_dir_cand
