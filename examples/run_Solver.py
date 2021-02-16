@@ -214,8 +214,24 @@ def run_FPSO():
     # data_dir_samples= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/FPSO_SRUGE/TestData'
     data_dir_result = os.path.join(data_dir, 'FPSO_SURGE', 'TestData')
     # ------------------------ MCS ----------------- ###
-    # for r in range(1):
-        # data = uqra.Data()
+    for r in range(1):
+        data = uqra.Data()
+        dist_u = stats.uniform(0,1)
+        data.y = []
+        for itheta in range(1):
+            solver = uqra.FPSO(random_state=itheta, distributions=uqra_env)
+            data.u = dist_u.rvs(size=(solver.ndim, int(1e7)))
+            data.x = solver.map_domain(data.u, dist_u)
+            data.y.append(solver.run(data.x))
+        if len(data.y) == 1:
+            data.y = data.y[0]
+
+        del data.x
+        filename = '{:s}_McsE7R{:d}{:d}.npy'.format(solver.nickname, r, itheta)
+        print('saving data: {}'.format(os.path.join(data_dir_result, filename)))
+        np.save(os.path.join(data_dir_result, filename), data, allow_pickle=True)
+
+
         # filename   = 'DoE_McsE6R{:d}_norm.npy'.format(r)
         # data_mcs_u = np.load(os.path.join(data_dir_random, filename))[:uqra_env.ndim,:]
         # data.u     = data_mcs_u 
@@ -247,21 +263,21 @@ def run_FPSO():
                 # np.save('SDOF_SURGE_McsE6.npy', data, allow_pickle=True)
 
     # ------------------------ Grid for contour plot----------------- ###
-    solver = uqra.FPSO(random_state=np.arange(100))
-    x0 = np.linspace(0,20,210)
-    x1 = np.linspace(0,35,360)
-    x0, x1  = np.meshgrid(x0, x1)
-    x = np.array([x0.flatten(),x1.flatten()])
-    u = stats.norm(0, 0.5**0.5).ppf(uqra_env.cdf(x))
-    y = solver.run(x)
-    data = uqra.Data()
-    data.x = np.array([x0, x1])
-    data.u = np.array([u[0].reshape(x0.shape), u[1].reshape(x1.shape)])
-    data.y = np.array([iy.reshape(x0.shape) for iy in y])
-    try:
-        np.save(os.path.join(data_dir_result, 'SDOF_SURGE_Grid.npy'), data, allow_pickle=True)
-    except:
-        np.save('SDOF_SURGE_Grid.npy', data, allow_pickle=True)
+    # solver = uqra.FPSO(random_state=np.arange(100))
+    # x0 = np.linspace(0,20,210)
+    # x1 = np.linspace(0,35,360)
+    # x0, x1  = np.meshgrid(x0, x1)
+    # x = np.array([x0.flatten(),x1.flatten()])
+    # u = stats.norm(0, 0.5**0.5).ppf(uqra_env.cdf(x))
+    # y = solver.run(x)
+    # data = uqra.Data()
+    # data.x = np.array([x0, x1])
+    # data.u = np.array([u[0].reshape(x0.shape), u[1].reshape(x1.shape)])
+    # data.y = np.array([iy.reshape(x0.shape) for iy in y])
+    # try:
+        # np.save(os.path.join(data_dir_result, 'SDOF_SURGE_Grid.npy'), data, allow_pickle=True)
+    # except:
+        # np.save('SDOF_SURGE_Grid.npy', data, allow_pickle=True)
     
 
     # ------------------------ Basic Check ----------------- ###
@@ -711,7 +727,7 @@ def run_ExpTanh():
         np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 
 if __name__ == '__main__':
-    # run_FPSO()
+    run_FPSO()
     # run_Ishigami()
     # run_FourBranch()
     # run_CornerPeak()
@@ -719,7 +735,7 @@ if __name__ == '__main__':
     # run_InfiniteSlope()
     # run_GaytonHat()
     # run_CompositeGaussian()
-    run_Rastrigin()
+    # run_Rastrigin()
     # run_Borehole()
     # run_ExpTanh()
 
