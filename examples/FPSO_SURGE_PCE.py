@@ -391,13 +391,13 @@ if __name__ == '__main__':
     solver = uqra.FPSO(random_state=theta, distributions=uqra_env)
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = np.arange(2,16) #[2,6,10]#
+    model_params.degs    = np.arange(2,11) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLS' 
     model_params.n_splits= 50
-    model_params.alpha   = 2
+    model_params.alpha   = 4
     model_params.num_test= int(1e7)
     model_params.num_pred= int(1e7)
     # model_params.pf      = np.array([1e-4])
@@ -409,7 +409,7 @@ if __name__ == '__main__':
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
     # doe_params = uqra.ExperimentParameters('CLS4', 'S')
-    doe_params = uqra.ExperimentParameters('MCS', None)
+    doe_params = uqra.ExperimentParameters('MCS', 'S')
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
 
@@ -442,7 +442,7 @@ if __name__ == '__main__':
 
     res = []
     ith_batch  = 0
-    batch_size = 1
+    batch_size = 50
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
