@@ -409,7 +409,7 @@ if __name__ == '__main__':
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
     # doe_params = uqra.ExperimentParameters('CLS4', 'S')
-    doe_params = uqra.ExperimentParameters('MCS', None)
+    doe_params = uqra.ExperimentParameters('MCS', '')
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
 
