@@ -101,7 +101,7 @@ class OptimalDesign(ExperimentBase):
 
         if n>0:
             print('    -> 2: Continue Optimality Design, n={:d} ...'.format(n))
-            if optimality.upper == 'D':
+            if optimality.upper() == 'D':
                 optimal_samples = self.get_D_Optimality_samples(n, algorithm=algorithm)
 
             elif optimality.upper() == 'S':
@@ -266,8 +266,10 @@ class OptimalDesign(ExperimentBase):
             ## calculate (log)S values for each row in X_cand together with X_sltd
             if optimality == 'S':
                 optimality_values = self._greedy_update_S_Optimality_truncate(X_sltd, X_cand)
+                np.savetxt('optimality_values_S{:d}.csv'.format(optimality_values.size), optimality_values, delimiter=",")
             elif optimality == 'D':
                 optimality_values = self._greedy_update_D_Optimality_truncate(X_sltd, X_cand)
+                np.savetxt('optimality_values_D{:d}.csv'.format(optimality_values.size), optimality_values, delimiter=",")
             else:
                 print('   > UQRA {:s}-Optimal Design for TSM{:s} NOT implemented'.format(optimality))
                 raise NotImplementedError
@@ -275,6 +277,7 @@ class OptimalDesign(ExperimentBase):
             if len(optimality_values) != len(candidate_samples):
                 raise ValueError('Expecting {:d} S values, but {:d} given'.format(len(candidate_samples), len(optimality_values)))
             i = candidate_samples[np.argmax(optimality_values)] ## return the indices with largest s-value in original matrix Q
+            # print(optimality_values.T, i)
             ## check if this index is already selected
             if i in optimal_samples:
                 print('Row {:d} already selected'.format(i))
@@ -472,7 +475,7 @@ class OptimalDesign(ExperimentBase):
         X1 = np.array(X1, copy=False, ndmin=2)
 
         if X0.shape[0] > X0.shape[1]:
-            raise ValueError('Updating formula for S-value only works for underdetermined system')
+            raise ValueError('Selected matrix {}, but updating formula only works for underdetermined system'.format(X0.shape))
         if X0.shape[1] != X1.shape[1]:
             raise ValueError('matrix A, B must have same number of columns')
         k,p     = X0.shape
