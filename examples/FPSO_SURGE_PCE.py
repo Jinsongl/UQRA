@@ -192,7 +192,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             n_samples = len(active_index) *2
         else:
             n_samples = len(active_index)
-        n_samples = len(active_index) * model_params.alpha
+        n_samples = math.ceil(len(active_index) * model_params.alpha)
 
         print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
 
@@ -393,11 +393,11 @@ if __name__ == '__main__':
     model_params = uqra.Modeling('PCE')
     model_params.degs    = np.arange(2,11) #[2,6,10]#
     model_params.ndim    = solver.ndim
-    model_params.basis   = 'Heme'
+    model_params.basis   = 'Hem'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLS' 
     model_params.n_splits= 50
-    model_params.alpha   = 2
+    model_params.alpha   = 1.2
     model_params.num_test= int(1e7)
     model_params.num_pred= int(1e7)
     # model_params.pf      = np.array([1e-4])
@@ -408,8 +408,8 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    # doe_params = uqra.ExperimentParameters('CLS4', 'S')
-    doe_params = uqra.ExperimentParameters('MCS', 'D')
+    doe_params = uqra.ExperimentParameters('CLS4', 'S')
+    # doe_params = uqra.ExperimentParameters('MCS', 'D')
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
 
@@ -442,7 +442,7 @@ if __name__ == '__main__':
 
     res = []
     ith_batch  = 0
-    batch_size = 1
+    batch_size = 10
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
@@ -460,9 +460,9 @@ if __name__ == '__main__':
         print('     - {:<23s} : {}'.format(' Test input data'   , filename_testin))
         print('     - {:<23s} : {}'.format(' Test output data'  , filename_test  ))
         res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
-    filename = '{:s}_{:d}{:s}_{:s}E5R{:d}_{:d}{:d}_Alpha{:d}'.format(solver.nickname, 
+    filename = '{:s}_{:d}{:s}_{:s}E5R{:d}_{:d}{:d}_Alpha{:s}'.format(solver.nickname, 
             solver.ndim, model_params.basis,doe_params.doe_nickname(), r, 
-            batch_size, ith_batch, model_params.alpha)
+            batch_size, ith_batch, str(model_params.alpha))
     # ## ============ Saving QoIs ============
     try:
         np.save(os.path.join(data_dir_result, filename), res, allow_pickle=True)
