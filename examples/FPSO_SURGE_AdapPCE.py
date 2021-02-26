@@ -244,7 +244,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
             data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_temp.y0_hat[-1], xi_test, y_test_hat, data_cand
-                    , deg, n0=10, epsilon=0.1, return_index=True)
+                    , deg, n0=10, epsilon=0.5, return_index=True)
             print('     - {:<32s} : {}'.format('DoI candidate samples', data_cand_DoI.shape ))
             print('     - {:<32s} : {:d}'.format('Adding DoI optimal samples', n_samples))
 
@@ -409,8 +409,8 @@ if __name__ == '__main__':
     y0_test = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
 
     res = []
-    ith_batch  = 3
-    batch_size = 5
+    ith_batch  = 0
+    batch_size = 10
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
@@ -429,7 +429,7 @@ if __name__ == '__main__':
         print('     - {:<23s} : {}'.format(' Test output data'  , filename_test  ))
         res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
     filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}_{:d}{:d}'.format(solver.nickname, 
-            solver.ndim, model_params.basis,doe_params.doe_sampling.capitalize(), r, 
+            solver.ndim, model_params.basis,doe_params.doe_nickname(), r, 
             batch_size, ith_batch)
     # ## ============ Saving QoIs ============
     try:
