@@ -360,7 +360,7 @@ if __name__ == '__main__':
     solver = uqra.FPSO(random_state=theta, distributions=uqra_env)
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = np.arange(2,11) #[2,6,10]#
+    model_params.degs    = np.arange(2,4) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Hem'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
@@ -409,8 +409,8 @@ if __name__ == '__main__':
     y0_test = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
 
     res = []
-    ith_batch  = 0
-    batch_size = 10
+    ith_batch  = 4
+    batch_size = 5
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
