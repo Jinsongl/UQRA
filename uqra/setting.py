@@ -320,7 +320,6 @@ class ExperimentParameters(Parameters):
         return res
 
     def samples_nearby(self, y0, data_xi, data_y, data_cand, deg, n0=10, epsilon=0.1, return_index=True):
-
         if self.doe_sampling.lower()=='cls4':
             data_cand_xi = data_cand *deg **0.5
         else:

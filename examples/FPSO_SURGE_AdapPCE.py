@@ -244,7 +244,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
             data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_temp.y0_hat[-1], xi_test, y_test_hat, data_cand
-                    , deg, n0=10, epsilon=0.1, return_index=True)
+                    , deg, n0=10, epsilon=0.5, return_index=True)
             print('     - {:<32s} : {}'.format('DoI candidate samples', data_cand_DoI.shape ))
             print('     - {:<32s} : {:d}'.format('Adding DoI optimal samples', n_samples))
 
@@ -342,13 +342,13 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             for i, (ikey, ivalue) in enumerate(zip(isConverge, error_converge)):
                 print('     >  Checking #{:d} : {}, {:.2e}'.format(i, ikey, ivalue))
             tqdm.write('###############################################################################')
-            # break
+            break
     return data
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r = 0
-    theta = 1
+    theta = 3
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
@@ -376,7 +376,7 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('CLS4', 'D')
+    doe_params = uqra.ExperimentParameters('CLS4', 'S')
     # doe_params = uqra.ExperimentParameters('MCS', None)
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
@@ -409,8 +409,8 @@ if __name__ == '__main__':
     y0_test = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
 
     res = []
-    ith_batch  = 3
-    batch_size = 5
+    ith_batch  = 0
+    batch_size = 1
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
@@ -428,8 +428,8 @@ if __name__ == '__main__':
         print('     - {:<23s} : {}'.format(' Test input data'   , filename_testin))
         print('     - {:<23s} : {}'.format(' Test output data'  , filename_test  ))
         res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
-    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}_{:d}{:d}'.format(solver.nickname, 
-            solver.ndim, model_params.basis,doe_params.doe_sampling.capitalize(), r, 
+    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}S{:d}_{:d}{:d}'.format(solver.nickname, 
+            solver.ndim, model_params.basis,doe_params.doe_nickname(), r, theta,
             batch_size, ith_batch)
     # ## ============ Saving QoIs ============
     try:
