@@ -25,7 +25,7 @@ class Solver(SolverBase):
     """
 
     """
-    def __init__(self, name, ndim):
+    def __init__(self, name, ndim, **kwargs):
         """
         Empty Solver object
         """
@@ -33,17 +33,18 @@ class Solver(SolverBase):
         self.name       = name 
         self.nickname   = name
         self.ndim       = int(ndim)
+        self.distributions  = kwargs.get('distributions', None)
 
     def __str__(self):
         message = '{:s} (ndim={:d})'.format(self.name, self.ndim)
         return message
 
-    def run(self):
-        raise NotImplementedError
+    # def run(self):
+        # raise NotImplementedError
 
             
-    def map_domain(self):
-        raise NotImplementedError
+    # def map_domain(self):
+        # raise NotImplementedError
 
 
 
