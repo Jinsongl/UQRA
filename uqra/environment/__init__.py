@@ -13,6 +13,7 @@ Define environmental variable distributions
 
 from .Kvitebjorn import Kvitebjorn
 from .Norway5 import Norway5
+from .NDBC46022 import NDBC46022
 
 # import environment
 # import Norway5_2
