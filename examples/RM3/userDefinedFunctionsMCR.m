@@ -1,7 +1,7 @@
 %Example of user input MATLAB file for MCR post processing
 %filename = ['savedData',sprintf('%03d', imcr),'.mat'];
-filename = sprintf('savedData%03d.mat', imcr);
-
+filename = sprintf('RM3_2Hem%01d_SS%01d_R%01d.mat', deg, imcr+batch_size*ith_batch, waves.phaseSeed);
+filename = fullfile(data_dir, filename);
 mcr.Avgpower(imcr) = mean(output.ptos.powerInternalMechanics(2000:end,3));
 mcr.CPTO(imcr)  = pto(1).c;
 
