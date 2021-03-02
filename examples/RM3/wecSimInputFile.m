@@ -7,7 +7,7 @@ get_batch_data(batch_size, ith_batch, filename);
 if ismac
     data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/RM3/Data';
 elseif isunix
-    data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/RM3/Data';
+    data_dir = '/home/jinsong/Documents/MUSE_UQ_DATA/UQRA_Examples/RM3/Data';
 elseif ispc
     data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/RM3/Data';
 else
