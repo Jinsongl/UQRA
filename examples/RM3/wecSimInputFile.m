@@ -1,9 +1,8 @@
 %% Simulation Data
-deg = 2;
-filename = sprintf('RM3_2Hem%01d_train.mat', deg);
-batch_size = 2;
-ith_batch  = 1;
-get_batch_data(batch_size, ith_batch, filename);
+deg = 3;
+batch_size = 10;
+ith_batch  = 0;
+
 if ismac
     data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/RM3/Data';
 elseif isunix
@@ -14,7 +13,9 @@ else
     disp('Platform not supported')
 end
 
-
+filename = sprintf('RM3_2Hem3_S0_train_global.mat');
+filename = fullfile(data_dir, filename);
+get_batch_data(batch_size, ith_batch, filename);
 
 simu = simulationClass();               % Initialize Simulation Class
 simu.simMechanicsFile = 'RM3.slx';      % Location of Simulink Model File
@@ -22,8 +23,8 @@ simu.solver = 'ode4';                   % simu.solver = 'ode4' for fixed step & 
 % simu.mode = 'rapid-accelerator';      % Specify Simulation Mode ('normal','accelerator','rapid-accelerator')
 simu.explorer  ='on';                  % Turn SimMechanics Explorer (on/off)
 simu.startTime = 0;                     % Simulation Start Time [s]
-simu.rampTime  = 40;                   % Wave Ramp Time Length [s]
-simu.endTime   = 400;                  % Simulation End Time [s]
+simu.rampTime  = 400;                   % Wave Ramp Time Length [s]
+simu.endTime   = 4000;                  % Simulation End Time [s]
 simu.dt        = 0.1; 							% Simulation time-step [s]
 simu.mcrCaseFile = 'batch_data.mat';
 
