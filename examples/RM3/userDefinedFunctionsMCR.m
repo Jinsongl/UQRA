@@ -4,8 +4,11 @@ filename = sprintf('RM3_2Hem%01d_SS%01d_R%01d.mat', deg, imcr+batch_size*ith_bat
 filename = fullfile(data_dir, filename);
 mcr.Avgpower(imcr) = mean(output.ptos.powerInternalMechanics(2000:end,3));
 mcr.CPTO(imcr)  = pto(1).c;
+data.output = output;
+data.waves  = waves;
+[headers, maxima] = get_maxima(data);
+save (filename, 'mcr','waves', 'headers', 'maxima');
 
-save (filename, 'mcr','output','waves');
 
 %% Plot Power Matrix
 
