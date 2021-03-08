@@ -10,7 +10,7 @@
 
 """
 import uqra
-import numpy as np, os, sys
+import numpy as np, os, sys, io
 import scipy.stats as stats
 from tqdm import tqdm
 import itertools, copy, math, collections
@@ -199,10 +199,10 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         eng.workspace['deg'] = float(deg)
         eng.workspace['phaseSeed'] = float(theta)
         y_train_ = []
-        for iHs, iTp in x_train_.T:
+        for iHs, iTp in tqdm(x_train_.T, ncols=80, desc='   [WEC-SIM]' ):
             eng.workspace['Hs'] = float(iHs)
             eng.workspace['Tp'] = float(iTp)
-            eng.wecSim(nargout=0)
+            eng.wecSim(nargout=0,stdout=out,stderr=err)
             y_train_.append(np.squeeze(eng.workspace['maxima'])[model_params.channel])
         y_train_ = np.array(y_train_)
 
@@ -310,10 +310,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             eng.workspace['deg']       = float(deg)
             eng.workspace['phaseSeed'] = float(theta)
             y_train_ = []
-            for iHs, iTp in x_train_.T:
+            for iHs, iTp in tqdm(x_train_.T, ncols=80, desc='   [WEC-SIM]' ):
                 eng.workspace['Hs'] = float(iHs)
                 eng.workspace['Tp'] = float(iTp)
-                eng.wecSim(nargout=0)
+                # eng.wecSim(nargout=0)
+                eng.wecSim(nargout=0,stdout=out,stderr=err)
                 y_train_.append(np.squeeze(eng.workspace['maxima'])[model_params.channel])
             y_train_ = np.array(y_train_)
 
@@ -416,7 +417,10 @@ if __name__ == '__main__':
     np.set_printoptions(threshold=1000)
     np.set_printoptions(suppress=True)
     uqra_env = uqra.environment.NDBC46022()
+
     eng = matlab.engine.start_matlab()
+    out = io.StringIO()
+    err = io.StringIO()
     ## ------------------------ Define solver ----------------------- ###
     # solver = uqra.FPSO(random_state=theta, distributions=uqra_env)
     solver = uqra.Solver('RM3', 2, distributions=uqra_env)
