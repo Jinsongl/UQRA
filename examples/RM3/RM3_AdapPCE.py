@@ -422,7 +422,7 @@ if __name__ == '__main__':
     solver = uqra.Solver('RM3', 2, distributions=uqra_env)
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = np.arange(2,11) #[2,6,10]#
+    model_params.degs    = np.arange(2,9) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Hem'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
@@ -496,6 +496,7 @@ if __name__ == '__main__':
     filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}S{:d}_{:d}{:d}'.format(solver.nickname, 
             solver.ndim, model_params.basis, doe_params.doe_nickname(), r, theta,
             batch_size, ith_batch)
+    eng.quit()
     # ## ============ Saving QoIs ============
     try:
         np.save(os.path.join(data_dir_result, filename), res, allow_pickle=True)
