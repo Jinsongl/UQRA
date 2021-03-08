@@ -203,7 +203,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             eng.workspace['Hs'] = float(iHs)
             eng.workspace['Tp'] = float(iTp)
             eng.wecSim(nargout=0,stdout=out,stderr=err)
-            y_train_.append(np.squeeze(eng.workspace['maxima'])[model_params.channel])
+            y_train_.append(np.squeeze(eng.workspace['maxima'])[model_params.channel]/y_norm)
         y_train_ = np.array(y_train_)
 
 
@@ -315,7 +315,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 eng.workspace['Tp'] = float(iTp)
                 # eng.wecSim(nargout=0)
                 eng.wecSim(nargout=0,stdout=out,stderr=err)
-                y_train_.append(np.squeeze(eng.workspace['maxima'])[model_params.channel])
+                y_train_.append(np.squeeze(eng.workspace['maxima'])[model_params.channel]/y_norm)
             y_train_ = np.array(y_train_)
 
             # y_train_ = data_train_.y[:, model_params.channel]
@@ -411,6 +411,7 @@ if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r = 0
     theta = 2
+    y_norm = 1e6
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
@@ -439,7 +440,7 @@ if __name__ == '__main__':
     model_params.abs_err = 1e-4
     model_params.rel_err = 2.5e-2
     model_params.n_jobs  = mp.cpu_count()
-    model_params.channel = 2 # [2, 23, 24, 30]
+    model_params.channel = 23 # [2, 23, 24, 30]
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
@@ -497,9 +498,9 @@ if __name__ == '__main__':
         res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
     if len(res) == 1:
         res = res[0]
-    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}S{:d}_{:d}{:d}'.format(solver.nickname, 
+    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}S{:d}_y{:d}'.format(solver.nickname, 
             solver.ndim, model_params.basis, doe_params.doe_nickname(), r, theta,
-            batch_size, ith_batch)
+            batch_size, model_params.channel)
     eng.quit()
     # ## ============ Saving QoIs ============
     try:
