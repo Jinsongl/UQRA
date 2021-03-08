@@ -6,6 +6,7 @@ import numpy as np, scipy as sp
 import scipy.stats as stats
 import scipy
 
+np.printoptions(precision=2)
 sys.stdout  = uqra.utilities.classes.Logger()
 
 def orthogonal_normalization(n, alpha, beta):
@@ -55,6 +56,84 @@ class BasicTestSuite(unittest.TestCase):
         print(x)
         print(w)
 
+        print('--------------------Testing Vandermonde --------------------')
+        ndim, p = 1, 3
+        print('d={:d}, p={:d}'.format(ndim, p))
+        print('Physicist, against np.polynomial.hermite.hermvander (not normalized)')
+        orth_poly = uqra.Hermite(ndim, p, hem_type='physicists')
+        x = np.array([-1,0,1])
+        X = orth_poly.vandermonde(x, normalize=False)
+        X1= np.polynomial.hermite.hermvander(x,p)
+        if np.array_equal(X,X1):
+            print('     True: Vander Matrix equal')
+
+        print('Probabilists, against np.polynomial.hermite_e.hermvander (not normalized)')
+        orth_poly = uqra.Hermite(ndim, p, hem_type='probabilists')
+        x = np.array([-1,0,1])
+        X = orth_poly.vandermonde(x, normalize=False)
+        X1= np.polynomial.hermite_e.hermevander(x,p)
+        if np.array_equal(X,X1):
+            print('     True: Vander Matrix equal')
+
+        print('--------------------Testing Hermite.call(): Probabilists Hermite(d, p)--------------------')
+        x = np.arange(-5,5,0.5)
+        ndim, p   = 1, 4  ## dimension
+        coef      = np.ones(5)
+        orth_poly = uqra.Hermite(ndim, p, coef=coef, hem_type='probabilists')
+        print(orth_poly.coef)
+        y = orth_poly(x)
+        X = orth_poly.vandermonde(x)
+        print(x)
+        print(X)
+        print(y)
+
+        orth_poly = uqra.Hermite(ndim, p, hem_type='probabilists')
+        coef      = np.ones(orth_poly.num_basis)
+        print(orth_poly.coef)
+        orth_poly.set_coef(coef)
+        print(orth_poly.coef)
+        y = orth_poly(x)
+        X = orth_poly.vandermonde(x)
+        print(x)
+        print(X)
+        print(y)
+
+        orth_poly = uqra.Hermite(ndim, p, hem_type='probabilists')
+        coef      = np.ones(orth_poly.num_basis) *2
+        print(orth_poly.coef)
+        orth_poly.set_coef(coef)
+        print(orth_poly.coef)
+        y = orth_poly(x)
+        X = orth_poly.vandermonde(x)
+        print(x)
+        print(X)
+        print(y)
+
+
+        # print('--------------------Testing Hermite.call(): Probabilists Hermite(d, p)--------------------')
+        # ndim, p   = 1, 4  ## dimension
+        # poly_name = 'heme'
+        # orth_poly = uqra.poly.orthogonal(ndim, p, poly_name)
+        # # coef      = stats.norm.rvs(0,1, orth_poly.num_basis)
+        # coef      = np.ones(orth_poly.num_basis)
+        # solver    = uqra.SparsePoly(orth_poly, coef=coef)
+        # x = np.arange(-5,5,0.5)
+        # y = solver.run(x)
+        # X = orth_poly.vandermonde(x)
+        # print(x)
+        # print(X)
+        # print(y)
+        # coef      = np.ones(orth_poly.num_basis) * 2
+        # solver    = uqra.SparsePoly(orth_poly, coef=coef)
+        # x = np.arange(-5,5,0.5)
+        # y = solver.run(x)
+        # X = orth_poly.vandermonde(x)
+        # print(x)
+        # print(X)
+        # print(y)
+
+        return
+
         print('--------------------Testing Hermite.call(): Probabilists Hermite(d, p)--------------------')
         x = np.arange(-5,5,0.5)
         d, p = 1, 4
@@ -65,7 +144,6 @@ class BasicTestSuite(unittest.TestCase):
             y0=np.polynomial.hermite_e.hermeval(x,coef)
             poly.set_coef(coef)
             y1=poly(x)
-            print(y1.shape)
             # print(poly)
             if not np.array_equal(y0, y1):
                 print('     - max abs error: {:.2e}'.format(np.around(max(abs(y0-y1)), 2)))
@@ -151,26 +229,6 @@ class BasicTestSuite(unittest.TestCase):
             # print(y1)
             print('     - max abs error: {}'.format(max(abs(y0-y1))))
             print('\n')
-
-        print('--------------------Testing Vandermonde --------------------')
-        ndim= 1
-        p   = 3
-        print('d={:d}, p={:d}'.format(ndim, p))
-        print('Physicist')
-        orth_poly = uqra.Hermite(ndim, p, hem_type='physicists')
-        x = np.array([-1,0,1])
-        X = orth_poly.vandermonde(x, normed=False)
-        X1= np.polynomial.hermite.hermvander(x,p)
-        if np.array_equal(X,X1):
-            print('     Pass: Poly.vandermonde == np.polynomial.hermite.hermvander')
-
-        print('Probabilists')
-        orth_poly = uqra.Hermite(ndim, p, hem_type='probabilists')
-        x = np.array([-1,0,1])
-        X = orth_poly.vandermonde(x, normed=False)
-        X1= np.polynomial.hermite_e.hermevander(x,p)
-        if np.array_equal(X,X1):
-            print('     Pass: Poly.vandermonde == np.polynomial.hermite.hermvander')
 
         # ndim= 2
         # p   = 4
@@ -306,6 +364,22 @@ class BasicTestSuite(unittest.TestCase):
             poly.set_coef(coef)
             y1=poly(x)
             print('     - max abs error: {}'.format(max(abs(y0-y1))))
+
+        print('--------------------Testing Vandermonde --------------------')
+        ndim= 1
+        p   = 3
+        n   = 100
+        print('d={:d}, p={:d}'.format(ndim, p))
+        x = np.linspace(-1,1,1000) 
+        X = uqra.Legendre(ndim,p).vandermonde(x, normalize=False)
+        X1= np.polynomial.legendre.legvander(x,p)
+        print(X.shape)
+        print(X1.shape)
+        if np.array_equal(X,X1):
+            print('     Pass: Poly.vandermonde == np.polynomial.legendre.legvander')
+        else:
+            print(      'Abs max error:'.format(np.amax(abs(X-X1))))
+
 
         print('--------------------Testing Orthogonality --------------------')
         ndim= 1

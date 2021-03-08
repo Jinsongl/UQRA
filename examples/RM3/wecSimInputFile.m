@@ -1,64 +1,82 @@
 %% Simulation Data
-deg = 4;
-batch_size = 100;
-ith_batch  = 0;
-
-if ismac
-    data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/RM3/Data';
-elseif isunix
-    data_dir = '/home/jinsong/Documents/MUSE_UQ_DATA/UQRA_Examples/RM3/Data';
-elseif ispc
-    data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/RM3/Data';
-else
-    disp('Platform not supported')
-end
-
-filename = sprintf('RM3_2Hem4_S0_train_DoI3.mat');
-filename = fullfile(data_dir, filename);
-get_batch_data(batch_size, ith_batch, filename);
-
 simu = simulationClass();               % Initialize Simulation Class
-simu.simMechanicsFile = 'RM3.slx';      % Location of Simulink Model File
+simu.simMechanicsFile = 'RM3.slx';      % Specify Simulink Model File
+simu.mode = 'normal';                   % Specify Simulation Mode ('normal','accelerator','rapid-accelerator')
+simu.explorer='off';                     % Turn SimMechanics Explorer (on/off)
+simu.startTime= 0;                     % Simulation Start Time [s]
+simu.rampTime = 400;                   	% Wave Ramp Time [s]
+simu.endTime  = 4000;                       % Simulation End Time [s]
 simu.solver = 'ode4';                   % simu.solver = 'ode4' for fixed step & simu.solver = 'ode45' for variable step 
-% simu.mode = 'rapid-accelerator';      % Specify Simulation Mode ('normal','accelerator','rapid-accelerator')
-simu.explorer  ='off';                  % Turn SimMechanics Explorer (on/off)
-simu.startTime = 0;                     % Simulation Start Time [s]
-simu.rampTime  = 400;                   % Wave Ramp Time Length [s]
-simu.endTime   = 4000;                  % Simulation End Time [s]
-simu.dt        = 0.1; 							% Simulation time-step [s]
-simu.mcrCaseFile = 'batch_data.mat';
+simu.dt = 0.1; 							% Simulation time-step [s]
 
 %% Wave Information 
-% % Regular Waves  
-% waves = waveClass('regularCIC');        % Initialize Wave Class and Specify Type 
-% waves.H = 1.5;                          % Wave Height [m]
+% % noWaveCIC, no waves with radiation CIC  
+% waves = waveClass('noWaveCIC');       % Initialize Wave Class and Specify Type  
+
+% Regular Waves  
+% waves = waveClass('regular');           % Initialize Wave Class and Specify Type                                 
+% waves.H = 2.5;                          % Wave Height [m]
 % waves.T = 8;                            % Wave Period [s]
-% Irregular Waves
-waves = waveClass('irregular');
-waves.H = 1.5;                          % Wave Height [m]
-waves.T = 8;                            % Wave Period [s]
-waves.spectrumType = 'JS';
-waves.phaseSeed = 0;
+
+% % Regular Waves with CIC
+% waves = waveClass('regularCIC');           % Initialize Wave Class and Specify Type                                 
+% waves.H = 2.5;                          % Wave Height [m]
+% waves.T = 8;                            % Wave Period [s]
+
+% % Irregular Waves using PM Spectrum 
+% waves = waveClass('irregular');         % Initialize Wave Class and Specify Type
+% waves.H = 2.5;                          % Significant Wave Height [m]
+% waves.T = 8;                            % Peak Period [s]
+% waves.spectrumType = 'PM';              % Specify Wave Spectrum Type
+
+% Irregular Waves using JS Spectrum with Equal Energy and Seeded Phase
+waves = waveClass('irregular');         % Initialize Wave Class and Specify Type
+waves.H = Hs;                          % Significant Wave Height [m]
+waves.T = Tp;                            % Peak Period [s]
+waves.spectrumType = 'JS';              % Specify Wave Spectrum Type
+% waves.freqDisc = 'EqualEnergy';         % Uses 'EqualEnergy' bins (default) 
+waves.phaseSeed = phaseSeed;                    % Phase is seeded so eta is the same
+
+% % Irregular Waves using PM Spectrum with Traditional and State Space 
+% waves = waveClass('irregular');         % Initialize Wave Class and Specify Type
+% waves.H = 2.5;                          % Significant Wave Height [m]
+% waves.T = 8;                            % Peak Period [s]
+% waves.spectrumType = 'PM';              % Specify Wave Spectrum Type
+% simu.ssCalc = 1;                        % Turn on State Space
+% waves.freqDisc = 'Traditional';         % Uses 1000 frequnecies
+
+% % Irregular Waves with imported spectrum
+% waves = waveClass('spectrumImport');        % Create the Wave Variable and Specify Type
+% waves.spectrumDataFile = 'spectrumData.mat';  %Name of User-Defined Spectrum File [:,2] = [f, Sf]
+
+% % Waves with imported wave elevation time-history  
+% waves = waveClass('etaImport');         % Create the Wave Variable and Specify Type
+% waves.etaDataFile = 'etaData.mat'; % Name of User-Defined Time-Series File [:,2] = [time, eta]
+
 %% Body Data
 % Float
-body(1) = bodyClass('./hydroData/rm3.h5');      
-body(1).geometryFile = './geometry/float.stl';    
+body(1) = bodyClass('hydroData/rm3.h5');      
+    %Create the body(1) Variable, Set Location of Hydrodynamic Data File 
+    %and Body Number Within this File.   
+body(1).geometryFile = 'geometry/float.stl';    % Location of Geomtry File
 body(1).mass = 'equilibrium';                   
-body(1).momOfInertia = [20907301 21306090.66 37085481.11];  
+    %Body Mass. The 'equilibrium' Option Sets it to the Displaced Water 
+    %Weight.
+body(1).momOfInertia = [20907301 21306090.66 37085481.11];  %Moment of Inertia [kg*m^2]     
 
 % Spar/Plate
-body(2) = bodyClass('./hydroData/rm3.h5'); 
-body(2).geometryFile = './geometry/plate.stl'; 
+body(2) = bodyClass('hydroData/rm3.h5'); 
+body(2).geometryFile = 'geometry/plate.stl'; 
 body(2).mass = 'equilibrium';                   
 body(2).momOfInertia = [94419614.57 94407091.24 28542224.82];
 
 %% PTO and Constraint Parameters
 % Floating (3DOF) Joint
-constraint(1) = constraintClass('Constraint1'); %Create Constraint Variable and Set Constraint Name
-constraint(1).loc = [0 0 0];            % Constraint Location [m]
+constraint(1) = constraintClass('Constraint1'); % Initialize Constraint Class for Constraint1
+constraint(1).loc = [0 0 0];                    % Constraint Location [m]
 
 % Translational PTO
-pto(1) = ptoClass('PTO1');           	% Initialize PTO Class for PTO1
-pto(1).k = 0;                           % PTO Stiffness [N/m]
-pto(1).c=1200000;                       % PTO Damping [N/(m/s)]
-pto(1).loc = [0 0 0];                  	% PTO Location [m]
+pto(1) = ptoClass('PTO1');                      % Initialize PTO Class for PTO1
+pto(1).k = 0;                                   % PTO Stiffness [N/m]
+pto(1).c = 1200000;                             % PTO Damping [N/(m/s)]
+pto(1).loc = [0 0 0];                           % PTO Location [m]

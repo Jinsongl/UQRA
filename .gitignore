@@ -119,3 +119,7 @@ src/Data/
 
 # MATLAB
  *.mat
+
+# WEC-SIM
+slprj/
+output/

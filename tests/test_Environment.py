@@ -34,11 +34,11 @@ class BasicTestSuite(unittest.TestCase):
             # data_dir    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Norm'
             # # np.save(os.path.join(data_dir, filename), samples_x)
 
-    def test_EC(self):
-        P = 1000
-        U, X= Kvitebjorn().environment_contour(P,T=1800,n=1000)
-        EC_samples = np.concatenate((U, X), axis=0)
-        np.save(os.path.join('Kvitebjorn_EC_{:d}yr_1000'.format(P)), EC_samples)
+    # def test_EC(self):
+        # P = 1000
+        # U, X= Kvitebjorn().environment_contour(P,T=1800,n=1000)
+        # EC_samples = np.concatenate((U, X), axis=0)
+        # np.save(os.path.join('Kvitebjorn_EC_{:d}yr_1000'.format(P)), EC_samples)
 
 
         # U, X = Norway5().environment_contour(P,T=3600,n=1000)
@@ -82,6 +82,34 @@ class BasicTestSuite(unittest.TestCase):
             # samples_x   = envi_dist.ppf(mcs_sampels[:2,:])
             # data_dir    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Norway5/Norm'
             # # np.save(os.path.join(data_dir, filename), samples_x)
+
+    def test_NDBC46022(self):
+        print('========================TESTING: NDBC46022=======================')
+
+        uqra_env = uqra.environment.NDBC46022()
+        for r in range(10):
+            data_dir    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random'
+            filename = 'McsE6R{:d}.npy'.format(r)
+            print(filename)
+            mcs_samples = np.load(os.path.join(data_dir, filename))[:2,:]
+            x = uqra_env.cdf(mcs_samples)
+            print(np.mean(x, axis=1))
+            print(np.std(x, axis=1))
+
+            # mcs_sampels = stats.norm().cdf(mcs_sampels)
+            # samples_x   = envi_dist.ppf(mcs_sampels[:2,:])
+            # data_dir    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Norway5/Norm'
+            # np.save(os.path.join(data_dir, filename), samples_x)
+
+        ## ------------------------ Define solver ----------------------- ###
+        # solver = uqra.Solver('RM3', distributions=uqra_env)
+
+        # data_dir = '/Users/jinsongliu/BoxSync/MUSELab/uqra/uqra/environment'
+        # hs1     = np.linspace(0,2.9,291)
+        # hs2     = np.linspace(2.90,20, 1711)
+        # hs      = np.hstack((hs1, hs2))
+        # hs_pdf  = Norway5.hs_pdf(hs) 
+        # np.save(os.path.join(data_dir, 'Kvitebjorn_hs'), np.vstack((hs, hs_pdf)))
 
 if __name__ == '__main__':
     unittest.main()

@@ -5,15 +5,31 @@ from tqdm import tqdm
 import time, random
 import numpy as np, scipy as sp 
 import scipy.stats as stats
+import scipy
 import pickle
+import copy
 sys.stdout  = uqra.utilities.classes.Logger()
-
+from statsmodels.distributions.empirical_distribution import ECDF
 class Data(): pass
 def cdf_chebyshev(x):
     """
     x in [-1,1]
     """
     return np.arcsin(x)/np.pi  + 0.5
+
+def rejection_sampling(f, g, M, n):
+    """
+    rejection sampling from proposal distribution g to get samples from f
+    Arguments:
+        f: target distribution
+        g: proposal distribution
+        M: f <= M*g for all x. i.e. M = sup(f/g)
+        n: int, number of samples
+    """
+
+    pass
+
+
 
 class BasicTestSuite(unittest.TestCase):
     """Basic test cases."""
@@ -65,281 +81,205 @@ class BasicTestSuite(unittest.TestCase):
 
     def test_LHS(self):
         print('Testing: Latin Hypercube...')
+        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/LHS'
+        ndim = 2
         # u_dist = [stats.uniform(0,17.5), stats.uniform(0, 34.5)]
         # doe = uqra.LHS([sp.stats.norm(0,1),]*2)
-        # doe = uqra.LHS([sp.stats.uniform(),]*2)
-        doe = uqra.LHS(u_dist, criterion='c')
-        doe_x = doe.samples(size=int(1e5))
-        print(doe_x.shape)
-        print(np.mean(doe_x, axis=1))
-        print(np.std(doe_x, axis=1))
-        print(np.min(doe_x, axis=1))
-        print(np.max(doe_x, axis=1))
+        doe = uqra.LHS([sp.stats.uniform(-1,2),]*ndim)
+        # doe = uqra.LHS(u_dist, criterion='maxmin')
+        for n in range(10,1500):
+            print(' number of sampels {:d}'.format(n))
+            doe_x = np.array([doe.samples(size=n) for _ in range(50)])
+            filename = 'DoE_Lhs{:d}_2uniform.npy'.format(n)
+            np.save(os.path.join(data_dir, filename), doe_x)
 
-        np.save(os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/FPSO_SURGE/TestData', 'FPSO_SURGE_DoE_LhsE5.npy'), doe_x)
+    def test_OptimalDesign(self):
+        A = np.random.rand(100,10)
+        B = np.random.rand(100,10)
+        DoE = uqra.OptimalDesign(A)
+        s0 = DoE._cal_svalue_over(B, A)
+        s1 = DoE._update_S_Optimality(A,B)
+        s2 = DoE._update_D_Optimality(A,B)
+        print(s1,'\n', s2)
+        print(np.array_equal(s0,s1))
 
-    def test_Doptimality(self):
+        A = np.random.rand(2,10)
+        B = np.random.rand(100,10)
+        DoE = uqra.OptimalDesign(A)
+        s1 = DoE._update_S_Optimality_TSM( A, B)
+        s0 = DoE._cal_svalue_under(B, A)
+        # s2 = DoE._update_D_Optimality(A,B)
+        print(np.array_equal(s0,s1))
+        # print(s1, s2)
+
+
+    def test_OptD(self):
         """
         Test D-Optimality 
         """
-
-        # np.random.seed(100)
-        # ndim= 1
-        # deg = int(30)
-        # n   = int(1e5)
-        # print(' Asymptotic distribution (ndim,deg, n)=({:d},{:d}, {:d}) check against Chevyshev distribution'.format(ndim, deg, n))
-        # fname_cand = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/OED/DoE_McsE5R0_uniform.npy' 
-        # candidate_samples = np.arange(n)
-        # x = np.load(fname_cand)[:ndim, candidate_samples]
-        # poly = uqra.Legendre(ndim, deg)
-        # X = poly.vandermonde(x)
-        # doe = uqra.OptimalDesign(X, optimal_samples=[])
-        # SOptimal_samples0 = doe.get_samples('S', poly.num_basis, algorithm='RRQR')
-        # doe = uqra.OptimalDesign(X, optimal_samples=[])
-        # SOptimal_samples1 = doe.get_samples('S', poly.num_basis, algorithm='TSM')
-        # # print(idx)
-
-        # data = Data()
-        # data.ndim = ndim
-        # data.deg  = deg
-        # data.candidate_data = fname_cand
-        # data.candidate_samples = np.array(candidate_samples)
-        # data.OptS_QR = np.array(SOptimal_samples0)
-        # data.OptS_TSM= np.array(SOptimal_samples1)
-        # with open(os.path.join(data_dir, out_fname), "wb") as output_file:
-            # pickle.dump(data, output_file)
-
-        # # data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform'
-        # data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Normal'
-        # filename = 'DoE_McsE6R0.npy'
-        # data_set = np.load(os.path.join(data_dir, filename))
-
-        # np.random.seed(100)
-        # ndim= 2
-        # p   = np.array([2])
-
-        # curr_set = []
-        # for p in np.array([10]):
-            # orth_poly = uqra.Hermite(d=ndim,deg=p)
-            # n_cand    = int(1e5)
-            # u_samples = data_set[0:ndim, :n_cand]
-            # design_matrix = orth_poly.vandermonde(u_samples)
-            # # n_budget  = 10 * design_matrix.shape[1]
-            # n_budget  = 2048 
-            # # n_budget  =  int(np.exp2(math.ceil(np.log2(design_matrix.shape[1]))))
-            
-            # start    = time.time()
-            # doe      = uqra.OptimalDesign('D', curr_set=curr_set)
-            # doe_index= doe.samples(design_matrix, n_samples=n_budget, orth_basis=True)
-            # print(doe_index)
-            # done     = time.time()
-            # print('   >> OED-{:s} (n={:d}) time elapsed: {}'.format('S', n_cand, done - start))
-            # # np.save('DoE_McsE6R0_d2_p{:d}_D.npy'.format(p), doe_index)
-
-    def test_CLS(self):
-
-        # d = 2
-        # print('Testing: Random Sampling from Pluripotential Equilibrium ...')
-        # print('testing: d={:d}, theta: default'.format(d))
-        # for i in range(1,6):
-            # try:
-                # doe = uqra.RandomDesign([sp.stats.uniform,]*d, 'CLS{:d}'.format(i))
-                # doe_x = doe.get_samples(n_samples=1e5)
-                # print('CLS{:d}'.format(i))
-                # print('x shape: {}'.format(doe_x.shape))
-                # print('x mean: {}'.format(np.mean(doe_x, axis=1)))
-                # print('x std : {}'.format(np.std(doe_x, axis=1)))
-                # print('x min : {}'.format(np.min(doe_x, axis=1)))
-                # print('x max : {}'.format(np.max(doe_x, axis=1)))
-            # except NotImplementedError:
-                # pass
-
-        data_dir = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples'
-        ndim = 2
-        doe_method = 'CLS1'
-        print('{:s}, d={:d}'.format(doe_method, ndim))
-        doe = uqra.CLS(doe_method,ndim)
-        for r in range(10):
-            np.random.seed(None)
-            doe_x = doe.samples(size=1e5)
-            print('   - {:<25s} : {}'.format(' Dataset (U)', doe_x.shape))
-            print('   - {:<25s} : {}, {}'.format(' U [min(U), max(U)]', np.amin(doe_x, axis=1), np.amax(doe_x, axis=1)))
-            filename = 'DoE_{:s}E5D{:d}R{:d}.npy'.format(doe_method.capitalize(), ndim, r)
-            np.save(os.path.join(data_dir, filename), doe_x)
-
-        
-        # print('Testing: Random Sampling from Pluripotential Equilibrium ...')
-        # print('testing: d=2, theta: default')
-        # doe = uqra.RandomDesign( [sp.stats.uniform,] * 2, 'CLS')
-        # doe_x = doe.samples(n_samples=1e5)
-        # print(doe_x.shape)
-        # print(np.mean(doe_x, axis=1))
-        # print(np.std(doe_x, axis=1))
-        # print(np.min(doe_x, axis=1))
-        # print(np.max(doe_x, axis=1))
-
-        # print('Testing: Random Sampling from Pluripotential Equilibrium ...')
-        # ndim = 1
-        # print('testing: d={:d}, theta: default'.format(ndim))
-        # doe = uqra.RandomDesign( [sp.stats.norm,] *ndim, 'CLS')
-        # doe_x = doe.get_samples(n_samples=1e5)
-        # print(doe_x.shape)
-        # print(np.mean(doe_x, axis=1))
-        # print(np.std(doe_x, axis=1))
-        # print(np.min(doe_x, axis=1))
-        # print(np.max(doe_x, axis=1))
-        # # np.save('cls_norm_d2', doe_x)
-
-
-        # print('\nTesting: Random Sampling from Pluripotential Equilibrium ...')
-        # ndim = 3
-        # print('testing: d={:d}, theta: default'.format(ndim))
-        # doe = uqra.RandomDesign( [sp.stats.norm,] *ndim, 'CLS')
-        # doe_x = doe.get_samples(n_samples=1e7)
-        # print(doe_x.shape)
-        # print(np.mean(doe_x, axis=1))
-        # print(np.std(doe_x, axis=1))
-        # print(np.min(doe_x, axis=1))
-        # print(np.max(doe_x, axis=1))
-        # # np.save('cls_norm_d2', doe_x)
-
-        # data = np.load('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/CLS/Norm/DoE_ClsE6d3R0.npy')
-        # print(data.shape)
-        # print(np.mean(data, axis=1))
-        # print(np.std(data, axis=1))
-        # print(np.min(data, axis=1))
-        # print(np.max(data, axis=1))
-
-
-        # print('\nTesting: Random Sampling from Pluripotential Equilibrium ...')
-        # ndim = 4
-        # print('testing: d={:d}, theta: default'.format(ndim))
-        # for i in range(10):
-            # doe = uqra.RandomDesign( [sp.stats.norm,] * ndim, 'CLS')
-            # doe_x = doe.get_samples(n_samples=1e7)
-            # np.save('DoE_ClsE6d{:d}R{:d}.npy'.format(ndim,i), doe_x)
-        # print(doe_x.shape)
-        # print(np.mean(doe_x, axis=1))
-        # print(np.std(doe_x, axis=1))
-        # print(np.min(doe_x, axis=1))
-        # print(np.max(doe_x, axis=1))
-
-
-
-    def test_Soptimality(slef):
-        
+        print('Testing D Optimality with greedy method')
+        ndim, p = 2, 4
+        poly_name = 'heme'
+        nsamples= 100
         np.random.seed(100)
+        x = stats.norm(0,1).rvs(size=(ndim, nsamples))
+        orth_poly = uqra.poly.orthogonal(ndim, p, poly_name)
+        X = orth_poly.vandermonde(x)
+        q,r,p = scipy.linalg.qr(X.T, pivoting=True)
+
+        print(p)
+        optimal_samples = list(p[:X.shape[1]])
+        candidate_samples = self._list_diff(list(np.arange(0,nsamples)), optimal_samples) 
+        self._check_complement(optimal_samples, candidate_samples,list(np.arange(0, nsamples)))
+        while len(candidate_samples) != 0:
+            X0 = X[optimal_samples]
+            X1 = X[candidate_samples]
+            Ds = []
+            for x1 in X1:
+                X2 = np.concatenate((X0, x1.reshape(1,-1)), axis=0)
+                Ds.append(np.linalg.det(X2.T.dot(X2)))
+            idx = candidate_samples[np.argmax(Ds)]
+            # print(idx)
+            assert np.ndim(idx) == 0
+            optimal_samples.append(idx)
+            candidate_samples = self._list_diff(list(np.arange(0,nsamples)), optimal_samples) 
+        print(optimal_samples)
+
+        doe = uqra.OptimalDesign(X)
+        idx = doe.samples('D', 99, initialization='RRQR')
+        print(idx)
+
+    def test_OptS(self):
+        pass
+        
+    def test_CLS(self):
+        np.set_printoptions(precision=4)
+        np.set_printoptions(threshold=8)
+        np.set_printoptions(suppress=True)
+        np.random.seed(None)
+        print(' Testing CLS1, Chebyshev ECDF plot')
+        ### multi dimensional CLS1 just tensor product of 1d, so just need to check against 1d chebyshev
+        ### generate Chebyshev samples, if x ~ U[0, pi], then cos(X) ~ chebyshev
         ndim= 1
-        deg = int(30)
-        n   = int(1e5)
-        print(' Asymptotic distribution (ndim,deg, n)=({:d},{:d}, {:d}) check against Chevyshev distribution'.format(ndim, deg, n))
-        data_dir   = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/OED'
-        fname_cand = 'DoE_McsE6R0_uniform.npy' 
-        data_mcs   = np.load(os.path.join(data_dir, fname_cand))[:ndim, :]
-        candidate_samples= np.arange(data_mcs.shape[1])
-        random.seed(100)
-        # random.shuffle(candidate_samples)
-        candidate_samples= candidate_samples[:n]
-        print(candidate_samples[:5])
-        print(max(candidate_samples))
-        print(len(set(candidate_samples)))
-        x   = data_mcs[:ndim, candidate_samples]
-        poly= uqra.Legendre(ndim, deg)
-        X   = poly.vandermonde(x)
-        print(X[:3,:3])
-        doe = uqra.OptimalDesign(X, optimal_samples=[])
-        SOptimal_samples0 = doe.get_samples('D', poly.num_basis, algorithm='RRQR')
-        doe = uqra.OptimalDesign(X, optimal_samples=[])
-        SOptimal_samples1 = doe.get_samples('S', poly.num_basis, algorithm='TSM')
-        # print(idx)
+        n   = int(1e6)
+        print(' Checking CLS1: ndim={}, n={}'.format(ndim, n))
+        x0 = np.cos(stats.uniform(0, np.pi).rvs(size=n))
+        x1 = uqra.CLS('CLS1',ndim).samples(size=n)
+        print(' - Domain checking: ')
+        print('     - {:<10s}: [{}, {}]'.format('Expected', np.amin(x0), np.amax(x0)))
+        print('     - {:<10s}: [{}, {}]'.format('UQRA', np.amin(x1), np.amax(x1)))
+        print(' - Statistics checking: ')
+        print('     - {:<10s}: [{}, {}]'.format('Expected', np.mean(x0), np.std(x0)))
+        print('     - {:<10s}: [{}, {}]'.format('UQRA', np.mean(x1), np.std(x1)))
+        print(' - Run UQRA_TEst.ipynb to check cdf/pdf plots ')
+        filename = 'DoE_CLS1E6D1.npy'
+        np.save(os.path.join('Data', filename), np.array([x0.reshape(ndim, -1),x1]))
 
 
-        np.save(os.path.join(data_dir, 'test_S0.npy'), data_mcs[:,SOptimal_samples0])
-        np.save(os.path.join(data_dir, 'test_S1.npy'), data_mcs[:,SOptimal_samples1])
 
-        # data = Data()
-        # data.ndim = ndim
-        # data.deg  = deg
-        # data.candidate_data = fname_cand
-        # data.candidate_samples = np.array(candidate_samples)
-        # data.OptS_QR = np.array(SOptimal_samples0)
-        # data.OptS_TSM= np.array(SOptimal_samples1)
-        # with open(os.path.join(data_dir, 'test.pkl'), "wb") as output_file:
-            # pickle.dump(data, output_file)
+        print(' Testing CLS4 ')
+        ndim, n = 1, int(1E6)
+        print(' Checking CLS4: ndim={}, n={}'.format(ndim, n))
+        ### d=1, v(x) = pi * sqrt(2-x**2)**1/2
+        ## perform rejection sampling to get samples from v(x)
+        ## proposal distribution N(0,1)
+        ## M = sup(v/g)
+        M  = np.sqrt(2/np.pi * 2.72)
+        n0 = math.ceil(M*2) * n
+        u  = stats.uniform(0,1).rvs(size=n0) 
+        y  = stats.norm(0,1).rvs(size=n0)
+        y  = y[np.where(abs(y) <= np.sqrt(2))]
+        u  = u[np.where(abs(y) <= np.sqrt(2))]
+        vy = 1.0/np.pi*np.sqrt(2-y**2)
+        gy = stats.norm(0,1).pdf(y)
+        x0 = y[np.where(u < vy/(M*gy))][:n]
+        x1 = uqra.CLS('CLS4',ndim).samples(size=n)
+        print(x0.shape)
+        print(x1.shape)
+        print(' - Domain checking: ')
+        print('     - {:<10s}: [{}, {}]'.format('Expected', np.amin(x0), np.amax(x0)))
+        print('     - {:<10s}: [{}, {}]'.format('UQRA', np.amin(x1), np.amax(x1)))
+        print(' - Statistics checking [mu, std]: ')
+        print('     - {:<10s}: [{}, {}]'.format('Expected ', np.mean(x0), np.std(x0)))
+        print('     - {:<10s}: [{}, {}]'.format('UQRA ', np.mean(x1), np.std(x1)))
+        filename = 'DoE_CLS4E6D1.npy'
+        np.save(os.path.join('Data', filename), np.array([x0.reshape(ndim, -1),x1]))
 
-        # x = np.linspace(-1,1,1000)
-        # y = cdf_chebyshev(x)
-        # ndim    = 2
-        # n_cand  = int(1e7)
-
-        # data_dir= r'/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/MCS/Uniform'
-        # filename= r'DoE_McsE6R0.npy'
-        # mcs_data_set  = np.load(os.path.join(data_dir, filename))
-        # x_cand  = mcs_data_set[:ndim,:n_cand].reshape(ndim, -1)
-
-        # for i, p in enumerate([5, ]):
-            # mean_kappa = []
-            # for _ in range(1):
-                # np.random.seed(100)
-                # orth_poly = uqra.Legendre(d=ndim,deg=p)
-                # # orth_poly = uqra.Hermite(d=ndim,deg=p, hem_type='physicists')
-                # doe     = uqra.OptimalDesign('S', selected_index=[3284,])
-                # X       = orth_poly.vandermonde(x_cand)
-                # idx     = doe.get_samples(X, n=math.ceil(1.2 * orth_poly.num_basis), orth_basis=True)
-                # print('adding:')
-                # print(idx)
-                # print('current:')
-                # print(doe.selected_index)
-                # x_samples = x_cand[:,idx]
-                # X_train = orth_poly.vandermonde(x_samples)
-                # _, s, _ = np.linalg.svd(X_train)
-                # ## condition number, kappa = max(svd)/min(svd)
-                # kappa = max(abs(s)) / min(abs(s)) 
-                # mean_kappa.append(kappa)
-                # print('mean condition number: {}'.format(np.mean(mean_kappa)))
-
-
+        ndim, n = 2, int(1E6)
+        print(' Checking CLS4: ndim={}, n={}'.format(ndim, n))
+        ### d=1, v(x) = 2*pi * (2-x**2)
+        ## perform rejection sampling to get samples from v(x)
+        ## proposal distribution N(0,1)
+        ## M = sup(v/g)
+        # M  = np.sqrt(2/np.pi)
+        # n0 = math.ceil(M*2) * n
+        # u  = stats.uniform(0,1).rvs(size=n0) 
+        # y  = stats.norm(0,1).rvs(size=n0)
+        # y  = y[np.where(abs(y) <= np.sqrt(2))]
+        # u  = u[np.where(abs(y) <= np.sqrt(2))]
+        # vy = 1.0/np.pi*np.sqrt(2-y**2)
+        # gy = stats.norm(0,1).pdf(y)
+        # x0 = y[np.where(u < vy/(M*gy))][:n]
+        x1 = uqra.CLS('CLS4',ndim).samples(size=n)
+        x0 = x1 
+        print(x0.shape)
+        print(x1.shape)
+        print(' - Domain checking: ')
+        print('     - {:<10s}: [{}, {}]'.format('Expected', np.amin(x0), np.amax(x0)))
+        print('     - {:<10s}: [{}, {}]'.format('UQRA', np.amin(x1), np.amax(x1)))
+        print(' - Statistics checking [mu, std]: ')
+        print('     - {:<10s}: [{}, {}]'.format('Expected ', np.mean(x0), np.std(x0)))
+        print('     - {:<10s}: [{}, {}]'.format('UQRA ', np.mean(x1), np.std(x1)))
+        filename = 'DoE_CLS4E6D{:d}.npy'.format(ndim)
+        np.save(os.path.join('Data', filename), np.array([x0.reshape(ndim, -1),x1]))
     def test_gauss_quadrature(self):
+        pass
+
+    def _list_union(self, ls1, ls2):
         """
-        https://keisan.casio.com/exec/system/1329114617
+        append ls2 to ls1 and check if there exist duplicates
+        return the union of two lists and remove duplicates
         """
+        ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
+        if len(ls) != len(set(ls1).union(set(ls2))):
+            raise ValueError('Duplicate elements found in list when append to each other')
+        return ls
 
-        print('========================TESTING: 1D GAUSS QUADRATURE=======================')
-        dists2test = [cp.Uniform(-1,1), cp.Normal(), cp.Gamma(1,1), cp.Beta(1,1)]
-        rules2test = ['leg', 'hem', 'lag', 'jacobi']
-        order2test = [2,3,4,5,6,7,8]
-        for idist2test, irule2test in zip(dists2test, rules2test):
-            print('-'*50)
-            print('>>> Gauss Quadrature with polynominal: {}'.format(const.DOE_RULE_FULL_NAMES[irule2test.lower()]))
-            uqra.blockPrint()
-            quad_doe = uqra.DoE('QUAD', irule2test, order2test, idist2test)
-            uqra_samples = quad_doe.get_samples()
-            # quad_doe.disp()
-            uqra.enablePrint()
-            if irule2test == 'hem':
-                for i, iorder in enumerate(order2test):
-                    print('>>> order : {}'.format(iorder))
-                    coord1d_e, weight1d_e = np.polynomial.hermite_e.hermegauss(iorder)
-                    print('{:<15s}: {}'.format('probabilist', np.around(coord1d_e,2)))
-                    coord1d, weight1d = np.polynomial.hermite.hermgauss(iorder)
-                    print('{:<15s}: {}'.format('physicist', np.around(coord1d,2)))
-                    print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
+    def _list_diff(self, ls1, ls2):
+        """
+        returns a list that is the difference between two list, elements present in ls1 but not in ls2
+        """
+        ls1 = list(copy.deepcopy(ls1))
+        ls2 = list(copy.deepcopy(ls2))
+        for element in ls2:
+            try:
+                ls1.remove(element)
+            except ValueError:
+                pass
+        return ls1
 
-            elif irule2test == 'leg':
-                for i, iorder in enumerate(order2test):
-                    print('>>> order : {}'.format(iorder))
-                    coord1d, weight1d = np.polynomial.legendre.leggauss(iorder)
-                    print('{:<15s}: {}'.format('numpy ', np.around(coord1d,2)))
-                    print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
-            elif irule2test == 'lag':
-                for i, iorder in enumerate(order2test):
-                    print('>>> order : {}'.format(iorder))
-                    coord1d, weight1d = np.polynomial.laguerre.laggauss(iorder)
-                    print('{:<15s}: {}'.format('numpy ', np.around(coord1d,2)))
-                    print('{:<15s}: {}'.format('uqra', np.around(np.squeeze(uqra_samples[i][:-1,:]),2)))
-            elif irule2test == 'jacobi':
-                print('NOT TESTED YET')
+    def _list_inter(self, ls1, ls2):
+        """
+        return common elements between ls1 and ls2 
+        """
+        ls = list(set(ls1).intersection(set(ls2)))
+        return ls
 
+    def _check_complement(self, A, B, U=None):
+        """
+        check if A.union(B) = U and A.intersection(B) = 0
+        """
+        A = set(A)
+        B = set(B)
+        U = set(np.arange(self.X.shape[0])) if U is None else set(U)
+        if A.union(B) != U:
+            raise ValueError(' Union of sets A and B are not the universe U')
+        if len(A.intersection(B)) != 0:
+            raise ValueError(' Sets A and B have common elements: {}'.format(A.intersection(B)))
+        return True
 
 if __name__ == '__main__':
+    np.set_printoptions(precision=4)
+    np.set_printoptions(threshold=8)
+    np.set_printoptions(suppress=True)
     unittest.main()
