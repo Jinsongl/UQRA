@@ -127,7 +127,7 @@ class OrthPoly(SolverBase):
         self.deg       = orth_poly.deg
         self.num_basis = orth_poly.num_basis
         self.dist_name = orth_poly.dist_name
-        self.distributions = orth_poly.dist_u
+        self.distributions = orth_poly.weight
         self.nickname  = 'OrthPoly_{:d}{:s}{:d}'.format(orth_poly.ndim, orth_poly.nickname, orth_poly.deg)
         self.orth_poly.set_coef(coef)
         self.coef = coef 
@@ -185,36 +185,36 @@ class OrthPoly(SolverBase):
             error = np.linalg.norm(large_beta[basis_common]-small_beta, normord)/ np.linalg.norm(beta, normord)
         return  error
 
-    def map_domain(self, u, u_cdf):
-        """
-        mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
-        Argument:
-            u: np.ndarray of shape(ndim, nsamples)
-            u_cdf: list of distributions from scipy.stats
-        """
-        if isinstance(u_cdf, np.ndarray):
-            assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
-            x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
-        else:
-            u, dist_u = super().map_domain(u, u_cdf) 
-            x = []
-            for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
-                assert idist_u.dist.name == idist_x.dist.name
-                if idist_u.dist.name == 'uniform':
-                    ua, ub = idist_u.support()
-                    loc_u, scl_u = ua, ub-ua
-                    xa, xb = idist_x.support()
-                    loc_x, scl_x = xa, xb-xa 
-                    x.append((iu-loc_u)/scl_u * scl_x + loc_x)
+    # def map_domain(self, u, u_cdf):
+        # """
+        # mapping random variables u from distribution u_cdf (default U(0,1)) to self.distributions 
+        # Argument:
+            # u: np.ndarray of shape(ndim, nsamples)
+            # u_cdf: list of distributions from scipy.stats
+        # """
+        # if isinstance(u_cdf, np.ndarray):
+            # assert (u_cdf.shape[0] == self.ndim), '{:s} expecting {:d} random variables, {:s} given'.format(self.name, self.ndim, u_cdf.shape[0])
+            # x = np.array([idist.ppf(iu_cdf)  for iu_cdf, idist in zip(u_cdf, self.distributions)])
+        # else:
+            # u, dist_u = super().map_domain(u, u_cdf) 
+            # x = []
+            # for iu, idist_x, idist_u in zip(u, self.distributions, dist_u):
+                # assert idist_u.dist.name == idist_x.dist.name
+                # if idist_u.dist.name == 'uniform':
+                    # ua, ub = idist_u.support()
+                    # loc_u, scl_u = ua, ub-ua
+                    # xa, xb = idist_x.support()
+                    # loc_x, scl_x = xa, xb-xa 
+                    # x.append((iu-loc_u)/scl_u * scl_x + loc_x)
 
-                elif idist_u.dist.name == 'norm':
-                    mean_u = idist_u.mean()
-                    mean_x = idist_x.mean()
-                    std_u  = idist_u.std()
-                    std_x  = idist_x.std()
-                    x.append((iu-mean_u)/std_u * std_x + mean_x)
-            x = np.vstack(x)
-        return x
+                # elif idist_u.dist.name == 'norm':
+                    # mean_u = idist_u.mean()
+                    # mean_x = idist_x.mean()
+                    # std_u  = idist_u.std()
+                    # std_x  = idist_x.std()
+                    # x.append((iu-mean_u)/std_u * std_x + mean_x)
+            # x = np.vstack(x)
+        # return x
 
 class Poly4th(SolverBase):
     """
