@@ -203,7 +203,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             eng.workspace['Hs'] = float(iHs)
             eng.workspace['Tp'] = float(iTp)
             eng.wecSim(nargout=0,stdout=out,stderr=err)
-            y_train_.append(np.squeeze(eng.workspace['maxima'])[model_params.channel]/y_scale)
+            y_train_.append(np.squeeze(eng.workspace['maxima']))
         y_train_ = np.array(y_train_)
 
 
