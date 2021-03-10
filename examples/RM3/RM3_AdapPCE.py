@@ -186,41 +186,19 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         # n_samples = len(active_index) * model_params.alpha
         print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
 
-        xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, data_train.xi, 
+        xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi, 
                 active_index=None, initialization='RRQR', return_index=True) 
         idx_optimal_samples_cum = list_union(idx_optimal_samples_cum, idx_optimal)
         idx_optimal_samples_deg = list_union(idx_optimal_samples_deg, idx_optimal)
         print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(idx_optimal_samples_deg)))
         print('     - {:<32s} : {:d}'.format('Total number of samples', len(idx_optimal_samples_cum)))
         x_train_ = solver.map_domain(xi_train_, dist_xi)
+        ii = np.where(np.array([iglobal_data.deg for iglobal_data in global_data]) == deg)[0][0]
+        print(ii)
+        iglobal_data = global_data[ii]
+        assert np.amax(abs(x_train_-iglobal_data.x_train)) < 1e-6  ## make sure train samples are same
+        y_train_ = iglobal_data.y_train[:, model_params.channel, theta]/y_scale
 
-        ## get train data, if not available, return training samples to run
-        ## set matlabengine workspace variables
-        eng.workspace['deg'] = float(deg)
-        eng.workspace['phaseSeed'] = float(theta)
-        y_train_ = []
-        for iHs, iTp in tqdm(x_train_.T, ncols=80, desc='   [WEC-SIM]' ):
-            eng.workspace['Hs'] = float(iHs)
-            eng.workspace['Tp'] = float(iTp)
-            eng.wecSim(nargout=0,stdout=out,stderr=err)
-            y_train_.append(np.squeeze(eng.workspace['maxima'])[model_params.channel]/y_scale)
-        y_train_ = np.array(y_train_)
-
-
-        # filename = '{:s}_{:s}_S{:d}_train_global.npy'.format(solver.nickname, pce_model.tag, theta)
-        # while not os.path.isfile(os.path.join(data_dir_result, filename)):
-            # filename = '{:s}_{:s}_S{:d}_train_global.mat'.format(solver.nickname, pce_model.tag, theta)
-            # if not os.path.isfile(os.path.join(data_dir_result, filename)):
-                # mdic = {"x": x_train_.T, "xi": xi_train_.T}
-                # scipy.io.savemat(os.path.join(data_dir_result, filename), mdic)
-            # iscontinue = input(" Run WECSIM for {:s}, enter 'yes' when ready: ".format(filename))
-            # filename = '{:s}_{:s}_S{:d}_train_global.npy'.format(solver.nickname, pce_model.tag, theta)
-
-        # data_train_ = np.load(os.path.join(data_dir_result, filename), allow_pickle=True).tolist()
-        # if np.amax(abs(x_train_-x)) > 1e-6:
-            # raise ValueError(' x train not equal, max error: {:.4e}'.format(np.amax(abs(x_train_-data_train_.x))))
-
-        # y_train_ = data_train_.y[:, model_params.channel]
         data_ideg.xi_train_.append(xi_train_)
         data_ideg.x_train_.append (x_train_)
         data_ideg.y_train_.append (y_train_)
@@ -265,15 +243,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
             print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
-            # idx_data_cand_DoI = []
-            # for iy0_hat, iy_test_hat in zip(data_ideg.y0_hat_[-1], y_test_hat):
-                # _, idx_ = idoe_params.samples_nearby(iy0_hat, xi_test, abs(iy_test_hat), data_cand , 
-                        # deg, n0=10, epsilon=0.5, return_index=True)
-                # idx_data_cand_DoI += list(idx_)
-            # idx_data_cand_DoI= np.unique(idx_data_cand_DoI).tolist()
-
-            # data_cand_DoI = data_cand[:, idx_data_cand_DoI]
-
             data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.y0_hat_[-1], xi_test, y_test_hat, data_cand
                     , deg, n0=10, epsilon=0.1, return_index=True)
 
@@ -294,19 +263,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
             x_train_ = solver.map_domain(xi_train_, dist_xi)
 
-            # filename = '{:s}_{:s}_S{:d}_train_DoI{:d}.npy'.format(solver.nickname, pce_model.tag, theta, i_iteration)
-            # while not os.path.isfile(os.path.join(data_dir_result, filename)):
-                # filename = '{:s}_{:s}_S{:d}_train_DoI{:d}.mat'.format(solver.nickname, pce_model.tag, theta, i_iteration)
-                # if not os.path.isfile(os.path.join(data_dir_result, filename)):
-                    # mdic = {"x": x_train_.T, "xi": xi_train_.T}
-                    # scipy.io.savemat(os.path.join(data_dir_result, filename), mdic)
-                # iscontinue = input(" Run WECSIM for {:s}, enter 'yes' when ready: ".format(filename))
-                # filename = '{:s}_{:s}_S{:d}_train_DoI{:d}.npy'.format(solver.nickname, pce_model.tag, theta, i_iteration)
-
-            # data_train_ = np.load(os.path.join(data_dir_result, filename), allow_pickle=True).tolist()
-            # if np.amax(abs(x_train_-data_train_.x)) > 1e-6:
-                # raise ValueError(' x train not equal, max error: {:.4e}'.format(np.amax(abs(x_train_-data_train_.x))))
-
             eng.workspace['deg']       = float(deg)
             eng.workspace['phaseSeed'] = float(theta)
             y_train_ = []
@@ -315,7 +271,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 eng.workspace['Tp'] = float(iTp)
                 # eng.wecSim(nargout=0)
                 eng.wecSim(nargout=0,stdout=out,stderr=err)
-                y_train_.append(np.squeeze(eng.workspace['maxima'])[model_params.channel]/y_scale)
+                y_train_.append(np.squeeze(eng.workspace['maxima'])[model_params.channel+2]/y_scale) ## first two are Hs,Tp
             y_train_ = np.array(y_train_)
 
             # y_train_ = data_train_.y[:, model_params.channel]
@@ -409,8 +365,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r = 0
-    theta = 2
+    r, theta= 0, 2
     y_scale = 1e6
     np.random.seed(100)
     random.seed(100)
@@ -467,14 +422,12 @@ if __name__ == '__main__':
     data_test   = np.load(os.path.join(data_dir_test, filename_test), allow_pickle=True).tolist()
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
-    # data_test.y = solver.run(data_test.x) if not hasattr(data_test, 'y') else data_test.y
-    # try:
-        # data_test.y = data_test.y[theta]
-    # except:
-        # pass
     xi_test = data_test.xi[:, :model_params.num_test] 
-    # y_test  = data_test.y [   :model_params.num_test] 
-    # y0_test = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
+    ### 2. Get finished global data
+    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}.npy'.format(solver.nickname, 
+            solver.ndim, model_params.basis, doe_params.doe_nickname(), r)
+    global_data = np.load(os.path.join(data_dir_result, filename), allow_pickle=True).tolist()
+    headers  = global_data[0].headers
 
     res = []
     ith_batch  = 0
