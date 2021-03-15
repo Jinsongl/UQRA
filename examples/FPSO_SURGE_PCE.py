@@ -29,6 +29,10 @@ def list_union(ls1, ls2):
     append ls2 to ls1 and check if there exist duplicates
     return the union of two lists and remove duplicates
     """
+    if ls1 is None:
+        ls1 = []
+    if ls2 is None:
+        ls2 = []
     ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
     if len(ls) != len(set(ls1).union(set(ls2))):
         print('[WARNING]: list_union: duplicate elements found in list when append to each other')
@@ -239,7 +243,7 @@ if __name__ == '__main__':
     model_params = uqra.Modeling('PCE')
     model_params.degs    = np.arange(2,11) #[2,6,10]#
     model_params.ndim    = solver.ndim
-    model_params.basis   = 'Hem'
+    model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLS' 
     model_params.n_splits= 50
@@ -254,8 +258,8 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    # doe_params = uqra.ExperimentParameters('MCS', 'S')
-    doe_params = uqra.ExperimentParameters('CLS4', 'S')
+    doe_params = uqra.ExperimentParameters('LHS', None)
+    # doe_params = uqra.ExperimentParameters('CLS4', 'S')
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
 
