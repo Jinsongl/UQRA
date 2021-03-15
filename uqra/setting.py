@@ -267,6 +267,7 @@ class ExperimentParameters(Parameters):
             doe = uqra.LHS([dist_xi, ] *self.ndim)
             x_optimal = doe.samples(size=n)
             res = x_optimal
+            res = (res, None) if return_index else res 
 
         else:
             x = np.array(x, copy=False, ndmin=2)
