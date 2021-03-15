@@ -86,10 +86,10 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     idx_optimal_samples_cum = []
     ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
 
-    data_train = uqra.Data()
-    data_train.xi = np.empty((model_params.ndim, 0))
-    data_train.x  = np.empty((model_params.ndim, 0))
-    data_train.y  = np.empty((0,))
+    # data_train = uqra.Data()
+    # data_train.xi = np.empty((model_params.ndim, 0))
+    # data_train.x  = np.empty((model_params.ndim, 0))
+    # data_train.y  = np.empty((0,))
 
     for i, (ndim, deg) in enumerate(ndim_deg_cases):
         print('\n==================================================================================')
@@ -128,19 +128,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         ioptimality   = idoe_params.optimality
         print('     - {:<23s} : {}'.format(' UQRA DoE '  , idoe_nickname))
         ### temp data object containing results from intermedia steps
-        data_ideg = uqra.Data()
-        data_ideg.ndim      = ndim
-        data_ideg.deg       = deg 
-        data_ideg.y0_hat_   = []
-        data_ideg.cv_err_   = []
-        # data_ideg.kappa_    = []
-        data_ideg.rmse_y_   = []
-        data_ideg.model_    = []
-        data_ideg.score_    = []
-        data_ideg.yhat_ecdf_= []
-        data_ideg.xi_train_ = []
-        data_ideg.x_train_  = []
-        data_ideg.y_train_  = []
         idx_optimal_samples_deg=[]
 
         ## ------------------------ #1: Obtain global optimal samples ----------------- ###
@@ -149,13 +136,14 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('   1. optimal samples based on FULL basis')
         active_index = pce_model.active_index
         active_basis = pce_model.active_basis
-        if deg == model_params.degs[0]:
-            n_samples = math.ceil(len(active_index) * model_params.alpha)
-        else:
-            n_samples = len(active_index)
+        # if deg == model_params.degs[0]:
+            # n_samples = math.ceil(len(active_index) * model_params.alpha)
+        # else:
+            # n_samples = len(active_index)
+        n_samples = math.ceil(len(active_index) * model_params.alpha)
         print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
 
-        xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi, 
+        xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=[], 
                 active_index=None, initialization='RRQR', return_index=True) 
         idx_optimal_samples_cum = list_union(idx_optimal_samples_cum, idx_optimal)
         idx_optimal_samples_deg = list_union(idx_optimal_samples_deg, idx_optimal)
@@ -166,30 +154,33 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
 
         print('   2. Training with {} '.format(model_params.fitting))
-        data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
-        data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
-        data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
+        # data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
+        # data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
+        # data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
 
         weight  = doe_params.sampling_weight()   ## weight function
-        pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight,
+        pce_model.fit(model_params.fitting, xi_train_, y_train_, w=weight,
                 n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
-        print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(idx_optimal_samples_cum)))
-        print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
-                        data_train.x.shape[1]/pce_model.num_basis))
-        print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
+        print('     - {:<32s} : {:d}'.format('Total number of samples', len(idx_optimal_samples_cum)))
+        print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train_.shape[1], pce_model.num_basis, 
+                        x_train_.shape[1]/pce_model.num_basis))
+        print('     - {:<32s} : {}'.format('Y train'    , y_train_.shape))
         print('     - {:<32s} : {}'.format('Sparsity'   , len(pce_model.active_index)))
 
         print('   3. Prediction with {} samples '.format(xi_test.shape))
         y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
-        data_ideg.model = pce_model
-        data_ideg.rmse_y= uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False)
-        data_ideg.y0_hat= uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
-        data_ideg.score = pce_model.score
-        data_ideg.cv_err= pce_model.cv_error
-        data_ideg.yhat_ecdf=uqra.ECDF(y_test_hat, model_params.pf, compress=True)
-        data_ideg.xi_train = xi_train_
-        data_ideg.x_train  = x_train_
-        data_ideg.y_train  = y_train_
+        data_ideg  = uqra.Data()
+        data_ideg.ndim      = ndim
+        data_ideg.deg       = deg 
+        data_ideg.model     = pce_model
+        data_ideg.rmse_y    = uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False)
+        data_ideg.y0_hat    = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
+        data_ideg.score     = pce_model.score
+        data_ideg.cv_err    = pce_model.cv_error
+        data_ideg.yhat_ecdf = uqra.ECDF(y_test_hat, model_params.pf, compress=True)
+        data_ideg.xi_train  = xi_train_
+        data_ideg.x_train   = x_train_
+        data_ideg.y_train   = y_train_
         print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', data_ideg.y0_hat))
         print('     - {:<32s} : {:.4e}'.format('y0 test [TRUE ]', y0_test))
 
@@ -263,8 +254,8 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('MCS', None)
-    # doe_params = uqra.ExperimentParameters('CLS4', 'S')
+    # doe_params = uqra.ExperimentParameters('MCS', 'S')
+    doe_params = uqra.ExperimentParameters('CLS4', 'S')
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
 
