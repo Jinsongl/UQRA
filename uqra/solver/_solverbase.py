@@ -44,7 +44,7 @@ class SolverBase(object):
         ### check arguments
         u = np.array(u, copy=False, ndmin=2)
         assert (u.shape[0] == self.ndim), 'solver.map_domain expecting {:d} \
-                random variables, but {:s} given'.format(self.ndim, u.shape[0])
+                random variables, but {} given'.format(self.ndim, u.shape[0])
 
         try:
             dist_x = self.distributions
