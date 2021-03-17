@@ -84,10 +84,10 @@ def absolute_converge(y, err=1e-4):
 
 def main(model_params, doe_params, solver, r=0, random_state=None):
     random.seed(random_state)
-    main_res = []
-    idx_optimal_samples_cum = []
-    ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
+    ndim_deg_cases = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
 
+    main_res = []
+    ### object contain all training samples
     data_train = uqra.Data()
     data_train.xi = np.empty((model_params.ndim, 0))
     data_train.x  = np.empty((model_params.ndim, 0))
@@ -144,7 +144,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_ideg.xi_train_ = []
         data_ideg.x_train_  = []
         data_ideg.y_train_  = []
-        idx_optimal_samples_deg=[]
 
         ## ------------------------ #1: Obtain global optimal samples ----------------- ###
         print(' ------------------------------------------------------------')
@@ -158,26 +157,27 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             n_samples = len(active_index)
         print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
 
+        ## obtain global optimal samples
         xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi, 
                 active_index=None, initialization='RRQR', return_index=True) 
-        idx_optimal_samples_cum = list_union(idx_optimal_samples_cum, idx_optimal)
-        idx_optimal_samples_deg = list_union(idx_optimal_samples_deg, idx_optimal)
-        print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(idx_optimal_samples_deg)))
-        print('     - {:<32s} : {:d}'.format('Total number of samples', len(idx_optimal_samples_cum)))
         x_train_ = solver.map_domain(xi_train_, dist_xi)
         y_train_ = solver.run(x_train_)
         data_ideg.xi_train_.append(xi_train_)
         data_ideg.x_train_.append (x_train_)
         data_ideg.y_train_.append (y_train_)
+        n_samples_deg = len(np.concatenate(data_ideg.y_train_, axis=0))
 
-        print('   2. Training with {} '.format(model_params.fitting))
         data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
         data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
         data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
+        print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
+        print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
+        print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
+
+        print('   2. Training with {} '.format(model_params.fitting))
         weight  = doe_params.sampling_weight()   ## weight function
         pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight,
                 n_jobs=model_params.n_jobs, n_splits=model_params.n_splits) #
-        print('     - {:<32s} : {:d}'.format('Total number of samples', len(idx_optimal_samples_cum)))
         print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
                         data_train.x.shape[1]/pce_model.num_basis))
         print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
@@ -201,47 +201,42 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             active_index = pce_model.active_index
             active_basis = pce_model.active_basis 
             sparsity     = len(pce_model.active_index)
-            n_samples    = min(sparsity, model_params.alpha *pce_model.num_basis - len(idx_optimal_samples_deg))
-            if n_samples <= 0:
-                break
+            n_samples    = sparsity #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
             print('                 ------------------------------')
             print('                  <  Local iteration No. {:d} >'.format(i_iteration))
             print('                 ------------------------------')
 
             print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
+            ## obtain DoI candidate samples
             data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.y0_hat_[-1], xi_test, y_test_hat, data_cand
                     , deg, n0=10, epsilon=0.1, return_index=True)
-
-
-            xi_train_, idx_optimal_DoI = idoe_params.get_samples(data_cand_DoI, orth_poly, n_samples, x0=[], 
-                    active_index=active_index, initialization='RRQR', return_index=True) 
-
-            idx_optimal = [idx_data_cand_DoI[i] for i in idx_optimal_DoI if idx_data_cand_DoI[i] not in idx_optimal_samples_cum]
-            if len(idx_optimal) == 0: ## no new samples are generated
-                break
-            idx_optimal_samples_cum = list_union(idx_optimal_samples_cum, idx_optimal)
-            idx_optimal_samples_deg = list_union(idx_optimal_samples_deg, idx_optimal)
             data_cand_xi_DoI = deg**0.5 * data_cand_DoI if idoe_params.doe_sampling in ['CLS4', 'CLS5'] else data_cand_DoI
-
             data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_xi_DoI, dist_xi))
 
-            print('     - {:<32s} : {}  '.format('DoI candidate samples', data_cand_DoI.shape ))
-            print('     - {:<32s} : {:d}'.format('Adding DoI optimal samples', n_samples))
-            print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(idx_optimal_samples_deg)))
-            print('     - {:<32s} : {:d}'.format('Total number of optimal samples', len(idx_optimal_samples_cum)))
-
+            ## obtain DoI optimal samples
+            xi_train_, idx_optimal_DoI = idoe_params.get_samples(data_cand_DoI, orth_poly, n_samples, x0=[], 
+                    active_index=active_index, initialization='RRQR', return_index=True) 
+            assert xi_train_.shape[1] == n_samples ## make sure return number of samples required
             x_train_ = solver.map_domain(xi_train_, dist_xi)
             y_train_ = np.array(solver.run(x_train_), ndmin=1)
             data_ideg.xi_train_.append(xi_train_)
             data_ideg.x_train_.append (x_train_)
             data_ideg.y_train_.append (y_train_)
+            n_samples_deg = len(np.concatenate(data_ideg.y_train_, axis=0))
 
-            print('   2. Training with {} '.format(model_params.fitting))
+            ## put all training samples together, up to current step
             data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
             data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
             data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
 
+            print('     - {:<32s} : {}  '.format('DoI candidate samples', data_cand_DoI.shape ))
+            print('     - {:<32s} : {:d}'.format('Adding DoI optimal samples', n_samples))
+            print('     - {:<32s} : {:d}'.format('No. samples [p='+str(deg)+']', n_samples_deg))
+            print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
+            print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
+
+            print('   2. Training with {} '.format(model_params.fitting))
             weight  = doe_params.sampling_weight()   ## weight function
             pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight, 
                     n_jobs=model_params.n_jobs, n_splits=model_params.n_splits) #
@@ -271,17 +266,17 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             if np.all(isConverge):
                 print('         !< Model converge for order {:d} >!'.format(deg))
                 break
-            if len(idx_optimal_samples_deg)>=2*orth_poly.num_basis:
-                print('         !< Number of samples exceeding 2P >!')
+            if n_samples_deg > model_params.alpha*orth_poly.num_basis:
+                print('         !< Number of samples exceeding {:.2f}P >!'.format(model_params.alpha))
                 break
 
-        data_ideg.y0_hat        = data_ideg.y0_hat_[-1]
-        data_ideg.cv_err        = data_ideg.cv_err_[-1]
-        # data_ideg.kappa         = data_ideg.kappa_[-1]
-        data_ideg.model         = data_ideg.model_[-1]
-        data_ideg.score         = data_ideg.score_[-1]
-        data_ideg.yhat_ecdf     = data_ideg.yhat_ecdf_[-1]
-        data_ideg.rmse_y        = data_ideg.rmse_y_[-1]
+        data_ideg.y0_hat    = data_ideg.y0_hat_[-1]
+        data_ideg.cv_err    = data_ideg.cv_err_[-1]
+        # data_ideg.kappa   = data_ideg.kappa_[-1]
+        data_ideg.model     = data_ideg.model_[-1]
+        data_ideg.score     = data_ideg.score_[-1]
+        data_ideg.yhat_ecdf = data_ideg.yhat_ecdf_[-1]
+        data_ideg.rmse_y    = data_ideg.rmse_y_[-1]
         if len(data_ideg.DoI_candidate_) == 0:
             data_ideg.DoI_candidate = []
         else:
@@ -388,7 +383,6 @@ if __name__ == '__main__':
     data_dir_test   = sim_params.data_dir_test
     data_dir_testin = sim_params.data_dir_testin
 
-
     ### 1. Get test data set
     data_test   = np.load(os.path.join(data_dir_test, filename_test), allow_pickle=True).tolist()
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
@@ -399,8 +393,6 @@ if __name__ == '__main__':
     y0_test     = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
 
     res = []
-    ith_batch  = 0
-    batch_size = 1
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
