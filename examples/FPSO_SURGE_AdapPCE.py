@@ -23,7 +23,6 @@ def observation_error(y, mu=0, cov=0.03, random_state=100):
     e = stats.norm(0, cov * abs(y)).rvs(size=len(y), random_state=random_state)
     return e
 
-
 def list_union(ls1, ls2):
     """
     append ls2 to ls1 and check if there exist duplicates
@@ -86,7 +85,6 @@ def absolute_converge(y, err=1e-4):
 def main(model_params, doe_params, solver, r=0, random_state=None):
     random.seed(random_state)
     main_res = []
-
     idx_optimal_samples_cum = []
     ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
 
@@ -168,7 +166,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('     - {:<32s} : {:d}'.format('Total number of samples', len(idx_optimal_samples_cum)))
         x_train_ = solver.map_domain(xi_train_, dist_xi)
         y_train_ = solver.run(x_train_)
-
         data_ideg.xi_train_.append(xi_train_)
         data_ideg.x_train_.append (x_train_)
         data_ideg.y_train_.append (y_train_)
@@ -177,7 +174,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
         data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
         data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
-
         weight  = doe_params.sampling_weight()   ## weight function
         pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight,
                 n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
@@ -300,14 +296,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         tqdm.write('  - {:<15s} : {:.4f}'.format( 'Score '  , data_ideg.score ))
         tqdm.write('  - {:<15s} : {:.4e} [{:.4e}]'.format( 'y0 ' , data_ideg.y0_hat, y0_test))
         print(' ------------------------------------------------------------')
-
         main_res.append(data_ideg)
 
         cv_err_global = np.array([idata.cv_err for idata in main_res]).T
         y0_hat_global = np.array([idata.y0_hat for idata in main_res]).T
         score_global  = np.array([idata.score  for idata in main_res]).T
         rmsey_global  = np.array([idata.rmse_y for idata in main_res]).T
-        y0_hat_global = np.array([idata.y0_hat for idata in main_res]).T
 
         isOverfitting(cv_err_global) ## check Overfitting
         isConverge0, error_converge0 = relative_converge(y0_hat_global, err=2*model_params.rel_err)
