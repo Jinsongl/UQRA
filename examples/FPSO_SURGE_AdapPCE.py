@@ -202,15 +202,15 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         i_iteration = 1
         while True:
             ####-------------------------------------------------------------------------------- ####
-            print('                 ------------------------------')
-            print('                  <  Local iteration No. {:d} >'.format(i_iteration))
-            print('                 ------------------------------')
             active_index = pce_model.active_index
             active_basis = pce_model.active_basis 
             sparsity     = len(pce_model.active_index)
             n_samples    = min(sparsity, model_params.alpha *pce_model.num_basis - len(idx_optimal_samples_deg))
             if n_samples <= 0:
                 break
+            print('                 ------------------------------')
+            print('                  <  Local iteration No. {:d} >'.format(i_iteration))
+            print('                 ------------------------------')
 
             print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
@@ -222,6 +222,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                     active_index=active_index, initialization='RRQR', return_index=True) 
 
             idx_optimal = [idx_data_cand_DoI[i] for i in idx_optimal_DoI if idx_data_cand_DoI[i] not in idx_optimal_samples_cum]
+            if len(idx_optimal) == 0: ## no new samples are generated
+                break
             idx_optimal_samples_cum = list_union(idx_optimal_samples_cum, idx_optimal)
             idx_optimal_samples_deg = list_union(idx_optimal_samples_deg, idx_optimal)
             data_cand_xi_DoI = deg**0.5 * data_cand_DoI if idoe_params.doe_sampling in ['CLS4', 'CLS5'] else data_cand_DoI
@@ -331,8 +333,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
-    ith_batch  = 0
-    batch_size = 1
+    ith_batch  = 4
+    batch_size = 10
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
