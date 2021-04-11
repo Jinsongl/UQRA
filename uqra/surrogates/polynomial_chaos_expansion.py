@@ -128,6 +128,8 @@ class PolynomialChaosExpansion(SurrogateBase):
 
             w = self.weight_func(x, w, active=self.active_index)
             WX, Wy = self._rescale_data(X, y, w) if w is not None else (X, y)
+            s,v,d = np.linalg.svd(WX)
+
 
             neg_mse = model_selection.cross_val_score(ols_reg, WX, Wy, 
                     scoring='neg_mean_squared_error', cv=kfolder, n_jobs=n_jobs)
@@ -153,7 +155,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             Returns:
 
             """
-            fit_intercept = kwargs.get('fit_intercept'  , True )
+            fit_intercept = kwargs.get('fit_intercept'  , False)
             normalize     = kwargs.get('normalize'      , False)
             n_jobs        = kwargs.get('n_jobs'         , None ) 
             shrinkage     = kwargs.get('shrinkage'      , 'CV' )
@@ -177,33 +179,36 @@ class PolynomialChaosExpansion(SurrogateBase):
                 ols_reg0= linear_model.LinearRegression(fit_intercept=True).fit(X, y, full_weight)
                 y_hat0  = ols_reg0.predict(X)
                 std0    = np.sqrt(np.linalg.norm(y-y_hat0)**2/(X.shape[0]-X.shape[1]-1))
-                cv_err  = []
+                cv_err_path  = []
                 cp_statistics = []
-                for k in range(1, X.shape[1]+1):
+                for k in range(1, min(len(model_lars.active_), X.shape[1])+1):
+                    active_ = model_lars.active_[:k] #np.unique([0,] + model_lars.active_[:k]).tolist()
                     kfolder = model_selection.KFold(n_splits=n_splits,shuffle=True)
-                    reg_ols = linear_model.LinearRegression(fit_intercept=True)
-                    X_      = X[:,model_lars.active_[:k]]
-                    k_weight= self.weight_func(x, w, active=model_lars.active_[:k]) 
+                    reg_ols = linear_model.LinearRegression(fit_intercept=False)
+                    X_      = X[:,active_]
+                    k_weight= self.weight_func(x, w, active=active_) 
                     WX_, Wy = self._rescale_data(X_, y, k_weight) if k_weight is not None else (X_, y) 
 
                     neg_mse = model_selection.cross_val_score(reg_ols, WX_, Wy, 
                             scoring='neg_mean_squared_error', cv=kfolder)
-                    cv_err.append( -np.mean(neg_mse))
+                    cv_err_path.append( -np.mean(neg_mse))
 
                     reg_ols.fit(X_, y, k_weight)
                     y_hat = reg_ols.predict(X_)
                     cp_statistics.append(np.linalg.norm(y-y_hat)**2/std0**2 - X_.shape[0] + 2*k)
                  
-                # k = np.argmin(cp_statistics)+ 1
-                k = np.argmin(cv_err) +1
-                active_index  = model_lars.active_[:k]
+                k = np.argmin(cp_statistics)+ 1
+                print(k)
+                k = np.argmin(cv_err_path) +1
+                print(k)
+                active_index  = model_lars.active_[:k] #if 0 in model_lars.active_[:k] else model_lars.active_[:k] + [0,]
+                print(active_index)
                 active_basis  = [self.orth_poly.basis_degree[i] for i in active_index] 
-                # print('Cp: {}->{}'.format(cp_statistics, np.argmin(cp_statistics)))
-                # print('log CV: {}->{}'.format(np.log(cv_err), np.argmin(cv_err)))
-                # print('Active index: {}'.format(active_index))
+                self.cv_err_path   = cv_err_path
             elif shrinkage.upper() in ['CP', 'CP-STATISTICS', 'CPSTATISTICS']:
                 raise NotImplementedError
             self.fit('OLS', x,y,w=w, active_basis=active_basis, **kwargs)
+            self.lars_model = model_lars
 
         elif method.lower().startswith('lasso'):
             fit_intercept = kwargs.get('fit_intercept'  , True )
