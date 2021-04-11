@@ -26,6 +26,10 @@ def list_union(ls1, ls2):
     append ls2 to ls1 and check if there exist duplicates
     return the union of two lists and remove duplicates
     """
+    if ls1 is None:
+        ls1 = []
+    if ls2 is None:
+        ls2 = []
     ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
     if len(ls) != len(set(ls1).union(set(ls2))):
         print('[WARNING]: list_union: duplicate elements found in list when append to each other')
@@ -78,11 +82,10 @@ def absolute_converge(y, err=1e-4):
 
 def main(model_params, doe_params, solver, r=0, random_state=None):
     random.seed(random_state)
+    ndim_deg_cases = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
+
     main_res = []
-
-    idx_optimal_samples_cum = []
-    ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
-
+    ### object contain all training samples
     data_train = uqra.Data()
     data_train.xi = np.empty((model_params.ndim, 0))
     data_train.x  = np.empty((model_params.ndim, 0))
@@ -131,7 +134,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_ideg.xi_train = []
         data_ideg.x_train  = []
         data_ideg.y_train  = []
-        idx_optimal_samples_deg=[]
 
         ## ------------------------ #1: Obtain global optimal samples ----------------- ###
         print(' ------------------------------------------------------------')
@@ -140,11 +142,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         active_index = pce_model.active_index
         active_basis = pce_model.active_basis
         if deg == model_params.degs[0]:
-            n_samples = len(active_index) *model_params.alpha
+            n_samples = math.ceil(len(active_index) * model_params.alpha)
         else:
             n_samples = len(active_index)
         print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
 
+        ## obtain global optimal samples
         xi_train, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi, 
                 active_index=None, initialization='RRQR', return_index=True) 
         x_train = solver.map_domain(xi_train, dist_xi)
@@ -170,8 +173,10 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta= 0, 2
+    r, theta= 0, 10
     y_scale = 1e6
+    ith_batch  = 0
+    batch_size = 1
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
@@ -237,12 +242,10 @@ if __name__ == '__main__':
     # y0_test = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
 
     res = []
-    ith_batch  = 0
-    batch_size = 1
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
-        print(' >>>  Start UQRA : {:d}[{:d}]/{:d} x {:d}'.format(i, irepeat, batch_size, ith_batch))
+        print(' >>>  Start UQRA : Theta: {:d}, [{:d}x{:d}]-{:d}'.format(theta, batch_size, ith_batch, i))
         print(' >>>  Test data R={:d}'.format(r))
         print('#################################################################################\n')
         print('   > {:<25s}'.format('Input/Output Directories:'))
@@ -258,7 +261,7 @@ if __name__ == '__main__':
         res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
     if len(res) == 1:
         res = res[0]
-    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}S{:d}_y{:d}'.format(solver.nickname, 
+    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}S{:d}_y{:d}_global'.format(solver.nickname, 
             solver.ndim, model_params.basis, doe_params.doe_nickname(), r, theta)
     eng.quit()
     # ## ============ Saving QoIs ============
