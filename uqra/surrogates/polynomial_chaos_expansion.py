@@ -164,23 +164,24 @@ class PolynomialChaosExpansion(SurrogateBase):
             full_weight = self.weight_func(x, w, active=self.active_index)
             WX, Wy = self._rescale_data(X, y, full_weight) if full_weight is not None else (X, y)
 
+            ### -------------------------------------------------------------------------------------------------------
             ### standardize data: zero mean, unit variance for each predictor
+            ### need to be completed
             # scaler     = preprocessing.StandardScaler().fit(WX)
             # WX_scaled  = scaler.transform(WX) 
             # Wy_scaled  = Wy - np.mean(Wy)  ## just zero mean, not unit variance
             # model_lars = linear_model.Lars(fit_intercept=fit_intercept, normalize=normalize).fit(WX_scaled,Wy_scaled)
+            ### -------------------------------------------------------------------------------------------------------
+
             model_lars = linear_model.Lars(fit_intercept=fit_intercept, normalize=normalize).fit(WX,Wy)
             if shrinkage.upper() in ['CV', 'CROSS VALIDATION', 'CROSS-VALIDATION']:
                 ### if not given, default is Leave-one-out
                 n_splits = min(n_splits, x.shape[1])  ## avoid number of samples less than # folders
                 kfolder  = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-                ### OLS regression with all basis
-                ols_reg0= linear_model.LinearRegression(fit_intercept=True).fit(X, y, full_weight)
-                y_hat0  = ols_reg0.predict(X)
-                std0    = np.sqrt(np.linalg.norm(y-y_hat0)**2/(X.shape[0]-X.shape[1]-1))
                 cv_err_path  = []
                 cp_statistics = []
+                ### OLS regression with frist k basis
                 for k in range(1, min(len(model_lars.active_), X.shape[1])+1):
                     active_ = model_lars.active_[:k] #np.unique([0,] + model_lars.active_[:k]).tolist()
                     kfolder = model_selection.KFold(n_splits=n_splits,shuffle=True)
@@ -188,27 +189,27 @@ class PolynomialChaosExpansion(SurrogateBase):
                     X_      = X[:,active_]
                     k_weight= self.weight_func(x, w, active=active_) 
                     WX_, Wy = self._rescale_data(X_, y, k_weight) if k_weight is not None else (X_, y) 
-
                     neg_mse = model_selection.cross_val_score(reg_ols, WX_, Wy, 
                             scoring='neg_mean_squared_error', cv=kfolder)
                     cv_err_path.append( -np.mean(neg_mse))
-
-                    reg_ols.fit(X_, y, k_weight)
-                    y_hat = reg_ols.predict(X_)
-                    cp_statistics.append(np.linalg.norm(y-y_hat)**2/std0**2 - X_.shape[0] + 2*k)
-                 
-                k = np.argmin(cp_statistics)+ 1
-                print(k)
                 k = np.argmin(cv_err_path) +1
-                print(k)
                 active_index  = model_lars.active_[:k] #if 0 in model_lars.active_[:k] else model_lars.active_[:k] + [0,]
-                print(active_index)
                 active_basis  = [self.orth_poly.basis_degree[i] for i in active_index] 
                 self.cv_err_path   = cv_err_path
             elif shrinkage.upper() in ['CP', 'CP-STATISTICS', 'CPSTATISTICS']:
+                ### OLS regression with all basis
+                ols_reg0= linear_model.LinearRegression(fit_intercept=True).fit(X, y, full_weight)
+                y_hat0  = ols_reg0.predict(X)
+                std0    = np.sqrt(np.linalg.norm(y-y_hat0)**2/(X.shape[0]-X.shape[1]-1))
+                reg_ols.fit(X_, y, k_weight)
+                y_hat = reg_ols.predict(X_)
+                cp_statistics.append(np.linalg.norm(y-y_hat)**2/std0**2 - X_.shape[0] + 2*k)
+                # k = np.argmin(cp_statistics)+ 1
+                # print(k)
                 raise NotImplementedError
-            self.fit('OLS', x,y,w=w, active_basis=active_basis, **kwargs)
-            self.lars_model = model_lars
+            self.fit('OLS', x,y,w=w, active_basis=active_basis, fit_intercept=fit_intercept, 
+                    normalize=normalize, n_jobs=n_jobs, n_splits=n_splits)
+            self.Lars = model_lars
 
         elif method.lower().startswith('lasso'):
             fit_intercept = kwargs.get('fit_intercept'  , True )
@@ -442,7 +443,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         elif self.fit_method in ['OLSLARS']:
             size_of_array_4gb = 1e8/2.0
             if x.shape[1] * self.num_basis < size_of_array_4gb:
-                X = self.orth_poly.vandermonde(x)
+                X = self.orth_poly.vandermonde(x)[:, self.active_index]
                 y = self.model.predict(X)
             else:
                 batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
@@ -451,7 +452,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                     idx_beg = i*batch_size
                     idx_end = min((i+1) * batch_size, x.shape[1])
                     x_      = x[:,idx_beg:idx_end]
-                    X_      = self.orth_poly.vandermonde(x_)
+                    X_      = self.orth_poly.vandermonde(x_)[:, self.active_index]
                     y_      = self.model.predict(X_)
                     y      += list(y_)
                 y = np.array(y) 
