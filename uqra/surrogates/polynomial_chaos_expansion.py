@@ -194,7 +194,6 @@ class PolynomialChaosExpansion(SurrogateBase):
                     cv_err_path.append( -np.mean(neg_mse))
                 k = np.argmin(cv_err_path) +1
                 active_index  = model_lars.active_[:k] #if 0 in model_lars.active_[:k] else model_lars.active_[:k] + [0,]
-                print(active_index)
                 active_basis  = [self.orth_poly.basis_degree[i] for i in active_index] 
                 self.cv_err_path   = cv_err_path
 
