@@ -416,14 +416,14 @@ class Norway5(EnvBase):
             ### generate n random Uw
             uw = self.dist_uw().rvs(size=(n,))
             ### generate n random Hs
-            hs = self.dist_hs(uw).rvs(size=(n,))
+            hs = self.dist_hs(uw).rvs(size=1)
             ### generate n random Tp given above Hs
-            tp = self.dist_tp(hs, uw).rvs(size=(n,))
+            tp = self.dist_tp(hs, uw).rvs(size=1)
             res = np.array([uw, hs, tp])
         elif self.ndim ==2:
             hs = self.dist_hs().rvs(size=(n,))
             ### generate n random Tp given above Hs
-            tp = self.dist_tp(hs).rvs(size=(n,))
+            tp = self.dist_tp(hs).rvs(size=1)
             res = np.array([hs, tp])
         return res
 

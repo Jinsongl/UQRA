@@ -324,7 +324,6 @@ class OptimalDesign(ExperimentBase):
 
     def _greedy_update_D_Optimality_full(self, A, B):
         """
-        Calculate S-value with matrix determinant update formula for each row element in B 
         Only for overdetermined system, i.e. A.T * A is not singular, i.e. n0 > p
         
         Arguments: 

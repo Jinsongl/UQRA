@@ -624,8 +624,6 @@ def list_union(ls1, ls2):
     """
     ls_common = list_inter(ls1, ls2)
     if len(ls_common) != 0:
-        print('list 1: {} '.format(ls1))
-        print('list 2: {} '.format(ls2))
         raise ValueError('_list_union: Duplicate elements {} found in two lists'.format(ls_common))
     ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
 
