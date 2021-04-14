@@ -144,7 +144,7 @@ class OptimalDesign(ExperimentBase):
 
             candidate_samples = copy.deepcopy(self.candidate_samples)
             optimal_samples   = copy.deepcopy(self.optimal_samples)
-            for _ in tqdm(range(n), ascii=True, desc="          [Greedy D]",ncols=80):
+            for _ in tqdm(range(n), ascii=True, desc="     [Greedy D]",ncols=80):
                 ## find the next optimal index from Q which is not currently selected
                 candidate_samples = self._list_diff(candidate_samples, optimal_samples)
                 assert self._check_complement(optimal_samples, candidate_samples)
@@ -179,7 +179,7 @@ class OptimalDesign(ExperimentBase):
 
             candidate_samples = copy.deepcopy(self.candidate_samples)
             optimal_samples   = copy.deepcopy(self.optimal_samples)
-            for _ in tqdm(range(n), ascii=True, desc="          [Greedy S]",ncols=80):
+            for _ in tqdm(range(n), ascii=True, desc="     [Greedy S]",ncols=80):
                 ## find the next optimal index from Q which is not currently selected
                 candidate_samples = self._list_diff(candidate_samples, optimal_samples)
                 assert self._check_complement(optimal_samples, candidate_samples)
