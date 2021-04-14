@@ -617,30 +617,25 @@ def samples_within_cubic(data, domain):
     samples_idx_outside_domain= np.logical_not(samples_idx_within_domain)
     return samples_idx_within_domain, samples_idx_outside_domain
 
-def list_union(ls1, ls2):
+def list_union(ls1, ls2, return_duplicate=False):
     """
     append ls2 to ls1 and check if there exist duplicates
     return the union of two lists and remove duplicates
     """
+    ls1 = set(copy.deepcopy(ls1))
+    ls2 = set(copy.deepcopy(ls2))
     ls_common = list_inter(ls1, ls2)
-    if len(ls_common) != 0:
-        raise ValueError('_list_union: Duplicate elements {} found in two lists'.format(ls_common))
-    ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
-
-    return ls
+    ls_union  = list(ls1.union(ls2))
+    res = (ls_union, ls_common) if return_duplicate else ls_union
+    return res
 
 def list_diff(ls1, ls2):
     """
     returns a list of elements in ls1 but not in ls2
     """
-    ls1 = list(copy.deepcopy(ls1))
-    ls2 = list(copy.deepcopy(ls2))
-    for element in ls2:
-        try:
-            ls1.remove(element)
-        except ValueError:
-            pass
-    return ls1
+    ls1 = set(copy.deepcopy(ls1))
+    ls2 = set(copy.deepcopy(ls2))
+    return list(ls1.union(ls2).difference(ls2))
 
 def list_inter(ls1, ls2):
     """
