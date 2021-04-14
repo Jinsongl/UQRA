@@ -681,6 +681,7 @@ def get_duplicate_rows(A):
 
     """
     ## initialization assuming all rows are same
+    A = np.array(A, copy=True)
     duplicate_idx = np.arange(A.shape[0])
     j_col = 0  ## column counter
     while len(duplicate_idx) > 0 and j_col < A.shape[1]:
