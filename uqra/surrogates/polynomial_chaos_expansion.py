@@ -107,7 +107,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             self._fit_quadrature(x,w,y)
 
         elif method.lower() == 'ols':
-            fit_intercept = kwargs.get('fit_intercept'  , True )
+            fit_intercept = kwargs.get('fit_intercept'  , False)
             normalize     = kwargs.get('normalize'      , False)
             n_jobs        = kwargs.get('n_jobs'         , None ) 
             active_basis  = kwargs.get('active_basis'   , None )
@@ -117,7 +117,7 @@ class PolynomialChaosExpansion(SurrogateBase):
                 self.active_index = np.arange(self.orth_poly.num_basis).tolist()
             else:
                 self.active_basis = active_basis
-                self.active_index = [i for i, ibasis_degree in enumerate(self.orth_poly.basis_degree) if ibasis_degree in active_basis]
+                self.active_index = [self.orth_poly.basis_degree.index(iactive_basis) for iactive_basis in active_basis ]
             if len(self.active_index) == 0:
                 raise ValueError('UQRA.PCE.fit(OLS): active basis could not be empty ')
             X = X[:, self.active_index]
@@ -135,9 +135,9 @@ class PolynomialChaosExpansion(SurrogateBase):
                     scoring='neg_mean_squared_error', cv=kfolder, n_jobs=n_jobs)
             self.model = ols_reg.fit(X, y, sample_weight=w)
             self.cv_error = -np.mean(neg_mse)
-            self.coef    = np.array(copy.deepcopy(ols_reg.coef_), ndmin=2)
-            self.coef[:,0] = self.coef[:,0] + ols_reg.intercept_
-            self.coef    = np.array(np.squeeze(self.coef),ndmin=1)
+            self.coef    = np.array(copy.deepcopy(ols_reg.coef_), ndmin=1)
+            # self.coef[:,0] = self.coef[:,0] + ols_reg.intercept_
+            # self.coef    = np.array(np.squeeze(self.coef),ndmin=1)
             self.score   = ols_reg.score(X,y,w)
 
         elif method.lower() == 'olslar':
