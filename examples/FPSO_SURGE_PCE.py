@@ -23,7 +23,6 @@ def observation_error(y, mu=0, cov=0.03, random_state=100):
     e = stats.norm(0, cov * abs(y)).rvs(size=len(y), random_state=random_state)
     return e
 
-
 def list_union(ls1, ls2):
     """
     append ls2 to ls1 and check if there exist duplicates
@@ -85,16 +84,18 @@ def absolute_converge(y, err=1e-4):
 
 def main(model_params, doe_params, solver, r=0, random_state=None):
     random.seed(random_state)
+    ndim_deg_cases = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
+
     main_res = []
-
-    idx_optimal_samples_cum = []
-    ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
-
     # data_train = uqra.Data()
     # data_train.xi = np.empty((model_params.ndim, 0))
     # data_train.x  = np.empty((model_params.ndim, 0))
     # data_train.y  = np.empty((0,))
 
+    xi_train= np.empty((solver.ndim, 0))
+    x_train = np.empty((solver.ndim, 0))
+    y_train = []
+    idx_selected= []
     for i, (ndim, deg) in enumerate(ndim_deg_cases):
         print('\n==================================================================================')
         print('         <<<< Global iteration No. {:d}: ndim={:d}, p={:d} >>>>'.format(i+1, ndim, deg))
@@ -132,7 +133,9 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         ioptimality   = idoe_params.optimality
         print('     - {:<23s} : {}'.format(' UQRA DoE '  , idoe_nickname))
         ### temp data object containing results from intermedia steps
-        idx_optimal_samples_deg=[]
+        data_ideg = uqra.Data()
+        data_ideg.ndim      = ndim
+        data_ideg.deg       = deg 
 
         ## ------------------------ #1: Obtain global optimal samples ----------------- ###
         print(' ------------------------------------------------------------')
@@ -144,47 +147,41 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             # n_samples = math.ceil(len(active_index) * model_params.alpha)
         # else:
             # n_samples = len(active_index)
-        n_samples = math.ceil(len(active_index) * model_params.alpha)
+        n_samples = math.ceil(len(active_index) * model_params.alpha) - len(y_train)
         print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
 
-        xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=[], 
+        ## obtain global optimal samples
+        xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=idx_selected, 
                 active_index=None, initialization='RRQR', return_index=True) 
-        idx_optimal_samples_cum = list_union(idx_optimal_samples_cum, idx_optimal)
-        idx_optimal_samples_deg = list_union(idx_optimal_samples_deg, idx_optimal)
-        print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', len(idx_optimal_samples_deg)))
-        print('     - {:<32s} : {:d}'.format('Total number of samples', len(idx_optimal_samples_cum)))
-        x_train_ = solver.map_domain(xi_train_, dist_xi)
-        y_train_ = solver.run(x_train_)
+        idx_selected = uqra.list_union(idx_optimal, idx_selected)
+
+        xi_train = np.concatenate((xi_train, xi_train_), axis=1)
+        x_train = solver.map_domain(xi_train, dist_xi)
+        y_train = solver.run(x_train)
+        print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', xi_train_.shape[1]))
+        print('     - {:<32s} : {:d}'.format('Total number of samples', len(y_train)))
 
 
         print('   2. Training with {} '.format(model_params.fitting))
-        # data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
-        # data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
-        # data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
-
         weight  = doe_params.sampling_weight()   ## weight function
-        pce_model.fit(model_params.fitting, xi_train_, y_train_, w=weight,
+        pce_model.fit(model_params.fitting, xi_train, y_train, w=weight,
                 n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
-        print('     - {:<32s} : {:d}'.format('Total number of samples', len(idx_optimal_samples_cum)))
-        print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train_.shape[1], pce_model.num_basis, 
-                        x_train_.shape[1]/pce_model.num_basis))
-        print('     - {:<32s} : {}'.format('Y train'    , y_train_.shape))
+        print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
+                        x_train.shape[1]/pce_model.num_basis))
+        print('     - {:<32s} : {}'.format('Y train'    , y_train.shape))
         print('     - {:<32s} : {}'.format('Sparsity'   , len(pce_model.active_index)))
 
         print('   3. Prediction with {} samples '.format(xi_test.shape))
         y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
-        data_ideg  = uqra.Data()
-        data_ideg.ndim      = ndim
-        data_ideg.deg       = deg 
         data_ideg.model     = pce_model
         data_ideg.rmse_y    = uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False)
         data_ideg.y0_hat    = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
         data_ideg.score     = pce_model.score
         data_ideg.cv_err    = pce_model.cv_error
         data_ideg.yhat_ecdf = uqra.ECDF(y_test_hat, model_params.pf, compress=True)
-        data_ideg.xi_train  = xi_train_
-        data_ideg.x_train   = x_train_
-        data_ideg.y_train   = y_train_
+        data_ideg.xi_train  = xi_train
+        data_ideg.x_train   = x_train
+        data_ideg.y_train   = y_train
         print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', data_ideg.y0_hat))
         print('     - {:<32s} : {:.4e}'.format('y0 test [TRUE ]', y0_test))
 
@@ -245,12 +242,11 @@ if __name__ == '__main__':
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
-    model_params.fitting = 'OLS' 
+    model_params.fitting = 'OLSLAR' 
     model_params.n_splits= 50
     model_params.alpha   = 2
     model_params.num_test= int(1e7)
     model_params.num_pred= int(1e7)
-    # model_params.pf      = np.array([1e-4])
     model_params.pf      = np.array([0.5/(365.25*24*50)])
     model_params.abs_err = 1e-4
     model_params.rel_err = 2.5e-2
@@ -258,7 +254,7 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('LHS', None)
+    doe_params = uqra.ExperimentParameters('MCS', 'D')
     # doe_params = uqra.ExperimentParameters('CLS4', 'S')
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
