@@ -236,7 +236,7 @@ class ExperimentParameters(Parameters):
 
     def sampling_weight(self, w=None):
         """
-        Return a weight function due to sampling
+        Return a weight function corresponding to the sampling scheme
         If w is given, then has the highest priority. 
         otherwise, return based on doe_sampling
         """
@@ -254,10 +254,22 @@ class ExperimentParameters(Parameters):
             raise ValueError('Sampling weight function is not defined')
 
     def get_samples(self, x, poly, n, x0=[], active_index=None,  
-            initialization='RRQR', return_index=False):
+            initialization='RRQR', return_index=False, decimals=8):
         """
-
         return samples based on UQRA
+
+        x   : ndarray of shape (d,N), candidate samples
+        poly: UQRA.polynomial object
+        n   : int, number of samples to be added
+        x0  : samples already selected (will be ignored when performing optimization)
+            1. list of selected index
+            2. selected samples
+        initialization: methods to generate the initial samples
+            1. string, 'RRQR', 'TSM'
+            2. list of index
+
+        active_index: list of active basis in poly 
+        decimals: accuracy tolerance when comparing samples in x0 to x
         """
         ### check arguments
         n = uqra.check_int(n)
@@ -275,16 +287,19 @@ class ExperimentParameters(Parameters):
             assert d == self.ndim 
             ## expand samples if it is unbounded cls
             x = poly.deg**0.5 * x if self.doe_sampling in ['CLS4', 'CLS5'] else x
+
+            ## define selected index set
             if len(x0) == 0:
                 idx_selected = []
             elif isinstance(x0, (list, tuple)):
                 idx_selected = list(x0)
             else:
-                x0 = np.array(x0, copy=False, ndmin=2)
+                x0 = np.array(x0, copy=False, ndmin=2).round(decimals=decimals)
+                x  = x.round(decimals)
+                assert x.shape[0] == x0.shape[0]
                 idx_selected = list(uqra.common_vectors(x0, x))
-                assert d == x0.shape[0]
 
-            
+            ## define methods to get initial samples 
             initialization = initialization if len(idx_selected) == 0 else idx_selected
 
             x_optimal = []
@@ -345,9 +360,6 @@ class ExperimentParameters(Parameters):
             res = data_cand_DoI
 
         return res 
-
-
-
 
 ### ----------------- Modeling Parameters() -----------------
 class Modeling(Parameters):
