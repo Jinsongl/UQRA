@@ -276,15 +276,18 @@ class ExperimentParameters(Parameters):
             ## expand samples if it is unbounded cls
             x = poly.deg**0.5 * x if self.doe_sampling in ['CLS4', 'CLS5'] else x
             if len(x0) == 0:
-                x0 = np.empty((d,0))
+                idx_selected = []
+            elif isinstance(x0, (list, tuple)):
+                idx_selected = list(x0)
             else:
                 x0 = np.array(x0, copy=False, ndmin=2)
+                idx_selected = list(uqra.common_vectors(x0, x))
                 assert d == x0.shape[0]
 
-            x_optimal      = []
-            idx_selected   = list(uqra.common_vectors(x0, x))
+            
             initialization = initialization if len(idx_selected) == 0 else idx_selected
 
+            x_optimal = []
             if self.doe_sampling.lower().startswith('mcs'):
                 if str(self.optimality).lower() == 'none':
                     idx = list(set(np.arange(self.num_cand)).difference(set(idx_selected)))[:n] 
