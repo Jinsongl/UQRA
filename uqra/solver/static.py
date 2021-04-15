@@ -127,7 +127,7 @@ class OrthPoly(SolverBase):
         self.deg       = orth_poly.deg
         self.num_basis = orth_poly.num_basis
         self.dist_name = orth_poly.dist_name
-        self.distributions = orth_poly.weight
+        self.distributions = [orth_poly.weight,] * self.ndim
         self.nickname  = 'OrthPoly_{:d}{:s}{:d}'.format(orth_poly.ndim, orth_poly.nickname, orth_poly.deg)
         self.orth_poly.set_coef(coef)
         self.coef = coef 
