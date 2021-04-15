@@ -144,7 +144,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             # else:
                 # n_samples = len(active_index)
             if i_iteration == 1:
-                n_samples = sparsity
+                # n_samples = sparsity
+                n_samples = 3#sprsity #len(active_index)
             else:
                 n_samples = 3#sprsity #len(active_index)
             print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
@@ -312,7 +313,7 @@ if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
     ith_batch  = 0
-    batch_size = 1
+    batch_size = 50
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
