@@ -23,21 +23,6 @@ def observation_error(y, mu=0, cov=0.03, random_state=100):
     e = stats.norm(0, cov * abs(y)).rvs(size=len(y), random_state=random_state)
     return e
 
-def list_union(ls1, ls2):
-    """
-    append ls2 to ls1 and check if there exist duplicates
-    return the union of two lists and remove duplicates
-    """
-    if ls1 is None:
-        ls1 = []
-    if ls2 is None:
-        ls2 = []
-    ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
-    if len(ls) != len(set(ls1).union(set(ls2))):
-        print('[WARNING]: list_union: duplicate elements found in list when append to each other')
-    ls = list(set(ls))
-    return ls
-
 def isOverfitting(cv_err):
     if len(cv_err) < 3 :
         return False
@@ -89,13 +74,14 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     main_res = []
     ### object contain all training samples
     data_train = uqra.Data()
+    data_train.xi_index = []
     data_train.xi = np.empty((model_params.ndim, 0))
     data_train.x  = np.empty((model_params.ndim, 0))
     data_train.y  = np.empty((0,))
-
+    sparsity = 6
     for i, (ndim, deg) in enumerate(ndim_deg_cases):
         print('\n==================================================================================')
-        print('         <<<< Global iteration No. {:d}: ndim={:d}, p={:d} >>>>'.format(i+1, ndim, deg))
+        print('         <<<< Exploration iteration No. {:d}: ndim={:d}, p={:d} >>>>'.format(i+1, ndim, deg))
         print('==================================================================================\n')
         ## ------------------------ UQRA Surrogate model----------------- ###
         orth_poly = uqra.poly.orthogonal(ndim, deg, model_params.basis)
@@ -129,37 +115,35 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         idoe_nickname = idoe_params.doe_nickname()
         ioptimality   = idoe_params.optimality
         print('     - {:<23s} : {}'.format(' UQRA DoE '  , idoe_nickname))
-        ### temp data object containing results from intermedia steps
+        ### data object containing results from intermedia steps
         data_ideg = uqra.Data()
         data_ideg.ndim      = ndim
         data_ideg.deg       = deg 
         data_ideg.pf_hat_   = []
         data_ideg.cv_err_   = []
-        # data_ideg.kappa_    = []
         data_ideg.rmse_y_   = []
         data_ideg.model_    = []
         data_ideg.score_    = []
         data_ideg.yhat_ecdf_= []
-        data_ideg.DoI_candidate_ = []
         data_ideg.xi_train_ = []
         data_ideg.x_train_  = []
         data_ideg.y_train_  = []
+        data_ideg.DoI_candidate_ = []
 
-        ## ------------------------ #1: Obtain global optimal samples ----------------- ###
+        ### ------------------------ #1: Obtain exploration optimal samples ----------------- ###
         print(' ------------------------------------------------------------')
-        print(' > Adding optimal samples in global domain... ')
-        print('   1. optimal samples based on FULL basis')
-        active_index = pce_model.active_index
-        active_basis = pce_model.active_basis
-        if deg == model_params.degs[0]:
-            n_samples = math.ceil(len(active_index) * model_params.alpha)
-        else:
-            n_samples = len(active_index)
-        print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
+        print('   > Adding exploration samples in global domain... ')
+        print('   1. optimal samples based on FULL basis: {:s}'.format(idoe_nickname))
+        # if deg == model_params.degs[0]:
+            # n_samples = math.ceil(len(active_index) * model_params.alpha)
+        # else:
+            # n_samples = len(active_index)
 
-        ## obtain global optimal samples
-        xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi, 
+        ## obtain exploration optimal samples
+        n_samples = max(sparsity, math.ceil(0.8*pce_model.num_basis))
+        xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=[], 
                 active_index=None, initialization='RRQR', return_index=True) 
+
         x_train_ = solver.map_domain(xi_train_, dist_xi)
         y_train_ = solver.run(x_train_)
         data_ideg.xi_train_.append(xi_train_)
@@ -170,6 +154,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
         data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
         data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
+        data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
+        print('     - {:<32s} : {:d}'.format('Adding exploration samples', n_samples))
         print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
         print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
         print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
@@ -178,10 +164,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         weight  = doe_params.sampling_weight()   ## weight function
         pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight,
                 n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+        sparsity = len(pce_model.active_index)
         print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
                         data_train.x.shape[1]/pce_model.num_basis))
         print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
-        print('     - {:<32s} : {}'.format('Sparsity'   , len(pce_model.active_index)))
+        print('     - {:<32s} : {}'.format('Sparsity'   , sparsity))
 
         print('   3. Prediction with {} samples '.format(xi_test.shape))
         y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
@@ -193,30 +180,51 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_ideg.yhat_ecdf_.append(uqra.ECDF(y_test_hat, pf_test, compress=True))
         print('     - {:<32s} : {:.4e}'.format('pf test [ PCE ]', np.array(data_ideg.pf_hat_[-1])))
         print('     - {:<32s} : {:.4e}'.format('pf test [TRUE ]', pf_test))
-        print(' ------------------------------------------------------------')
-        print(' > Adding optimal samples in domain of interest (DoI)... ')
+
+
         i_iteration = 1
         while True:
+            print('                 ------------------------------')
+            print('                  <  Iteration No. {:d} >'.format(i_iteration))
+            print('                 ------------------------------')
+            print(' ------------------------------------------------------------')
+            print('   > Adding exploitation optimal samples in domain of interest (DoI)... ')
+            print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
             ####-------------------------------------------------------------------------------- ####
-            active_index = pce_model.active_index
-            active_basis = pce_model.active_basis 
-            sparsity     = len(pce_model.active_index)
-            n_samples    = sparsity #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
-            print('                 ------------------------------')
-            print('                  <  Local iteration No. {:d} >'.format(i_iteration))
-            print('                 ------------------------------')
+            n_samples = min(5, max(3,sparsity)) #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
+            # n_samples = min(10, sparsity) #len(active_index)
+            xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi_index, 
+                    active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
+
+            ## obtain exploration optimal samples
+            x_train_ = solver.map_domain(xi_train_, dist_xi)
+            y_train_ = solver.run(x_train_)
+            data_ideg.xi_train_.append(xi_train_)
+            data_ideg.x_train_.append (x_train_)
+            data_ideg.y_train_.append (y_train_)
+            n_samples_deg  = len(np.concatenate(data_ideg.y_train_, axis=0))
+
+            data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
+            data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
+            data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
+            data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
+            print('     - {:<32s} : {:d}'.format('Adding exploration samples', n_samples))
+            print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
+            print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
+            print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
+
 
             print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
             ## obtain DoI candidate samples
             data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(0, xi_test, y_test_hat, data_cand
-                    , deg, n0=10, epsilon=0.1, return_index=True)
+                    , deg, n0=20, epsilon=0.1, return_index=True)
             data_cand_xi_DoI = deg**0.5 * data_cand_DoI if idoe_params.doe_sampling in ['CLS4', 'CLS5'] else data_cand_DoI
             data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_xi_DoI, dist_xi))
 
             ## obtain DoI optimal samples
             xi_train_, idx_optimal_DoI = idoe_params.get_samples(data_cand_DoI, orth_poly, n_samples, x0=[], 
-                    active_index=active_index, initialization='RRQR', return_index=True) 
+                    active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
             assert xi_train_.shape[1] == n_samples ## make sure return number of samples required
             x_train_ = solver.map_domain(xi_train_, dist_xi)
             y_train_ = np.array(solver.run(x_train_), ndmin=1)
@@ -229,6 +237,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
             data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
             data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
+            data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal_DoI)
 
             print('     - {:<32s} : {}  '.format('DoI candidate samples', data_cand_DoI.shape ))
             print('     - {:<32s} : {:d}'.format('Adding DoI optimal samples', n_samples))
@@ -240,6 +249,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             weight  = doe_params.sampling_weight()   ## weight function
             pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight, 
                     n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+            sparsity     = len(pce_model.active_index)
             print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
                             data_train.x.shape[1]/pce_model.num_basis))
             print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
@@ -282,8 +292,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         else:
             data_ideg.DoI_candidate = np.concatenate(data_ideg.DoI_candidate_, axis=1)
         data_ideg.xi_train = np.concatenate(data_ideg.xi_train_, axis=1)
-        data_ideg.x_train  = np.concatenate(data_ideg.x_train_, axis=1)
-        data_ideg.y_train  = np.concatenate(data_ideg.y_train_, axis=0)
+        data_ideg.x_train  = np.concatenate(data_ideg.x_train_ , axis=1)
+        data_ideg.y_train  = np.concatenate(data_ideg.y_train_ , axis=0)
         print(' ------------------------------------------------------------')
         tqdm.write(' > Summary PCE: ndim={:d}, p={:d}'.format(ndim, deg))
         tqdm.write('  - {:<15s} : {:.4e}'.format( 'RMSE y ' , data_ideg.rmse_y))
@@ -351,7 +361,7 @@ if __name__ == '__main__':
     model_params = uqra.Modeling('PCE')
     model_params.degs    = np.arange(2,11) #[2,6,10]#
     model_params.ndim    = solver.ndim
-    model_params.basis   = 'Hem'
+    model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
     model_params.n_splits= 50
@@ -364,7 +374,7 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('CLS4', 'S')
+    doe_params = uqra.ExperimentParameters('MCS', 'S')
     # doe_params = uqra.ExperimentParameters('MCS', None)
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
@@ -382,7 +392,6 @@ if __name__ == '__main__':
     figure_dir      = sim_params.figure_dir
     data_dir_test   = sim_params.data_dir_test
     data_dir_testin = sim_params.data_dir_testin
-
 
     ### 1. Get test data set
     data_test   = np.load(os.path.join(data_dir_test, filename_test), allow_pickle=True).tolist()
