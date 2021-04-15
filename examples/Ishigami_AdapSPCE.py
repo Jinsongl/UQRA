@@ -277,8 +277,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         else:
             data_ideg.DoI_candidate = np.concatenate(data_ideg.DoI_candidate_, axis=1)
         data_ideg.xi_train = np.concatenate(data_ideg.xi_train_, axis=1)
-        data_ideg.x_train  = np.concatenate(data_ideg.x_train_, axis=1)
-        data_ideg.y_train  = np.concatenate(data_ideg.y_train_, axis=0)
+        data_ideg.x_train  = np.concatenate(data_ideg.x_train_ , axis=1)
+        data_ideg.y_train  = np.concatenate(data_ideg.y_train_ , axis=0)
         print(' ------------------------------------------------------------')
         tqdm.write(' > Summary PCE: ndim={:d}, p={:d}'.format(ndim, deg))
         tqdm.write('  - {:<15s} : {:.4e}'.format( 'RMSE y ' , data_ideg.rmse_y))
