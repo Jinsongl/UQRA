@@ -181,7 +181,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_ideg.y0_hat_[-1])))
         print('     - {:<32s} : {:.4e}'.format('y0 test [TRUE ]', y0_test))
 
-
         i_iteration = 1
         while True:
             print('                 ------------------------------')
