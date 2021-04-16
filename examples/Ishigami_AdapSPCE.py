@@ -187,8 +187,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('                  <  Iteration No. {:d} >'.format(i_iteration))
             print('                 ------------------------------')
             print(' ------------------------------------------------------------')
-            print('   > Adding exploitation optimal samples in domain of interest (DoI)... ')
-            print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
+            print('   > Adding exploration optimal samples in global domain ... ')
+            print('   1-1. optimal samples based on SIGNIFICANT basis in global domain ... ')
             ####-------------------------------------------------------------------------------- ####
             n_samples = min(5, max(3,sparsity)) #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
             # n_samples = min(10, sparsity) #len(active_index)
@@ -213,7 +213,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
 
 
-            print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
+            print('   1-2. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
             ## obtain DoI candidate samples
             data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.y0_hat_[-1], xi_test, y_test_hat, data_cand

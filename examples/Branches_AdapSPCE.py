@@ -181,15 +181,14 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('     - {:<32s} : {:.4e}'.format('pf test [ PCE ]', np.array(data_ideg.pf_hat_[-1])))
         print('     - {:<32s} : {:.4e}'.format('pf test [TRUE ]', pf_test))
 
-
         i_iteration = 1
         while True:
             print('                 ------------------------------')
             print('                  <  Iteration No. {:d} >'.format(i_iteration))
             print('                 ------------------------------')
             print(' ------------------------------------------------------------')
-            print('   > Adding exploitation optimal samples in domain of interest (DoI)... ')
-            print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
+            print('   > Adding exploration optimal samples in global domain ... ')
+            print('   1-1. optimal samples based on SIGNIFICANT basis in global domain ... ')
             ####-------------------------------------------------------------------------------- ####
             n_samples = min(5, max(3,sparsity)) #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
             # n_samples = min(10, sparsity) #len(active_index)
@@ -214,7 +213,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
 
 
-            print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
+            print('   1-2. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
             ## obtain DoI candidate samples
             data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(0, xi_test, y_test_hat, data_cand
@@ -347,7 +346,9 @@ if __name__ == '__main__':
     # solver      = uqra.ProductPeak(stats.uniform(-1,2), d=2,c=[-3,2],w=[0.5,0.5])
     # solver      = uqra.Franke()
     # solver      = uqra.ExpTanh()
+    # solver      = uqra.Ishigami()
     # solver      = uqra.InfiniteSlope()
+    # solver      = uqra.Borehole()
 
     # solver      = uqra.ExpAbsSum(stats.norm(0,1),d=2,c=[-2,1],w=[0.25,-0.75])
     # solver      = uqra.ExpSquareSum(stats.norm(0,1),d=2,c=[1,1],w=[1,0.5])
@@ -365,7 +366,7 @@ if __name__ == '__main__':
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
     model_params.n_splits= 50
-    model_params.alpha   = 2
+    model_params.alpha   = 3
     model_params.num_test= int(1e6)
     model_params.num_pred= int(1e6)
     model_params.abs_err = 1e-4
