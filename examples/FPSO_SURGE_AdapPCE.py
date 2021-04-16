@@ -130,74 +130,94 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_ideg.y_train_  = []
         data_ideg.DoI_candidate_ = []
 
+        ### ------------------------ #1: Obtain exploration optimal samples ----------------- ###
+        print(' ------------------------------------------------------------')
+        print('   > Adding exploration samples in global domain... ')
+        print('   1. optimal samples based on FULL basis: {:s}'.format(idoe_nickname))
+        # if deg == model_params.degs[0]:
+            # n_samples = math.ceil(len(active_index) * model_params.alpha)
+        # else:
+            # n_samples = len(active_index)
+
+        ## obtain exploration optimal samples
+        n_samples = max(sparsity, math.ceil(0.8*pce_model.num_basis))
+        xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=[], 
+                active_index=None, initialization='RRQR', return_index=True) 
+
+        x_train_ = solver.map_domain(xi_train_, dist_xi)
+        y_train_ = solver.run(x_train_)
+        data_ideg.xi_train_.append(xi_train_)
+        data_ideg.x_train_.append (x_train_)
+        data_ideg.y_train_.append (y_train_)
+        n_samples_deg = len(np.concatenate(data_ideg.y_train_, axis=0))
+
+        data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
+        data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
+        data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
+        data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
+        print('     - {:<32s} : {:d}'.format('Adding exploration optimal samples', n_samples))
+        print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
+        print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
+        print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
+
+        print('   2. Training with {} '.format(model_params.fitting))
+        weight  = doe_params.sampling_weight()   ## weight function
+        pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight,
+                n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+        sparsity = len(pce_model.active_index)
+        print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
+                        data_train.x.shape[1]/pce_model.num_basis))
+        print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
+        print('     - {:<32s} : {}'.format('Sparsity'   , sparsity))
+
+        print('   3. Prediction with {} samples '.format(xi_test.shape))
+        y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
+        data_ideg.model_.append(pce_model)
+        data_ideg.rmse_y_.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
+        data_ideg.y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
+        data_ideg.score_.append(pce_model.score)
+        data_ideg.cv_err_.append(pce_model.cv_error)
+        data_ideg.yhat_ecdf_.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
+        print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_ideg.y0_hat_[-1])))
+        print('     - {:<32s} : {:.4e}'.format('y0 test [TRUE ]', y0_test))
+
         i_iteration = 1
         while True:
             print('                 ------------------------------')
             print('                  <  Iteration No. {:d} >'.format(i_iteration))
             print('                 ------------------------------')
-            ### ------------------------ #1: Obtain exploration optimal samples ----------------- ###
             print(' ------------------------------------------------------------')
-            print(' > Adding exploration samples in global domain... ')
-            print('   1. optimal samples based on FULL basis')
-            # if deg == model_params.degs[0]:
-                # n_samples = math.ceil(len(active_index) * model_params.alpha)
-            # else:
-                # n_samples = len(active_index)
-            if i_iteration == 1:
-                # n_samples = sparsity
-                n_samples = 3#sprsity #len(active_index)
-            else:
-                n_samples = 3#sprsity #len(active_index)
-            print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
+            print('   > Adding exploitation optimal samples in domain of interest (DoI)... ')
+            print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
+            ####-------------------------------------------------------------------------------- ####
+            n_samples = min(5, max(3,sparsity)) #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
+            # n_samples = min(10, sparsity) #len(active_index)
+            xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi_index, 
+                    active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
 
             ## obtain exploration optimal samples
-            xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi_index, 
-                    active_index=None, initialization='RRQR', return_index=True) 
             x_train_ = solver.map_domain(xi_train_, dist_xi)
             y_train_ = solver.run(x_train_)
             data_ideg.xi_train_.append(xi_train_)
             data_ideg.x_train_.append (x_train_)
             data_ideg.y_train_.append (y_train_)
-            n_samples_deg = len(np.concatenate(data_ideg.y_train_, axis=0))
+            n_samples_deg  = len(np.concatenate(data_ideg.y_train_, axis=0))
 
             data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
             data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
             data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
             data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
+            print('     - {:<32s} : {:d}'.format('Adding exploration optimal samples', n_samples))
             print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
             print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
             print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
 
-            print('   2. Training with {} '.format(model_params.fitting))
-            weight  = doe_params.sampling_weight()   ## weight function
-            pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight,
-                    n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
-            print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
-                            data_train.x.shape[1]/pce_model.num_basis))
-            print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
-            print('     - {:<32s} : {}'.format('Sparsity'   , len(pce_model.active_index)))
-
-            print('   3. Prediction with {} samples '.format(xi_test.shape))
-            y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
-            data_ideg.model_.append(pce_model)
-            data_ideg.rmse_y_.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
-            data_ideg.y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
-            data_ideg.score_.append(pce_model.score)
-            data_ideg.cv_err_.append(pce_model.cv_error)
-            data_ideg.yhat_ecdf_.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
-            print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_ideg.y0_hat_[-1])))
-            print('     - {:<32s} : {:.4e}'.format('y0 test [TRUE ]', y0_test))
-            print(' ------------------------------------------------------------')
-            print(' > Adding exploitation optimal samples in domain of interest (DoI)... ')
-            ####-------------------------------------------------------------------------------- ####
-            sparsity     = len(pce_model.active_index)
-            n_samples    = 3#sparsity #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
 
             print('   1. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
             ## obtain DoI candidate samples
             data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.y0_hat_[-1], xi_test, y_test_hat, data_cand
-                    , deg, n0=10, epsilon=0.1, return_index=True)
+                    , deg, n0=20, epsilon=0.1, return_index=True)
             data_cand_xi_DoI = deg**0.5 * data_cand_DoI if idoe_params.doe_sampling in ['CLS4', 'CLS5'] else data_cand_DoI
             data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_xi_DoI, dist_xi))
 
@@ -312,8 +332,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
-    ith_batch  = 0
-    batch_size = 50
+    ith_batch  = 2
+    batch_size = 5
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
@@ -331,7 +351,7 @@ if __name__ == '__main__':
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
     model_params.n_splits= 50
-    model_params.alpha   = 2
+    model_params.alpha   = 5
     model_params.num_test= int(1e7)
     model_params.num_pred= int(1e7)
     model_params.pf      = np.array([0.5/(365.25*24*50)])
