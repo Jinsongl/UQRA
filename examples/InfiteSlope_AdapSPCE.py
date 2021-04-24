@@ -163,7 +163,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('   2. Training with {} '.format(model_params.fitting))
         weight  = doe_params.sampling_weight()   ## weight function
         pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight,
-                n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+                n_jobs=model_params.n_jobs, n_splits=model_params.n_splits)
         sparsity = len(pce_model.active_index)
         print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
                         data_train.x.shape[1]/pce_model.num_basis))
@@ -247,7 +247,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('   2. Training with {} '.format(model_params.fitting))
             weight  = doe_params.sampling_weight()   ## weight function
             pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight, 
-                    n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+                    n_jobs=model_params.n_jobs, n_splits=model_params.n_splits)
             sparsity     = len(pce_model.active_index)
             print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
                             data_train.x.shape[1]/pce_model.num_basis))
@@ -333,7 +333,7 @@ if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
     ith_batch  = 0
-    batch_size = 1
+    batch_size = 5
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
