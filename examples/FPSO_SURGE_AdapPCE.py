@@ -326,14 +326,15 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             for i, (ikey, ivalue) in enumerate(zip(isConverge, error_converge)):
                 print('     >  Checking #{:d} : {}, {:.2e}'.format(i, ikey, ivalue))
             tqdm.write('###############################################################################')
-            # break
+            if data_ideg.deg >=6: 
+                break
     return main_res
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
-    ith_batch  = 2
-    batch_size = 5
+    ith_batch  = 0
+    batch_size = 10
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
@@ -361,7 +362,7 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('MCS', 'S')
+    doe_params = uqra.ExperimentParameters('MCS', 'D')
     # doe_params = uqra.ExperimentParameters('MCS', None)
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
