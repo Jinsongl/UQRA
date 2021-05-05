@@ -356,6 +356,7 @@ if __name__ == '__main__':
     # solver      = uqra.ProductPeak(stats.norm(0,1), d=2, c=[-3,2], w=[0.5,]*2)
     # solver      = uqra.ExpSum(stats.norm(0,1), d=3)
     solver      = uqra.FourBranchSystem()
+    solver      = uqra.GaytonHat()
     # solver      = uqra.LiqudHydrogenTank()
 
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
