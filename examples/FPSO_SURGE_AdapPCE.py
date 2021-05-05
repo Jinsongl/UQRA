@@ -326,14 +326,14 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             for i, (ikey, ivalue) in enumerate(zip(isConverge, error_converge)):
                 print('     >  Checking #{:d} : {}, {:.2e}'.format(i, ikey, ivalue))
             tqdm.write('###############################################################################')
-            if data_ideg.deg >=6: 
-                break
+            # if data_ideg.deg >=6: 
+                # break
     return main_res
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
-    ith_batch  = 0
+    ith_batch  = 2
     batch_size = 10
     np.random.seed(100)
     random.seed(100)
