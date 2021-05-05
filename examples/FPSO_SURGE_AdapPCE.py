@@ -129,6 +129,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_ideg.x_train_  = []
         data_ideg.y_train_  = []
         data_ideg.DoI_candidate_ = []
+        data_ideg.is_converge=[]
 
         ### ------------------------ #1: Obtain exploration optimal samples ----------------- ###
         print(' ------------------------------------------------------------')
@@ -301,7 +302,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         tqdm.write('  - {:<15s} : {:.4f}'.format( 'Score '  , data_ideg.score ))
         tqdm.write('  - {:<15s} : {:.4e} [{:.4e}]'.format( 'y0 ' , data_ideg.y0_hat, y0_test))
         print(' ------------------------------------------------------------')
-        main_res.append(data_ideg)
 
         cv_err_global = np.array([idata.cv_err for idata in main_res]).T
         y0_hat_global = np.array([idata.y0_hat for idata in main_res]).T
@@ -328,12 +328,14 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             tqdm.write('###############################################################################')
             # if data_ideg.deg >=6: 
                 # break
+        data_ideg.is_converge.append(np.array(isConverge).all())
+        main_res.append(data_ideg)
     return main_res
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
-    ith_batch  = 2
+    ith_batch  = 4
     batch_size = 10
     np.random.seed(100)
     random.seed(100)
