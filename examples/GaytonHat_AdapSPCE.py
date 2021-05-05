@@ -399,9 +399,6 @@ if __name__ == '__main__':
     data_test   = np.load(os.path.join(data_dir_test, filename_test), allow_pickle=True).tolist()
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
-    print(np.mean(data_test.x, axis=1))
-    print(np.std (data_test.x, axis=1))
-    print(data_test.pf)
     data_test.y = solver.run(data_test.x) if not hasattr(data_test, 'y') else data_test.y
     xi_test = data_test.xi[:, :model_params.num_test] 
     y_test  = data_test.y [   :model_params.num_test] 
