@@ -166,18 +166,18 @@ def run_franke():
 def run_duffing():
 
     # f = lambda t: 8 * np.cos(0.5 * t)
+    uqra_env = uqra.environment.Norway5(ndim=2)
     np.random.seed(100)
     dt = 0.01 
-    out_responses = [1,2]
     nsim = 1
-    out_stats = ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin']
     # solver = uqra.duffing_oscillator(m=1,c=0.2*np.pi,k=4*np.pi**2,s=np.pi**2, out_responses=out_responses, out_stats=out_stats, tmax=18000, dt=dt,y0=[1,0])
     f = lambda t: 0.39 * np.cos(1.4 * t)
-    solver = uqra.duffing_oscillator(m=1,c=0.1,k=-1,s=1,excitation=f, out_responses=out_responses, out_stats=out_stats, tmax=18000, dt=dt,y0=[0,0])
+    solver = uqra.duffing_oscillator(m=1,c=0.1,k=-1,s=1,excitation='JONSWAP', tmax=1800, dt=dt,y0=[0,0],random_state=1)
     x = solver.generate_samples(1)
+    x = uqra_env.rvs(size=10)
     print(solver)
     print(x)
-    y = solver.run(x,return_raw=True)
+    y = solver.run(x,verbose=True)
 
     # data_dir_src    = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/Samples/Kvitebjorn/Normal/'
     # data_dir_destn  = r'/Volumes/External/MUSE_UQ_DATA/Duffing/Data/' 
@@ -633,7 +633,7 @@ def run_GaytonHat():
         data.ecdf = uqra.ECDF(data.y, data.pf, compress=True)
         del data.x
         del data.y
-        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+        # np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 
 def run_CompositeGaussian():
     solver = uqra.CompositeGaussian()
@@ -726,16 +726,47 @@ def run_ExpTanh():
         del data.y
         np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 
+def run_LognormSum():
+    ndim = 200
+    solver = uqra.LognormSum(ndim=ndim)
+    data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
+    data_dir_test   = os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples', solver.nickname, 'TestData')
+    if not os.path.exists(data_dir_test):
+        os.makedirs(data_dir_test)
+    data_u = []
+    for r in range(10):
+        data   = uqra.Data()
+        data.u = stats.uniform(0,1).rvs(size=(solver.ndim, int(1e6)))
+        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
+        data.x = solver.map_domain(data.u, stats.uniform(0,1))
+        data.y = solver.run(data.x)
+        print(np.mean(data.x, axis=1))
+        print(np.std (data.x, axis=1))
+        print(data.y.shape)
+        print(np.mean(data.y))
+        print(np.std(data.y))
+        print('min:', np.amin(data.y))
+        print('max:', np.amax(data.y))
+        print(filename)
+        print('Probability of failure {:.2e}'.format(np.sum(data.y<0)/len(data.y)))
+        data.pf = np.sum(data.y<0)/len(data.y)
+        print(data.pf)
+        data.ecdf = uqra.ECDF(data.y, data.pf, compress=True)
+        del data.x
+        del data.y
+        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 if __name__ == '__main__':
-    run_FPSO()
+    # run_FPSO()
     # run_Ishigami()
     # run_FourBranch()
     # run_CornerPeak()
     # run_LiqudHydrogenTank()
     # run_InfiniteSlope()
-    # run_GaytonHat()
+    run_GaytonHat()
     # run_CompositeGaussian()
     # run_Rastrigin()
     # run_Borehole()
     # run_ExpTanh()
+    # run_duffing()
+    # run_LognormSum()
 

@@ -129,6 +129,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_ideg.x_train_  = []
         data_ideg.y_train_  = []
         data_ideg.DoI_candidate_ = []
+        data_ideg.is_converge=[]
 
         ### ------------------------ #1: Obtain exploration optimal samples ----------------- ###
         print(' ------------------------------------------------------------')
@@ -276,7 +277,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 print('         !< Model converge for order {:d} >!'.format(deg))
                 break
             if n_samples_deg > model_params.alpha*orth_poly.num_basis:
-            # if len(data_train.y)> model_params.alpha*orth_poly.num_basis:
                 print('         !< Number of samples exceeding {:.2f}P >!'.format(model_params.alpha))
                 break
 
@@ -333,7 +333,7 @@ if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
     ith_batch  = 0
-    batch_size = 1
+    batch_size = 10
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
@@ -364,10 +364,10 @@ if __name__ == '__main__':
     model_params.basis   = 'Leg'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
-    model_params.n_splits= 50
+    model_params.n_splits= 10
     model_params.alpha   = 3
     model_params.num_test= int(1e6)
-    model_params.num_pred= int(1e6)
+    # model_params.num_pred= int(1e6)
     model_params.pf      = np.array([1e-4])
     model_params.abs_err = 1e-4
     model_params.rel_err = 2.5e-2
@@ -398,9 +398,10 @@ if __name__ == '__main__':
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
     data_test.y = solver.run(data_test.x) if not hasattr(data_test, 'y') else data_test.y
-    xi_test     = data_test.xi[:, :model_params.num_test] 
-    y_test      = data_test.y [   :model_params.num_test] 
-    y0_test     = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
+    assert data_test.xi.shape[1] >= model_params.num_test 
+    xi_test = data_test.xi[:, :model_params.num_test] 
+    y_test  = data_test.y [   :model_params.num_test] 
+    y0_test = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
 
     res = []
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):

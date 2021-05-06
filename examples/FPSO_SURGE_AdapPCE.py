@@ -277,7 +277,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 print('         !< Model converge for order {:d} >!'.format(deg))
                 break
             if n_samples_deg > model_params.alpha*orth_poly.num_basis:
-            # if len(data_train.y)> model_params.alpha*orth_poly.num_basis:
                 print('         !< Number of samples exceeding {:.2f}P >!'.format(model_params.alpha))
                 break
 
@@ -392,6 +391,7 @@ if __name__ == '__main__':
         data_test.y = data_test.y[theta]
     except:
         pass
+    assert data_test.xi.shape[1] >= model_params.num_test 
     xi_test = data_test.xi[:, :model_params.num_test] 
     y_test  = data_test.y [   :model_params.num_test] 
     y0_test = uqra.metrics.mquantiles(y_test, 1-model_params.pf)

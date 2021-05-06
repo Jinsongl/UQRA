@@ -129,6 +129,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_ideg.x_train_  = []
         data_ideg.y_train_  = []
         data_ideg.DoI_candidate_ = []
+        data_ideg.is_converge=[]
 
         ### ------------------------ #1: Obtain exploration optimal samples ----------------- ###
         print(' ------------------------------------------------------------')
@@ -155,7 +156,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
         data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
         data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
-        print('     - {:<32s} : {:d}'.format('Adding exploration samples', n_samples))
+        print('     - {:<32s} : {:d}'.format('Adding exploration optimal samples', n_samples))
         print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
         print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
         print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
@@ -207,7 +208,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
             data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
             data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
-            print('     - {:<32s} : {:d}'.format('Adding exploration samples', n_samples))
+            print('     - {:<32s} : {:d}'.format('Adding exploration optimal samples', n_samples))
             print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
             print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
             print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
@@ -265,8 +266,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             # isOverfitting(data_ideg.cv_err) ## check Overfitting
             print('     - {:<32s} : {:.4e}'.format('pf test [ PCE ]', np.array(data_ideg.pf_hat_[-1])))
             print('     - {:<32s} : {:.4e}'.format('pf test [TRUE ]', pf_test))
-            # isConverge, error_converge = relative_converge(data_ideg.pf_hat, err=model_params.rel_err)
-            isConverge, error_converge = absolute_converge(data_ideg.pf_hat_, err=model_params.abs_err)
+            isConverge, error_converge = relative_converge(data_ideg.pf_hat_, err=model_params.rel_err)
+            # isConverge, error_converge = absolute_converge(data_ideg.pf_hat_, err=model_params.abs_err)
             print('   4. Converge check ...')
             print('      - Value : {} [Ref: {:e}]'.format(np.array(data_ideg.pf_hat_), pf_test))
             print('      - Error : {} % [{}]'.format(np.around(error_converge, 4)*100,isConverge))
@@ -308,8 +309,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         rmsey_global  = np.array([idata.rmse_y for idata in main_res]).T
 
         isOverfitting(cv_err_global) ## check Overfitting
-        # isConverge0, error_converge0 = relative_converge(data.pf_hat, err=model_params.rel_err)
-        isConverge0, error_converge0 = absolute_converge(pf_hat_global, err=model_params.abs_err)
+        isConverge0, error_converge0 = relative_converge(pf_hat_global, err=2*model_params.rel_err)
+        # isConverge0, error_converge0 = absolute_converge(pf_hat_global, err=model_params.abs_err)
         isConverge1, error_converge1 = threshold_converge(score_global)
         error_converge = [error_converge0, error_converge1]
         isConverge = [isConverge0, isConverge1]
@@ -327,13 +328,14 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 print('     >  Checking #{:d} : {}, {:.2e}'.format(i, ikey, ivalue))
             tqdm.write('###############################################################################')
             # break
+        main_res[-1].is_converge.append(np.array(isConverge).all())
     return main_res
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
     ith_batch  = 0
-    batch_size = 1
+    batch_size = 10
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
@@ -369,9 +371,9 @@ if __name__ == '__main__':
     model_params.n_splits= 50
     model_params.alpha   = 3
     model_params.num_test= int(5e7)
-    model_params.num_pred= int(1e6)
+    # model_params.num_pred= int(1e6)
     model_params.abs_err = 1e-4
-    model_params.rel_err = 1e-4
+    model_params.rel_err = 2.5e-2
     model_params.n_jobs  = mp.cpu_count()
     model_params.update_basis()
     model_params.info()
@@ -400,6 +402,7 @@ if __name__ == '__main__':
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
     data_test.y = solver.run(data_test.x) if not hasattr(data_test, 'y') else data_test.y
+    assert data_test.xi.shape[1] >= model_params.num_test 
     xi_test = data_test.xi[:, :model_params.num_test] 
     y_test  = data_test.y [   :model_params.num_test] 
     pf_test = np.sum(y_test < 0) / len(y_test)
