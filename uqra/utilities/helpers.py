@@ -685,3 +685,12 @@ def get_duplicate_rows(A):
         duplicate_idx = uniq_idx[counts>=2] 
         j_col+=1
     return duplicate_idx
+
+
+def time_in_range(start, end, x):
+    """Return true if x is in the range [start, end]"""
+    if start <= end:
+        return start <= x <= end
+    else:
+        return start <= x or x <= end
+
