@@ -611,29 +611,27 @@ def run_InfiniteSlope():
         np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 
 def run_GaytonHat():
+    np.set_printoptions(precision=4)
     solver = uqra.GaytonHat()
     data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
     data_dir_test   = os.path.join('/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples', solver.nickname, 'TestData')
-    data_u = []
+    data = uqra.Data()
+    data.pf   = []
+    data.ecdf = []
     if not os.path.exists(data_dir_test):
         os.makedirs(data_dir_test)
-    for r in range(10):
-        data = uqra.Data()
-        data.u = stats.norm.rvs(size= (solver.ndim, int(5e7)))
-        filename = '{:s}_Mcs5E7R{:d}.npy'.format(solver.nickname, r)
-        print(filename)
-        print(data.u.shape)
+    for r in tqdm(range(10)):
+        u = stats.norm.rvs(size= (solver.ndim, int(5e7)))
         # data.xi= data.u * np.sqrt(0.5)
         # data.x = solver.map_domain(data.u, stats.norm(0,1))
-        data.x = data.u
-        data.y = solver.run(data.x)
-        np.set_printoptions(precision=4)
-        print('Probability of failure {:.2e}'.format(np.sum(data.y<0)/len(data.y)))
-        data.pf = np.sum(data.y<0)/len(data.y)
-        data.ecdf = uqra.ECDF(data.y, data.pf, compress=True)
-        del data.x
-        del data.y
-        # np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+        x = u
+        y = solver.run(x)
+        pf = np.sum(y<0)/len(y)
+        print('Probability of failure {:.2e}'.format(np.sum(y<0)/len(y)))
+        data.pf.append(pf)
+        data.ecdf.append(uqra.ECDF(y, pf, compress=True))
+    filename = '{:s}_Mcs5E7_Ecdf0.npy'.format(solver.nickname)
+    np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 
 def run_CompositeGaussian():
     solver = uqra.CompositeGaussian()
