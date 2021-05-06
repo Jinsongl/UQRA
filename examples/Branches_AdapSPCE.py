@@ -16,6 +16,7 @@ from tqdm import tqdm
 import itertools, copy, math, collections
 import multiprocessing as mp
 import random
+import datetime
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
@@ -368,7 +369,7 @@ if __name__ == '__main__':
     model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
-    model_params.n_splits= 10
+    model_params.n_splits= 20
     model_params.alpha   = 3
     model_params.num_test= int(1e6)
     # model_params.num_pred= int(1e6)
@@ -436,3 +437,9 @@ if __name__ == '__main__':
     except:
         np.save(filename, res, allow_pickle=True)
         print(' >> Simulation Done! Data saved to {:s}'.format(os.path.join(os.getcwd(), filename)))
+
+    alarm_window = [datetime.time(7,0,0),datetime.time(23,59,59)]
+    current_time = datetime.datetime.now().time()
+    if uqra.time_in_range(alarm_window[0], alarm_window[1], current_time) :
+        os.system('say "{:s} Simulation has finished"'.format(solver.name))
+        
