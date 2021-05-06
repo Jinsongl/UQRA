@@ -843,3 +843,35 @@ class Borehole(SolverBase):
         return y
 
 
+class LognormSum(SolverBase):
+    """
+    The 8-dimensional borehole function models water flow through a borehole that is drilled from the ground surface through the two aquifers. The water flow rate is described by the borehole and the aquifer’s properties. The borehole function is typically used to benchmark metamodeling and sensitivity analysis methods (Harper and Gupta, 1983; Morris, 1993; An and Owen, 2001; Kersaudy et al., 2015).
+    References
+    W. V. Harper and S. K. Gupta, “Sensitivity/Uncertainty Analysis of a Borehole Scenario Comparing Latin Hypercube Sampling and Deterministic Sensitivity Approaches”, Office of Nuclear Waste Isolation, Battelle Memorial Institute, Columbus, Ohio, BMI/ONWI-516, 1983. URL
+    M. D. Morris, T. J. Mitchell, and D. Ylvisaker, “Bayesian design and analysis of computer experiments: Use of derivatives in surface prediction,” Technometrics, vol. 35, no. 3, pp. 243–255, 1993. DOI:10.1080/00401706.1993.10485320
+    J. An and A. Owen, “Quasi-regression,” Journal of Complexity, vol. 17, pp. 588–607, 2001. DOI:10.1006/jcom.2001.0588
+    P. Kersaudy, B. Sudret, N. Varsier, O. Picon, and J. Wiart, “A new surrogate modeling technique combining Kriging and polynomial chaos expansions – Application to uncertainty analysis in computational dosimetry,” Journal of Computational Physics, vol. 286, pp. 103–117, 2015. DOI:10.1016/j.jcp.2015.01.034
+
+    """
+    def __init__(self, ndim=5, a=0.2):
+        super().__init__()
+        self.name = 'HighDimension'
+        self.ndim = int(ndim)
+        self.a    = a
+        self.distributions = [ stats.lognorm(s=np.sqrt(np.log(1.04)), scale=1.04**-0.5),] * self.ndim
+        self.dist_name = 'lognorm' 
+        self.nickname = 'LNS{:d}'.format(self.ndim)
+
+    def __str__(self):
+        return 'Solver: High dimensional lognormal function'
+
+    def run(self, x, **kwargs):
+        x = np.array(x, copy=False, ndmin=2)
+        assert x.shape[0] == self.ndim, 'Variable x dimension mismatch: X.shape = {}, expecting ndim={:d}'.format(x.shape, self.ndim)
+        y = (self.ndim + 3 * self.a * np.sqrt(self.ndim)) - np.sum(x, axis=0)
+
+        if np.isnan(y).any():
+            raise ValueError('nan in solver.run() result')
+        return y
+
+
