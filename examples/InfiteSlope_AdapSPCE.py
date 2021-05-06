@@ -332,7 +332,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
-    ith_batch  = 4
+    ith_batch  = 0
     batch_size = 10
     np.random.seed(100)
     random.seed(100)
@@ -364,11 +364,11 @@ if __name__ == '__main__':
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
     model_params.n_splits= 50
-    model_params.alpha   = 2
+    model_params.alpha   = 3
     model_params.num_test= int(1e6)
     model_params.num_pred= int(1e6)
     model_params.abs_err = 1e-3
-    model_params.rel_err = 1e-4
+    model_params.rel_err = 2.5e-2
     model_params.n_jobs  = mp.cpu_count()
     model_params.update_basis()
     model_params.info()
