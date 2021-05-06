@@ -265,8 +265,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             # isOverfitting(data_ideg.cv_err) ## check Overfitting
             print('     - {:<32s} : {:.4e}'.format('pf test [ PCE ]', np.array(data_ideg.pf_hat_[-1])))
             print('     - {:<32s} : {:.4e}'.format('pf test [TRUE ]', pf_test))
-            # isConverge, error_converge = relative_converge(data_ideg.pf_hat, err=model_params.rel_err)
-            isConverge, error_converge = absolute_converge(data_ideg.pf_hat_, err=model_params.abs_err)
+            isConverge, error_converge = relative_converge(data_ideg.pf_hat_, err=model_params.rel_err)
+            # isConverge, error_converge = absolute_converge(data_ideg.pf_hat_, err=model_params.abs_err)
             print('   4. Converge check ...')
             print('      - Value : {} [Ref: {:e}]'.format(np.array(data_ideg.pf_hat_), pf_test))
             print('      - Error : {} % [{}]'.format(np.around(error_converge, 4)*100,isConverge))
@@ -308,8 +308,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         rmsey_global  = np.array([idata.rmse_y for idata in main_res]).T
 
         isOverfitting(cv_err_global) ## check Overfitting
-        # isConverge0, error_converge0 = relative_converge(data.pf_hat, err=model_params.rel_err)
-        isConverge0, error_converge0 = absolute_converge(pf_hat_global, err=model_params.abs_err)
+        isConverge0, error_converge0 = relative_converge(pf_hat_global, err=model_params.rel_err)
+        # isConverge0, error_converge0 = absolute_converge(pf_hat_global, err=model_params.abs_err)
         isConverge1, error_converge1 = threshold_converge(score_global)
         error_converge = [error_converge0, error_converge1]
         isConverge = [isConverge0, isConverge1]
@@ -332,8 +332,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
-    ith_batch  = 0
-    batch_size = 5
+    ith_batch  = 4
+    batch_size = 10
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
@@ -367,7 +367,7 @@ if __name__ == '__main__':
     model_params.alpha   = 2
     model_params.num_test= int(1e6)
     model_params.num_pred= int(1e6)
-    model_params.abs_err = 1e-4
+    model_params.abs_err = 1e-3
     model_params.rel_err = 1e-4
     model_params.n_jobs  = mp.cpu_count()
     model_params.update_basis()
