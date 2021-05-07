@@ -336,7 +336,7 @@ if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
     ith_batch  = 0
-    batch_size = 10
+    batch_size = 1
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
@@ -362,12 +362,12 @@ if __name__ == '__main__':
 
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = np.arange(2,6) #[2,6,10]#
+    model_params.degs    = np.arange(2,9) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Leg'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
-    model_params.n_splits= 20
+    model_params.n_splits= 10
     model_params.alpha   = 3
     model_params.num_test= int(1e6)
     model_params.abs_err = 1e-3
@@ -376,7 +376,7 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('MCS', 'S')
+    doe_params = uqra.ExperimentParameters('MCS', 'D')
     # doe_params = uqra.ExperimentParameters('MCS', None)
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
