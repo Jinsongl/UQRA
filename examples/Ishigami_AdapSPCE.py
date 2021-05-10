@@ -328,6 +328,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 print('     >  Checking #{:d} : {}, {:.2e}'.format(i, ikey, ivalue))
             tqdm.write('###############################################################################')
             # break
+        main_res[-1].is_converge.append(np.array(isConverge).all())
     return main_res
 
 if __name__ == '__main__':
