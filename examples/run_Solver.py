@@ -501,40 +501,82 @@ def run_Ishigami():
     solver = uqra.Ishigami()
     data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
     data_dir_test   = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/Ishigami/TestData' 
-    data_u = []
-    for r in range(10):
-        data = uqra.Data()
-        filename = 'CDF_McsE7R{:d}.npy'.format(r)
-        print(filename)
-        data.u = np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:]*2.0-1.0
-        data.xi= data.u
-        data.x = data.u*np.pi 
-        data.y = solver.run(data.x)
-        filename = '{:s}_CDF_McsE6R{:d}.npy'.format(solver.nickname, r)
-        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+    data = uqra.Data()
+    data.y0   = []
+    data.ecdf = []
+    pf = 1e-4
+    if not os.path.exists(data_dir_test):
+        os.makedirs(data_dir_test)
+    for r in tqdm(range(100)):
+        np.random.seed(None)
+        u = stats.uniform(-np.pi, 2*np.pi).rvs(size= (solver.ndim, int(1e7)))
+        # data.xi= data.u * np.sqrt(0.5)
+        # data.x = solver.map_domain(data.u, stats.norm(0,1))
+        x = u
+        y = solver.run(x)
+        y0_hat = uqra.metrics.mquantiles(y, 1-pf) 
+        print('Exceedance value {:.4e}'.format(y0_hat))
+        data.y0.append(y0_hat)
+        data.ecdf.append(uqra.ECDF(y, pf, compress=True))
+    filename = '{:s}_McsE7_Ecdf0.npy'.format(solver.nickname)
+    np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+
+    # data_u = []
+    # for r in range(10):
+        # data = uqra.Data()
+        # filename = 'CDF_McsE7R{:d}.npy'.format(r)
+        # print(filename)
+        # data.u = np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:]*2.0-1.0
+        # data.xi= data.u
+        # data.x = data.u*np.pi 
+        # data.y = solver.run(data.x)
+        # filename = '{:s}_CDF_McsE6R{:d}.npy'.format(solver.nickname, r)
+        # np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 
 def run_FourBranch():
     solver = uqra.FourBranchSystem()
     data_dir_testin = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/ExperimentalDesign/Random' 
     data_dir_test   = '/Volumes/GoogleDrive/My Drive/MUSE_UQ_DATA/UQRA_Examples/Branches/TestData' 
     data_u = []
-    for r in range(10):
-        data = uqra.Data()
-        # filename = 'CDF_McsE7R{:d}.npy'.format(r)
-        # data.u = stats.norm.ppf(np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:])
-        filename = 'DoE_McsE6R{:d}_norm.npy'.format(r)
-        data.u = np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:]
-        print(filename)
-        data.xi= data.u * np.sqrt(0.5)
-        data.x = data.u
-        data.y = solver.run(data.x)
-        print(np.sum(data.y<0)/len(data.y))
-        print('u: {} {}'.format(np.mean(data.u, axis=-1), np.std(data.u, axis=-1)))
-        print('xi: {} {}'.format(np.mean(data.xi, axis=-1), np.std(data.xi, axis=-1)))
-        print('x: {} {}'.format(np.mean(data.x, axis=-1), np.std(data.x, axis=-1)))
-        # filename = '{:s}_CDF_McsE7R{:d}.npy'.format(solver.nickname, r)
-        filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
-        np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+    data = uqra.Data()
+    data.pf   = []
+    data.ecdf = []
+    if not os.path.exists(data_dir_test):
+        os.makedirs(data_dir_test)
+    for r in tqdm(range(100)):
+        np.random.seed(None)
+        u = stats.norm.rvs(size= (solver.ndim, int(1e7)))
+        # data.xi= data.u * np.sqrt(0.5)
+        # data.x = solver.map_domain(data.u, stats.norm(0,1))
+        x = u
+        y = solver.run(x)
+        pf = np.sum(y<0)/len(y)
+        print('Probability of failure {:.2e}'.format(np.sum(y<0)/len(y)))
+        data.pf.append(pf)
+        data.ecdf.append(uqra.ECDF(y, pf, compress=True))
+    filename = '{:s}_McsE7_Ecdf0.npy'.format(solver.nickname)
+    np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
+
+    # for r in range(10):
+        # data = uqra.Data()
+        # # filename = 'CDF_McsE7R{:d}.npy'.format(r)
+        # # data.u = stats.norm.ppf(np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:])
+        # filename = 'DoE_McsE6R{:d}_norm.npy'.format(r)
+        # data.u = np.load(os.path.join(data_dir_testin, filename))[:solver.ndim,:]
+        # print(filename)
+        # data.xi= data.u * np.sqrt(0.5)
+        # data.x = data.u
+        # data.y = solver.run(data.x)
+        # print(np.sum(data.y<0)/len(data.y))
+        # print('u: {} {}'.format(np.mean(data.u, axis=-1), np.std(data.u, axis=-1)))
+        # print('xi: {} {}'.format(np.mean(data.xi, axis=-1), np.std(data.xi, axis=-1)))
+        # print('x: {} {}'.format(np.mean(data.x, axis=-1), np.std(data.x, axis=-1)))
+        # # filename = '{:s}_CDF_McsE7R{:d}.npy'.format(solver.nickname, r)
+        # filename = '{:s}_McsE6R{:d}.npy'.format(solver.nickname, r)
+        # np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 
 def run_CornerPeak():
     solver = uqra.FourBranchSystem()
@@ -755,12 +797,12 @@ def run_LognormSum():
         np.save(os.path.join(data_dir_test, filename), data, allow_pickle=True)
 if __name__ == '__main__':
     # run_FPSO()
-    # run_Ishigami()
+    run_Ishigami()
     # run_FourBranch()
     # run_CornerPeak()
     # run_LiqudHydrogenTank()
     # run_InfiniteSlope()
-    run_GaytonHat()
+    # run_GaytonHat()
     # run_CompositeGaussian()
     # run_Rastrigin()
     # run_Borehole()

@@ -145,8 +145,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             active_index=None, initialization='rrqr', return_index=True) 
 
     x_train_ = solver.map_domain(xi_train_, dist_xi)
-    print(xi_train_)
-    print(x_train_)
     y_train_ = solver.run(x_train_)
     data_ideg.xi_train_.append(xi_train_)
     data_ideg.x_train_.append (x_train_)
@@ -275,6 +273,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('   ------------------------------------------------------------')
         print(pce_model.active_index)
         print(pce_model.coef)
+        beta_hat = np.zeros(pce_model.num_basis)
+        for i, beta_i in zip(pce_model.active_index, pce_model.coef):
+            beta_hat[i] = beta_i
+        print(beta)
+        print(beta_hat)
+        print(np.linalg.norm(beta-beta_hat)/np.linalg.norm(beta))
         i_iteration +=1
         if np.all(isConverge):
             print('         !< Model converge for order {:d} >!'.format(deg))
@@ -367,6 +371,12 @@ if __name__ == '__main__':
         coef[i] = stats.norm.rvs(0,1)
     solver = uqra.OrthPoly(orth_poly, coef=coef)
     print(solver.coef)
+    np.random.seed(10)
+    orth_poly = uqra.Hermite(d=2,deg=15, hem_type='probabilists')
+    beta = np.zeros((orth_poly.num_basis))
+    for i in [0, 1,4,7,12,18,25]:
+        beta[i] = stats.norm.rvs(0,1)
+
     np.random.seed(100)
     random.seed(100)
 
@@ -374,7 +384,7 @@ if __name__ == '__main__':
     model_params = uqra.Modeling('PCE')
     model_params.degs    = 15 #np.arange(10,11) #[2,6,10]#
     model_params.ndim    = solver.ndim
-    model_params.basis   = 'Hem'
+    model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
     model_params.n_splits= 50
@@ -388,7 +398,7 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('CLS4', 'D')
+    doe_params = uqra.ExperimentParameters('MCS', 'D')
     doe_params.update_poly_name(model_params.basis)
     doe_params.num_cand  = int(1e5)
 
