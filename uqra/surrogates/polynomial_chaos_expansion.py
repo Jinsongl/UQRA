@@ -57,10 +57,12 @@ class PolynomialChaosExpansion(SurrogateBase):
         print(r'   - {:<25s} : {:<20s}'.format('Surrogate Model Name', self.name))
         if self.deg is not None:
             print(r'     - {:<23s} : {}'.format('Askey-Wiener polynomial'   , self.orth_poly.name))
-            print(r'     - {:<23s} : {}'.format('Polynomial dimension ', self.ndim))
-            print(r'     - {:<23s} : {}'.format('Polynomial order (p)', self.deg ))
-            print(r'     - {:<23s} : {:d}'.format('No. polynomial basis(P)', self.num_basis))
-            print(r'     - {:<23s} : {:d}'.format('No. active basis (s)', len(self.active_index)))
+            print(r'     - {:<23s} : {}'.format('Polynomial dimension '     , self.ndim))
+            print(r'     - {:<23s} : {}'.format('Polynomial order (p)'      , self.deg ))
+            print(r'     - {:<23s} : {}[{}]'.format('Polynomial weight'     , self.orth_poly.weight.dist.name, 
+                self.orth_poly.weight.args))
+            print(r'     - {:<23s} : {:d}'.format('No. polynomial basis(P)' , self.num_basis))
+            print(r'     - {:<23s} : {:d}'.format('No. active basis (s)'    , len(self.active_index)))
 
     def set_degree(self, p):
         if self.orth_poly is None:
@@ -133,9 +135,9 @@ class PolynomialChaosExpansion(SurrogateBase):
 
             neg_mse = model_selection.cross_val_score(ols_reg, WX, Wy, 
                     scoring='neg_mean_squared_error', cv=kfolder, n_jobs=n_jobs)
-            self.model = ols_reg.fit(X, y, sample_weight=w)
-            self.cv_error = -np.mean(neg_mse)
-            self.coef    = np.array(copy.deepcopy(ols_reg.coef_), ndmin=1)
+            self.model      = ols_reg.fit(X, y, sample_weight=w)
+            self.cv_error   = -np.mean(neg_mse)
+            self.coef       = np.array(copy.deepcopy(ols_reg.coef_), ndmin=1)
             # self.coef[:,0] = self.coef[:,0] + ols_reg.intercept_
             # self.coef    = np.array(np.squeeze(self.coef),ndmin=1)
             self.score   = ols_reg.score(X,y,w)
@@ -159,7 +161,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             normalize     = kwargs.get('normalize'      , False)
             n_jobs        = kwargs.get('n_jobs'         , None ) 
             shrinkage     = kwargs.get('shrinkage'      , 'CV' )
-            n_splits      = kwargs.get('n_splits'  , x.shape[1]) 
+            n_splits      = min(kwargs.get('n_splits'   , x.shape[1]), x.shape[1])  ## if not given, default is Leave-one-out
 
             full_weight = self.weight_func(x, w, active=self.active_index)
             WX, Wy = self._rescale_data(X, y, full_weight) if full_weight is not None else (X, y)
@@ -213,13 +215,28 @@ class PolynomialChaosExpansion(SurrogateBase):
             self.Lars = model_lars
 
         elif method.lower().startswith('lasso'):
-            fit_intercept = kwargs.get('fit_intercept'  , True )
+            fit_intercept = kwargs.get('fit_intercept'  , False)
             normalize     = kwargs.get('normalize'      , False)
             n_jobs        = kwargs.get('n_jobs'         , None ) 
             max_iter      = kwargs.get('max_iter'       , 500  ) 
             n_splits      = min(kwargs.get('n_splits', x.shape[1]), x.shape[1])  ## if not given, default is Leave-one-out
+            kfolder       = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-            self._fit_lassolars(X,y,w=w, fit_intercept=fit_intercept, normalize=normalize, n_jobs=n_jobs, n_splits=n_splits)
+            w = self.weight_func(x, w, active=None)
+            WX, Wy = self._rescale_data(X, y, w) if w is not None else (X, y)
+            try:    
+                model  = linear_model.LassoLarsCV(max_iter=max_iter,cv=kfolder, n_jobs=n_jobs).fit(WX,Wy)
+            except ValueError as e:
+                #### looks like a bug in KFold
+                print(e)
+                return
+            self.model    = model 
+            self.cv_error = np.min(np.mean(model.mse_path_, axis=1))
+            self.coef     = np.array(copy.deepcopy(model.coef_), ndmin=1)
+            self.active_index = model.active_ 
+            self.active_basis = [self.orth_poly.basis_degree[i] for i in self.active_index]
+            self.sparsity = len(self.active_index)
+            self.score    = model.score(WX, Wy)
 
         else:
             raise ValueError(' {:s} not defined for UQRA.PCE.fit method'.format(method)) 
@@ -247,7 +264,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         self.active_index = range(self.num_basis)
         self.active_basis = self.orth_poly.basis_degree
 
-    def _fit_lassolars(self,x,y,w=None, **kwargs):
+    def _fit_lassolars(self,X,y,w=None, fit_intercept=True, normalize=False, n_jobs=None, n_splits=1, max_iter=500 ):
         """
         (weighted) Ordinary Least Error on selected basis (LARs)
         Reference: Blatman, Géraud, and Bruno Sudret. "Adaptive sparse polynomial chaos expansion based on least angle regression." Journal of Computational Physics 230.6 (2011): 2345-2367.
@@ -270,7 +287,7 @@ class PolynomialChaosExpansion(SurrogateBase):
             # Sample weight can be implemented via a simple rescaling.
                 X, y = self._rescale_data(X, y, w)
             try:    
-                model  = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=cpu_count).fit(X,y)
+                model  = linear_model.LassoLarsCV(max_iter=max_iter,cv=kf, n_jobs=n_jobs).fit(X,y)
             except ValueError as e:
                 #### looks like a bug in KFold
                 print(e)
@@ -459,38 +476,22 @@ class PolynomialChaosExpansion(SurrogateBase):
                 y = np.array(y) 
 
 
-        elif self.fit_method in ['LASSOLARS']:
+        elif self.fit_method in ['LASSOLARS', 'LASSO']:
             size_of_array_4gb = 1e8/2.0
             if x.shape[1] * self.num_basis < size_of_array_4gb:
                 X = self.orth_poly.vandermonde(x)
-                try: 
-                    y = self.model.predict(X)
-                except AttributeError:
-                    y = np.array([imodel.predict(X) for imodel in self.model])
+                y = self.model.predict(X)
             else:
                 batch_size = math.floor(size_of_array_4gb/self.num_basis)  ## large memory is allocated as 8 GB
-                try:
-                    y = []
-                    for i in range(math.ceil(x.shape[1]/batch_size)):
-                        idx_beg = i*batch_size
-                        idx_end = min((i+1) * batch_size, x.shape[1])
-                        x_      = x[:,idx_beg:idx_end]
-                        X_      = self.orth_poly.vandermonde(x_)
-                        y_      = self.model.predict(X_)
-                        y      += list(y_)
-                except:
-                    y = [[] for _ in self.model]
-                    for i in range(math.ceil(x.shape[1]/batch_size)):
-                        idx_beg = i*batch_size
-                        idx_end = min((i+1) * batch_size, x.shape[1])
-                        x_      = x[:,idx_beg:idx_end]
-                        X_      = self.orth_poly.vandermonde(x_)
-                        for j, imodel in enumerate(self.model):
-                            y_      = imodel.predict(X_)
-                            y[j]   += list(y_)
-
+                y = []
+                for i in range(math.ceil(x.shape[1]/batch_size)):
+                    idx_beg = i*batch_size
+                    idx_end = min((i+1) * batch_size, x.shape[1])
+                    x_      = x[:,idx_beg:idx_end]
+                    X_      = self.orth_poly.vandermonde(x_)
+                    y_      = self.model.predict(X_)
+                    y      += list(y_)
                 y = np.array(y) 
-
 
         return y
 

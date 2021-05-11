@@ -41,6 +41,9 @@ class ExperimentParameters(Parameters):
             self.optimality = None
 
         self._default_data_dir()
+
+    def update_poly_name(self, poly_name):
+        self.poly_name = poly_name
         self._check_wiener_askey_polynomials()
 
     def update_filenames(self, filename_template=None, **kwargs):
@@ -202,37 +205,34 @@ class ExperimentParameters(Parameters):
         """
         check and set underlying Wiener-Askey distributions
         """
-        try:
-            doe_sampling = self.doe_sampling.upper()
-            poly_name    = self.poly_name.upper()
+        doe_sampling = self.doe_sampling.upper()
+        poly_name    = self.poly_name.upper()
 
-            if doe_sampling == 'MCS' and poly_name == 'LEG':
-                self.dist_xi     = stats.uniform(-1,2)
-                self.xi_distname = 'uniform'
+        if doe_sampling == 'MCS' and poly_name == 'LEG':
+            self.dist_xi     = stats.uniform(-1,2)
+            self.xi_distname = 'uniform'
 
-            elif doe_sampling == 'MCS' and poly_name == 'HEME':
-                self.dist_xi     = stats.norm(0,1)
-                self.xi_distname = 'norm'
+        elif doe_sampling == 'MCS' and poly_name == 'HEME':
+            self.dist_xi     = stats.norm(0,1)
+            self.xi_distname = 'norm'
 
-            elif doe_sampling == 'CLS1' and poly_name == 'LEG':
-                self.dist_xi     = stats.uniform(-1,2)
-                self.xi_distname = 'uniform'
+        elif doe_sampling == 'CLS1' and poly_name == 'LEG':
+            self.dist_xi     = stats.uniform(-1,2)
+            self.xi_distname = 'uniform'
 
-            elif doe_sampling == 'CLS4' and poly_name == 'HEM':
-                self.dist_xi     = stats.norm(0,np.sqrt(0.5))
-                self.xi_distname = 'norm'
+        elif doe_sampling == 'CLS4' and poly_name == 'HEM':
+            self.dist_xi     = stats.norm(0,np.sqrt(0.5))
+            self.xi_distname = 'norm'
 
-            elif doe_sampling == 'LHS'and poly_name == 'LEG':
-                self.dist_xi     = stats.uniform(-1,2)
-                self.xi_distname = 'uniform'
+        elif doe_sampling == 'LHS'and poly_name == 'LEG':
+            self.dist_xi     = stats.uniform(-1,2)
+            self.xi_distname = 'uniform'
 
-            elif doe_sampling == 'LHS'and poly_name == 'HEME':
-                self.dist_xi     = stats.norm(0,1)
-                self.xi_distname = 'norm'
-            else:
-                raise ValueError(' {:s}-{:s} is either not compatible or defined'.format(doe_sampling, poly_name))
-        except:
-            pass
+        elif doe_sampling == 'LHS'and poly_name == 'HEME':
+            self.dist_xi     = stats.norm(0,1)
+            self.xi_distname = 'norm'
+        else:
+            raise ValueError(' {:s}-{:s} is either not compatible or defined'.format(doe_sampling, poly_name))
 
     def sampling_weight(self, w=None):
         """
