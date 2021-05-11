@@ -70,7 +70,6 @@ def absolute_converge(y, err=1e-4):
 
 def main(model_params, doe_params, solver, r=0, random_state=None):
     random.seed(random_state)
-
     ### object contain all training samples
     data_train = uqra.Data()
     data_train.xi_index = []
@@ -79,7 +78,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_train.y  = np.empty((0,))
 
     ndim, deg = model_params.ndim, model_params.degs
-    sparsity  = 10
+    sparsity  = 70
 
     print('\n==================================================================================')
     print('         <<<< Initial Exploration: ndim={:d}, p={:d} >>>>'.format(ndim, deg))
@@ -142,7 +141,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         # n_samples = len(active_index)
 
     ## obtain exploration optimal samples
-    n_samples = sparsity # max(sparsity, math.ceil(0.8*pce_model.num_basis))
+    n_samples = sparsity #max(sparsity, math.ceil(0.8*pce_model.num_basis))
     xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=[], 
             active_index=None, initialization='RRQR', return_index=True) 
 
@@ -157,7 +156,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
     data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
     data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
-    print('     - {:<32s} : {:d}'.format('Adding exploration samples', n_samples))
+    print('     - {:<32s} : {:d}'.format('Adding exploration optimal samples', n_samples))
     print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
     print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
     print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
@@ -184,7 +183,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     print('     - {:<32s} : {:.4e}'.format('pf test [TRUE ]', pf_test))
 
     i_iteration = 1
-    while True:
+    while i_iteration < 20:
         print('                 ------------------------------')
         print('                  <  Iteration No. {:d} >'.format(i_iteration))
         print('                 ------------------------------')
@@ -192,7 +191,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('   > Adding exploration optimal samples in global domain ... ')
         print('   1-1. optimal samples based on SIGNIFICANT basis in global domain ... ')
         ####-------------------------------------------------------------------------------- ####
-        n_samples = min(5, max(3,sparsity)) #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
+        n_samples = min(3, max(3,sparsity)) #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
         # n_samples = min(10, sparsity) #len(active_index)
         xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi_index, 
                 active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
@@ -209,7 +208,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
         data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
         data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
-        print('     - {:<32s} : {:d}'.format('Adding exploration samples', n_samples))
+        print('     - {:<32s} : {:d}'.format('Adding exploration optimal samples', n_samples))
         print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
         print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
         print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
@@ -273,16 +272,15 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('      - Value : {} [Ref: {:e}]'.format(np.array(data_ideg.pf_hat_), pf_test))
         print('      - Error : {} % [{}]'.format(np.around(error_converge, 4)*100,isConverge))
         print('   ------------------------------------------------------------')
-        print(pce_model.active_index)
-        print(pce_model.coef)
         i_iteration +=1
-        if np.all(isConverge):
-            print('         !< Model converge for order {:d} >!'.format(deg))
-            break
+        data_ideg.is_converge.append(np.array(isConverge).all())
+        # if np.all(isConverge):
+            # print('         !< Model converge for order {:d} >!'.format(deg))
+            # break
         if n_samples_deg > model_params.alpha*orth_poly.num_basis:
-        # if len(data_train.y)> model_params.alpha*orth_poly.num_basis:
             print('         !< Number of samples exceeding {:.2f}P >!'.format(model_params.alpha))
             break
+
 
     data_ideg.pf_hat    = data_ideg.pf_hat_[-1]
     data_ideg.cv_err    = data_ideg.cv_err_[-1]
@@ -314,6 +312,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
     # isOverfitting(cv_err_global) ## check Overfitting
     # isConverge0, error_converge0 = relative_converge(pf_hat_global, err=2*model_params.rel_err)
+    # # isConverge0, error_converge0 = absolute_converge(pf_hat_global, err=model_params.abs_err)
     # isConverge1, error_converge1 = threshold_converge(score_global)
     # error_converge = [error_converge0, error_converge1]
     # isConverge = [isConverge0, isConverge1]
@@ -365,13 +364,13 @@ if __name__ == '__main__':
 
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = 15 #np.arange(10,11) #[2,6,10]#
+    model_params.degs    = 15 #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Hem'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
-    model_params.n_splits= 50
-    model_params.alpha   = 3
+    model_params.n_splits= 20
+    model_params.alpha   = 2
     model_params.num_test= int(1e6)
     # model_params.num_pred= int(1e6)
     model_params.abs_err = 1e-4
@@ -380,7 +379,7 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('CLS4', 'D')
+    doe_params = uqra.ExperimentParameters('CLS4', 'S')
     doe_params.update_poly_name(model_params.basis)
     doe_params.num_cand  = int(1e5)
 
@@ -407,18 +406,6 @@ if __name__ == '__main__':
     xi_test = data_test.xi[:, :model_params.num_test] 
     y_test  = data_test.y [   :model_params.num_test] 
     pf_test = np.sum(y_test < 0) / len(y_test)
-    print(' Test Data set:')
-    print('     X: shape={}, mean={}, std={}, [min, max]=({}, {})'.format(
-                data_test.x.shape, np.mean(data_test.x, axis=1), np.std(data_test.x, axis=1),
-                np.amin(data_test.x, axis=1),np.amax(data_test.x, axis=1)))
-
-    print('     Xi: shape={}, mean={}, std={}, [min, max]=({}, {})'.format(
-                xi_test.shape, np.mean(xi_test, axis=1), np.std(xi_test, axis=1),
-                np.amin(xi_test, axis=1),np.amax(xi_test, axis=1)))
-
-    print('     Y: shape={}, mean={}, std={}, [min, max]=({}, {})'.format(
-                y_test.shape, np.mean(y_test), np.std(y_test),
-                np.amin(y_test),np.amax(y_test)))
 
     res = []
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
@@ -449,3 +436,9 @@ if __name__ == '__main__':
     except:
         np.save(filename, res, allow_pickle=True)
         print(' >> Simulation Done! Data saved to {:s}'.format(os.path.join(os.getcwd(), filename)))
+
+    alarm_window = [datetime.time(7,0,0),datetime.time(23,59,59)]
+    current_time = datetime.datetime.now().time()
+    if uqra.time_in_range(alarm_window[0], alarm_window[1], current_time) :
+        os.system('say "{:s} Simulation has finished"'.format(solver.name))
+        
