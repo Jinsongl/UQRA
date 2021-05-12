@@ -16,6 +16,7 @@ from tqdm import tqdm
 import itertools, copy, math, collections
 import multiprocessing as mp
 import random
+import datetime
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
@@ -106,11 +107,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         if filename_cand:
             data_cand = np.load(os.path.join(data_dir_cand, filename_cand))
             data_cand = data_cand[:ndim,random.sample(range(data_cand.shape[1]), k=idoe_params.num_cand)]
+            data_cand = data_cand * deg ** 0.5 if doe_params.doe_sampling.upper() in ['CLS4', 'CLS5'] else data_cand
             print('       {:<23s} : {}'.format(' shape', data_cand.shape))
         else:
             data_cand = None
             print('       {:<23s} : {}'.format(' shape', data_cand))
-
         idoe_sampling = idoe_params.doe_sampling.lower()
         idoe_nickname = idoe_params.doe_nickname()
         ioptimality   = idoe_params.optimality
@@ -164,7 +165,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('   2. Training with {} '.format(model_params.fitting))
         weight  = doe_params.sampling_weight()   ## weight function
         pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight,
-                n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+                n_jobs=model_params.n_jobs, n_splits=model_params.n_splits) #
         sparsity = len(pce_model.active_index)
         print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
                         data_train.x.shape[1]/pce_model.num_basis))
@@ -217,10 +218,13 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('   1-2. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
             ## obtain DoI candidate samples
-            data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.y0_hat_[-1], xi_test, y_test_hat, data_cand
-                    , deg, n0=20, epsilon=0.1, return_index=True)
-            data_cand_xi_DoI = deg**0.5 * data_cand_DoI if idoe_params.doe_sampling in ['CLS4', 'CLS5'] else data_cand_DoI
-            data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_xi_DoI, dist_xi))
+            # data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.y0_hat_[-1], 
+                    # xi_test, y_test_hat, data_cand , deg, n0=20, epsilon=0.1, return_index=True)
+
+            data_cand_DoI = idoe_params.domain_of_interest(data_ideg.y0_hat_[-1], xi_test, y_test_hat, n_centroid=20, epsilon=0.1)
+
+            # data_cand_xi_DoI = deg**0.5 * data_cand_DoI if idoe_params.doe_sampling in ['CLS4', 'CLS5'] else data_cand_DoI
+            data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_DoI, dist_xi))
 
             ## obtain DoI optimal samples
             xi_train_, idx_optimal_DoI = idoe_params.get_samples(data_cand_DoI, orth_poly, n_samples, x0=[], 
@@ -248,7 +252,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('   2. Training with {} '.format(model_params.fitting))
             weight  = doe_params.sampling_weight()   ## weight function
             pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight, 
-                    n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
+                    n_jobs=model_params.n_jobs, n_splits=model_params.n_splits) #
             sparsity     = len(pce_model.active_index)
             print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
                             data_train.x.shape[1]/pce_model.num_basis))
@@ -347,15 +351,14 @@ if __name__ == '__main__':
     solver = uqra.FPSO(random_state=theta, distributions=uqra_env)
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = np.arange(2,11) #[2,6,10]#
+    model_params.degs    = np.arange(2,9) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
-    model_params.n_splits= 50
+    model_params.n_splits= 10
     model_params.alpha   = 3
     model_params.num_test= int(1e7)
-    model_params.num_pred= int(1e7)
     model_params.pf      = np.array([0.5/(365.25*24*50)])
     model_params.abs_err = 1e-4
     model_params.rel_err = 2.5e-2
@@ -364,8 +367,7 @@ if __name__ == '__main__':
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
     doe_params = uqra.ExperimentParameters('MCS', 'D')
-    # doe_params = uqra.ExperimentParameters('MCS', None)
-    doe_params.poly_name = model_params.basis 
+    doe_params.update_poly_name(model_params.basis)
     doe_params.num_cand  = int(1e5)
 
     ## ------------------------ UQRA Simulation Parameters ----------------- ###

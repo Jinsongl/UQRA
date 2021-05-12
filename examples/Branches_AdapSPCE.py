@@ -107,6 +107,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         if filename_cand:
             data_cand = np.load(os.path.join(data_dir_cand, filename_cand))
             data_cand = data_cand[:ndim,random.sample(range(data_cand.shape[1]), k=idoe_params.num_cand)]
+            data_cand = data_cand * deg ** 0.5 if doe_params.doe_sampling.upper() in ['CLS4', 'CLS5'] else data_cand
             print('       {:<23s} : {}'.format(' shape', data_cand.shape))
         else:
             data_cand = None
@@ -218,10 +219,13 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('   1-2. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
             ## obtain DoI candidate samples
-            data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(0, xi_test, y_test_hat, data_cand
-                    , deg, n0=20, epsilon=0.1, return_index=True)
-            data_cand_xi_DoI = deg**0.5 * data_cand_DoI if idoe_params.doe_sampling in ['CLS4', 'CLS5'] else data_cand_DoI
-            data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_xi_DoI, dist_xi))
+            # data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(0, xi_test, y_test_hat, data_cand
+                    # , deg, n0=20, epsilon=0.1, return_index=True)
+
+            data_cand_DoI = idoe_params.domain_of_interest(0, xi_test, y_test_hat, n_centroid=20, epsilon=0.1)
+
+            # data_cand_xi_DoI = deg**0.5 * data_cand_DoI if idoe_params.doe_sampling in ['CLS4', 'CLS5'] else data_cand_DoI
+            data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_DoI, dist_xi))
 
             ## obtain DoI optimal samples
             xi_train_, idx_optimal_DoI = idoe_params.get_samples(data_cand_DoI, orth_poly, n_samples, x0=[], 
@@ -336,7 +340,7 @@ if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
     ith_batch  = 0
-    batch_size = 10
+    batch_size = 1
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)

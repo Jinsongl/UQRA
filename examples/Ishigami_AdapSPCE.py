@@ -218,8 +218,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('   1-2. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
             ## obtain DoI candidate samples
-            data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.y0_hat_[-1], xi_test, y_test_hat, data_cand
-                    , deg, n0=20, epsilon=0.1, return_index=True)
+            data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.y0_hat_[-1], 
+                    xi_test, y_test_hat, data_cand , deg, n0=20, epsilon=0.1, return_index=True)
             data_cand_xi_DoI = deg**0.5 * data_cand_DoI if idoe_params.doe_sampling in ['CLS4', 'CLS5'] else data_cand_DoI
             data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_xi_DoI, dist_xi))
 
