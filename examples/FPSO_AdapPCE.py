@@ -338,8 +338,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
-    ith_batch  = 4
-    batch_size = 10
+    ith_batch  = 0
+    batch_size = 1
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)

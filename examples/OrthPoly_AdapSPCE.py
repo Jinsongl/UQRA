@@ -19,7 +19,7 @@ import random
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
-def observation_error(y, mu=0, cov=0.03, random_state=100):
+def observation_error(y, mu=0, cov=0.01, random_state=100):
     e = stats.norm(0, cov * abs(y)).rvs(size=len(y), random_state=random_state)
     return e
 
@@ -146,6 +146,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
         x_train_ = solver.map_domain(xi_train_, dist_xi)
         y_train_ = solver.run(x_train_)
+        y_train_ = y_train_ + observation_error(y_train_)
         data_ideg.xi_train_.append(xi_train_)
         data_ideg.x_train_.append (x_train_)
         data_ideg.y_train_.append (y_train_)
@@ -198,6 +199,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             ## obtain exploration optimal samples
             x_train_ = solver.map_domain(xi_train_, dist_xi)
             y_train_ = solver.run(x_train_)
+            y_train_ = y_train_ + observation_error(y_train_)
             data_ideg.xi_train_.append(xi_train_)
             data_ideg.x_train_.append (x_train_)
             data_ideg.y_train_.append (y_train_)
@@ -227,6 +229,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             assert xi_train_.shape[1] == n_samples ## make sure return number of samples required
             x_train_ = solver.map_domain(xi_train_, dist_xi)
             y_train_ = np.array(solver.run(x_train_), ndmin=1)
+            y_train_ = y_train_ + observation_error(y_train_)
             data_ideg.xi_train_.append(xi_train_)
             data_ideg.x_train_.append (x_train_)
             data_ideg.y_train_.append (y_train_)
@@ -333,7 +336,7 @@ if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
     ith_batch  = 0
-    batch_size = 1
+    batch_size = 3
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
@@ -368,7 +371,7 @@ if __name__ == '__main__':
 
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = np.arange(10,11) #[2,6,10]#
+    model_params.degs    = np.arange(2,8) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
@@ -376,7 +379,7 @@ if __name__ == '__main__':
     model_params.n_splits= 50
     model_params.alpha   = 3
     model_params.num_test= int(1e6)
-    model_params.num_pred= int(1e6)
+    # model_params.num_pred= int(1e6)
     model_params.pf      = np.array([1e-4])
     model_params.abs_err = 1e-4
     model_params.rel_err = 2.5e-2
@@ -407,6 +410,7 @@ if __name__ == '__main__':
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
     data_test.y = solver.run(data_test.x) if not hasattr(data_test, 'y') else data_test.y
+    data_test.y = data_test.y + observation_error(data_test.y)
     xi_test     = data_test.xi[:, :model_params.num_test] 
     y_test      = data_test.y [   :model_params.num_test] 
     y0_test     = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
