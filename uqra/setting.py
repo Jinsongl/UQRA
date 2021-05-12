@@ -166,6 +166,196 @@ class ExperimentParameters(Parameters):
         self.data_dir_cand    = kwargs.get('data_dir_cand'   , self.data_dir_cand    )
         self.data_dir_optimal = kwargs.get('data_dir_optimal', self.data_dir_optimal )
 
+    def sampling_weight(self, w=None):
+        """
+        Return a weight function corresponding to the sampling scheme
+        If w is given, then has the highest priority. 
+        otherwise, return based on doe_sampling
+        """
+        if w is not None:
+            # if callable(w):
+                # return w
+            # else:
+                # w = lambda x: w
+            return w
+        elif self.doe_sampling.lower().startswith('cls'):
+            return 'christoffel'
+        elif self.doe_sampling.lower()[:3] in ['mcs', 'lhs']:
+            return None
+        else:
+            raise ValueError('Sampling weight function is not defined')
+
+    def get_samples(self, x, poly, n, x0=[], active_index=None,  
+            initialization='RRQR', return_index=False, decimals=8):
+        """
+        return samples based on UQRA
+
+        x   : ndarray of shape (d,N), candidate samples
+        poly: UQRA.polynomial object
+        n   : int, number of samples to be added
+        x0  : samples already selected (will be ignored when performing optimization)
+            1. list of selected index
+            2. selected samples
+        initialization: methods to generate the initial samples
+            1. string, 'RRQR', 'TSM'
+            2. list of index
+
+        active_index: list of active basis in poly 
+        decimals: accuracy tolerance when comparing samples in x0 to x
+        """
+        ### check arguments
+        n = uqra.check_int(n)
+        if self.doe_sampling.lower().startswith('lhs'):
+            assert self.optimality is None
+            dist_xi = poly.weight
+            doe = uqra.LHS([dist_xi, ] *self.ndim)
+            x_optimal = doe.samples(size=n)
+            res = x_optimal
+            res = (res, None) if return_index else res 
+
+        else:
+            x = np.array(x, copy=False, ndmin=2)
+            d, N = x.shape
+            assert d == self.ndim 
+            ## expand samples if it is unbounded cls
+            # x = poly.deg**0.5 * x if self.doe_sampling in ['CLS4', 'CLS5'] else x
+
+            ## define selected index set
+            if len(x0) == 0:
+                idx_selected = []
+            elif isinstance(x0, (list, tuple)):
+                idx_selected = list(x0)
+            else:
+                x0 = np.array(x0, copy=False, ndmin=2).round(decimals=decimals)
+                x  = x.round(decimals)
+                assert x.shape[0] == x0.shape[0]
+                idx_selected = list(uqra.common_vectors(x0, x))
+
+            ## define methods to get initial samples 
+            initialization = initialization if len(idx_selected) == 0 else idx_selected
+
+            x_optimal = []
+            if self.doe_sampling.lower().startswith('mcs'):
+                if str(self.optimality).lower() == 'none':
+                    idx = list(set(np.arange(self.num_cand)).difference(set(idx_selected)))[:n] 
+                else:
+                    X = poly.vandermonde(x)
+                    X = X if active_index is None else X[:, active_index]
+                    uqra.blockPrint()
+                    doe = uqra.OptimalDesign(X)
+                    idx = doe.samples(self.optimality, n, initialization=initialization) 
+                    uqra.enablePrint()
+
+                idx = uqra.list_diff(idx, idx_selected)
+                assert len(idx) == n
+                x_optimal = x[:, idx]
+
+            elif self.doe_sampling.lower().startswith('cls'):
+                if str(self.optimality).lower() == 'none':
+                    idx = list(set(np.arange(self.num_cand)).difference(set(idx_selected)))[:n] 
+                else:
+                    X = poly.vandermonde(x)
+                    X = X if active_index is None else X[:, active_index]
+                    X = poly.num_basis**0.5*(X.T / np.linalg.norm(X, axis=1)).T
+                    uqra.blockPrint()
+                    doe = uqra.OptimalDesign(X)
+                    idx = doe.samples(self.optimality, n, initialization=initialization) 
+                    uqra.enablePrint()
+
+                idx = uqra.list_diff(idx, idx_selected)
+                assert len(idx) == n
+                x_optimal = x[:, idx]
+            else:
+                raise ValueError
+            res = (x_optimal, idx) if return_index else x_optimal
+        return res
+
+    def domain_of_interest(self, y0, data_xi, data_y, n_centroid=10, epsilon=0.1, random_state=None):
+        ndim, deg = self.ndim, self.deg
+        ## otbain the centroids of DoIs
+        centroid_xi = np.array([data_xi[:, i] for i in np.argsort(abs(data_y-y0))[:n_centroid]]).T
+        nsamples_each_centroid = np.zeros(n_centroid)
+        DoI_cand_xi = [] 
+        while True:
+            np.random.seed(random_state)
+            if self.doe_sampling.upper() in ['MCS', 'LHS']:
+                xi_min = np.amin(centroid_xi, axis=1) - epsilon
+                xi_max = np.amax(centroid_xi, axis=1) + epsilon
+                assert len(xi_min) == ndim
+                ## sampling from truncated dist_xi distribution with boundary [a,b]
+                xi_cand = []
+                for a, b in zip(xi_min, xi_max):
+                    cdf_a = self.dist_xi.cdf(a)
+                    cdf_b = self.dist_xi.cdf(b)
+                    u = stats.uniform(cdf_a,cdf_b-cdf_a).rvs(100000)
+                    xi_cand.append(self.dist_xi.ppf(u))
+                xi_cand = np.array(xi_cand)
+
+
+                # DoE = uqra.MCS([self.dist_xi, ] * ndim)
+                # xi_cand = DoE.samples(10000000)
+            elif self.doe_sampling.lower().startswith('cls'):
+                raise ValueError('{:s} not defined'.foramt(self.doe_sampling))
+                DoE = uqra.CLS(self.doe_sampling, ndim)
+                xi_cand = DoE.samples(10000000)
+                if self.doe_sampling.upper() in ['CLS4', 'CLS5']:
+                    xi_cand = xi_cand * deg ** 0.5
+            else:
+                raise ValueError('{:s} not defined'.foramt(self.doe_sampling))
+            idx_DoI_xi_cand = []
+            for i, xi in enumerate(centroid_xi.T):
+                xi = xi.reshape(ndim, 1)
+                idx_DoI_xi_cand_icentroid = np.argwhere(np.linalg.norm(xi_cand-xi, axis=0) < epsilon).flatten().tolist()
+                nsamples_each_centroid[i] = nsamples_each_centroid[i] + len(idx_DoI_xi_cand_icentroid)
+                idx_DoI_xi_cand = list(set(idx_DoI_xi_cand+ idx_DoI_xi_cand_icentroid))
+            DoI_cand_xi.append(xi_cand[:, idx_DoI_xi_cand])
+
+            if np.sum(nsamples_each_centroid) > 1000:
+                DoI_cand_xi = np.concatenate(DoI_cand_xi, axis=1)
+                break
+        return DoI_cand_xi
+
+
+
+
+
+
+
+
+        # idx_DoI_data_cand = []
+        # for idx_centroid in idx_centroid_y:
+            # xi = 
+            # idx_DoI_data_cand_ = np.argwhere(np.linalg.norm(data_cand_xi -xi, axis=0) < epsilon).flatten().tolist()
+
+            # ### xi is outside data cand 
+            # if len(idx_DoI_data_cand_) == 0:
+                # idx_DoI_data_cand_ = np.argsort(np.linalg.norm(data_cand_xi -xi, axis=0))[:100].tolist()
+            # idx_DoI_data_cand = list(set(idx_DoI_data_cand + idx_DoI_data_cand_))
+        # data_cand_DoI = data_cand[:, idx_DoI_data_cand] 
+
+
+    def samples_nearby(self, y0, data_xi, data_y, data_cand, deg, n0=10, epsilon=0.1, return_index=True):
+        # if self.doe_sampling.lower()=='cls4':
+            # data_cand_xi = data_cand *deg **0.5
+        # else:
+        data_cand_xi = data_cand
+        ### locate samples close to estimated y0 (domain of interest)
+        idx_DoI_data_test = np.argsort(abs(data_y-y0))[:n0] 
+        idx_DoI_data_cand = []
+        for idx_ in idx_DoI_data_test:
+            xi = data_xi[:, idx_].reshape(-1, 1)
+            idx_DoI_data_cand_ = np.argwhere(np.linalg.norm(data_cand_xi -xi, axis=0) < epsilon).flatten().tolist()
+            ### xi is outside data cand 
+            if len(idx_DoI_data_cand_) == 0:
+                idx_DoI_data_cand_ = np.argsort(np.linalg.norm(data_cand_xi -xi, axis=0))[:100].tolist()
+            idx_DoI_data_cand = list(set(idx_DoI_data_cand + idx_DoI_data_cand_))
+        data_cand_DoI = data_cand[:, idx_DoI_data_cand] 
+        if return_index:
+            res = (data_cand_DoI, idx_DoI_data_cand)
+        else:
+            res = data_cand_DoI
+        return res 
+
     def _default_data_dir(self):
         """
         WORKING_DIR/
@@ -233,133 +423,6 @@ class ExperimentParameters(Parameters):
             self.xi_distname = 'norm'
         else:
             raise ValueError(' {:s}-{:s} is either not compatible or defined'.format(doe_sampling, poly_name))
-
-    def sampling_weight(self, w=None):
-        """
-        Return a weight function corresponding to the sampling scheme
-        If w is given, then has the highest priority. 
-        otherwise, return based on doe_sampling
-        """
-        if w is not None:
-            # if callable(w):
-                # return w
-            # else:
-                # w = lambda x: w
-            return w
-        elif self.doe_sampling.lower().startswith('cls'):
-            return 'christoffel'
-        elif self.doe_sampling.lower()[:3] in ['mcs', 'lhs']:
-            return None
-        else:
-            raise ValueError('Sampling weight function is not defined')
-
-    def get_samples(self, x, poly, n, x0=[], active_index=None,  
-            initialization='RRQR', return_index=False, decimals=8):
-        """
-        return samples based on UQRA
-
-        x   : ndarray of shape (d,N), candidate samples
-        poly: UQRA.polynomial object
-        n   : int, number of samples to be added
-        x0  : samples already selected (will be ignored when performing optimization)
-            1. list of selected index
-            2. selected samples
-        initialization: methods to generate the initial samples
-            1. string, 'RRQR', 'TSM'
-            2. list of index
-
-        active_index: list of active basis in poly 
-        decimals: accuracy tolerance when comparing samples in x0 to x
-        """
-        ### check arguments
-        n = uqra.check_int(n)
-        if self.doe_sampling.lower().startswith('lhs'):
-            assert self.optimality is None
-            dist_xi = poly.weight
-            doe = uqra.LHS([dist_xi, ] *self.ndim)
-            x_optimal = doe.samples(size=n)
-            res = x_optimal
-            res = (res, None) if return_index else res 
-
-        else:
-            x = np.array(x, copy=False, ndmin=2)
-            d, N = x.shape
-            assert d == self.ndim 
-            ## expand samples if it is unbounded cls
-            x = poly.deg**0.5 * x if self.doe_sampling in ['CLS4', 'CLS5'] else x
-
-            ## define selected index set
-            if len(x0) == 0:
-                idx_selected = []
-            elif isinstance(x0, (list, tuple)):
-                idx_selected = list(x0)
-            else:
-                x0 = np.array(x0, copy=False, ndmin=2).round(decimals=decimals)
-                x  = x.round(decimals)
-                assert x.shape[0] == x0.shape[0]
-                idx_selected = list(uqra.common_vectors(x0, x))
-
-            ## define methods to get initial samples 
-            initialization = initialization if len(idx_selected) == 0 else idx_selected
-
-            x_optimal = []
-            if self.doe_sampling.lower().startswith('mcs'):
-                if str(self.optimality).lower() == 'none':
-                    idx = list(set(np.arange(self.num_cand)).difference(set(idx_selected)))[:n] 
-                else:
-                    X = poly.vandermonde(x)
-                    X = X if active_index is None else X[:, active_index]
-                    uqra.blockPrint()
-                    doe = uqra.OptimalDesign(X)
-                    idx = doe.samples(self.optimality, n, initialization=initialization) 
-                    uqra.enablePrint()
-
-                idx = uqra.list_diff(idx, idx_selected)
-                assert len(idx) == n
-                x_optimal = x[:, idx]
-
-            elif self.doe_sampling.lower().startswith('cls'):
-                if str(self.optimality).lower() == 'none':
-                    idx = list(set(np.arange(self.num_cand)).difference(set(idx_selected)))[:n] 
-                else:
-                    X = poly.vandermonde(x)
-                    X = X if active_index is None else X[:, active_index]
-                    X = poly.num_basis**0.5*(X.T / np.linalg.norm(X, axis=1)).T
-                    uqra.blockPrint()
-                    doe = uqra.OptimalDesign(X)
-                    idx = doe.samples(self.optimality, n, initialization=initialization) 
-                    uqra.enablePrint()
-
-                idx = uqra.list_diff(idx, idx_selected)
-                assert len(idx) == n
-                x_optimal = x[:, idx]
-            else:
-                raise ValueError
-            res = (x_optimal, idx) if return_index else x_optimal
-        return res
-
-    def samples_nearby(self, y0, data_xi, data_y, data_cand, deg, n0=10, epsilon=0.1, return_index=True):
-        if self.doe_sampling.lower()=='cls4':
-            data_cand_xi = data_cand *deg **0.5
-        else:
-            data_cand_xi = data_cand
-        ### locate samples close to estimated y0 (domain of interest)
-        idx_DoI_data_test = np.argsort(abs(data_y-y0))[:n0] 
-        idx_DoI_data_cand = []
-        for idx_ in idx_DoI_data_test:
-            xi = data_xi[:, idx_].reshape(-1, 1)
-            idx_DoI_data_cand_ = np.argwhere(np.linalg.norm(data_cand_xi -xi, axis=0) < epsilon).flatten().tolist()
-            ### xi is outside data cand 
-            if len(idx_DoI_data_cand_) == 0:
-                idx_DoI_data_cand_ = np.argsort(np.linalg.norm(data_cand_xi -xi, axis=0))[:100].tolist()
-            idx_DoI_data_cand = list(set(idx_DoI_data_cand + idx_DoI_data_cand_))
-        data_cand_DoI = data_cand[:, idx_DoI_data_cand] 
-        if return_index:
-            res = (data_cand_DoI, idx_DoI_data_cand)
-        else:
-            res = data_cand_DoI
-
-        return res 
 
 ### ----------------- Modeling Parameters() -----------------
 class Modeling(Parameters):
