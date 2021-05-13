@@ -24,7 +24,7 @@ sys.stdout  = uqra.utilities.classes.Logger()
 class Data():
     pass
 
-def observation_error(y, mu=0, cov=0.03, random_state=100):
+def observation_error(y, mu=0, cov=0.01, random_state=100):
     e = stats.norm(0, cov * abs(y)).rvs(size=len(y), random_state=random_state)
     return e
 
@@ -100,17 +100,23 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     ### data object containing results from intermedia steps
     main_res = []
     # while True:
-    for n_samples in np.arange(10,150,5):
+    for n_samples in np.arange(10,20,5):
         data_nsample = uqra.Data()
-        data_nsample.ndim      = ndim
-        data_nsample.deg       = deg 
-        data_nsample.model_    = []
-        data_nsample.xi_train_ = []
-        data_nsample.x_train_  = []
-        data_nsample.y_train_  = []
-        data_nsample.beta_hat_ = []
+        data_nsample.ndim     = ndim
+        data_nsample.deg      = deg 
+        data_nsample.y0_hat   = []
+        data_nsample.cv_err   = []
+        data_nsample.rmse_y   = []
+        data_nsample.score    = []
+        data_nsample.model    = []
+        data_nsample.xi_train = []
+        data_nsample.x_train  = []
+        data_nsample.y_train  = []
+        data_nsample.beta_hat = []
+        data_nsample.yhat_ecdf= []
         error = []
-        for i in tqdm(range(50)):
+        print(' ------------------------------------------------------------')
+        for i in tqdm(range(3), ascii=True, ncols=80):
             ## ------------------------ UQRA Surrogate model----------------- ###
             orth_poly = uqra.poly.orthogonal(ndim, deg, model_params.basis)
             pce_model = uqra.PCE(orth_poly)
@@ -127,18 +133,25 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             pce_model.fit(model_params.fitting, xi_train, y_train, w=weight,
                     n_jobs=model_params.n_jobs, n_splits=model_params.n_splits) #
 
+
+            y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
+
             beta_hat = np.zeros(pce_model.num_basis)
             for i, beta_i in zip(pce_model.active_index, pce_model.coef):
                 beta_hat[i] = beta_i
 
-            data_nsample.model_.append(pce_model)
-            data_nsample.xi_train_.append(xi_train)
-            data_nsample.x_train_.append(x_train)
-            data_nsample.y_train_.append(y_train)
-            data_nsample.beta_hat_.append(beta_hat)
+            data_nsample.rmse_y.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
+            data_nsample.y0_hat.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
+            data_nsample.score.append(pce_model.score)
+            data_nsample.cv_err.append(pce_model.cv_error)
+            data_nsample.yhat_ecdf.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
+            data_nsample.model.append(pce_model)
+            data_nsample.xi_train.append(xi_train)
+            data_nsample.x_train.append(x_train)
+            data_nsample.y_train.append(y_train)
+            data_nsample.beta_hat.append(beta_hat)
             error.append(np.linalg.norm(beta-beta_hat)/np.linalg.norm(beta))
         error = np.array(error)
-        print(' ------------------------------------------------------------')
         pce_model.info()
         print('   Training with {} '.format(model_params.fitting))
         print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
@@ -146,8 +159,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('     - {:<32s} : {}'.format('Y train'    , y_train.shape))
         print('     - {:<32s} : {}'.format('Beta Error<0.01', np.sum(error<0.01)/len(error)))
 
-    print(' ------------------------------------------------------------')
-    main_res.append(data_nsample)
+        print(' ------------------------------------------------------------')
+        main_res.append(data_nsample)
 
     return main_res
 
@@ -272,8 +285,8 @@ if __name__ == '__main__':
         res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
     if len(res) == 1:
         res = res[0]
-    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}_{:d}{:d}'.format(solver.nickname, 
-            solver.ndim, model_params.basis, doe_params.doe_nickname(), r, batch_size, ith_batch)
+    filename = '{:s}_Adap{:d}{:s}{:d}_{:s}E5R{:d}_stability'.format(solver.nickname, 
+            solver.ndim, model_params.basis, model_params.degs, doe_params.doe_nickname(), r)
     # ## ============ Saving QoIs ============
     try:
         np.save(os.path.join(data_dir_result, filename), res, allow_pickle=True)
