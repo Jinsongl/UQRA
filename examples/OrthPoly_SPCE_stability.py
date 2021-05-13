@@ -100,7 +100,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     ### data object containing results from intermedia steps
     main_res = []
     # while True:
-    for n_samples in np.arange(10,20,5):
+    for n_samples in np.arange(10,150,5):
         data_nsample = uqra.Data()
         data_nsample.ndim     = ndim
         data_nsample.deg      = deg 
@@ -116,7 +116,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_nsample.yhat_ecdf= []
         error = []
         print(' ------------------------------------------------------------')
-        for i in tqdm(range(3), ascii=True, ncols=80):
+        for i in tqdm(range(50), ascii=True, ncols=80):
             ## ------------------------ UQRA Surrogate model----------------- ###
             orth_poly = uqra.poly.orthogonal(ndim, deg, model_params.basis)
             pce_model = uqra.PCE(orth_poly)
@@ -157,6 +157,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', x_train.shape[1], pce_model.num_basis, 
                         x_train.shape[1]/pce_model.num_basis))
         print('     - {:<32s} : {}'.format('Y train'    , y_train.shape))
+        print('     - {:<32s} : {:.4e} {:.4e}'.format('y0 test [ PCE ] (mean, std)', np.mean(data_nsample.y0_hat), np.std(data_nsample.y0_hat)))
+        print('     - {:<32s} : {:.4e}'.format('y0 test [TRUE ]', y0_test))
         print('     - {:<32s} : {}'.format('Beta Error<0.01', np.sum(error<0.01)/len(error)))
 
         print(' ------------------------------------------------------------')
