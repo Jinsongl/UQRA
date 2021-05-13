@@ -128,6 +128,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             xi_train= data_cand[:solver.ndim, optimal_idx[:n_samples]]
             x_train = solver.map_domain(xi_train, dist_xi)
             y_train = solver.run(x_train)
+            y_train = y_train + observation_error(y_train)
 
             weight  = doe_params.sampling_weight()   ## weight function
             pce_model.fit(model_params.fitting, xi_train, y_train, w=weight,
@@ -242,7 +243,9 @@ if __name__ == '__main__':
     data_test   = np.load(os.path.join(data_dir_test, filename_test), allow_pickle=True).tolist()
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
-    data_test.y = solver.run(data_test.x) if not hasattr(data_test, 'y') else data_test.y
+    if not hasattr(data_test, 'y'):
+        data_test.y = solver.run(data_test.x)
+        data_test.y = data_test.y + observation_error(data_test.y)
     xi_test     = data_test.xi[:, :model_params.num_test] 
     y_test      = data_test.y [   :model_params.num_test] 
     y0_test     = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
