@@ -89,18 +89,29 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     doe_params.update_filenames(filename_template=None)
     filename_cand = doe_params.fname_cand(r)
     # filename_design = doe_params.fname_design(r)
-    data_cand = np.load(os.path.join(data_dir_cand, filename_cand))
-    print('     - {:<23s} : {}'.format(' Candidate filename'  , filename_cand  ))
-    print('       {:<23s} : {}'.format(' shape', data_cand.shape))
+    if filename_cand: 
+        data_cand = np.load(os.path.join(data_dir_cand, filename_cand))
+        print('     - {:<23s} : {}'.format(' Candidate filename'  , filename_cand  ))
+        print('       {:<23s} : {}'.format(' shape', data_cand.shape))
+        if doe_params.doe_sampling.lower() in ['cls4', 'cls5']:
+            data_cand = data_cand * model_params.degs**0.5
+    else:
+        data_cand = None
+        print('       {:<23s} : {}'.format(' shape', data_cand))
     print('     - {:<23s} : {}'.format(' UQRA DoE '  , doe_params.doe_nickname()))
 
-    if doe_params.doe_sampling.lower() in ['cls4', 'cls5']:
-        data_cand = data_cand * model_params.degs**0.5
-    data_optimal  = np.load(os.path.join(data_dir_optimal, filename_optimal), allow_pickle=True)
+    if filename_optimal:
+        data_optimal  = np.load(os.path.join(data_dir_optimal, filename_optimal), allow_pickle=True)
     ### data object containing results from intermedia steps
     main_res = []
+    orth_poly = uqra.poly.orthogonal(ndim, deg, model_params.basis)
     # while True:
-    for n_samples in np.arange(10,150,5):
+    alpha1 = np.linspace(1,2,6)
+    alpha2 = np.linspace(2,5,7)
+    alpha3 = np.array([5,10,20,40,80,100])
+    alphas = np.unique(np.concatenate([alpha1, alpha2,alpha3], axis=0))
+    # for n_samples in np.arange(10,150,5):
+    for n_samples in [math.ceil(ialpha * orth_poly.num_basis) for ialpha in [1.01,2.1]]:
         data_nsample = uqra.Data()
         data_nsample.ndim     = ndim
         data_nsample.deg      = deg 
@@ -116,7 +127,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_nsample.yhat_ecdf= []
         error = []
         print(' ------------------------------------------------------------')
-        for i in tqdm(range(50), ascii=True, ncols=80):
+        for i in tqdm(range(2), ascii=True, ncols=80):
             ## ------------------------ UQRA Surrogate model----------------- ###
             orth_poly = uqra.poly.orthogonal(ndim, deg, model_params.basis)
             pce_model = uqra.PCE(orth_poly)
@@ -124,10 +135,14 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             dist_xi   = orth_poly.weight
             dist_x    = solver.distributions
 
-            optimal_idx = getattr(data_optimal[i], doe_params.doe_nickname())
-            xi_train= data_cand[:solver.ndim, optimal_idx[:n_samples]]
+            if doe_params.doe_sampling.lower() in ['lhs']:
+                xi_train = uqra.LHS([dist_xi, ] *ndim).samples(size=n_samples)
+            else:
+                optimal_idx = getattr(data_optimal[i], doe_params.doe_nickname())
+                xi_train= data_cand[:solver.ndim, optimal_idx[:n_samples]]
             x_train = solver.map_domain(xi_train, dist_xi)
             y_train = solver.run(x_train)
+            y_train = y_train + observation_error(y_train)
 
             weight  = doe_params.sampling_weight()   ## weight function
             pce_model.fit(model_params.fitting, xi_train, y_train, w=weight,
@@ -203,7 +218,7 @@ if __name__ == '__main__':
 
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = 10 #np.arange(10,11) #[2,6,10]#
+    model_params.degs    = 6 #np.arange(10,11) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
@@ -219,7 +234,8 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('MCS', 'S')
+    doe_params = uqra.ExperimentParameters('MCS', None)
+    # doe_params = uqra.ExperimentParameters('LHS', None)
     doe_params.update_poly_name(model_params.basis)
     doe_params.num_cand  = int(1e5)
 
@@ -236,13 +252,18 @@ if __name__ == '__main__':
     figure_dir      = sim_params.figure_dir
     data_dir_test   = sim_params.data_dir_test
     data_dir_testin = sim_params.data_dir_testin
-    filename_optimal= 'DoE_{:s}E5R0_{:d}{:s}{:d}.npy'.format(doe_params.doe_sampling.capitalize(), model_params.ndim, 
+    if doe_params.doe_sampling.lower() == 'lhs':
+        filename_optimal = None
+    else:
+        filename_optimal= 'DoE_{:s}E5R0_{:d}{:s}{:d}.npy'.format(doe_params.doe_sampling.capitalize(), model_params.ndim, 
             model_params.basis[:3], model_params.degs)
     ### 1. Get test data set
     data_test   = np.load(os.path.join(data_dir_test, filename_test), allow_pickle=True).tolist()
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
-    data_test.y = solver.run(data_test.x) if not hasattr(data_test, 'y') else data_test.y
+    if not hasattr(data_test, 'y'):
+        data_test.y = solver.run(data_test.x) 
+        data_test.y = data_test.y + observation_error(data_test.y)
     xi_test     = data_test.xi[:, :model_params.num_test] 
     y_test      = data_test.y [   :model_params.num_test] 
     y0_test     = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
