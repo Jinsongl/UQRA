@@ -111,7 +111,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     alpha3 = np.array([5,10,20,40,80,100])
     alphas = np.unique(np.concatenate([alpha1, alpha2,alpha3], axis=0))
     # for n_samples in np.arange(10,150,5):
-    for n_samples in [math.ceil(ialpha * orth_poly.num_basis) for ialpha in [1.01,2.1]]:
+    for n_samples in [math.ceil(ialpha * orth_poly.num_basis) for ialpha in alphas]:
         data_nsample = uqra.Data()
         data_nsample.ndim     = ndim
         data_nsample.deg      = deg 
@@ -127,7 +127,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_nsample.yhat_ecdf= []
         error = []
         print(' ------------------------------------------------------------')
-        for i in tqdm(range(2), ascii=True, ncols=80):
+        for i in tqdm(range(50), ascii=True, ncols=80):
             ## ------------------------ UQRA Surrogate model----------------- ###
             orth_poly = uqra.poly.orthogonal(ndim, deg, model_params.basis)
             pce_model = uqra.PCE(orth_poly)
@@ -234,7 +234,7 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('MCS', None)
+    doe_params = uqra.ExperimentParameters('MCS', 'D')
     # doe_params = uqra.ExperimentParameters('LHS', None)
     doe_params.update_poly_name(model_params.basis)
     doe_params.num_cand  = int(1e5)
