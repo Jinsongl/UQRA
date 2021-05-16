@@ -78,7 +78,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_train.y  = np.empty((0,))
 
     ndim, deg = model_params.ndim, model_params.degs
-    sparsity  = 70
+    sparsity  = 50
 
     print('\n==================================================================================')
     print('         <<<< Initial Exploration: ndim={:d}, p={:d} >>>>'.format(ndim, deg))
@@ -106,7 +106,9 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     if filename_cand:
         data_cand = np.load(os.path.join(data_dir_cand, filename_cand))
         data_cand = data_cand[:ndim,random.sample(range(data_cand.shape[1]), k=idoe_params.num_cand)]
+        data_cand = data_cand * deg ** 0.5 if doe_params.doe_sampling.upper() in ['CLS4', 'CLS5'] else data_cand
         print('       {:<23s} : {}'.format(' shape', data_cand.shape))
+        np.save('FPSO_CLS4_cand_test.npy', data_cand)
     else:
         data_cand = None
         print('       {:<23s} : {}'.format(' shape', data_cand))
@@ -182,8 +184,9 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_ideg.QoI_hat_[-1])))
     print('     - {:<32s} : {:.4e}'.format('y0 test [TRUE ]', y0_test))
 
+    np.save('FPSO_test_yhat.npy', y_test_hat)
     i_iteration = 1
-    while i_iteration < 20:
+    while i_iteration <= 20:
         print('                 ------------------------------')
         print('                  <  Iteration No. {:d} >'.format(i_iteration))
         print('                 ------------------------------')
@@ -191,9 +194,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('   > Adding exploration optimal samples in global domain ... ')
         print('   1-1. optimal samples based on SIGNIFICANT basis in global domain ... ')
         ####-------------------------------------------------------------------------------- ####
-        n_samples = min(3, max(3,sparsity)) #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
+        n_samples = min(10, max(3,sparsity)) #math.ceil(2*sparsity/3) 
+        #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
         # n_samples = min(10, sparsity) #len(active_index)
         xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi_index, 
+                # active_index=None, initialization='RRQR', return_index=True) 
                 active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
 
         ## obtain exploration optimal samples
@@ -208,19 +213,24 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
         data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
         data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
-        print('     - {:<32s} : {:d}'.format('Adding exploration optimal samples', n_samples))
-        print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
-        print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
-        print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
+        print('     - {:<32s} : {:d}  '.format('Adding exploration optimal samples', n_samples))
+        print('     - {:<32s} : {:d}  '.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
+        print('     - {:<32s} : {:.2f}'.format('Local oversampling  [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
+        print('     - {:<32s} : {:d}  '.format('Total number of samples', len(data_train.y)))
 
 
         print('   1-2. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
         ## obtain DoI candidate samples
+        # n_samples = min(10, max(3,sparsity)) #math.ceil(2*sparsity/3) 
         data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.QoI_hat_[-1], 
-                xi_test, y_test_hat, data_cand , deg, n0=20, epsilon=0.1, return_index=True)
-        data_cand_xi_DoI = deg**0.5 * data_cand_DoI if idoe_params.doe_sampling in ['CLS4', 'CLS5'] else data_cand_DoI
-        data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_xi_DoI, dist_xi))
+                xi_test, y_test_hat, data_cand , deg, n0=10, epsilon=0.1, return_index=True)
+
+        # data_cand_DoI = idoe_params.domain_of_interest(data_ideg.y0_hat_[-1], xi_test, y_test_hat, 
+                # n_centroid=20, epsilon=0.1)
+
+
+        data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_DoI, dist_xi))
 
         ## obtain DoI optimal samples
         xi_train_, idx_optimal_DoI = idoe_params.get_samples(data_cand_DoI, orth_poly, n_samples, x0=[], 
@@ -272,6 +282,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('      - Value : {} [Ref: {:e}]'.format(np.array(data_ideg.QoI_hat_), y0_test))
         print('      - Error : {} % [{}]'.format(np.around(error_converge, 4)*100,isConverge))
         print('   ------------------------------------------------------------')
+
+        np.save('FPSO_test_yhat{:d}.npy'.format(i_iteration), y_test_hat)
         i_iteration +=1
         data_ideg.is_converge.append(np.array(isConverge).all())
         # if np.all(isConverge):
@@ -282,7 +294,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             break
 
 
-    data_ideg.QoI_hat__    = data_ideg.QoI_hat_[-1]
+    data_ideg.QoI_hat   = data_ideg.QoI_hat_[-1]
     data_ideg.cv_err    = data_ideg.cv_err_[-1]
     # data_ideg.kappa   = data_ideg.kappa_[-1]
     data_ideg.model     = data_ideg.model_[-1]
@@ -301,7 +313,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     tqdm.write('  - {:<15s} : {:.4e}'.format( 'RMSE y ' , data_ideg.rmse_y))
     tqdm.write('  - {:<15s} : {:.4e}'.format( 'CV MSE'  , data_ideg.cv_err))
     tqdm.write('  - {:<15s} : {:.4f}'.format( 'Score '  , data_ideg.score ))
-    tqdm.write('  - {:<15s} : {:.4e} [{:.4e}]'.format( 'QoI[y0] ' , data_ideg.QoI_hat_, y0_test))
+    tqdm.write('  - {:<15s} : {:.4e} [{:.4e}]'.format( 'QoI[y0] ' , data_ideg.QoI_hat, y0_test))
     print(' ------------------------------------------------------------')
     main_res = data_ideg
     return main_res
@@ -322,13 +334,13 @@ if __name__ == '__main__':
     solver = uqra.FPSO(random_state=theta, distributions=uqra_env)
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = 15 #[2,6,10]#
+    model_params.degs    = 10 #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Hem'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
     model_params.n_splits= 20
-    model_params.alpha   = 2
+    model_params.alpha   = 3
     model_params.num_test= int(1e7)
     model_params.pf      = np.array([0.5/(365.25*24*50)])
     model_params.abs_err = 1e-4
@@ -359,6 +371,8 @@ if __name__ == '__main__':
     data_test   = np.load(os.path.join(data_dir_test, filename_test), allow_pickle=True).tolist()
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
+
+
     data_test.y = solver.run(data_test.x) if not hasattr(data_test, 'y') else data_test.y
     try:
         data_test.y = data_test.y[theta]
@@ -368,6 +382,21 @@ if __name__ == '__main__':
     xi_test = data_test.xi[:, :model_params.num_test] 
     y_test  = data_test.y [   :model_params.num_test] 
     y0_test = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
+
+    np.save('FPSO_test_x.npy' , data_test.x)
+    np.save('FPSO_test_xi.npy', data_test.xi)
+    np.save('FPSO_test_y.npy' , y_test)
+
+    print('U:', data_test.u.shape, np.mean(data_test.u, axis=1), np.std(data_test.u, axis=1))
+    print(np.amin(data_test.u, axis=1), np.amax(data_test.u, axis=1))
+    print('Xi:', data_test.xi.shape, np.mean(data_test.xi, axis=1), np.std(data_test.xi, axis=1))
+    print(np.amin(data_test.xi, axis=1), np.amax(data_test.xi, axis=1))
+    print('Xi Test:', xi_test.shape, np.mean(xi_test, axis=1), np.std(xi_test, axis=1))
+    print(np.amin(xi_test, axis=1), np.amax(xi_test, axis=1))
+    xi_test_outside = xi_test[:, np.linalg.norm(xi_test, axis=0) > np.sqrt(model_params.degs * 2)]
+    print(xi_test_outside.shape)
+    print('X:', data_test.x.shape, np.mean(data_test.x, axis=1), np.std(data_test.x, axis=1))
+    print(np.amin(data_test.x, axis=1), np.amax(data_test.x, axis=1))
 
     res = []
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
@@ -400,8 +429,8 @@ if __name__ == '__main__':
         np.save(filename, res, allow_pickle=True)
         print(' >> Simulation Done! Data saved to {:s}'.format(os.path.join(os.getcwd(), filename)))
 
-    alarm_window = [datetime.time(7,0,0),datetime.time(23,59,59)]
-    current_time = datetime.datetime.now().time()
-    if uqra.time_in_range(alarm_window[0], alarm_window[1], current_time) :
-        os.system('say "{:s} Simulation has finished"'.format(solver.name))
+    # alarm_window = [datetime.time(7,0,0),datetime.time(23,59,59)]
+    # current_time = datetime.datetime.now().time()
+    # if uqra.time_in_range(alarm_window[0], alarm_window[1], current_time) :
+        # os.system('say "{:s} Simulation has finished"'.format(solver.name))
         
