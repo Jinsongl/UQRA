@@ -321,8 +321,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
     r, theta= 0, 0
-    ith_batch  = 2
-    batch_size = 10
+    ith_batch  = 0
+    batch_size = 1
     np.random.seed(100)
     random.seed(100)
     np.set_printoptions(precision=4)
@@ -334,7 +334,7 @@ if __name__ == '__main__':
     solver = uqra.FPSO(random_state=theta, distributions=uqra_env)
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = 8 #[2,6,10]#
+    model_params.degs    = 10 #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Hem'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
