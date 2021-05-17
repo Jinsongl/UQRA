@@ -78,7 +78,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_train.y  = np.empty((0,))
 
     ndim, deg = model_params.ndim, model_params.degs
-    sparsity  = 20
+    sparsity  = 30
 
     print('\n==================================================================================')
     print('         <<<< Initial Exploration: ndim={:d}, p={:d} >>>>'.format(ndim, deg))
@@ -177,7 +177,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
     data_ideg.model_.append(pce_model)
     data_ideg.rmse_y_.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
-    data_ideg.y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
+    data_ideg.y0_hat_.append(uqra.metrics.mquantiles(np.concatenate([y_test_hat, y_outside], axis=0), 1-model_params.pf))
     data_ideg.score_.append(pce_model.score)
     data_ideg.cv_err_.append(pce_model.cv_error)
     data_ideg.yhat_ecdf_.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
@@ -198,8 +198,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
         # n_samples = min(10, sparsity) #len(active_index)
         xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi_index, 
-                active_index=None, initialization='RRQR', return_index=True) 
-                # active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
+                # active_index=None, initialization='RRQR', return_index=True) 
+                active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
 
         ## obtain exploration optimal samples
         x_train_ = solver.map_domain(xi_train_, dist_xi)
@@ -228,8 +228,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
         n_samples = min(10, max(3,sparsity)) #math.ceil(2*sparsity/3) 
         data_cand_DoI = idoe_params.domain_of_interest(data_ideg.y0_hat_[-1], xi_test, y_test_hat, 
-                n_centroid=1, epsilon=0.1)
-
+                n_centroid=5, epsilon=0.1)
 
         data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_DoI, dist_xi))
 
@@ -270,7 +269,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
         data_ideg.model_.append(pce_model)
         data_ideg.rmse_y_.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
-        data_ideg.y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
+        data_ideg.y0_hat_.append(uqra.metrics.mquantiles(np.concatenate([y_test_hat, y_outside], axis=0), 1-model_params.pf))
         data_ideg.score_.append(pce_model.score)
         data_ideg.cv_err_.append(pce_model.cv_error)
         data_ideg.yhat_ecdf_.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
@@ -341,7 +340,7 @@ if __name__ == '__main__':
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
     model_params.n_splits= 20
-    model_params.alpha   = 3
+    model_params.alpha   = 5
     model_params.num_test= int(1e7)
     model_params.pf      = np.array([0.5/(365.25*24*50)])
     model_params.abs_err = 1e-4
@@ -394,7 +393,12 @@ if __name__ == '__main__':
     print(np.amin(data_test.xi, axis=1), np.amax(data_test.xi, axis=1))
     print('Xi Test:', xi_test.shape, np.mean(xi_test, axis=1), np.std(xi_test, axis=1))
     print(np.amin(xi_test, axis=1), np.amax(xi_test, axis=1))
-    xi_test_outside = xi_test[:, np.linalg.norm(xi_test, axis=0) > np.sqrt(model_params.degs * 2)]
+    idx_outside = np.linalg.norm(xi_test, axis=0) > np.sqrt(model_params.degs * 2)
+    idx_inside  = np.linalg.norm(xi_test, axis=0) <=np.sqrt(model_params.degs * 2)
+    xi_test_outside = xi_test[:, idx_outside]
+    y_outside = y_test[idx_outside] 
+    xi_test   = xi_test[:, idx_inside]
+    y_test    = y_test[idx_inside]
     print(xi_test_outside.shape)
     print('X:', data_test.x.shape, np.mean(data_test.x, axis=1), np.std(data_test.x, axis=1))
     print(np.amin(data_test.x, axis=1), np.amax(data_test.x, axis=1))
