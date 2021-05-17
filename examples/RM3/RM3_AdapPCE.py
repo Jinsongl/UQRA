@@ -21,10 +21,6 @@ import matlab.engine
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
-def observation_error(y, mu=0, cov=0.03, random_state=100):
-    e = stats.norm(0, cov * abs(y)).rvs(size=len(y), random_state=random_state)
-    return e
-
 def list_union(ls1, ls2):
     """
     append ls2 to ls1 and check if there exist duplicates
@@ -411,7 +407,7 @@ if __name__ == '__main__':
     for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
-        print(' >>>  Start UQRA : {:d}[{:d}]/{:d} x {:d}'.format(i, irepeat, batch_size, ith_batch))
+        print(' >>>  Start UQRA : Theta: {:d}, [{:d}x{:d}]-{:d}'.format(theta, batch_size, ith_batch, i))
         print(' >>>  Test data R={:d}'.format(r))
         print('#################################################################################\n')
         print('   > {:<25s}'.format('Input/Output Directories:'))

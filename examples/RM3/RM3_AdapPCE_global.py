@@ -21,20 +21,6 @@ import matlab.engine
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
-def list_union(ls1, ls2):
-    """
-    append ls2 to ls1 and check if there exist duplicates
-    return the union of two lists and remove duplicates
-    """
-    if ls1 is None:
-        ls1 = []
-    if ls2 is None:
-        ls2 = []
-    ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
-    if len(ls) != len(set(ls1).union(set(ls2))):
-        print('[WARNING]: list_union: duplicate elements found in list when append to each other')
-    ls = list(set(ls))
-    return ls
 
 def isOverfitting(cv_err):
     if len(cv_err) < 3 :
@@ -90,10 +76,10 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_train.xi = np.empty((model_params.ndim, 0))
     data_train.x  = np.empty((model_params.ndim, 0))
     data_train.y  = np.empty((0,))
-
+    sparsity = 6
     for i, (ndim, deg) in enumerate(ndim_deg_cases):
         print('\n==================================================================================')
-        print('         <<<< Global iteration No. {:d}: ndim={:d}, p={:d} >>>>'.format(i+1, ndim, deg))
+        print('         <<<< Exploration iteration No. {:d}: ndim={:d}, p={:d} >>>>'.format(i+1, ndim, deg))
         print('==================================================================================\n')
         ## ------------------------ UQRA Surrogate model----------------- ###
         orth_poly = uqra.poly.orthogonal(ndim, deg, model_params.basis)
@@ -118,11 +104,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         if filename_cand:
             data_cand = np.load(os.path.join(data_dir_cand, filename_cand))
             data_cand = data_cand[:ndim,random.sample(range(data_cand.shape[1]), k=idoe_params.num_cand)]
+            data_cand = data_cand * deg ** 0.5 if doe_params.doe_sampling.upper() in ['CLS4', 'CLS5'] else data_cand
             print('       {:<23s} : {}'.format(' shape', data_cand.shape))
         else:
             data_cand = None
             print('       {:<23s} : {}'.format(' shape', data_cand))
-
         idoe_sampling = idoe_params.doe_sampling.lower()
         idoe_nickname = idoe_params.doe_nickname()
         ioptimality   = idoe_params.optimality
@@ -135,23 +121,17 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_ideg.x_train  = []
         data_ideg.y_train  = []
 
-        ## ------------------------ #1: Obtain global optimal samples ----------------- ###
+        ### ------------------------ #1: Obtain exploration optimal samples ----------------- ###
         print(' ------------------------------------------------------------')
-        print(' > Adding optimal samples in global domain... ')
-        print('   1. optimal samples based on FULL basis')
-        active_index = pce_model.active_index
-        active_basis = pce_model.active_basis
-        if deg == model_params.degs[0]:
-            n_samples = math.ceil(len(active_index) * model_params.alpha)
-        else:
-            n_samples = len(active_index)
-        print('     - Optimal design:{:s}, Adding {:d} optimal samples'.format(idoe_nickname, n_samples))
+        print('   > Adding exploration samples in global domain... ')
+        print('   1. optimal samples based on FULL basis: {:s}'.format(idoe_nickname))
 
-        ## obtain global optimal samples
-        xi_train, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi, 
+        ## obtain exploration optimal samples
+        n_samples = max(sparsity, math.ceil(0.8*pce_model.num_basis))
+        xi_train, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=[], 
                 active_index=None, initialization='RRQR', return_index=True) 
-        x_train = solver.map_domain(xi_train, dist_xi)
 
+        x_train = solver.map_domain(xi_train, dist_xi)
         ## get train data, if not available, return training samples to run
         ## set matlabengine workspace variables
         eng.workspace['deg'] = float(deg)
@@ -194,13 +174,12 @@ if __name__ == '__main__':
     model_params = uqra.Modeling('PCE')
     model_params.degs    = np.arange(2,9) #[2,6,10]#
     model_params.ndim    = solver.ndim
-    model_params.basis   = 'Hem'
+    model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
-    model_params.n_splits= 50
-    model_params.alpha   = 2
+    model_params.n_splits= 10
+    model_params.alpha   = 3
     model_params.num_test= int(1e7)
-    model_params.num_pred= int(1e7)
     model_params.pf      = np.array([1.0/(365.25*24*50)])
     model_params.abs_err = 1e-4
     model_params.rel_err = 2.5e-2
@@ -209,9 +188,8 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('CLS4', 'S')
-    # doe_params = uqra.ExperimentParameters('MCS', None)
-    doe_params.poly_name = model_params.basis 
+    doe_params = uqra.ExperimentParameters('MCS', 'S')
+    doe_params.update_poly_name(model_params.basis)
     doe_params.num_cand  = int(1e5)
 
     ## ------------------------ UQRA Simulation Parameters ----------------- ###
@@ -232,11 +210,6 @@ if __name__ == '__main__':
     data_test   = np.load(os.path.join(data_dir_test, filename_test), allow_pickle=True).tolist()
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
-    # data_test.y = solver.run(data_test.x) if not hasattr(data_test, 'y') else data_test.y
-    # try:
-        # data_test.y = data_test.y[theta]
-    # except:
-        # pass
     xi_test = data_test.xi[:, :model_params.num_test] 
     # y_test  = data_test.y [   :model_params.num_test] 
     # y0_test = uqra.metrics.mquantiles(y_test, 1-model_params.pf)
