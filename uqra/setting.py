@@ -295,14 +295,22 @@ class ExperimentParameters(Parameters):
                 # DoE = uqra.MCS([self.dist_xi, ] * ndim)
                 # xi_cand = DoE.samples(10000000)
             elif self.doe_sampling.lower().startswith('cls'):
-                raise ValueError('{:s} not defined'.foramt(self.doe_sampling))
                 DoE = uqra.CLS(self.doe_sampling, ndim)
-                xi_cand = DoE.samples(10000000)
+                xi_cand = DoE.samples(size=1000000)
                 if self.doe_sampling.upper() in ['CLS4', 'CLS5']:
                     xi_cand = xi_cand * deg ** 0.5
+                xi_min = np.amin(centroid_xi, axis=1) - epsilon
+                xi_max = np.amax(centroid_xi, axis=1) + epsilon
+                assert len(xi_min) == ndim
+                idx = np.ones((1000000), dtype=bool) 
+                for ixi_cand, a, b in zip(xi_cand, xi_min, xi_max):
+                    idx_= np.logical_and(ixi_cand >= a, ixi_cand <=b)
+                    idx = np.logical_and(idx, idx_)
+                xi_cand = xi_cand[:,idx]
             else:
                 raise ValueError('{:s} not defined'.foramt(self.doe_sampling))
             idx_DoI_xi_cand = []
+
             for i, xi in enumerate(centroid_xi.T):
                 xi = xi.reshape(ndim, 1)
                 idx_DoI_xi_cand_icentroid = np.argwhere(np.linalg.norm(xi_cand-xi, axis=0) < epsilon).flatten().tolist()

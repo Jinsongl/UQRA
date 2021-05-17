@@ -78,7 +78,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_train.y  = np.empty((0,))
 
     ndim, deg = model_params.ndim, model_params.degs
-    sparsity  = 50
+    sparsity  = 20
 
     print('\n==================================================================================')
     print('         <<<< Initial Exploration: ndim={:d}, p={:d} >>>>'.format(ndim, deg))
@@ -121,7 +121,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_ideg = uqra.Data()
     data_ideg.ndim      = ndim
     data_ideg.deg       = deg 
-    data_ideg.QoI_hat_  = []
+    data_ideg.y0_hat_  = []
     data_ideg.cv_err_   = []
     data_ideg.rmse_y_   = []
     data_ideg.model_    = []
@@ -177,11 +177,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
     data_ideg.model_.append(pce_model)
     data_ideg.rmse_y_.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
-    data_ideg.QoI_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
+    data_ideg.y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
     data_ideg.score_.append(pce_model.score)
     data_ideg.cv_err_.append(pce_model.cv_error)
     data_ideg.yhat_ecdf_.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
-    print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_ideg.QoI_hat_[-1])))
+    print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_ideg.y0_hat_[-1])))
     print('     - {:<32s} : {:.4e}'.format('y0 test [TRUE ]', y0_test))
 
     np.save('FPSO_test_yhat.npy', y_test_hat)
@@ -194,12 +194,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('   > Adding exploration optimal samples in global domain ... ')
         print('   1-1. optimal samples based on SIGNIFICANT basis in global domain ... ')
         ####-------------------------------------------------------------------------------- ####
-        n_samples = min(10, max(3,sparsity)) #math.ceil(2*sparsity/3) 
+        n_samples = min(5, max(3,sparsity)) #math.ceil(2*sparsity/3) 
         #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
         # n_samples = min(10, sparsity) #len(active_index)
         xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi_index, 
-                # active_index=None, initialization='RRQR', return_index=True) 
-                active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
+                active_index=None, initialization='RRQR', return_index=True) 
+                # active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
 
         ## obtain exploration optimal samples
         x_train_ = solver.map_domain(xi_train_, dist_xi)
@@ -219,15 +219,16 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('     - {:<32s} : {:d}  '.format('Total number of samples', len(data_train.y)))
 
 
-        print('   1-2. optimal samples based on SIGNIFICANT basis in domain of interest... ')
+        # print('   1-2. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
         ## obtain DoI candidate samples
         # n_samples = min(10, max(3,sparsity)) #math.ceil(2*sparsity/3) 
-        data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.QoI_hat_[-1], 
-                xi_test, y_test_hat, data_cand , deg, n0=10, epsilon=0.1, return_index=True)
+        # data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.y0_hat_[-1], 
+                # xi_test, y_test_hat, data_cand , deg, n0=10, epsilon=0.1, return_index=True)
 
-        # data_cand_DoI = idoe_params.domain_of_interest(data_ideg.y0_hat_[-1], xi_test, y_test_hat, 
-                # n_centroid=20, epsilon=0.1)
+        n_samples = min(10, max(3,sparsity)) #math.ceil(2*sparsity/3) 
+        data_cand_DoI = idoe_params.domain_of_interest(data_ideg.y0_hat_[-1], xi_test, y_test_hat, 
+                n_centroid=1, epsilon=0.1)
 
 
         data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_DoI, dist_xi))
@@ -269,17 +270,17 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
         data_ideg.model_.append(pce_model)
         data_ideg.rmse_y_.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
-        data_ideg.QoI_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
+        data_ideg.y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
         data_ideg.score_.append(pce_model.score)
         data_ideg.cv_err_.append(pce_model.cv_error)
         data_ideg.yhat_ecdf_.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
         # isOverfitting(data_ideg.cv_err) ## check Overfitting
-        print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_ideg.QoI_hat_[-1])))
+        print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_ideg.y0_hat_[-1])))
         print('     - {:<32s} : {:.4e}'.format('y0 test [TRUE ]', y0_test))
-        isConverge, error_converge = relative_converge(data_ideg.QoI_hat_, err=model_params.rel_err)
-        # isConverge, error_converge = absolute_converge(data_ideg.QoI_hat_, err=model_params.abs_err)
+        isConverge, error_converge = relative_converge(data_ideg.y0_hat_, err=model_params.rel_err)
+        # isConverge, error_converge = absolute_converge(data_ideg.y0_hat_, err=model_params.abs_err)
         print('   4. Converge check ...')
-        print('      - Value : {} [Ref: {:e}]'.format(np.array(data_ideg.QoI_hat_), y0_test))
+        print('      - Value : {} [Ref: {:e}]'.format(np.array(data_ideg.y0_hat_), y0_test))
         print('      - Error : {} % [{}]'.format(np.around(error_converge, 4)*100,isConverge))
         print('   ------------------------------------------------------------')
 
@@ -294,7 +295,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             break
 
 
-    data_ideg.QoI_hat   = data_ideg.QoI_hat_[-1]
+    data_ideg.y0_hat   = data_ideg.y0_hat_[-1]
     data_ideg.cv_err    = data_ideg.cv_err_[-1]
     # data_ideg.kappa   = data_ideg.kappa_[-1]
     data_ideg.model     = data_ideg.model_[-1]
@@ -313,7 +314,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     tqdm.write('  - {:<15s} : {:.4e}'.format( 'RMSE y ' , data_ideg.rmse_y))
     tqdm.write('  - {:<15s} : {:.4e}'.format( 'CV MSE'  , data_ideg.cv_err))
     tqdm.write('  - {:<15s} : {:.4f}'.format( 'Score '  , data_ideg.score ))
-    tqdm.write('  - {:<15s} : {:.4e} [{:.4e}]'.format( 'QoI[y0] ' , data_ideg.QoI_hat, y0_test))
+    tqdm.write('  - {:<15s} : {:.4e} [{:.4e}]'.format( 'QoI[y0] ' , data_ideg.y0_hat, y0_test))
     print(' ------------------------------------------------------------')
     main_res = data_ideg
     return main_res
