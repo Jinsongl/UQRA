@@ -127,7 +127,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('   1. optimal samples based on FULL basis: {:s}'.format(idoe_nickname))
 
         ## obtain exploration optimal samples
-        n_samples = max(sparsity, math.ceil(0.8*pce_model.num_basis))
+        n_samples = math.ceil(2.0*pce_model.num_basis)
         xi_train, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=[], 
                 active_index=None, initialization='RRQR', return_index=True) 
 
@@ -153,7 +153,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta= 0, 10
+    r, theta= 0, 3
     y_scale = 1e6
     ith_batch  = 0
     batch_size = 1
@@ -172,7 +172,7 @@ if __name__ == '__main__':
     solver = uqra.Solver('RM3', 2, distributions=uqra_env)
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
     model_params = uqra.Modeling('PCE')
-    model_params.degs    = np.arange(2,9) #[2,6,10]#
+    model_params.degs    = np.arange(2,11) #[2,6,10]#
     model_params.ndim    = solver.ndim
     model_params.basis   = 'Heme'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
@@ -234,8 +234,8 @@ if __name__ == '__main__':
         res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
     if len(res) == 1:
         res = res[0]
-    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}S{:d}_y{:d}_global'.format(solver.nickname, 
-            solver.ndim, model_params.basis, doe_params.doe_nickname(), r, theta)
+    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}S{:d}_global'.format(
+            solver.nickname, solver.ndim, model_params.basis[:3], doe_params.doe_nickname(), r, theta)
     eng.quit()
     # ## ============ Saving QoIs ============
     try:
