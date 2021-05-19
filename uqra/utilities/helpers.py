@@ -619,30 +619,36 @@ def samples_within_cubic(data, domain):
 
 def list_union(ls1, ls2, return_duplicate=False):
     """
+    reserve order in ls1
     append ls2 to ls1 and check if there exist duplicates
     return the union of two lists and remove duplicates
     """
-    ls1 = set(copy.deepcopy(ls1))
-    ls2 = set(copy.deepcopy(ls2))
+    ls1 = list(dict.fromkeys(copy.deepcopy(ls1)).keys())
+    ls2 = list(dict.fromkeys(copy.deepcopy(ls2)).keys())
     ls_common = list_inter(ls1, ls2)
-    ls_union  = list(ls1.union(ls2))
+    ls_union  = list(copy.deepcopy(ls1)) + [i for i in ls2 if i not in ls1]
     res = (ls_union, ls_common) if return_duplicate else ls_union
     return res
 
 def list_diff(ls1, ls2):
     """
+    reserve order in ls1
     returns a list of elements in ls1 but not in ls2
     """
-    ls1 = set(copy.deepcopy(ls1))
-    ls2 = set(copy.deepcopy(ls2))
-    return list(ls1.union(ls2).difference(ls2))
+    # emulate ordered set with dict.fromkeys().keys()
+    ls1 = list(dict.fromkeys(copy.deepcopy(ls1)).keys())
+    ls2 = list(dict.fromkeys(copy.deepcopy(ls2)).keys())
+    res = [i for i in ls1 if i not in ls2]
+    return res 
 
 def list_inter(ls1, ls2):
     """
     return common elements between ls1 and ls2 
     """
-    ls = list(set(ls1).intersection(set(ls2)))
-    return ls
+    ls1 = list(dict.fromkeys(copy.deepcopy(ls1)).keys())
+    ls2 = list(dict.fromkeys(copy.deepcopy(ls2)).keys())
+    res = [i for i in ls1 if i in ls2]
+    return res
 
 def common_vectors(A, B):
     """
