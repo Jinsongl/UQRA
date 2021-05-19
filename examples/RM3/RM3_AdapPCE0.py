@@ -21,32 +21,27 @@ import matlab.engine
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
-def list_union(ls1, ls2):
+def overfitting_check(cv_err):
     """
-    append ls2 to ls1 and check if there exist duplicates
-    return the union of two lists and remove duplicates
-    """
-    if ls1 is None:
-        ls1 = []
-    if ls2 is None:
-        ls2 = []
-    ls = list(copy.deepcopy(ls1)) + list(copy.deepcopy(ls2))
-    if len(ls) != len(set(ls1).union(set(ls2))):
-        print('[WARNING]: list_union: duplicate elements found in list when append to each other')
-    ls = list(set(ls))
-    return ls
+    if cv error increase twice in a row, then defined as overfit
 
-def isOverfitting(cv_err):
+    return True if overfit, otherwise False
+
+    """
     if len(cv_err) < 3 :
-        return False
-    if cv_err[-1] > cv_err[-2] and cv_err[-2] > cv_err[0]:
-        print('WARNING: Overfitting')
-        return False
+        return False, np.nan
+    elif cv_err[-1] > cv_err[-2] and cv_err[-2] > cv_err[0]:
+        return True, cv_err[-3:]
+    else:
+        return False, np.nan
 
 def threshold_converge(y, threshold=0.95):
     y = np.array(y)
-    status = True if y[-1]> threshold else False
-    return status, threshold
+    if len(y) == 0:
+        return False, np.nan
+    else:
+        status = True if y[-1]> threshold else False
+        return status, y[-1]
 
 def relative_converge(y, err=0.05):
     """ 

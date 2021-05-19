@@ -219,11 +219,10 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('   1-2. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
             ## obtain DoI candidate samples
-            # data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(0, xi_test, y_test_hat, data_cand
-                    # , deg, n0=20, epsilon=0.1, return_index=True)
+            data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(0, xi_test, y_test_hat, data_cand
+                    , deg, n0=20, epsilon=0.1, return_index=True)
 
-            data_cand_DoI = idoe_params.domain_of_interest(0, xi_test, y_test_hat, n_centroid=20, epsilon=0.1)
-
+            # data_cand_DoI = idoe_params.domain_of_interest(0, xi_test, y_test_hat, n_centroid=10, epsilon=0.1)
             # data_cand_xi_DoI = deg**0.5 * data_cand_DoI if idoe_params.doe_sampling in ['CLS4', 'CLS5'] else data_cand_DoI
             data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_DoI, dist_xi))
 
@@ -370,7 +369,7 @@ if __name__ == '__main__':
     model_params = uqra.Modeling('PCE')
     model_params.degs    = np.arange(2,11) #[2,6,10]#
     model_params.ndim    = solver.ndim
-    model_params.basis   = 'Heme'
+    model_params.basis   = 'Hem'
     model_params.dist_u  = stats.uniform(0,1)  #### random CDF values for samples
     model_params.fitting = 'OLSLAR' 
     model_params.n_splits= 20
@@ -383,7 +382,7 @@ if __name__ == '__main__':
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
-    doe_params = uqra.ExperimentParameters('MCS', 'S')
+    doe_params = uqra.ExperimentParameters('CLS4', 'S')
     # doe_params = uqra.ExperimentParameters('MCS', None)
     doe_params.poly_name = model_params.basis 
     doe_params.num_cand  = int(1e5)
