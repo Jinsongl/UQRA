@@ -119,6 +119,7 @@ src/Data/
 
 # MATLAB
  *.mat
+ *.autosave
 
 # WEC-SIM
 slprj/

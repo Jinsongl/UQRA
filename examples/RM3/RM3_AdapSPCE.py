@@ -202,7 +202,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_QoIs[iqoi].score_.append(pce_model.score)
             data_QoIs[iqoi].cv_err_.append(pce_model.cv_error)
             print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_QoIs[iqoi].y0_hat_[-1])))
-
+        n_samples_deg = n_samples
         i_iteration = 1
         while True:
             print('                 ------------------------------')
@@ -213,7 +213,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('   1. exploration samples based on FULL basis in global domain ... ')
             print('     - {:<32s} : {:d}'.format('Adding exploration optimal samples', n_samples))
             ####-------------------------------------------------------------------------------- ####
-            n_samples = min(3, max(3,max_sparsity)) #min(max_sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
+            # min(max_sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
+            n_samples = min(3, max(3,max_sparsity)) 
             # n_samples = min(10, max_sparsity) #len(active_index)
             xi_exploration, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi_index, 
                     active_index=None, initialization='RRQR', return_index=True) 
@@ -283,6 +284,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 data_train.y   = np.concatenate([data_train.y , y_exploitation ], axis=0)
                 data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
 
+                n_samples_deg += n_samples
                 print('     - {:<32s} : {:s}'.format('Domain of Interest (DoI)', headers[iqoi]         ))
                 print('     - {:<32s} : {}  '.format('DoI candidate samples', data_cand_DoI_iqoi.shape ))
                 print('     - {:<32s} : {:d}'.format('Adding DoI optimal samples', n_samples           ))
@@ -320,8 +322,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 is_QoIs_converge.append([is_y0_converge, is_score_converge])
                 print('  >  QoI: {:<25s}'.format(iheader))
                 print('     >  Values: {}'.format(data_QoIs[iqoi].y0_hat_))
-                print('     >  Rel Error: {}, Converge: {}'.format(y0_converge_err, is_y0_converge     ))
-                print('     >  Fit Score: {}, Converge: {}'.format(score_converge , is_score_converge  ))
+                print('     >  Rel Error [%]: {:.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
+                print('     >  Fit Score [%]: {:.2f}, Converge: {}'.format(score_converge*100 , is_score_converge  ))
                 print('-'*50)
                 data_iqoi.is_converge.append(np.array([is_y0_converge, is_score_converge]).all())
 
@@ -347,9 +349,9 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             is_QoIs_converge.append([is_y0_converge, is_score_converge])
             print('  >  QoI: {:<25s}'.format(iheader))
             print('     >  Values: {}'.format(y0_hat_global_iqoi))
-            print('     >  Over Fit : {}, Converge: {}'.format(overfit_vals   , is_overfit         ))
-            print('     >  Rel Error: {}, Converge: {}'.format(y0_converge_err, is_y0_converge     ))
-            print('     >  Fit Score: {}, Converge: {}'.format(score_converge , is_score_converge  ))
+            print('     >  Over Fit : {}, Converge: {}'.format(overfit_vals, is_overfit))
+            print('     >  Rel Error [%]: {:.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
+            print('     >  Fit Score [%]: {:.2f}, Converge: {}'.format(score_converge*100 , is_score_converge  ))
             print('-'*50)
 
         if np.array(is_QoIs_converge).all():
