@@ -20,21 +20,28 @@ import datetime
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
-def observation_error(y, mu=0, cov=0.03, random_state=100):
-    e = stats.norm(0, cov * abs(y)).rvs(size=len(y), random_state=random_state)
-    return e
 
-def isOverfitting(cv_err):
+def overfitting_check(cv_err):
+    """
+    if cv error increase twice in a row, then defined as overfit
+
+    return True if overfit, otherwise False
+
+    """
     if len(cv_err) < 3 :
-        return False
-    if cv_err[-1] > cv_err[-2] and cv_err[-2] > cv_err[0]:
-        print('WARNING: Overfitting')
-        return False
+        return False, np.nan
+    elif cv_err[-1] > cv_err[-2] and cv_err[-2] > cv_err[0]:
+        return True, cv_err[-3:]
+    else:
+        return False, np.nan
 
 def threshold_converge(y, threshold=0.95):
     y = np.array(y)
-    status = True if y[-1]> threshold else False
-    return status, threshold
+    if len(y) == 0:
+        return False, np.nan
+    else:
+        status = True if y[-1]> threshold else False
+        return status, y[-1]
 
 def relative_converge(y, err=0.05):
     """ 
@@ -79,18 +86,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
     ndim, deg = model_params.ndim, model_params.degs
     sparsity  = 30
-
-    print('\n==================================================================================')
-    print('         <<<< Initial Exploration: ndim={:d}, p={:d} >>>>'.format(ndim, deg))
-    print('==================================================================================\n')
-    ## ------------------------ UQRA Surrogate model----------------- ###
-    orth_poly = uqra.poly.orthogonal(ndim, deg, model_params.basis)
-    pce_model = uqra.PCE(orth_poly)
-    dist_u    = model_params.dist_u 
-    dist_xi   = orth_poly.weight
-    dist_x    = solver.distributions
-    pce_model.info()
-
     ## ------------------------ Updating DoE parameters ----------------- ###
     idoe_params = copy.deepcopy(doe_params)
     idoe_params.ndim = ndim
@@ -117,78 +112,89 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     idoe_nickname = idoe_params.doe_nickname()
     ioptimality   = idoe_params.optimality
     print('     - {:<23s} : {}'.format(' UQRA DoE '  , idoe_nickname))
+
+    print('\n==================================================================================')
+    print('         <<<< Initial Exploration: ndim={:d}, p={:d} >>>>'.format(ndim, deg))
+    print('==================================================================================\n')
+    ## ------------------------ UQRA Surrogate model----------------- ###
+    orth_poly = uqra.poly.orthogonal(ndim, deg, model_params.basis)
+    pce_model = uqra.PCE(orth_poly)
+    dist_u    = model_params.dist_u 
+    dist_xi   = orth_poly.weight
+    dist_x    = solver.distributions
+    pce_model.info()
+
     ### data object containing results from intermedia steps
-    data_ideg = uqra.Data()
-    data_ideg.ndim      = ndim
-    data_ideg.deg       = deg 
-    data_ideg.y0_hat_  = []
-    data_ideg.cv_err_   = []
-    data_ideg.rmse_y_   = []
-    data_ideg.model_    = []
-    data_ideg.score_    = []
-    data_ideg.yhat_ecdf_= []
-    data_ideg.xi_train_ = []
-    data_ideg.x_train_  = []
-    data_ideg.y_train_  = []
-    data_ideg.DoI_candidate_ = []
-    data_ideg.is_converge=[]
+    data_iteration = uqra.Data()
+    data_iteration.ndim          = ndim
+    data_iteration.deg           = deg 
+    data_iteration.y0_hat_       = []
+    data_iteration.cv_err_       = []
+    data_iteration.rmse_y_       = []
+    data_iteration.model_        = []
+    data_iteration.score_        = []
+    data_iteration.yhat_ecdf_    = []
+    data_iteration.xi_train_     = []
+    data_iteration.x_train_      = []
+    data_iteration.y_train_      = []
+    data_iteration.exploration0  = []  ## initial exploration sample set
+    data_iteration.exploration_  = []  ## exploration sample sets added later
+    data_iteration.exploitation_ = []  ## exploitation sample sets added later
+    data_iteration.DoI_candidate_= []
+    data_iteration.is_converge=[]
 
     ### ------------------------ #1: Obtain exploration optimal samples ----------------- ###
     print(' ------------------------------------------------------------')
     print('   > Adding exploration samples in global domain... ')
     print('   1. optimal samples based on FULL basis: {:s}'.format(idoe_nickname))
-    # if deg == model_params.degs[0]:
-        # n_samples = math.ceil(len(active_index) * model_params.alpha)
-    # else:
-        # n_samples = len(active_index)
-
     ## obtain exploration optimal samples
     n_samples = sparsity #max(sparsity, math.ceil(0.8*pce_model.num_basis))
-    xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=[], 
+    xi_exploration0, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=[], 
             active_index=None, initialization='RRQR', return_index=True) 
 
-    x_train_ = solver.map_domain(xi_train_, dist_xi)
-    y_train_ = solver.run(x_train_)
-    data_ideg.xi_train_.append(xi_train_)
-    data_ideg.x_train_.append (x_train_)
-    data_ideg.y_train_.append (y_train_)
-    n_samples_deg = len(np.concatenate(data_ideg.y_train_, axis=0))
+    x_exploration0 = solver.map_domain(xi_exploration0, dist_xi)
+    y_exploration0 = solver.run(x_exploration0)
 
-    data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
-    data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
-    data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
+    data_exploration0 = uqra.Data()
+    data_exploration0.xi= xi_exploration0
+    data_exploration0.x = x_exploration0
+    data_exploration0.y = y_exploration0
+    data_iteration.exploration0 = data_exploration0
+
+    n_samples_deg  = n_samples 
+    data_train.xi  = np.concatenate([data_train.xi, xi_exploration0], axis=1)
+    data_train.x   = np.concatenate([data_train.x , x_exploration0 ], axis=1)
+    data_train.y   = np.concatenate([data_train.y , y_exploration0 ], axis=0)
     data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
     print('     - {:<32s} : {:d}'.format('Adding exploration optimal samples', n_samples))
     print('     - {:<32s} : {:d}'.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
     print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
     print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
 
-    print('   2. Training with {} '.format(model_params.fitting))
-    weight  = doe_params.sampling_weight()   ## weight function
-    pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight,
-            n_jobs=model_params.n_jobs) #, n_splits=model_params.n_splits
-    sparsity = len(pce_model.active_index)
-    print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
-                    data_train.x.shape[1]/pce_model.num_basis))
+    print('   2. Training PCE (p={:d}) model with {} '.format(deg, model_params.fitting))
+    print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], 
+        pce_model.num_basis, data_train.x.shape[1]/pce_model.num_basis))
     print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
+    weight  = doe_params.sampling_weight()   ## weight function
+    pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight, n_jobs=model_params.n_jobs) 
+    sparsity = len(pce_model.active_index)
     print('     - {:<32s} : {}'.format('Sparsity'   , sparsity))
 
     print('   3. Prediction with {} samples '.format(xi_test.shape))
     y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
-    data_ideg.model_.append(pce_model)
-    data_ideg.rmse_y_.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
-    data_ideg.y0_hat_.append(uqra.metrics.mquantiles(np.concatenate([y_test_hat, y_outside], axis=0), 1-model_params.pf))
-    data_ideg.score_.append(pce_model.score)
-    data_ideg.cv_err_.append(pce_model.cv_error)
-    data_ideg.yhat_ecdf_.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
-    print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_ideg.y0_hat_[-1])))
+    data_iteration.model_.append(pce_model)
+    data_iteration.rmse_y_.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
+    data_iteration.y0_hat_.append(uqra.metrics.mquantiles(np.concatenate([y_test_hat, y_outside], axis=0), 1-model_params.pf))
+    data_iteration.score_.append(pce_model.score)
+    data_iteration.cv_err_.append(pce_model.cv_error)
+    data_iteration.yhat_ecdf_.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
+    print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_iteration.y0_hat_[-1])))
     print('     - {:<32s} : {:.4e}'.format('y0 test [TRUE ]', y0_test))
 
-    np.save('FPSO_test_yhat.npy', y_test_hat)
     i_iteration = 1
     while i_iteration <= 20:
         print('                 ------------------------------')
-        print('                  <  Iteration No. {:d} >'.format(i_iteration))
+        print('                    <  Iteration No. {:d} >'.format(i_iteration))
         print('                 ------------------------------')
         print(' ------------------------------------------------------------')
         print('   > Adding exploration optimal samples in global domain ... ')
@@ -197,21 +203,25 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         n_samples = min(5, max(3,sparsity)) #math.ceil(2*sparsity/3) 
         #min(sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
         # n_samples = min(10, sparsity) #len(active_index)
-        xi_train_, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi_index, 
-                # active_index=None, initialization='RRQR', return_index=True) 
+        xi_exploration, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi_index, 
                 active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
+                # active_index=None, initialization='RRQR', return_index=True) 
 
         ## obtain exploration optimal samples
-        x_train_ = solver.map_domain(xi_train_, dist_xi)
-        y_train_ = solver.run(x_train_)
-        data_ideg.xi_train_.append(xi_train_)
-        data_ideg.x_train_.append (x_train_)
-        data_ideg.y_train_.append (y_train_)
-        n_samples_deg  = len(np.concatenate(data_ideg.y_train_, axis=0))
+        x_exploration = solver.map_domain(xi_exploration, dist_xi)
+        y_exploration = solver.run(x_exploration)
 
-        data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
-        data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
-        data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
+        ## save exploration data
+        data_exploration   = uqra.Data()
+        data_exploration.xi= xi_exploration
+        data_exploration.x = x_exploration
+        data_exploration.y = y_exploration
+        data_iteration.exploration_.append(data_exploration)
+        n_samples_deg  += n_samples 
+
+        data_train.xi  = np.concatenate([data_train.xi, xi_exploration], axis=1)
+        data_train.x   = np.concatenate([data_train.x , x_exploration ], axis=1)
+        data_train.y   = np.concatenate([data_train.y , y_exploration ], axis=0)
         data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
         print('     - {:<32s} : {:d}  '.format('Adding exploration optimal samples', n_samples))
         print('     - {:<32s} : {:d}  '.format('No. optimal samples [p='+str(deg)+']', n_samples_deg))
@@ -219,74 +229,83 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('     - {:<32s} : {:d}  '.format('Total number of samples', len(data_train.y)))
 
 
-        # print('   1-2. optimal samples based on SIGNIFICANT basis in domain of interest... ')
+        print('   1-2. optimal samples based on SIGNIFICANT basis in domain of interest... ')
 
         ## obtain DoI candidate samples
         # n_samples = min(10, max(3,sparsity)) #math.ceil(2*sparsity/3) 
-        # data_cand_DoI, idx_data_cand_DoI = idoe_params.samples_nearby(data_ideg.y0_hat_[-1], 
+        # DoI_candidate_xi, idx_data_cand_DoI = idoe_params.samples_nearby(data_iteration.y0_hat_[-1], 
                 # xi_test, y_test_hat, data_cand , deg, n0=10, epsilon=0.1, return_index=True)
 
         n_samples = min(10, max(3,sparsity)) #math.ceil(2*sparsity/3) 
-        data_cand_DoI = idoe_params.domain_of_interest(data_ideg.y0_hat_[-1], xi_test, y_test_hat, 
+        DoI_candidate_xi = idoe_params.domain_of_interest(data_iteration.y0_hat_[-1], xi_test, y_test_hat, 
                 n_centroid=5, epsilon=0.1)
-
-        data_ideg.DoI_candidate_.append(solver.map_domain(data_cand_DoI, dist_xi))
+        DoI_candidate_x  = solver.map_domain(DoI_candidate_xi, dist_xi)
+        DoI_candidate = uqra.Data()
+        DoI_candidate.xi = DoI_candidate_xi
+        DoI_candidate.x  = DoI_candidate_x
+        data_iteration.DoI_candidate_.append(DoI_candidate)
 
         ## obtain DoI optimal samples
-        xi_train_, idx_optimal_DoI = idoe_params.get_samples(data_cand_DoI, orth_poly, n_samples, x0=[], 
+        xi_exploitation, idx_optimal_DoI = idoe_params.get_samples(DoI_candidate_xi, orth_poly, n_samples, x0=[], 
                 active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
-        assert xi_train_.shape[1] == n_samples ## make sure return number of samples required
-        x_train_ = solver.map_domain(xi_train_, dist_xi)
-        y_train_ = np.array(solver.run(x_train_), ndmin=1)
-        data_ideg.xi_train_.append(xi_train_)
-        data_ideg.x_train_.append (x_train_)
-        data_ideg.y_train_.append (y_train_)
-        n_samples_deg = len(np.concatenate(data_ideg.y_train_, axis=0))
+        assert xi_exploitation.shape[1] == n_samples ## make sure return number of samples required
+        x_exploitation = solver.map_domain(xi_exploitation, dist_xi)
+        y_exploitation = np.array(solver.run(x_exploitation), ndmin=1)
+
+        ## save exploitation data
+        data_exploitation   = uqra.Data()
+        data_exploitation.xi= xi_exploitation
+        data_exploitation.x = x_exploitation
+        data_exploitation.y = y_exploitation
+
+        data_iteration.exploitation_.append(data_exploitation)
+        n_samples_deg += n_samples
 
         ## put all training samples together, up to current step
-        data_train.xi  = np.concatenate([data_train.xi, xi_train_], axis=1)
-        data_train.x   = np.concatenate([data_train.x , x_train_ ], axis=1)
-        data_train.y   = np.concatenate([data_train.y , y_train_ ], axis=0)
+        data_train.xi  = np.concatenate([data_train.xi, xi_exploitation], axis=1)
+        data_train.x   = np.concatenate([data_train.x , x_exploitation ], axis=1)
+        data_train.y   = np.concatenate([data_train.y , y_exploitation ], axis=0)
         data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal_DoI)
 
-        print('     - {:<32s} : {}  '.format('DoI candidate samples', data_cand_DoI.shape ))
+        print('     - {:<32s} : {}  '.format('DoI candidate samples', DoI_candidate_xi.shape ))
         print('     - {:<32s} : {:d}'.format('Adding DoI optimal samples', n_samples))
         print('     - {:<32s} : {:d}'.format('No. samples [p='+str(deg)+']', n_samples_deg))
         print('     - {:<32s} : {:.2f}'.format('Local oversampling [p='+str(deg)+']', n_samples_deg/pce_model.num_basis))
         print('     - {:<32s} : {:d}'.format('Total number of samples', len(data_train.y)))
 
-        print('   2. Training with {} '.format(model_params.fitting))
-        weight  = doe_params.sampling_weight()   ## weight function
-        pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight, 
-                n_jobs=model_params.n_jobs, n_splits=model_params.n_splits) #
-        sparsity     = len(pce_model.active_index)
-        print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], pce_model.num_basis, 
-                        data_train.x.shape[1]/pce_model.num_basis))
+        print('   2. Training PCE (p={:d}) model with {} '.format(deg, model_params.fitting))
+        print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], 
+            pce_model.num_basis, data_train.x.shape[1]/pce_model.num_basis))
         print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
-        print('     - {:<32s} : {}'.format('Sparsity'   , len(pce_model.active_index)))
+        weight  = doe_params.sampling_weight()   ## weight function
+        pce_model.fit(model_params.fitting, data_train.xi, data_train.y, w=weight, n_jobs=model_params.n_jobs) 
+        sparsity= len(pce_model.active_index)
+        print('     - {:<32s} : {}'.format('Sparsity'   , sparsity))
 
         print('   3. Prediction with {} samples '.format(xi_test.shape))
         y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
-        data_ideg.model_.append(pce_model)
-        data_ideg.rmse_y_.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
-        data_ideg.y0_hat_.append(uqra.metrics.mquantiles(np.concatenate([y_test_hat, y_outside], axis=0), 1-model_params.pf))
-        data_ideg.score_.append(pce_model.score)
-        data_ideg.cv_err_.append(pce_model.cv_error)
-        data_ideg.yhat_ecdf_.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
-        # isOverfitting(data_ideg.cv_err) ## check Overfitting
-        print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_ideg.y0_hat_[-1])))
+        data_iteration.model_.append(pce_model)
+        data_iteration.rmse_y_.append(uqra.metrics.mean_squared_error(y_test, y_test_hat, squared=False))
+        data_iteration.y0_hat_.append(uqra.metrics.mquantiles(np.concatenate([y_test_hat, y_outside], axis=0), 1-model_params.pf))
+        data_iteration.score_.append(pce_model.score)
+        data_iteration.cv_err_.append(pce_model.cv_error)
+        data_iteration.yhat_ecdf_.append(uqra.ECDF(y_test_hat, model_params.pf, compress=True))
+        # isOverfitting(data_iteration.cv_err) ## check Overfitting
+        print('     - {:<32s} : {:.4e}'.format('y0 test [ PCE ]', np.array(data_iteration.y0_hat_[-1])))
         print('     - {:<32s} : {:.4e}'.format('y0 test [TRUE ]', y0_test))
-        isConverge, error_converge = relative_converge(data_ideg.y0_hat_, err=model_params.rel_err)
-        # isConverge, error_converge = absolute_converge(data_ideg.y0_hat_, err=model_params.abs_err)
+
+        isConverge, error_converge = relative_converge(data_iteration.y0_hat_, err=model_params.rel_err)
+        is_y0_converge   , y0_converge_err = relative_converge(data_iteration.y0_hat_, err=2*model_params.rel_err)
+        is_score_converge, score_converge  = threshold_converge(data_iteration.score_)
         print('   4. Converge check ...')
-        print('      - Value : {} [Ref: {:e}]'.format(np.array(data_ideg.y0_hat_), y0_test))
-        print('      - Error : {} % [{}]'.format(np.around(error_converge, 4)*100,isConverge))
+        print('      - Value : {} [Ref: {:e}]'.format(np.array(data_iteration.y0_hat_), y0_test))
+        print('      - Rel Error [%]: {:.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
+        print('      - Fit Score [%]: {:.2f}, Converge: {}'.format(score_converge*100 , is_score_converge  ))
         print('   ------------------------------------------------------------')
 
-        np.save('FPSO_test_yhat{:d}.npy'.format(i_iteration), y_test_hat)
+        data_iteration.is_converge.append(is_y0_converge and is_score_converge)
         i_iteration +=1
-        data_ideg.is_converge.append(np.array(isConverge).all())
-        # if np.all(isConverge):
+        # if is_y0_converge and is_score_converge:
             # print('         !< Model converge for order {:d} >!'.format(deg))
             # break
         if n_samples_deg > model_params.alpha*orth_poly.num_basis:
@@ -294,29 +313,25 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             break
 
 
-    data_ideg.y0_hat   = data_ideg.y0_hat_[-1]
-    data_ideg.cv_err    = data_ideg.cv_err_[-1]
-    # data_ideg.kappa   = data_ideg.kappa_[-1]
-    data_ideg.model     = data_ideg.model_[-1]
-    data_ideg.score     = data_ideg.score_[-1]
-    data_ideg.yhat_ecdf = data_ideg.yhat_ecdf_[-1]
-    data_ideg.rmse_y    = data_ideg.rmse_y_[-1]
-    if len(data_ideg.DoI_candidate_) == 0:
-        data_ideg.DoI_candidate = []
-    else:
-        data_ideg.DoI_candidate = np.concatenate(data_ideg.DoI_candidate_, axis=1)
-    data_ideg.xi_train = np.concatenate(data_ideg.xi_train_, axis=1)
-    data_ideg.x_train  = np.concatenate(data_ideg.x_train_ , axis=1)
-    data_ideg.y_train  = np.concatenate(data_ideg.y_train_ , axis=0)
+    data_iteration.y0_hat    = data_iteration.y0_hat_[-1]
+    data_iteration.cv_err    = data_iteration.cv_err_[-1]
+    # data_iteration.kappa   = data_iteration.kappa_[-1]
+    data_iteration.model     = data_iteration.model_[-1]
+    data_iteration.score     = data_iteration.score_[-1]
+    data_iteration.yhat_ecdf = data_iteration.yhat_ecdf_[-1]
+    data_iteration.rmse_y    = data_iteration.rmse_y_[-1]
+    data_iteration.train_data= data_train
+    data_iteration.xi_train  = data_train.xi 
+    data_iteration.x_train   = data_train.x 
+    data_iteration.y_train   = data_train.y 
     print(' ------------------------------------------------------------')
-    tqdm.write(' > Summary PCE: ndim={:d}, p={:d}'.format(ndim, deg))
-    tqdm.write('  - {:<15s} : {:.4e}'.format( 'RMSE y ' , data_ideg.rmse_y))
-    tqdm.write('  - {:<15s} : {:.4e}'.format( 'CV MSE'  , data_ideg.cv_err))
-    tqdm.write('  - {:<15s} : {:.4f}'.format( 'Score '  , data_ideg.score ))
-    tqdm.write('  - {:<15s} : {:.4e} [{:.4e}]'.format( 'QoI[y0] ' , data_ideg.y0_hat, y0_test))
+    tqdm.write(' > Final PCE: ndim={:d}, p={:d}, Iteration={:d}'.format(ndim, deg, i_iteration))
+    tqdm.write('  - {:<15s} : {:.4e}'.format( 'RMSE y ' , data_iteration.rmse_y))
+    tqdm.write('  - {:<15s} : {:.4e}'.format( 'CV MSE'  , data_iteration.cv_err))
+    tqdm.write('  - {:<15s} : {:.4f}'.format( 'Score '  , data_iteration.score ))
+    tqdm.write('  - {:<15s} : {:.4e} [{:.4e}]'.format( 'QoI[y0] ' , data_iteration.y0_hat, y0_test))
     print(' ------------------------------------------------------------')
-    main_res = data_ideg
-    return main_res
+    return data_iteration
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
