@@ -181,8 +181,9 @@ class PolynomialChaosExpansion(SurrogateBase):
                 n_splits = min(n_splits, x.shape[1])  ## avoid number of samples less than # folders
                 kfolder  = model_selection.KFold(n_splits=n_splits,shuffle=True)
 
-                cv_err_path  = []
+                cv_err_path   = []
                 cp_statistics = []
+                kappa = []
                 ### OLS regression with frist k basis
                 for k in range(1, min(len(model_lars.active_), X.shape[1])+1):
                     active_ = model_lars.active_[:k] #np.unique([0,] + model_lars.active_[:k]).tolist()
@@ -191,11 +192,14 @@ class PolynomialChaosExpansion(SurrogateBase):
                     X_      = X[:,active_]
                     k_weight= self.weight_func(x, w, active=active_) 
                     WX_, Wy = self._rescale_data(X_, y, k_weight) if k_weight is not None else (X_, y) 
+                    _, sigular_values, _ = np.linalg.svd(WX_)
+                    kappa.append(max(abs(sigular_values)) / min(abs(sigular_values)))
                     neg_mse = model_selection.cross_val_score(reg_ols, WX_, Wy, 
                             scoring='neg_mean_squared_error', cv=kfolder)
                     cv_err_path.append( -np.mean(neg_mse))
-                k = np.argmin(cv_err_path) +1
-                active_index  = model_lars.active_[:k] #if 0 in model_lars.active_[:k] else model_lars.active_[:k] + [0,]
+                k = np.argmin(cv_err_path) 
+                active_index  = model_lars.active_[:k+1] #if 0 in model_lars.active_[:k] else model_lars.active_[:k] + [0,]
+                # print('k={}'.format(k), cv_err_path[k],'Kappa:', kappa[k], 'Sparisty:', len(active_index) )
                 active_basis  = [self.orth_poly.basis_degree[i] for i in active_index] 
                 self.cv_err_path   = cv_err_path
 
@@ -224,6 +228,10 @@ class PolynomialChaosExpansion(SurrogateBase):
 
             w = self.weight_func(x, w, active=None)
             WX, Wy = self._rescale_data(X, y, w) if w is not None else (X, y)
+
+            _, sigular_values, _ = np.linalg.svd(WX)
+            kappa  = max(abs(sigular_values)) / min(abs(sigular_values))
+            print(kappa)
             try:    
                 model  = linear_model.LassoLarsCV(max_iter=max_iter,cv=kfolder, n_jobs=n_jobs).fit(WX,Wy)
             except ValueError as e:

@@ -165,25 +165,24 @@ class PowerSpectrum(object):
             fft_freq_pos = np.arange(int(round(fft_freq_max/fft_freq_dw) +1)) * fft_freq_dw
             time = np.arange(int(round(tmax/dt))+1) *dt  
         else:
-            ### when a time index is given, sampling frequency need to be small enough to cover the period (tmax) and frequency window need to be large enough to have time resolution dt
+            ### when a time index is given, sampling frequency need to be small enough to cover the period (tmax) 
+            ### and frequency window need to be large enough to have time resolution dt
             tmax, tmin, dt = t[-1], t[0], t[1] - t[0]
             fft_freq_min, fft_freq_max, fft_freq_dw = 0, max(np.pi/dt, psd_w_max), min(psd_dw, 2*np.pi/tmax) 
             fft_freq_pos = np.arange(int(round(fft_freq_max/fft_freq_dw) +1)) * fft_freq_dw
             tmin, tmax, dt = 0, 2*np.pi/fft_freq_dw, np.pi/fft_freq_max 
             time = np.arange(int(round(tmax/dt))+1) *dt  
 
-        # ntime_steps = psd_w.size//2 #int(w_max/dw) same as number of frequencies
-        # time = np.arange(-ntime_steps,ntime_steps+1) * dt
 
         psd_w_idx = [int(round(psd_w_min/fft_freq_dw)),int(round(psd_w_max/fft_freq_dw))]
-        # psd_w= np.arange(psd_w_idx[0],psd_w_idx[1])*fft_freq_dw
-        # pxx  = self.cal_density(psd_w) 
         if phase is None:
             np.random.seed(random_seed)
             theta = np.random.uniform(-np.pi, np.pi, psd_w.size)
         else:
             theta = phase[:psd_w.size]
 
+        print('time:', time.shape)
+        print('theta:', theta.shape)
         psd_A = np.sqrt(2.0*pxx*fft_freq_dw)/2.0 * np.exp(-1j*theta) *  (pxx.size*2-1) #(fft_freq_pos*2-1) # amplitude
         # fft_A = np.zeros(fft_freq_pos.size, dtype=complex)
         # fft_A = np.zeros(pxx.size, dtype=complex)

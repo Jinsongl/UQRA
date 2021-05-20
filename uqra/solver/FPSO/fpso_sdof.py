@@ -57,6 +57,7 @@ class FPSO(SolverBase):
             self.random_states = [RANDOM_SEEDS[istate] for istate in self.random_states] 
         else:
             raise ValueError('random_state {} not defined'.format(self.random_states))
+
         self.distributions  = kwargs.get('distributions', None)
         try:
             kwargs.pop('random_state')
@@ -92,15 +93,16 @@ class FPSO(SolverBase):
         Arguments:
             x, ndarray of shape (2, n)
         """
-        x = np.array(x.T, copy=False, ndmin=2)
         random_states = kwargs.get('random_state', self.random_states)
+        x = np.array(x.T, copy=False, ndmin=2)
         y = []
         for i, irandom_state in enumerate(random_states):
             if not verbose: 
                 uqra.blockPrint()
             with mp.Pool(processes=mp.cpu_count()) as p:
                 y_QoI_ = np.array(list(tqdm(p.imap(self._Glimitmax , [(ix, irandom_state) for ix in x]),
-                ncols=80, desc='   - [{:>2d}/{:<2d}: {:>10d}]'.format(i, self.n_short_term, irandom_state), total=x.shape[0])))
+                ncols=80, desc='   - [{:>2d}/{:<2d}: {:>10d}]'.format(i, self.n_short_term, irandom_state), 
+                total=x.shape[0])))
             if not verbose: 
                 uqra.enablePrint()
             y.append(y_QoI_)
@@ -159,7 +161,7 @@ class FPSO(SolverBase):
         # ------------------
         # Environmental data
         # ------------------
-        Hs, Tp = args[0]
+        Hs, Tp      = args[0]
         random_seed = args[1]
         Snn=self._jonswap(Hs,Tp);
 

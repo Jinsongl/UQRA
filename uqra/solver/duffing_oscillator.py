@@ -18,7 +18,7 @@ import os, numpy as np, scipy as sp
 from .PowerSpectrum import PowerSpectrum
 from uqra.environment import Kvitebjorn 
 from tqdm import tqdm
-
+import multiprocessing as mp
 
 class duffing_oscillator(SolverBase):
     """
@@ -44,7 +44,7 @@ class duffing_oscillator(SolverBase):
     kwargs, dictionary, spectrum definitions for the input excitation functions
     """
 
-    def __init__(self, m=1, c=0.1/np.pi, k=1.0/np.pi/np.pi, s=0.2/np.pi**2, excitation=None, environment=None,**kwargs):
+    def __init__(self, m=1, c=0.1/np.pi, k=1.0/np.pi/np.pi, s=0.2/np.pi**2, excitation='JONSWAP', environment=None,**kwargs):
         super().__init__()
         self.name       = 'Duffing oscillator'
         self.nickname   = 'Duffing'
@@ -57,30 +57,42 @@ class duffing_oscillator(SolverBase):
         self.nparams    = np.size(self.is_param_rand)
 
         np.random.seed(100)
-        seeds_st        = np.random.randint(0, int(2**31-1), size=10000)
+        RANDOM_SEEDS    = np.random.randint(0, int(2**31-1), size=10000)
+
+        self.random_states  = kwargs.get('random_state', None )
+        if self.random_states is None:
+            self.random_states = [None,]
+        elif np.ndim(self.random_states) == 0:
+            self.random_states = [RANDOM_SEEDS[self.random_states],]
+        elif np.ndim(self.random_states) == 1:
+            self.random_states = [RANDOM_SEEDS[istate] for istate in self.random_states] 
+        else:
+            raise ValueError('random_state {} not defined'.format(self.random_states))
+        self.n_short_term= len(self.random_states) 
+
         self.tmax       = kwargs.get('time_max'    , 100  )
         self.tmax       = kwargs.get('tmax'        , 100  )
-        self.t_transit  = kwargs.get('t_transit', 0)
+        self.t_transit  = kwargs.get('t_transit'   , 0    )
         self.dt         = kwargs.get('dt'          , 0.01 )
         self.y0         = kwargs.get('y0'          , [1,0]) ## initial condition
-        self.method     = kwargs.get('method'      , 'RK45')
-        self.seeds_idx  = kwargs.get('phase', [0,])
-        self.seeds_st   = [seeds_st[idx] for idx in self.seeds_idx] 
-        self.n_short_term= len(self.seeds_st) 
-        self.out_responses=kwargs.get('out_responses', 'ALL')
-        self.out_stats   = kwargs.get('out_stats'   , ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
-        self.t          = np.arange(0,int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
+        self.method     = kwargs.get('method'      ,'RK45')
+        self.seeds_idx  = kwargs.get('phase'       , [0,] )
+        self.t          = np.arange(0, int((self.tmax + self.t_transit)/self.dt) +1) * self.dt
         self.f_hz       = np.arange(len(self.t)+1) *0.5/self.t[-1]
+        self.distributions  = kwargs.get('distributions', None)
 
+        # self.out_responses=kwargs.get('out_responses', 'ALL')
+        # self.out_stats  = kwargs.get('out_stats'   , ['mean', 'std', 'skewness', 'kurtosis', 'absmax', 'absmin', 'up_crossing'])
     def __str__(self):
         message1 =  '   > Duffing Oscillator: \n'     +\
                     '   - {:<25s} : {}\n'.format('tmax'  , self.tmax) +\
                     '   - {:<25s} : {}\n'.format('dt'    , self.dt) +\
                     '   - {:<25s} : {}\n'.format('y0'    , self.y0) +\
                     '   - {:<25s} : {}\n'.format('n_short_term'  , self.n_short_term) +\
-                    '   - {:<25s} : {}\n'.format('method'  , self.method) +\
-                    '   - {:<25s} : {}\n'.format('out_responses'  , self.out_responses) +\
-                    '   - {:<25s} : {}\n'.format('out_stats'  , self.out_stats) 
+                    '   - {:<25s} : {}\n'.format('method'  , self.method)
+                    # +\
+                    # '   - {:<25s} : {}\n'.format('out_responses'  , self.out_responses) +\
+                    # '   - {:<25s} : {}\n'.format('out_stats'  , self.out_stats) 
 
         keys   = list(self.dict_rand_params.keys())
         if len(keys) == 0:
@@ -96,38 +108,39 @@ class duffing_oscillator(SolverBase):
         message = message1 + message2
         return message
 
-    def run(self, x, save_raw=False, save_qoi=False, seeds_st=None, out_responses=None, data_dir=None):
+    def run(self, x, verbose=False, **kwargs):
         """
         solving duffing equation:
         Arguments:
             x, power spectrum parameters, ndarray of shape (nsamples, n_parameters)
-
         """
 
-        seeds_st        = self.seeds_st if seeds_st is None else seeds_st
-        seeds_st        = [seeds_st,] if np.ndim(seeds_st) == 0 else seeds_st
-        n_short_term    = np.size(seeds_st) 
-        out_responses   = self.out_responses if out_responses is None else out_responses
-        data_dir        = os.getcwd() if data_dir is None else data_dir
-
+        random_states = kwargs.get('random_state', self.random_states)
         x = np.array(x.T, copy=False, ndmin=2)
-        y_QoI = []
-        for iseed_idx, iseed in zip(self.seeds_idx, seeds_st):
-            pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(iseed_idx, n_short_term))
-            if save_raw:
-                y_raw_, y_QoI_ = map(list, zip(*[self._duffing_oscillator(ix, random_seed=iseed, ret_raw=True, out_responses=out_responses) for ix in pbar_x]))
-                filename = '{:s}_yRaw_nst{:d}'.format(self.nickname,iseed_idx)
-                np.save(os.path.join(data_dir, filename), np.array(y_raw_))
-            else:
-                y_QoI_ = [self._duffing_oscillator(ix, random_seed=iseed, ret_raw=False, out_responses=out_responses) for ix in pbar_x]
+        y = []
+        for i, irandom_state in enumerate(random_states):
+            if not verbose:
+                uqra.blockPrint()
 
-            if save_qoi:
-                filename = '{:s}_yQoI_nst{:d}'.format(self.nickname,iseed_idx)
-                np.save(os.path.join(data_dir, filename), np.array(y_QoI_))
+            with mp.Pool(processes=mp.cpu_count()) as p:
+                y_QoI_ = np.array(list(tqdm(p.imap(self._duffing_oscillator, [(ix, irandom_state) for ix in x]),
+                ncols=80, desc='   - [{:>2d}/{:<2d}: {:>10d}]'.format(i, self.n_short_term, irandom_state), 
+                total=x.shape[0])))
+            if not verbose: 
+                uqra.enablePrint()
+            y.append(y_QoI_)
 
-            y_QoI.append(y_QoI_)
-        y_QoI = np.array(y_QoI)
-        return y_QoI
+            # pbar_x  = tqdm(x, ascii=True, ncols=80, desc="    - {:d}/{:d} ".format(i, n_short_term))
+            # if save_raw:
+                # y_raw_, y_QoI_ = map(list, zip(*[self._duffing_oscillator(ix, random_seed=irandom_state, ret_raw=True, 
+                # out_responses=out_responses) for ix in pbar_x]))
+                # filename = '{:s}_yRaw_nst{:d}'.format(self.nickname,i)
+                # np.save(os.path.join(data_dir, filename), np.array(y_raw_))
+            # else:
+                # y_QoI_ = [self._duffing_oscillator(ix, random_seed=irandom_state, ret_raw=False, 
+                # out_responses=out_responses) for ix in pbar_x]
+
+        return np.squeeze(y)
 
     def generate_samples(self, n, seed=None):
         n = int(n)
@@ -197,39 +210,34 @@ class duffing_oscillator(SolverBase):
             raise ValueError('map_domain: expecting {:d} parameters but only return {:d}'.format(self.nparams, x.shape[0]))
         return x
 
-    def _duffing_oscillator(self, x, random_seed=None, ret_raw=False, out_responses='ALL'):
+    def _duffing_oscillator(self, args):
+        # x, random_seed=None, ret_raw=False, out_responses='ALL'
+        params_env  = args[0]
+        random_seed = args[1]
+        # if len(params_env) != self.nparams:
+            # raise ValueError("_duffing_oscillator: Expecting {:d} parameters but {:d} given".format(self.ndim, len(x)))
+        params_mcks = np.array([self.m, self.c, self.k, self.s])
+        force_func  = self._external_force_func(x=params_env, random_seed=random_seed)
+        x_t         = force_func(self.t)
+        t_span      = (0,self.tmax)
+        args        = (force_func,params_mcks)
+        solution    = sp.integrate.solve_ivp(self._rhs_odes, t_span, self.y0, t_eval=self.t, args=args, method=self.method)
 
-        if len(x) != self.nparams:
-            raise ValueError("_duffing_oscillator: Expecting {:d} parameters but {:d} given".format(ndim, len(x)))
-        ##--------- oscillator properties -----------
-        params_mcks, params_env = x[:4], x[4:]
-        m,c,k,s = params_mcks
-        force_func = self._external_force_func(x=params_env, random_seed=random_seed)
-        x_t = force_func(self.t)
-        t_span = (0,self.tmax)
-        args   = (force_func,params_mcks)
-        print(t_span)
-        print(self.t)
-        solution = sp.integrate.solve_ivp(self._rhs_odes, t_span, self.y0, t_eval=self.t, args=args, method=self.method)
-
-        print(solution.message)
         t_transit_idx = int(self.t_transit/(self.t[1]-self.t[0]))
         t   = self.t[t_transit_idx:]
         x_t = x_t[t_transit_idx:]
         y_t = solution.y[t_transit_idx:]
+        return np.max(abs(y_t))
 
-        print(solution.t)
-        print(solution.success)
-        print(y_t.shape)
-        y_raw = np.vstack((t, x_t, y_t)).T
+        # y_raw = np.vstack((t, x_t, y_t)).T
 
-        uqra.blockPrint()
-        y_QoI = uqra.get_stats(y_raw, out_responses=out_responses, out_stats=self.out_stats, axis=0)
-        uqra.enablePrint()
-        if ret_raw:
-            return y_raw, y_QoI
-        else:
-            return y_QoI
+        # uqra.blockPrint()
+        # y_QoI = uqra.get_stats(y_raw, out_responses=out_responses, out_stats=self.out_stats, axis=0)
+        # uqra.enablePrint()
+        # if ret_raw:
+            # return y_raw, y_QoI
+        # else:
+            # return y_QoI
 
     def _rhs_odes(self, t, y, f, mcks):
         """
@@ -277,6 +285,9 @@ class duffing_oscillator(SolverBase):
             density = psd_x.cal_density(self.f_hz)
             np.random.seed(random_seed)
             theta_x = np.random.uniform(-np.pi, np.pi, np.size(self.f_hz)*2)
+            print('\n')
+            print('self.t:', self.t.shape)
+            print('self.theta:', theta_x.shape)
             t0, x_t, f_hz_x, theta_x = psd_x.gen_process(t=self.t, phase=theta_x)
             func = sp.interpolate.interp1d(t0, x_t,kind='cubic')
         elif callable(self.excitation):

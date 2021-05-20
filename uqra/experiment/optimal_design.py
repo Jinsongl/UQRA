@@ -215,29 +215,6 @@ class OptimalDesign(ExperimentBase):
         # print('   - [Initialization (RRQR)]'.ljust(80, '#'))
         _,_,Pivot = sp.linalg.qr(X.T, pivoting=True)
         optimal_samples = [self.candidate_samples[i] for i in Pivot[:n]]
-
-        # ## each QR iteration returns rank(X) samples, which is min(candidate samples, n_features)
-        # X_rank = min(len(candidate_samples), self.X.shape[1])
-        # n_iterations = math.ceil(n/X_rank)
-        # for i_iteration in tqdm(range(n_iterations), ascii=True, desc='   - [RRQR]',ncols=80):
-            # ## remove the new selected indices from candidate 
-            # X = self.X[candidate_samples, :]
-            # ## number of samples to be generated in this iteration, X_rank except for the last iteration
-            # n_samples = X_rank if i_iteration < n_iterations-1 else int(n-X_rank * i_iteration)
-            # if X.shape[0] <= n_samples:
-                # optimal_samples_ = candidate_samples
-                # if X.shape[0] < n_samples:
-                    # print('\n'+'Warning: UQRA.Experiment.OptimalDesign._initial_samples_rrqr: requested {:d} optimal samples but only {:d} candidate samples available, returning all candiate samples'.format(n_samples, X.shape[0]))
-            # else:
-                # ## update candidate design matrix, note that X row_candidate is the indices in the original design matrix X
-                # _,_,Pivot = sp.linalg.qr(X.T, pivoting=True)
-                # ## Pivot[i] is the index in X corresponding the largest |singular value|
-                # ## need to find its corresponding index in the original matrix X
-                # optimal_samples_ = [candidate_samples[i] for i in Pivot[:n_samples]]
-            # optimal_samples  = self._list_union(optimal_samples,  optimal_samples_)
-            # candidate_samples= self._list_diff(candidate_samples, optimal_samples_)
-        # if len(optimal_samples)!= n:
-            # raise ValueError('Requesting {:d} new samples but {:d} returned'.format(n, n0))
         return optimal_samples
         
     def _initial_samples_greedy_tsm(self, n, optimality, optimal_samples=None):
