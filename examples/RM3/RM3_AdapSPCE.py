@@ -298,6 +298,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 print('     - {:<32s} : {:s}'.format('Domain of Interest (DoI)', headers[iqoi]         ))
                 print('     - {:<32s} : {}  '.format('DoI candidate samples', data_cand_DoI_iqoi.shape ))
                 print('     - {:<32s} : {:d}'.format('Adding DoI optimal samples', n_samples           ))
+                print(xi_exploitation)
 
 
             print('   3. training PCE (p={:d}) model with {} '.format(deg, model_params.fitting))
