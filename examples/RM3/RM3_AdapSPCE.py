@@ -24,7 +24,6 @@ sys.stdout  = uqra.utilities.classes.Logger()
 def overfitting_check(cv_err):
     """
     if cv error increase twice in a row, then defined as overfit
-
     return True if overfit, otherwise False
 
     """
@@ -35,7 +34,7 @@ def overfitting_check(cv_err):
     else:
         return False, np.nan
 
-def threshold_converge(y, threshold=0.95):
+def threshold_converge(y, threshold=0.9):
     y = np.array(y)
     if len(y) == 0:
         return False, np.nan
@@ -135,10 +134,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_iqoi_ideg.score_       = []
         data_iqoi_ideg.DoI_xi_      = []
         data_iqoi_ideg.DoI_x_       = []
-        data_iqoi_ideg.is_converge  = []
+        data_iqoi_ideg.deg_overfit   = False
         data_iqoi_ideg.exploration0 = []  ## initial exploration sample set
         data_iqoi_ideg.exploration_ = []  ## exploration sample sets added later
         data_iqoi_ideg.exploitation_= []  ## exploitation sample sets added later
+        data_iqoi_ideg.deg_converge = False
+        data_iqoi_ideg.iteration_converge  = False
         data_QoIs_ideg = [copy.deepcopy(data_iqoi_ideg) for _ in range(34)] 
         ### ------------------------ #1: Obtain exploration optimal samples ----------------- ###
         print(' ------------------------------------------------------------')
@@ -173,7 +174,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_exploration0.x = x_exploration0
         data_exploration0.y = y_exploration0
         for iqoi in model_params.channel:
-            data_QoIs[iqoi].exploration0= data_exploration0
+            data_QoIs_ideg[iqoi].exploration0= data_exploration0
 
         data_train.xi  = np.concatenate([data_train.xi, xi_exploration0], axis=1)
         data_train.x   = np.concatenate([data_train.x , x_exploration0 ], axis=1)
@@ -199,6 +200,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('     - Prediction with {} samples '.format(xi_test.shape))
             print('     - {:<32s} : sparsity={}'.format(headers[iqoi], data_QoIs_ideg[iqoi].sparsity))
             y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
+            data_QoIs_ideg[iqoi].y_test_hat = y_test_hat
             data_QoIs_ideg[iqoi].model_.append(pce_model)
             data_QoIs_ideg[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
             data_QoIs_ideg[iqoi].score_.append(pce_model.score)
@@ -252,8 +254,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             ## obtain DoI candidate samples from each QoI
             for iqoi in model_params.channel:
                 ## obtain candidate samples for each QoI
-                data_cand_DoI_iqoi, idx_data_cand_DoI = idoe_params.samples_nearby(data_QoIs_ideg[iqoi].y0_hat_[-1], 
-                        xi_test, y_test_hat, data_cand, deg, n0=10, epsilon=0.1, return_index=True)
+                # data_cand_DoI_iqoi, idx_data_cand_DoI = idoe_params.samples_nearby(data_QoIs_ideg[iqoi].y0_hat_[-1], 
+                        # xi_test, data_QoIs_ideg[iqoi].y_test_hat, data_cand, deg, n0=10, epsilon=0.1, return_index=True)
+
+                data_cand_DoI_iqoi = idoe_params.domain_of_interest(data_QoIs_ideg[iqoi].y0_hat_[-1], xi_test, 
+                        data_QoIs_ideg[iqoi].y_test_hat, n_centroid=20, epsilon=0.1)
+
                 data_QoIs_ideg[iqoi].DoI_xi_.append(data_cand_DoI_iqoi)
                 data_QoIs_ideg[iqoi].DoI_x_.append(solver.map_domain(data_cand_DoI_iqoi, dist_xi))
                 ## get optimal samples for each QoI
@@ -307,6 +313,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 print('     - Prediction with {} samples '.format(xi_test.shape))
                 print('     {:<32s} : sparsity={}'.format(headers[iqoi], data_QoIs_ideg[iqoi].sparsity))
                 y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
+
+                data_QoIs_ideg[iqoi].y_test_hat = y_test_hat
                 data_QoIs_ideg[iqoi].model_.append(pce_model)
                 data_QoIs_ideg[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
                 data_QoIs_ideg[iqoi].score_.append(pce_model.score)
@@ -331,7 +339,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 print('     >  Rel Error [%]: {:.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
                 print('     >  Fit Score [%]: {:.2f}, Converge: {}'.format(score_converge*100 , is_score_converge  ))
                 print('-'*50)
-                data_iqoi.is_converge.append(np.array([is_y0_converge, is_score_converge]).all())
 
             i_iteration +=1
             if np.all(is_QoIs_converge):
@@ -341,20 +348,25 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 print('         !< Number of samples exceeding {:.2f}P >!'.format(model_params.alpha))
                 break
 
+        for iqoi in model_params.channel:
+            del data_QoIs_ideg[iqoi].y_test_hat
         data_QoIs.append(data_QoIs_ideg)
         is_QoIs_converge = [] 
         for iqoi in model_params.channel:
             iheader   = headers  [iqoi]
             data_iqoi = [data_QoIs_ideg[iqoi] for data_QoIs_ideg in data_QoIs]
-            cv_err_global_iqoi = np.array([idata.cv_err for idata in data_iqoi]).T
-            y0_hat_global_iqoi = np.array([idata.y0_hat for idata in data_iqoi]).T
-            score_global_iqoi  = np.array([idata.score  for idata in data_iqoi]).T
-            is_overfit       , overfit_vals    = overfitting_check(cv_err_global_iqoi) ## check Overfitting
-            is_y0_converge   , y0_converge_err = relative_converge(y0_hat_global_iqoi, err=model_params.rel_err)
-            is_score_converge, score_converge  = threshold_converge(score_global_iqoi)
+            cv_err_iqoi_degs = np.array([idata.cv_err for idata in data_iqoi]).T
+            y0_hat_iqoi_degs = np.array([idata.y0_hat for idata in data_iqoi]).T
+            score_iqoi_degs  = np.array([idata.score  for idata in data_iqoi]).T
+            is_overfit       , overfit_vals    = overfitting_check(cv_err_iqoi_degs) ## check Overfitting
+            is_y0_converge   , y0_converge_err = relative_converge(y0_hat_iqoi_degs, err=model_params.rel_err)
+            is_score_converge, score_converge  = threshold_converge(score_iqoi_degs)
             is_QoIs_converge.append([is_y0_converge, is_score_converge])
+
+            data_QoIs[-1][iqoi].deg_overfit  = is_overfit 
+            data_QoIs[-1][iqoi].is_converge = is_y0_converge and  is_score_converge
             print('  >  QoI: {:<25s}'.format(iheader))
-            print('     >  Values: {}'.format(y0_hat_global_iqoi))
+            print('     >  Values: {}'.format(y0_hat_iqoi_degs))
             print('     >  Overfit : {}, Converge: {}'.format(overfit_vals, is_overfit))
             print('     >  Rel Error [%]: {:.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
             print('     >  Fit Score [%]: {:.2f}, Converge: {}'.format(score_converge*100 , is_score_converge  ))
