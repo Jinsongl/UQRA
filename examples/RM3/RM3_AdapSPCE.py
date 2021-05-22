@@ -256,6 +256,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 ## obtain candidate samples for each QoI
                 # data_cand_DoI_iqoi, idx_data_cand_DoI = idoe_params.samples_nearby(data_QoIs_ideg[iqoi].y0_hat_[-1], 
                         # xi_test, data_QoIs_ideg[iqoi].y_test_hat, data_cand, deg, n0=10, epsilon=0.1, return_index=True)
+                if data_QoIs_ideg[iqoi].iteration_converge:
+                    continue
 
                 data_cand_DoI_iqoi = idoe_params.domain_of_interest(data_QoIs_ideg[iqoi].y0_hat_[-1], xi_test, 
                         data_QoIs_ideg[iqoi].y_test_hat, n_centroid=20, epsilon=0.1)
