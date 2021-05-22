@@ -206,6 +206,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_QoIs_ideg[iqoi].score_.append(pce_model.score)
             data_QoIs_ideg[iqoi].cv_err_.append(pce_model.cv_error)
             print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}'.format(data_QoIs_ideg[iqoi].sparsity, 
+                    np.array(data_QoIs_ideg[iqoi].y0_hat_[-1])))
         n_samples_deg = n_samples
         i_iteration = 1
         while True:
