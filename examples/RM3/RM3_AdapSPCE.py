@@ -193,7 +193,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             pce_model.num_basis, data_train.x.shape[1]/pce_model.num_basis))
         print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
         for iqoi in model_params.channel:
-            print('     {:<15s}, prediction samples: {}'.format(headers[iqoi], xi_test.shape))
+            print('     {:<20s}, prediction samples: {}'.format(headers[iqoi], xi_test.shape))
             pce_model = uqra.PCE(orth_poly)
             pce_model.fit(model_params.fitting, data_train.xi, data_train.y[:, iqoi]/model_params.y_scales[iqoi], 
                     w=weight,n_jobs=model_params.n_jobs) 
@@ -308,7 +308,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 pce_model.num_basis, data_train.x.shape[1]/pce_model.num_basis))
             print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
             for iqoi in model_params.channel:
-                print('     > {:<15s}, prediction samples: {}'.format(headers[iqoi], xi_test.shape))
+                print('     > {:<20s}, prediction samples: {}'.format(headers[iqoi], xi_test.shape))
                 pce_model = uqra.PCE(orth_poly)
                 weight  = doe_params.sampling_weight()   ## weight function
                 pce_model.fit(model_params.fitting, data_train.xi, data_train.y[:, iqoi]/model_params.y_scales[iqoi], 
