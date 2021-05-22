@@ -134,7 +134,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_iqoi_ideg.score_       = []
         data_iqoi_ideg.DoI_xi_      = []
         data_iqoi_ideg.DoI_x_       = []
-        data_iqoi_ideg.deg_overfit   = False
+        data_iqoi_ideg.deg_overfit  = False
         data_iqoi_ideg.exploration0 = []  ## initial exploration sample set
         data_iqoi_ideg.exploration_ = []  ## exploration sample sets added later
         data_iqoi_ideg.exploitation_= []  ## exploitation sample sets added later
@@ -331,12 +331,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('   4. converge check ...')
             is_QoIs_converge = [] 
             for iqoi in model_params.channel:
-                iheader   = headers  [iqoi]
-                data_iqoi = data_QoIs_ideg[iqoi]
                 is_y0_converge   , y0_converge_err = relative_converge(data_QoIs_ideg[iqoi].y0_hat_, err=2*model_params.rel_err)
                 is_score_converge, score_converge  = threshold_converge(data_QoIs_ideg[iqoi].score_)
+                data_QoIs_ideg.iteration_converge  = is_y0_converge and is_score_converge
                 is_QoIs_converge.append([is_y0_converge, is_score_converge])
-                print('  >  QoI: {:<25s}'.format(iheader))
+                print('  >  QoI: {:<25s}'.format(headers[iqoi]))
                 print('     >  Values: {}'.format(data_QoIs_ideg[iqoi].y0_hat_))
                 print('     >  Rel Error [%]: {:.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
                 print('     >  Fit Score [%]: {:.2f}, Converge: {}'.format(score_converge*100 , is_score_converge  ))
@@ -366,7 +365,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             is_QoIs_converge.append([is_y0_converge, is_score_converge])
 
             data_QoIs[-1][iqoi].deg_overfit  = is_overfit 
-            data_QoIs[-1][iqoi].is_converge = is_y0_converge and  is_score_converge
+            data_QoIs[-1][iqoi].deg_converge = is_y0_converge and  is_score_converge
             print('  >  QoI: {:<25s}'.format(iheader))
             print('     >  Values: {}'.format(y0_hat_iqoi_degs))
             print('     >  Overfit : {}, Converge: {}'.format(overfit_vals, is_overfit))
