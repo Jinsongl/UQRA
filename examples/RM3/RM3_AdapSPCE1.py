@@ -77,7 +77,7 @@ def absolute_converge(y, err=1e-4):
 def main(model_params, doe_params, solver, r=0, random_state=None):
     random.seed(random_state)
     ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
-    data_QoIs       = [] ## nested list, [data_QoIs_ideg[data_iqoi_ideg]]   34 outputs in total
+    data_QoIs       = [[] for _ in range(model_params.degs[-1])] ## nested list, [data_QoIs_ideg[data_iqoi_ideg]]   34 outputs in total
     max_sparsity    = 6  ## initialize n_samples
 
     ### object contain all training samples
@@ -88,6 +88,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_train.y  = np.empty((0,34)) 
     ndim = solver.ndim
     deg  = model_params.degs[0]
+
     while deg < model_params.degs[-1]:
     # for i, (ndim, deg) in enumerate(ndim_deg_cases):
         print('\n==================================================================================')
@@ -123,24 +124,41 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         dist_xi   = orth_poly.weight
         dist_x    = solver.distributions
         pce_model.info()
+        ## ------------------------ list of Data obj for all QoIs ----------------- ###
         ## data object while building p-order PCE iteratively
-        data_iqoi_ideg = uqra.Data()
-        data_iqoi_ideg.ndim      = ndim 
-        data_iqoi_ideg.deg       = deg 
         ## attribute ending with '_' is a collection of variables after each iteration
-        data_iqoi_ideg.y0_hat_      = []
-        data_iqoi_ideg.cv_err_      = []
-        data_iqoi_ideg.model_       = []
-        data_iqoi_ideg.score_       = []
-        data_iqoi_ideg.DoI_xi_      = []
-        data_iqoi_ideg.DoI_x_       = []
-        data_iqoi_ideg.deg_overfit  = False
-        data_iqoi_ideg.exploration0 = []  ## initial exploration sample set
-        data_iqoi_ideg.exploration_ = []  ## exploration sample sets added later
-        data_iqoi_ideg.exploitation_= []  ## exploitation sample sets added later
-        data_iqoi_ideg.deg_converge = False
-        data_iqoi_ideg.iteration_converge  = False
-        data_QoIs_ideg = [copy.deepcopy(data_iqoi_ideg) for _ in range(34)] 
+
+        ## initialize new Data obj: results for one QoI at order p=deg
+        data_init = uqra.Data()
+        data_init.ndim         = ndim 
+        data_init.deg          = deg 
+        data_init.y0_hat_      = []
+        data_init.cv_err_      = []
+        data_init.model_       = []
+        data_init.score_       = []
+        data_init.DoI_xi_      = []
+        data_init.DoI_x_       = []
+        data_init.deg_overfit  = False
+        data_init.exploration0 = []  ## initial exploration sample set
+        data_init.exploration_ = []  ## exploration sample sets added later
+        data_init.exploitation_= []  ## exploitation sample sets added later
+        data_init.deg_converge = False
+        data_init.iteration_converge = False
+
+        data_QoIs_ideg = data_QoIs[deg] ## could be empty list or list of uqra.Data()
+        if data_QoIs_ideg: 
+            ## data_QoIs_ideg was assigned before: overfitting occurs for some QoIs
+            ## new resutls will be appended to current results for order p = deg
+            ## However, for higher order models, results will be cleared
+            for iqoi, data_iqoi_ideg_ in enumerate(data_QoIs[deg+1]):
+                if data_iqoi_ideg_.deg_overfit:
+                    ## clear results for all higher order
+                    for ideg in range(deg+1, model_params.degs[-1]):
+                        data_QoIs[ideg+1][iqoi] = data_init
+        else:
+            ## empty list: create new obj
+            data_QoIs_ideg = [copy.deepcopy(data_init) for _ in range(34)] 
+            ## clear 
         ### ------------------------ #1: Obtain exploration optimal samples ----------------- ###
         print(' ------------------------------------------------------------')
         print('   Initial exploration optimal samples based on FULL basis: {:s}'.format(idoe_nickname))
@@ -366,23 +384,23 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             i_iteration +=1
             if np.all(is_QoIs_converge):
                 print('         !< Model converge for order {:d} >!'.format(deg))
-                # break
+                break
             if n_samples_deg > model_params.alpha*orth_poly.num_basis:
                 print('     PCE(d={:d},p={:d}) !< Number of samples exceeding {:.2f}P >!'.format(
                     ndim, deg, model_params.alpha))
                 break
-
         #### end while loop
+
         for iqoi in model_params.channel:
             del data_QoIs_ideg[iqoi].y_test_hat
-        data_QoIs.append(data_QoIs_ideg)
+        data_QoIs[deg] = data_QoIs_ideg
         print('--------------------------------------------------')
         print('     Model Performance up to order p={:d}'.format(deg))
         is_QoIs_converge = [] 
         is_QoIs_overfit  = []
         for iqoi in model_params.channel:
             iheader   = headers[iqoi]
-            data_iqoi = [data_QoIs_ideg[iqoi] for data_QoIs_ideg in data_QoIs]
+            data_iqoi = [data_QoIs_ideg[iqoi] for data_QoIs_ideg in data_QoIs[model_params.degs[0]: deg+1]]
             cv_err_iqoi_degs = np.array([idata.cv_err for idata in data_iqoi]).T
             y0_hat_iqoi_degs = np.array([idata.y0_hat for idata in data_iqoi]).T
             score_iqoi_degs  = np.array([idata.score  for idata in data_iqoi]).T
@@ -391,8 +409,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             is_score_converge, score_converge  = threshold_converge(score_iqoi_degs)
             is_QoIs_converge.append([is_y0_converge, is_score_converge])
 
-            data_QoIs[-1][iqoi].deg_overfit  = is_overfit 
-            data_QoIs[-1][iqoi].deg_converge = is_y0_converge and  is_score_converge
+            data_QoIs[deg][iqoi].deg_overfit  = is_overfit 
+            data_QoIs[deg][iqoi].deg_converge = is_y0_converge and  is_score_converge
             is_QoIs_overfit.append(is_overfit)
             print('  >  QoI: {:<25s}'.format(iheader))
             print('     >  Values: {}'.format(np.array(y0_hat_iqoi_degs)))
@@ -414,10 +432,9 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 # tqdm.write('     - {:<15s} : {}'.format( 'Score '  , np.array(score_global)))
                 # tqdm.write('     - {:<15s} : {}'.format( 'y0 ' , np.array(y0_hat_global)))
                 tqdm.write('###############################################################################')
-                break
+                # break
             else:
                 deg = deg + 1
-
     return data_QoIs
 
 if __name__ == '__main__':
