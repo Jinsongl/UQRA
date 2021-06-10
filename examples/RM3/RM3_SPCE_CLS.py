@@ -450,7 +450,7 @@ if __name__ == '__main__':
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
     xi_test = data_test.xi[:, :model_params.num_test] 
     ## 2. Get finished global data
-    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}S5_global.npy'.format(solver.nickname, 
+    filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}_global.npy'.format(solver.nickname, 
             solver.ndim, model_params.basis[:3], doe_params.doe_nickname(), r)
     global_data = np.load(os.path.join(data_dir_result, filename), allow_pickle=True).tolist()
     headers  = global_data[0].headers
