@@ -384,13 +384,13 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             i_iteration +=1
             if np.all(is_QoIs_converge):
                 print('         !< Model converge for order {:d} >!'.format(deg))
-                # break
+                break
             if n_samples_deg > model_params.alpha*orth_poly.num_basis:
                 print('     PCE(d={:d},p={:d}) !< Number of samples exceeding {:.2f}P >!'.format(
                     ndim, deg, model_params.alpha))
                 break
-
         #### end while loop
+
         for iqoi in model_params.channel:
             del data_QoIs_ideg[iqoi].y_test_hat
         data_QoIs[deg] = data_QoIs_ideg
@@ -432,10 +432,9 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 # tqdm.write('     - {:<15s} : {}'.format( 'Score '  , np.array(score_global)))
                 # tqdm.write('     - {:<15s} : {}'.format( 'y0 ' , np.array(y0_hat_global)))
                 tqdm.write('###############################################################################')
-                break
+                # break
             else:
                 deg = deg + 1
-
     return data_QoIs
 
 if __name__ == '__main__':
