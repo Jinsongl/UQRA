@@ -243,10 +243,10 @@ class OptimalDesign(ExperimentBase):
             ## calculate (log)S values for each row in X_cand together with X_sltd
             if optimality == 'S':
                 optimality_values = self._greedy_update_S_Optimality_truncate(X_sltd, X_cand)
-                np.savetxt('optimality_values_S{:d}.csv'.format(optimality_values.size), optimality_values, delimiter=",")
+                # np.savetxt('optimality_values_S{:d}.csv'.format(optimality_values.size), optimality_values, delimiter=",")
             elif optimality == 'D':
                 optimality_values = self._greedy_update_D_Optimality_truncate(X_sltd, X_cand)
-                np.savetxt('optimality_values_D{:d}.csv'.format(optimality_values.size), optimality_values, delimiter=",")
+                # np.savetxt('optimality_values_D{:d}.csv'.format(optimality_values.size), optimality_values, delimiter=",")
             else:
                 print('   > UQRA {:s}-Optimal Design for TSM{:s} NOT implemented'.format(optimality))
                 raise NotImplementedError
