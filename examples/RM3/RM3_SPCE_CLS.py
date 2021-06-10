@@ -136,7 +136,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_iteration.exploration0 = []  ## initial exploration sample set
     data_iteration.exploration_ = []  ## exploration sample sets added later
     data_iteration.exploitation_= []  ## exploitation sample sets added later
-    data_iteration.deg_converge = False
     data_iteration.iteration_converge  = False
     data_QoIs_iteration = [copy.deepcopy(data_iteration) for _ in range(34)] 
     ### ------------------------ #1: Obtain exploration optimal samples ----------------- ###
@@ -205,6 +204,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}'.format(data_QoIs_iteration[iqoi].sparsity, 
                 np.array(data_QoIs_iteration[iqoi].y0_hat_[-1])))
     n_samples_deg = n_samples
+    ##############################################################################################
+    ##############################################################################################
     i_iteration = 1
     while i_iteration <= 20:
         print('                 ------------------------------')
@@ -218,7 +219,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         # min(max_sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
         # n_samples = min(10, max_sparsity) #len(active_index)
         xi_exploration, idx_optimal = idoe_params.get_samples(data_cand, orth_poly, n_samples, x0=data_train.xi_index, 
-                active_index=pce_model.active_index, initialization='RRQR', return_index=True) 
+                active_index=None, initialization='RRQR', return_index=True) 
         assert xi_exploration.shape[1] == n_samples ## make sure return number of samples required
         x_exploration = solver.map_domain(xi_exploration, dist_xi)
         eng.workspace['deg']       = float(deg)
@@ -246,11 +247,26 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_train.y   = np.concatenate([data_train.y , y_exploration ], axis=0)
         data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
 
-
+        ## update PCE model for each QoI with selected exploration samples 
+        weight  = doe_params.sampling_weight()   ## weight function
+        for iqoi in model_params.channel:
+            pce_model = uqra.PCE(orth_poly)
+            pce_model.fit(model_params.fitting, data_train.xi, data_train.y[:, iqoi]/model_params.y_scales[iqoi], 
+                    w=weight,n_jobs=model_params.n_jobs) 
+            data_QoIs_iteration[iqoi].sparsity = len(pce_model.active_index)
+            max_sparsity = max(max_sparsity, data_QoIs_iteration[iqoi].sparsity)
+            y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
+            data_QoIs_iteration[iqoi].y_test_hat = y_test_hat
+            data_QoIs_iteration[iqoi].model_.append(pce_model)
+            data_QoIs_iteration[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
+            data_QoIs_iteration[iqoi].score_.append(pce_model.score)
+            data_QoIs_iteration[iqoi].cv_err_.append(pce_model.cv_error)
+ 
         print('   > exploitation step (SIGNIFICANT basis)... ')
 
         ## obtain DoI candidate samples from each QoI
         for iqoi in model_params.channel:
+            print('     ------------------------')
             print('     - {:<32s} : {:s}'.format('Domain of Interest (DoI)', headers[iqoi] ))
             print('     - {:<32s} : {}'.format('Iteration Converge', data_QoIs_iteration[iqoi].iteration_converge))
             ## obtain candidate samples for each QoI
@@ -317,16 +333,16 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             max_sparsity = max(max_sparsity, data_QoIs_iteration[iqoi].sparsity)
             y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
 
-            data_QoIs_iteration[iqoi].y_test_hat = y_test_hat
-            data_QoIs_iteration[iqoi].model_.append(pce_model)
-            data_QoIs_iteration[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
-            data_QoIs_iteration[iqoi].score_.append(pce_model.score)
-            data_QoIs_iteration[iqoi].cv_err_.append(pce_model.cv_error)
+            data_QoIs_iteration[iqoi].y_test_hat  = y_test_hat
+            data_QoIs_iteration[iqoi].model_ [-1] = pce_model
+            data_QoIs_iteration[iqoi].y0_hat_[-1] = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
+            data_QoIs_iteration[iqoi].score_ [-1] = pce_model.score
+            data_QoIs_iteration[iqoi].cv_err_[-1] = pce_model.cv_error
 
-            data_QoIs_iteration[iqoi].cv_err = pce_model.cv_error
-            data_QoIs_iteration[iqoi].score  = pce_model.score
-            data_QoIs_iteration[iqoi].model  = pce_model
-            data_QoIs_iteration[iqoi].y0_hat = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
+            data_QoIs_iteration[iqoi].cv_err = data_QoIs_iteration[iqoi].cv_err_[-1]
+            data_QoIs_iteration[iqoi].score  = data_QoIs_iteration[iqoi].score_ [-1]
+            data_QoIs_iteration[iqoi].model  = data_QoIs_iteration[iqoi].model_ [-1]
+            data_QoIs_iteration[iqoi].y0_hat = data_QoIs_iteration[iqoi].y0_hat_[-1]
             print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}'.format(data_QoIs_iteration[iqoi].sparsity, 
                 np.array(data_QoIs_iteration[iqoi].y0_hat_[-1])))
         print('   4. converge check ...')
@@ -353,45 +369,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
         for iqoi in model_params.channel:
             del data_QoIs_iteration[iqoi].y_test_hat
-        data_QoIs.append(data_QoIs_iteration)
-        print('--------------------------------------------------')
-        print('     Model Performance up to order p={:d}'.format(deg))
-        is_QoIs_converge = [] 
-        for iqoi in model_params.channel:
-            iheader   = headers  [iqoi]
-            data_iqoi = [data_QoIs_iteration[iqoi] for data_QoIs_iteration in data_QoIs]
-            cv_err_iqoi_degs = np.array([idata.cv_err for idata in data_iqoi]).T
-            y0_hat_iqoi_degs = np.array([idata.y0_hat for idata in data_iqoi]).T
-            score_iqoi_degs  = np.array([idata.score  for idata in data_iqoi]).T
-            is_overfit       , overfit_vals    = overfitting_check(cv_err_iqoi_degs) ## check Overfitting
-            is_y0_converge   , y0_converge_err = relative_converge(y0_hat_iqoi_degs, err=model_params.rel_err)
-            is_score_converge, score_converge  = threshold_converge(score_iqoi_degs)
-            is_QoIs_converge.append([is_y0_converge, is_score_converge])
-
-            data_QoIs[-1][iqoi].deg_overfit  = is_overfit 
-            data_QoIs[-1][iqoi].deg_converge = is_y0_converge and  is_score_converge
-            print('  >  QoI: {:<25s}'.format(iheader))
-            print('     >  Values: {}'.format(np.array(y0_hat_iqoi_degs)))
-            print('     >  Overfit : {}, Converge: {}'.format(overfit_vals, is_overfit))
-            print('     >  Rel Error [%]: {:5.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
-            print('     >  Fit Score [%]: {:5.2f}, Converge: {}'.format(score_converge *100, is_score_converge  ))
-        print('--------------------------------------------------')
-
-        if np.array(is_QoIs_converge).all():
-            tqdm.write('###############################################################################')
-            tqdm.write('         Model Converge in Polynomial total orders ')
-            tqdm.write('    > Final PCE: ndim={:d}, p={:d}'.format(ndim, deg))
-            # tqdm.write('     - {:<15s} : {}'.format( 'RMSE y ' , np.array(rmse_y)))
-            # tqdm.write('     - {:<15s} : {}'.format( 'CV MSE'  , np.array(cv_err_global)))
-            # tqdm.write('     - {:<15s} : {}'.format( 'Score '  , np.array(score_global)))
-            # tqdm.write('     - {:<15s} : {}'.format( 'y0 ' , np.array(y0_hat_global)))
-            tqdm.write('###############################################################################')
-
-    return data_QoIs
+        
+    return data_QoIs_iteration
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 5
+    r, theta   = 0, 4
     ith_batch  = 0
     batch_size = 1
     np.random.seed(100)
@@ -453,6 +436,7 @@ if __name__ == '__main__':
     filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}_global.npy'.format(solver.nickname, 
             solver.ndim, model_params.basis[:3], doe_params.doe_nickname(), r)
     global_data = np.load(os.path.join(data_dir_result, filename), allow_pickle=True).tolist()
+    print(global_data[0].__dict__.keys())
     headers  = global_data[0].headers
 
     res = []

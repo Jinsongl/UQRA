@@ -87,6 +87,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_train.x  = np.empty((model_params.ndim, 0))
     data_train.y  = np.empty((0,34)) 
     ndim = solver.ndim
+    deg  = model_params.degs[0]
     while deg < model_params.degs[-1]:
     # for i, (ndim, deg) in enumerate(ndim_deg_cases):
         print('\n==================================================================================')
@@ -248,6 +249,23 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_train.y   = np.concatenate([data_train.y , y_exploration ], axis=0)
             data_train.xi_index = uqra.list_union(data_train.xi_index, idx_optimal)
 
+            weight  = doe_params.sampling_weight()   ## weight function
+            print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], 
+                pce_model.num_basis, data_train.x.shape[1]/pce_model.num_basis))
+            print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
+            for iqoi in model_params.channel:
+                print('     {:<20s}, prediction samples: {}'.format(headers[iqoi], xi_test.shape))
+                pce_model = uqra.PCE(orth_poly)
+                pce_model.fit(model_params.fitting, data_train.xi, data_train.y[:, iqoi]/model_params.y_scales[iqoi], 
+                        w=weight,n_jobs=model_params.n_jobs) 
+                data_QoIs_ideg[iqoi].sparsity = len(pce_model.active_index)
+                max_sparsity = max(max_sparsity, data_QoIs_ideg[iqoi].sparsity)
+                y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
+                data_QoIs_ideg[iqoi].y_test_hat = y_test_hat
+                data_QoIs_ideg[iqoi].model_.append(pce_model)
+                data_QoIs_ideg[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
+                data_QoIs_ideg[iqoi].score_.append(pce_model.score)
+                data_QoIs_ideg[iqoi].cv_err_.append(pce_model.cv_error)
 
             ####-------------------------------------------------------------------------------- ####
             print('   > exploitation step (SIGNIFICANT basis)... ')
@@ -321,15 +339,15 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
 
                 data_QoIs_ideg[iqoi].y_test_hat = y_test_hat
-                data_QoIs_ideg[iqoi].model_.append(pce_model)
-                data_QoIs_ideg[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
-                data_QoIs_ideg[iqoi].score_.append(pce_model.score)
-                data_QoIs_ideg[iqoi].cv_err_.append(pce_model.cv_error)
+                data_QoIs_ideg[iqoi].model_ [-1] = pce_model
+                data_QoIs_ideg[iqoi].y0_hat_[-1] = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
+                data_QoIs_ideg[iqoi].score_ [-1] = pce_model.score
+                data_QoIs_ideg[iqoi].cv_err_[-1] = pce_model.cv_error
 
-                data_QoIs_ideg[iqoi].cv_err = pce_model.cv_error
-                data_QoIs_ideg[iqoi].score  = pce_model.score
-                data_QoIs_ideg[iqoi].model  = pce_model
-                data_QoIs_ideg[iqoi].y0_hat = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
+                data_QoIs_ideg[iqoi].cv_err = data_QoIs_ideg[iqoi].cv_err_[-1]
+                data_QoIs_ideg[iqoi].score  = data_QoIs_ideg[iqoi].score_ [-1]
+                data_QoIs_ideg[iqoi].model  = data_QoIs_ideg[iqoi].model_ [-1]
+                data_QoIs_ideg[iqoi].y0_hat = data_QoIs_ideg[iqoi].y0_hat_[-1]
                 print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}'.format(data_QoIs_ideg[iqoi].sparsity, 
                     np.array(data_QoIs_ideg[iqoi].y0_hat_[-1])))
             print('   4. converge check ...')
@@ -348,7 +366,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             i_iteration +=1
             if np.all(is_QoIs_converge):
                 print('         !< Model converge for order {:d} >!'.format(deg))
-                break
+                # break
             if n_samples_deg > model_params.alpha*orth_poly.num_basis:
                 print('     PCE(d={:d},p={:d}) !< Number of samples exceeding {:.2f}P >!'.format(
                     ndim, deg, model_params.alpha))
@@ -378,7 +396,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             is_QoIs_overfit.append(is_overfit)
             print('  >  QoI: {:<25s}'.format(iheader))
             print('     >  Values: {}'.format(np.array(y0_hat_iqoi_degs)))
-            print('     >  Overfit : {}, Converge: {}'.format(overfit_vals, is_overfit))
+            print('     >  Overfit : {}'.format(is_overfit))
             print('     >  Rel Error [%]: {:5.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
             print('     >  Fit Score [%]: {:5.2f}, Converge: {}'.format(score_converge *100, is_score_converge  ))
         print('--------------------------------------------------')
@@ -404,7 +422,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 5
+    r, theta   = 0, 0
     ith_batch  = 0
     batch_size = 1
     np.random.seed(100)
