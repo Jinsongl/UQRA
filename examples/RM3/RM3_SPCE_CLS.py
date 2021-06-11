@@ -133,7 +133,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_init.score_       = []
     data_init.DoI_xi_      = []
     data_init.DoI_x_       = []
-    data_init.exploration0 = []  ## initial exploration sample set
+    data_init.exploration0 = None## initial exploration sample set
     data_init.exploration_ = []  ## exploration sample sets added later
     data_init.exploitation_= []  ## exploitation sample sets added later
     data_init.iteration_converge = False
@@ -152,18 +152,20 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     ii = np.where(np.array([iglobal_data.deg for iglobal_data in global_data]) == deg)[0][0]
     iglobal_data = global_data[ii]
     ## make sure train samples are same
-    if np.amax(abs(xi_exploration0-iglobal_data.xi_train[:,:n_samples])) > 1e-6  :
-        print( ' Train samples are not same! max error: {:.2e}'.format(
-            np.amax(abs(xi_exploration0-iglobal_data.xi_train[:,:n_samples]))))
-        print('  xi train from saved data : \n{}'.format(iglobal_data.xi_train[:,:n_samples]))
-        print('  xi train from current DoE: \n{}'.format(xi_exploration0))
-    if np.amax(abs(x_exploration0-iglobal_data.x_train[:,:n_samples])) > 1e-6  :
-        print( ' Train samples are not same! max error: {:.2e}'.format(
-            np.amax(abs(x_exploration0-iglobal_data.x_train[:,:n_samples]))))
-        print('  x train from saved data : \n{}'.format(iglobal_data.x_train[:,:n_samples]))
-        print('  x train from current DoE: \n{}'.format(x_exploration0))
-
-    y_exploration0 = iglobal_data.y_train[:n_samples,:,theta] ## shape (nsample, nQoIs, n_short_term)
+    if np.amax(abs(xi_exploration0-iglobal_data.xi_train[:,:n_samples])) > 1e-6 \
+    or np.amax(abs(x_exploration0-iglobal_data.x_train[:,:n_samples])) > 1e-6  :
+        eng.workspace['deg']       = float(deg)
+        eng.workspace['phaseSeed'] = float(theta)
+        y_exploration0 = []
+        for iHs, iTp in tqdm(x_exploration0.T, ncols=80, desc='     - [WEC-SIM]' ):
+            eng.workspace['Hs'] = float(iHs)
+            eng.workspace['Tp'] = float(iTp)
+            # eng.wecSim(nargout=0)
+            eng.wecSim(nargout=0,stdout=out,stderr=err)
+            y_exploration0.append(np.squeeze(eng.workspace['maxima'])[2:]) ## first two are Hs,Tp
+        y_exploration0 = np.array(y_exploration0)
+    else:
+        y_exploration0 = iglobal_data.y_train[:n_samples,:,theta] ## shape (nsample, nQoIs, n_short_term)
 
     data_exploration0 = uqra.Data()
     data_exploration0.xi= xi_exploration0
@@ -208,12 +210,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     ##############################################################################################
     i_iteration = 1
     while i_iteration <= 20:
-        print('                 ------------------------------')
-        print('                    <  Iteration No. {:d} >'.format(i_iteration))
-        print('                 ------------------------------')
+        ####-------------------------------------------------------------------------------- ####
         print(' ------------------------------------------------------------')
-        print('   > Adding exploration optimal samples in global domain ... ')
-        print('   1-1. optimal samples based on SIGNIFICANT basis in global domain ... ')
+        print('          Sequential Optimal Design: Iteration # {:d} >'.format(i_iteration))
+        print(' ------------------------------------------------------------')
+        print('   > 1. exploration step (FULL basis)... ')
+        print('     - {:<32s} : {:d}'.format('Adding exploration optimal samples', n_samples))
         ####-------------------------------------------------------------------------------- ####
         n_samples = min(3, max(3,max_sparsity)) 
         # min(max_sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
@@ -262,7 +264,9 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_QoIs[iqoi].score_.append(pce_model.score)
             data_QoIs[iqoi].cv_err_.append(pce_model.cv_error)
  
-        print('   > exploitation step (SIGNIFICANT basis)... ')
+        #### -------------------------------------------------------------------------------- ####
+        print('   > 2. exploitation step (SIGNIFICANT basis)... ')
+        #### -------------------------------------------------------------------------------- ####
 
         ## obtain DoI candidate samples from each QoI
         for iqoi in model_params.channel:
@@ -318,10 +322,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             n_samples_deg += n_samples
 
 
-        print('   3. training PCE (p={:d}) model with {} '.format(deg, model_params.fitting))
+        #### -------------------------------------------------------------------------------- ####
+        print('   > 3. training PCE (p={:d}) model with {} '.format(deg, model_params.fitting))
         print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], 
             pce_model.num_basis, data_train.x.shape[1]/pce_model.num_basis))
         print('     - {:<32s} : {}'.format('Y train'    , data_train.y.shape))
+        #### -------------------------------------------------------------------------------- ####
         for iqoi in model_params.channel:
             print('     > {:<20s}, prediction samples: {}'.format(headers[iqoi], xi_test.shape))
             pce_model = uqra.PCE(orth_poly)
@@ -345,20 +351,30 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_QoIs[iqoi].y0_hat = data_QoIs[iqoi].y0_hat_[-1]
             print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}'.format(data_QoIs[iqoi].sparsity, 
                 np.array(data_QoIs[iqoi].y0_hat_[-1])))
-        print('   4. converge check ...')
+
+        #### -------------------------------------------------------------------------------- ####
+        print('   > 4. converge check ...')
+        #### -------------------------------------------------------------------------------- ####
         is_QoIs_converge = [] 
         for iqoi in model_params.channel:
             is_y0_converge   , y0_converge_err = relative_converge(data_QoIs[iqoi].y0_hat_, err=2*model_params.rel_err)
             is_score_converge, score_converge  = threshold_converge(data_QoIs[iqoi].score_)
             data_QoIs[iqoi].iteration_converge = is_y0_converge and is_score_converge
             is_QoIs_converge.append([is_y0_converge, is_score_converge])
-            print('  >  QoI: {:<25s}'.format(headers[iqoi]))
-            print('     >  Values: {}'.format(np.array(data_QoIs[iqoi].y0_hat_)))
-            print('     >  Rel Error [%]: {:5.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
-            print('     >  Fit Score [%]: {:5.2f}, Converge: {}'.format(score_converge *100, is_score_converge  ))
+            print('  > QoI: {:<25s}'.format(headers[iqoi]))
+            print('    > Values: {}'.format(np.array(data_QoIs[iqoi].y0_hat_)))
+            print('    > Rel Error [%]: {:5.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
+            print('    > Fit Score [%]: {:5.2f}, Converge: {}'.format(score_converge *100, is_score_converge  ))
             print('     -------------------------------------------')
 
+        print(' Iteration: {}'.format(i_iteration))
+        for iqoi in data_QoIs:
+            print(iqoi)
+            print(len(data_QoIs[iqoi].exploration_))
+            print(len(data_QoIs[iqoi].exploitation_))
         i_iteration +=1
+
+
         if np.all(is_QoIs_converge):
             print('         !< Model converge for order {:d} >!'.format(deg))
             break
