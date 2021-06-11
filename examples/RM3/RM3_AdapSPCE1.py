@@ -154,7 +154,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 if data_iqoi_ideg_.deg_overfit:
                     ## clear results for all higher order
                     for ideg in range(deg+1, model_params.degs[-1]):
-                        data_QoIs[ideg+1][iqoi] = data_init
+                        data_QoIs[ideg][iqoi] = data_init
         else:
             ## empty list: create new obj
             data_QoIs_ideg = [copy.deepcopy(data_init) for _ in range(34)] 
@@ -414,7 +414,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             is_QoIs_overfit.append(is_overfit)
             print('  >  QoI: {:<25s}'.format(iheader))
             print('     >  Values: {}'.format(np.array(y0_hat_iqoi_degs)))
-            print('     >  Overfit : {}'.format(is_overfit))
+            print('     >  Overfit : {}; CV errors: {}'.format(is_overfit, overfit_vals))
             print('     >  Rel Error [%]: {:5.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
             print('     >  Fit Score [%]: {:5.2f}, Converge: {}'.format(score_converge *100, is_score_converge  ))
         print('--------------------------------------------------')
@@ -439,7 +439,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 0
+    r, theta   = 0, 2
     ith_batch  = 0
     batch_size = 1
     np.random.seed(100)
