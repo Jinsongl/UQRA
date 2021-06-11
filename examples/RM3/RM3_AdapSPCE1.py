@@ -154,7 +154,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 if data_iqoi_ideg_.deg_overfit:
                     ## clear results for all higher order
                     for ideg in range(deg+1, model_params.degs[-1]):
-                        data_QoIs[ideg+1][iqoi] = data_init
+                        data_QoIs[ideg][iqoi] = data_init
         else:
             ## empty list: create new obj
             data_QoIs_ideg = [copy.deepcopy(data_init) for _ in range(34)] 
@@ -171,22 +171,23 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 active_index=None, initialization='RRQR', return_index=True) 
         x_exploration0 = solver.map_domain(xi_exploration0, dist_xi)
 
-        # samples from evaluated global_data 
+        ### some samples are cached for quick access. 
         ii = np.where(np.array([iglobal_data.deg for iglobal_data in global_data]) == deg)[0][0]
         iglobal_data = global_data[ii]
-        ## make sure train samples are same
-        if np.amax(abs(xi_exploration0-iglobal_data.xi_train[:,:n_samples])) > 1e-6  :
-            print( ' Train samples are not same! max error: {:.2e}'.format(
-                np.amax(abs(xi_exploration0-iglobal_data.xi_train[:,:n_samples]))))
-            print('  xi train from saved data : \n{}'.format(iglobal_data.xi_train[:,:n_samples]))
-            print('  xi train from current DoE: \n{}'.format(xi_exploration0))
-        if np.amax(abs(x_exploration0-iglobal_data.x_train[:,:n_samples])) > 1e-6  :
-            print( ' Train samples are not same! max error: {:.2e}'.format(
-                np.amax(abs(x_exploration0-iglobal_data.x_train[:,:n_samples]))))
-            print('  x train from saved data : \n{}'.format(iglobal_data.x_train[:,:n_samples]))
-            print('  x train from current DoE: \n{}'.format(x_exploration0))
-
-        y_exploration0 = iglobal_data.y_train[:n_samples,:,theta] ## shape (nsample, nQoIs, n_short_term)
+        # if samples are evaluated before, use those directly 
+        if np.amax(abs(xi_exploration0-iglobal_data.xi_train[:,:n_samples])) > 1e-6 or np.amax(abs(x_exploration0-iglobal_data.x_train[:,:n_samples])) > 1e-6 :
+            eng.workspace['deg']       = float(deg)
+            eng.workspace['phaseSeed'] = float(theta)
+            y_exploration0 = []
+            for iHs, iTp in tqdm(x_exploration0.T, ncols=80, desc='     - [WEC-SIM]' ):
+                eng.workspace['Hs'] = float(iHs)
+                eng.workspace['Tp'] = float(iTp)
+                # eng.wecSim(nargout=0)
+                eng.wecSim(nargout=0,stdout=out,stderr=err)
+                y_exploration0.append(np.squeeze(eng.workspace['maxima'])[2:]) ## first two are Hs,Tp
+            y_exploration0 = np.array(y_exploration0)
+        else:
+            y_exploration0 = iglobal_data.y_train[:n_samples,:,theta] ## shape (nsample, nQoIs, n_short_term)
 
         data_exploration0 = uqra.Data()
         data_exploration0.xi= xi_exploration0
@@ -414,7 +415,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             is_QoIs_overfit.append(is_overfit)
             print('  >  QoI: {:<25s}'.format(iheader))
             print('     >  Values: {}'.format(np.array(y0_hat_iqoi_degs)))
-            print('     >  Overfit : {}'.format(is_overfit))
+            print('     >  Overfit : {}; CV errors: {}'.format(is_overfit, overfit_vals))
             print('     >  Rel Error [%]: {:5.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
             print('     >  Fit Score [%]: {:5.2f}, Converge: {}'.format(score_converge *100, is_score_converge  ))
         print('--------------------------------------------------')
@@ -439,7 +440,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 0
+    r, theta   = 0, 2
     ith_batch  = 0
     batch_size = 1
     np.random.seed(100)
