@@ -434,8 +434,10 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 # tqdm.write('     - {:<15s} : {}'.format( 'y0 ' , np.array(y0_hat_global)))
                 tqdm.write('###############################################################################')
                 # break
+                deg = deg + 1
             else:
                 deg = deg + 1
+
     return data_QoIs
 
 if __name__ == '__main__':
