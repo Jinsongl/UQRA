@@ -534,8 +534,8 @@ if __name__ == '__main__':
     eng.quit()
     # ## ============ Saving QoIs ============
     try:
-        np.save(os.path.join(data_dir_result, filename), res, allow_pickle=True)
+        np.save(os.path.join(data_dir_result, filename), res, allow_pickle=True,dtype=object)
         print(' >> Simulation Done! Data saved to {:s}'.format(os.path.join(data_dir_result, filename)))
     except:
-        np.save(filename, res, allow_pickle=True)
+        np.save(filename, res, allow_pickle=True,dtype=object)
         print(' >> Simulation Done! Data saved to {:s}'.format(os.path.join(os.getcwd(), filename)))
