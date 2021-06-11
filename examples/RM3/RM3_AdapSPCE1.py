@@ -444,7 +444,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 2
+    r, theta   = 0, 3
     ith_batch  = 0
     batch_size = 1
     np.random.seed(100)
@@ -529,13 +529,14 @@ if __name__ == '__main__':
         res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
     if len(res) == 1:
         res = res[0]
+    res = np.array(res, dtype=object)
     filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}S{:d}'.format(solver.nickname, 
             solver.ndim, model_params.basis, doe_params.doe_nickname(), r, theta)
     eng.quit()
     # ## ============ Saving QoIs ============
     try:
-        np.save(os.path.join(data_dir_result, filename), res, allow_pickle=True,dtype=object)
+        np.save(os.path.join(data_dir_result, filename), res, allow_pickle=True)
         print(' >> Simulation Done! Data saved to {:s}'.format(os.path.join(data_dir_result, filename)))
     except:
-        np.save(filename, res, allow_pickle=True,dtype=object)
+        np.save(filename, res, allow_pickle=True)
         print(' >> Simulation Done! Data saved to {:s}'.format(os.path.join(os.getcwd(), filename)))
