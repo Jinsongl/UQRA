@@ -368,8 +368,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('     -------------------------------------------')
 
         print(' Iteration: {}'.format(i_iteration))
-        for iqoi in data_QoIs:
-            print(iqoi)
+        for iqoi in [2,23,24,30]:
+            print(headers[iqoi])
             print(len(data_QoIs[iqoi].exploration_))
             print(len(data_QoIs[iqoi].exploitation_))
         i_iteration +=1
@@ -390,7 +390,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 17
+    r, theta   = 0, 0
     ith_batch  = 0
     batch_size = 1
     np.random.seed(100)
