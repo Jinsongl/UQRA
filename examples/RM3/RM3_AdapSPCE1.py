@@ -154,6 +154,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
                 if data_iqoi_ideg_.deg_overfit:
                     ## clear results for all higher order
                     for ideg in range(deg+1, model_params.degs[-1]):
+                        ## data_QoIs[ideg] either empty list (not reach this order yet) or list of 34 uqra.Data()
                         if data_QoIs[ideg]:
                             data_QoIs[ideg][iqoi] = data_init
         else:
