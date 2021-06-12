@@ -133,6 +133,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     data_init.score_       = []
     data_init.DoI_xi_      = []
     data_init.DoI_x_       = []
+    data_init.data_train_  = []
     data_init.exploration0 = None## initial exploration sample set
     data_init.exploration_ = []  ## exploration sample sets added later
     data_init.exploitation_= []  ## exploitation sample sets added later
@@ -199,6 +200,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         max_sparsity = max(max_sparsity, data_QoIs[iqoi].sparsity)
         y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
         data_QoIs[iqoi].y_test_hat = y_test_hat
+        data_QoIs[iqoi].data_train_.append(data_train)
         data_QoIs[iqoi].model_.append(pce_model)
         data_QoIs[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
         data_QoIs[iqoi].score_.append(pce_model.score)
@@ -259,6 +261,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             max_sparsity = max(max_sparsity, data_QoIs[iqoi].sparsity)
             y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
             data_QoIs[iqoi].y_test_hat = y_test_hat
+            data_QoIs[iqoi].data_train_.append(data_train)
             data_QoIs[iqoi].model_.append(pce_model)
             data_QoIs[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
             data_QoIs[iqoi].score_.append(pce_model.score)
@@ -344,11 +347,13 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_QoIs[iqoi].y0_hat_[-1] = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
             data_QoIs[iqoi].score_ [-1] = pce_model.score
             data_QoIs[iqoi].cv_err_[-1] = pce_model.cv_error
+            data_QoIs[iqoi].data_train_[-1] = data_train
 
             data_QoIs[iqoi].cv_err = data_QoIs[iqoi].cv_err_[-1]
             data_QoIs[iqoi].score  = data_QoIs[iqoi].score_ [-1]
             data_QoIs[iqoi].model  = data_QoIs[iqoi].model_ [-1]
             data_QoIs[iqoi].y0_hat = data_QoIs[iqoi].y0_hat_[-1]
+            data_QoIs[iqoi].data_train = data_QoIs[iqoi].data_train_[-1]
             print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}'.format(data_QoIs[iqoi].sparsity, 
                 np.array(data_QoIs[iqoi].y0_hat_[-1])))
 
@@ -479,6 +484,7 @@ if __name__ == '__main__':
             solver.ndim, model_params.basis, doe_params.doe_nickname(), r, theta)
     eng.quit()
     # ## ============ Saving QoIs ============
+    res = np.array(res, dtype=object)
     try:
         np.save(os.path.join(data_dir_result, filename), res, allow_pickle=True)
         print(' >> Simulation Done! Data saved to {:s}'.format(os.path.join(data_dir_result, filename)))
