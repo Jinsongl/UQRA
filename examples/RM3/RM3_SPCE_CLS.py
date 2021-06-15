@@ -200,7 +200,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         max_sparsity = max(max_sparsity, data_QoIs[iqoi].sparsity)
         y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
         data_QoIs[iqoi].y_test_hat = y_test_hat
-        data_QoIs[iqoi].data_train_.append(data_train)
+        data_QoIs[iqoi].data_train_.append(copy.deepcopy(data_train))
         data_QoIs[iqoi].model_.append(pce_model)
         data_QoIs[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
         data_QoIs[iqoi].score_.append(pce_model.score)
@@ -261,7 +261,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             max_sparsity = max(max_sparsity, data_QoIs[iqoi].sparsity)
             y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
             data_QoIs[iqoi].y_test_hat = y_test_hat
-            data_QoIs[iqoi].data_train_.append(data_train)
+            data_QoIs[iqoi].data_train_.append(copy.deepcopy(data_train))
             data_QoIs[iqoi].model_.append(pce_model)
             data_QoIs[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
             data_QoIs[iqoi].score_.append(pce_model.score)
@@ -280,6 +280,9 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             # data_cand_DoI_iqoi, idx_data_cand_DoI = idoe_params.samples_nearby(data_QoIs[iqoi].y0_hat_[-1], 
                     # xi_test, data_QoIs[iqoi].y_test_hat, data_cand, deg, n0=10, epsilon=0.1, return_index=True)
             if data_QoIs[iqoi].iteration_converge:
+                data_QoIs[iqoi].DoI_xi_.append([])
+                data_QoIs[iqoi].DoI_x_.append([])
+                data_QoIs[iqoi].exploitation_.append([])
                 print('     - Skip ')
                 continue
             else:
@@ -347,7 +350,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_QoIs[iqoi].y0_hat_[-1] = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
             data_QoIs[iqoi].score_ [-1] = pce_model.score
             data_QoIs[iqoi].cv_err_[-1] = pce_model.cv_error
-            data_QoIs[iqoi].data_train_[-1] = data_train
+            data_QoIs[iqoi].data_train_[-1] = copy.deepcopy(data_train)
 
             data_QoIs[iqoi].cv_err = data_QoIs[iqoi].cv_err_[-1]
             data_QoIs[iqoi].score  = data_QoIs[iqoi].score_ [-1]
@@ -375,8 +378,9 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         print(' Iteration: {}'.format(i_iteration))
         for iqoi in [2,23,24,30]:
             print(headers[iqoi])
-            print(len(data_QoIs[iqoi].exploration_))
-            print(len(data_QoIs[iqoi].exploitation_))
+            print(len(data_QoIs[iqoi].exploration_), [np.array(idata).shape for idata in data_QoIs[iqoi].exploration_])
+            print(len(data_QoIs[iqoi].exploitation_), [np.array(idata).shape for idata in data_QoIs[iqoi].exploitation_])
+            print([idata.x.shape for idata in data_QoIs[iqoi].data_train_])
         i_iteration +=1
 
 
