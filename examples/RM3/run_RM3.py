@@ -30,7 +30,7 @@ def main(solver, r=0, random_state=None):
     x_train = data_grid.x 
     ## get train data, if not available, return training samples to run
     ## set matlabengine workspace variables
-    eng.workspace['deg'] = float(deg)
+    # eng.workspace['deg'] = float(deg)
     eng.workspace['phaseSeed'] = float(theta)
     y_train = []
     for iHs, iTp in tqdm(x_train.T, ncols=80, desc='   [WEC-SIM]' ):
@@ -67,20 +67,10 @@ if __name__ == '__main__':
     for i, irepeat in enumerate(range(1)):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
-        print(' >>>  Start UQRA : Theta: {:d}, [{:d}x{:d}]-{:d}'.format(theta, batch_size, ith_batch, i))
+        print(' >>>  Start UQRA : Theta: {:d}, {:d}'.format(theta, i))
         print(' >>>  Test data R={:d}'.format(r))
         print('#################################################################################\n')
-        print('   > {:<25s}'.format('Input/Output Directories:'))
-        print('     - {:<23s} : {}'.format  (' Candiate samples'  , data_dir_cand))
-        print('     - {:<23s} : {:s}'.format(' UQRA DoE data '    , data_dir_optimal))
-        print('     - {:<23s} : {:s}'.format(' Test input '       , data_dir_testin))
-        print('     - {:<23s} : {:s}'.format(' Test output'       , data_dir_test))
-        print('     - {:<23s} : {:s}'.format(' UQRA output data ' , data_dir_result))
-        print('     - {:<23s} : {:s}'.format(' UQRA output figure', figure_dir))
-        print('   > {:<25s}'.format('Input/Output files'))
-        print('     - {:<23s} : {}'.format(' Test input data'   , filename_testin))
-        print('     - {:<23s} : {}'.format(' Test output data'  , filename_test  ))
-        res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
+        res.append(main(solver, r=r, random_state=irepeat))
     if len(res) == 1:
         res = res[0]
     filename = '{:s}_grid_R{:d}S{:d}'.format(solver.nickname, r, theta)
