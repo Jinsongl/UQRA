@@ -26,7 +26,7 @@ sys.stdout  = uqra.utilities.classes.Logger()
 def main(solver, r=0, random_state=None):
     random.seed(random_state)
 
-    data_grid = np.load('RM3_Grid.npy', allow_pickle=True)
+    data_grid = np.load('RM3_Grid.npy', allow_pickle=True).tolist()
     x_train = data_grid.x 
     ## get train data, if not available, return training samples to run
     ## set matlabengine workspace variables
