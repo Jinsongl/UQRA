@@ -64,7 +64,7 @@ if __name__ == '__main__':
     ## ------------------------ UQRA Modeling Parameters ----------------- ###
 
     res = []
-    for i, irepeat in enumerate(range(batch_size*ith_batch, batch_size*(ith_batch+1))):
+    for i, irepeat in enumerate(range(1)):
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
         print(' >>>  Start UQRA : Theta: {:d}, [{:d}x{:d}]-{:d}'.format(theta, batch_size, ith_batch, i))
