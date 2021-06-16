@@ -376,11 +376,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             print('     -------------------------------------------')
 
         print(' Iteration: {}'.format(i_iteration))
-        for iqoi in [2,23,24,30]:
-            print(headers[iqoi])
-            print(len(data_QoIs[iqoi].exploration_), [np.array(idata).shape for idata in data_QoIs[iqoi].exploration_])
-            print(len(data_QoIs[iqoi].exploitation_), [np.array(idata).shape for idata in data_QoIs[iqoi].exploitation_])
-            print([idata.x.shape for idata in data_QoIs[iqoi].data_train_])
         i_iteration +=1
 
 
