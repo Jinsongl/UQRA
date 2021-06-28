@@ -17,7 +17,7 @@ import itertools, copy, math, collections
 import multiprocessing as mp
 import random
 import scipy
-import matlab.engine
+# import matlab.engine
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
@@ -202,11 +202,21 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_QoIs[iqoi].y_test_hat = y_test_hat
         data_QoIs[iqoi].data_train_.append(copy.deepcopy(data_train))
         data_QoIs[iqoi].model_.append(pce_model)
-        data_QoIs[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
         data_QoIs[iqoi].score_.append(pce_model.score)
         data_QoIs[iqoi].cv_err_.append(pce_model.cv_error)
-        print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}'.format(data_QoIs[iqoi].sparsity, 
-                np.array(data_QoIs[iqoi].y0_hat_[-1])))
+
+        excd_data = uqra.Data()
+        excd_data.pf     = model_params.pf
+        excd_data.y0_hat = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
+        excd_data.x0_hat = x_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
+        excd_data.xi0_hat= xi_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
+        eng.workspace['Hs'] = float(excd_data.x0_hat[0])
+        eng.workspace['Tp'] = float(excd_data.x0_hat[1])
+        eng.wecSim(nargout=0,stdout=out,stderr=err)
+        excd_data.y0 = np.squeeze(eng.workspace['maxima'])[iqoi+2] ## first two are Hs,Tp
+        data_QoIs[iqoi].y0_hat_.append(excd_data)
+        print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}, WEC-Sim y: {:.4e}'.format(data_QoIs[iqoi].sparsity,
+            excd_data.y0_hat,excd_data.y0))
     n_samples_deg = n_samples
     ##############################################################################################
     ##############################################################################################
@@ -263,9 +273,19 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_QoIs[iqoi].y_test_hat = y_test_hat
             data_QoIs[iqoi].data_train_.append(copy.deepcopy(data_train))
             data_QoIs[iqoi].model_.append(pce_model)
-            data_QoIs[iqoi].y0_hat_.append(uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf))
             data_QoIs[iqoi].score_.append(pce_model.score)
             data_QoIs[iqoi].cv_err_.append(pce_model.cv_error)
+
+            excd_data = uqra.Data()
+            excd_data.pf     = model_params.pf
+            excd_data.y0_hat = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
+            excd_data.x0_hat = x_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
+            excd_data.xi0_hat= xi_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
+            eng.workspace['Hs'] = float(excd_data.x0_hat[0])
+            eng.workspace['Tp'] = float(excd_data.x0_hat[1])
+            eng.wecSim(nargout=0,stdout=out,stderr=err)
+            excd_data.y0 = np.squeeze(eng.workspace['maxima'])[iqoi+2] ## first two are Hs,Tp
+            data_QoIs[iqoi].y0_hat_.append(excd_data)
  
         #### -------------------------------------------------------------------------------- ####
         print('   > 2. exploitation step (SIGNIFICANT basis)... ')
@@ -288,7 +308,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             else:
                 pass
 
-            data_cand_DoI_iqoi = idoe_params.domain_of_interest(data_QoIs[iqoi].y0_hat_[-1], xi_test, 
+            data_cand_DoI_iqoi = idoe_params.domain_of_interest(data_QoIs[iqoi].y0_hat_[-1].y0_hat, xi_test, 
                     data_QoIs[iqoi].y_test_hat, n_centroid=20, epsilon=0.1)
 
             data_QoIs[iqoi].DoI_xi_.append(data_cand_DoI_iqoi)
@@ -347,32 +367,51 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
             data_QoIs[iqoi].y_test_hat  = y_test_hat
             data_QoIs[iqoi].model_ [-1] = pce_model
-            data_QoIs[iqoi].y0_hat_[-1] = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
             data_QoIs[iqoi].score_ [-1] = pce_model.score
             data_QoIs[iqoi].cv_err_[-1] = pce_model.cv_error
             data_QoIs[iqoi].data_train_[-1] = copy.deepcopy(data_train)
+
+            excd_data = uqra.Data()
+            excd_data.pf        = model_params.pf
+            excd_data.y0_hat    = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
+            excd_data.x0_hat    = x_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
+            excd_data.xi0_hat   = xi_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
+            eng.workspace['Hs'] = float(excd_data.x0_hat[0])
+            eng.workspace['Tp'] = float(excd_data.x0_hat[1])
+            eng.wecSim(nargout=0,stdout=out,stderr=err)
+            excd_data.y0        = np.squeeze(eng.workspace['maxima'])[iqoi+2] ## first two are Hs,Tp
+            data_QoIs[iqoi].y0_hat_.append(excd_data)
+
+
+
 
             data_QoIs[iqoi].cv_err = data_QoIs[iqoi].cv_err_[-1]
             data_QoIs[iqoi].score  = data_QoIs[iqoi].score_ [-1]
             data_QoIs[iqoi].model  = data_QoIs[iqoi].model_ [-1]
             data_QoIs[iqoi].y0_hat = data_QoIs[iqoi].y0_hat_[-1]
             data_QoIs[iqoi].data_train = data_QoIs[iqoi].data_train_[-1]
-            print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}'.format(data_QoIs[iqoi].sparsity, 
-                np.array(data_QoIs[iqoi].y0_hat_[-1])))
+
+            print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}, WEC-Sim y: {:.4e}'.format(data_QoIs[iqoi].sparsity,
+                excd_data.y0_hat,excd_data.y0))
 
         #### -------------------------------------------------------------------------------- ####
         print('   > 4. converge check ...')
         #### -------------------------------------------------------------------------------- ####
         is_QoIs_converge = [] 
         for iqoi in model_params.channel:
-            is_y0_converge   , y0_converge_err = relative_converge(data_QoIs[iqoi].y0_hat_, err=2*model_params.rel_err)
+            y0_hat = [idata.y0_hat for idata in data_QoIs[iqoi].y0_hat_] 
+            is_y0_converge   , y0_converge_err = relative_converge (y0_hat, err=2*model_params.rel_err)
             is_score_converge, score_converge  = threshold_converge(data_QoIs[iqoi].score_)
-            data_QoIs[iqoi].iteration_converge = is_y0_converge and is_score_converge
+            ## accuracy of PCE model at identified x0
+            is_PCE_accurate = abs(data_QoIs[iqoi].y0_hat_[-1].y0_hat - data_QoIs[iqoi].y0_hat_[-1].y0)/data_QoIs[iqoi].y0_hat_[-1].y0
+            data_QoIs[iqoi].iteration_converge = is_y0_converge and is_score_converge and is_PCE_accurate < 0.1 
             is_QoIs_converge.append([is_y0_converge, is_score_converge])
             print('  > QoI: {:<25s}'.format(headers[iqoi]))
-            print('    > Values: {}'.format(np.array(data_QoIs[iqoi].y0_hat_)))
+            print('    > Values: {}'.format(y0_hat))
             print('    > Rel Error [%]: {:5.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
             print('    > Fit Score [%]: {:5.2f}, Converge: {}'.format(score_converge *100, is_score_converge  ))
+            print('    > Error of response at x0 [%]: {:5.2f}, y0_hat: {:.2f}, y0: {:.2f}'.format(is_PCE_accurate*100, 
+                data_QoIs[iqoi].y0_hat_[-1].y0_hat, data_QoIs[iqoi].y0_hat_[-1].y0))
             print('     -------------------------------------------')
 
         print(' Iteration: {}'.format(i_iteration))
@@ -404,7 +443,7 @@ if __name__ == '__main__':
     np.set_printoptions(suppress=True)
     uqra_env = uqra.environment.NDBC46022()
 
-    eng = matlab.engine.start_matlab()
+    # eng = matlab.engine.start_matlab()
     out = io.StringIO()
     err = io.StringIO()
     ## ------------------------ Define solver ----------------------- ###
@@ -452,6 +491,7 @@ if __name__ == '__main__':
     data_test.x = solver.map_domain(data_test.u, model_params.dist_u)
     data_test.xi= model_params.map_domain(data_test.u, model_params.dist_u)
     xi_test = data_test.xi[:, :model_params.num_test] 
+    x_test  = data_test.x [:, :model_params.num_test] 
     ## 2. Get finished global data
     filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}_global.npy'.format(solver.nickname, 
             solver.ndim, model_params.basis[:3], doe_params.doe_nickname(), r)
