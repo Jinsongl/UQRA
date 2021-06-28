@@ -210,6 +210,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         excd_data.y0_hat = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
         excd_data.x0_hat = x_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
         excd_data.xi0_hat= xi_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
+        eng.workspace['deg']       = float(deg)
+        eng.workspace['phaseSeed'] = float(theta)
         eng.workspace['Hs'] = float(excd_data.x0_hat[0])
         eng.workspace['Tp'] = float(excd_data.x0_hat[1])
         eng.wecSim(nargout=0,stdout=out,stderr=err)
@@ -242,7 +244,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         for iHs, iTp in tqdm(x_exploration.T, ncols=80, desc='     - [WEC-SIM]' ):
             eng.workspace['Hs'] = float(iHs)
             eng.workspace['Tp'] = float(iTp)
-            # eng.wecSim(nargout=0)
             eng.wecSim(nargout=0,stdout=out,stderr=err)
             y_exploration.append(np.squeeze(eng.workspace['maxima'])[2:]) ## first two are Hs,Tp
         y_exploration = np.array(y_exploration)
