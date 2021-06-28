@@ -205,20 +205,27 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_QoIs[iqoi].score_.append(pce_model.score)
         data_QoIs[iqoi].cv_err_.append(pce_model.cv_error)
 
-        excd_data = uqra.Data()
-        excd_data.pf     = model_params.pf
-        excd_data.y0_hat = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
-        excd_data.x0_hat = x_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
-        excd_data.xi0_hat= xi_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
+        data_excd = uqra.Data()
+        data_excd.pf     = model_params.pf
+        data_excd.y0_hat = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
+        data_excd.x0_hat = x_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
+        data_excd.xi0_hat= xi_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
         eng.workspace['deg']       = float(deg)
         eng.workspace['phaseSeed'] = float(theta)
-        eng.workspace['Hs'] = float(excd_data.x0_hat[0])
-        eng.workspace['Tp'] = float(excd_data.x0_hat[1])
+        eng.workspace['Hs'] = float(data_excd.x0_hat[0])
+        eng.workspace['Tp'] = float(data_excd.x0_hat[1])
         eng.wecSim(nargout=0,stdout=out,stderr=err)
-        excd_data.y0 = np.squeeze(eng.workspace['maxima'])[iqoi+2]/model_params.y_scales[iqoi] ## first two are Hs,Tp
-        data_QoIs[iqoi].y0_hat_.append(excd_data)
+        data_excd.y0 = np.squeeze(eng.workspace['maxima'])[iqoi+2]/model_params.y_scales[iqoi] ## first two are Hs,Tp
+        data_QoIs[iqoi].y0_hat_.append(data_excd)
         print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}, WEC-Sim y: {:.4e}'.format(data_QoIs[iqoi].sparsity,
-            excd_data.y0_hat,excd_data.y0))
+            data_excd.y0_hat,data_excd.y0))
+
+
+        data_train.xi  = np.concatenate([data_train.xi, data_excd.xi0_hat.reshape(ndim, 1)], axis=1)
+        data_train.x   = np.concatenate([data_train.x , data_excd.x0_hat.reshape(ndim, 1)], axis=1)
+        data_train.y   = np.concatenate([data_train.y , data_excd.y0_hat], axis=0)
+        data_train.xi_index = uqra.list_union(data_train.xi_index, np.argmin(abs(y_test_hat-data_excd.y0_hat))[0])
+
     n_samples_deg = n_samples
     ##############################################################################################
     ##############################################################################################
@@ -277,17 +284,21 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_QoIs[iqoi].score_.append(pce_model.score)
             data_QoIs[iqoi].cv_err_.append(pce_model.cv_error)
 
-            excd_data = uqra.Data()
-            excd_data.pf     = model_params.pf
-            excd_data.y0_hat = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
-            excd_data.x0_hat = x_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
-            excd_data.xi0_hat= xi_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
-            eng.workspace['Hs'] = float(excd_data.x0_hat[0])
-            eng.workspace['Tp'] = float(excd_data.x0_hat[1])
+            data_excd = uqra.Data()
+            data_excd.pf     = model_params.pf
+            data_excd.y0_hat = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
+            data_excd.x0_hat = x_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
+            data_excd.xi0_hat= xi_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
+            eng.workspace['Hs'] = float(data_excd.x0_hat[0])
+            eng.workspace['Tp'] = float(data_excd.x0_hat[1])
             eng.wecSim(nargout=0,stdout=out,stderr=err)
-            excd_data.y0 = np.squeeze(eng.workspace['maxima'])[iqoi+2]/model_params.y_scales[iqoi] ## first two are Hs,Tp
-            data_QoIs[iqoi].y0_hat_.append(excd_data)
+            data_excd.y0 = np.squeeze(eng.workspace['maxima'])[iqoi+2]/model_params.y_scales[iqoi] ## first two are Hs,Tp
+            data_QoIs[iqoi].y0_hat_.append(data_excd)
  
+            data_train.xi  = np.concatenate([data_train.xi, data_excd.xi0_hat.reshape(ndim, 1)], axis=1)
+            data_train.x   = np.concatenate([data_train.x , data_excd.x0_hat.reshape(ndim, 1)], axis=1)
+            data_train.y   = np.concatenate([data_train.y , data_excd.y0_hat], axis=0)
+            data_train.xi_index = uqra.list_union(data_train.xi_index, np.argmin(abs(y_test_hat-data_excd.y0_hat))[0])
         #### -------------------------------------------------------------------------------- ####
         print('   > 2. exploitation step (SIGNIFICANT basis)... ')
         #### -------------------------------------------------------------------------------- ####
@@ -372,17 +383,21 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_QoIs[iqoi].cv_err_[-1] = pce_model.cv_error
             data_QoIs[iqoi].data_train_[-1] = copy.deepcopy(data_train)
 
-            excd_data = uqra.Data()
-            excd_data.pf        = model_params.pf
-            excd_data.y0_hat    = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
-            excd_data.x0_hat    = x_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
-            excd_data.xi0_hat   = xi_test[:,np.argmin(abs(y_test_hat-excd_data.y0_hat))]
-            eng.workspace['Hs'] = float(excd_data.x0_hat[0])
-            eng.workspace['Tp'] = float(excd_data.x0_hat[1])
+            data_excd = uqra.Data()
+            data_excd.pf        = model_params.pf
+            data_excd.y0_hat    = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
+            data_excd.x0_hat    = x_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
+            data_excd.xi0_hat   = xi_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
+            eng.workspace['Hs'] = float(data_excd.x0_hat[0])
+            eng.workspace['Tp'] = float(data_excd.x0_hat[1])
             eng.wecSim(nargout=0,stdout=out,stderr=err)
-            excd_data.y0        = np.squeeze(eng.workspace['maxima'])[iqoi+2]/model_params.y_scales[iqoi] ## first two are Hs,Tp
-            data_QoIs[iqoi].y0_hat_.append(excd_data)
+            data_excd.y0        = np.squeeze(eng.workspace['maxima'])[iqoi+2]/model_params.y_scales[iqoi] ## first two are Hs,Tp
+            data_QoIs[iqoi].y0_hat_.append(data_excd)
 
+            data_train.xi  = np.concatenate([data_train.xi, data_excd.xi0_hat.reshape(ndim, 1)], axis=1)
+            data_train.x   = np.concatenate([data_train.x , data_excd.x0_hat.reshape(ndim, 1)], axis=1)
+            data_train.y   = np.concatenate([data_train.y , data_excd.y0_hat], axis=0)
+            data_train.xi_index = uqra.list_union(data_train.xi_index, np.argmin(abs(y_test_hat-data_excd.y0_hat))[0])
 
 
 
@@ -393,7 +408,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_QoIs[iqoi].data_train = data_QoIs[iqoi].data_train_[-1]
 
             print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}, WEC-Sim y: {:.4e}'.format(data_QoIs[iqoi].sparsity,
-                excd_data.y0_hat,excd_data.y0))
+                data_excd.y0_hat,data_excd.y0))
 
         #### -------------------------------------------------------------------------------- ####
         print('   > 4. converge check ...')
