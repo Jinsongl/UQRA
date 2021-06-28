@@ -215,7 +215,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         eng.workspace['Hs'] = float(excd_data.x0_hat[0])
         eng.workspace['Tp'] = float(excd_data.x0_hat[1])
         eng.wecSim(nargout=0,stdout=out,stderr=err)
-        excd_data.y0 = np.squeeze(eng.workspace['maxima'])[iqoi+2] ## first two are Hs,Tp
+        excd_data.y0 = np.squeeze(eng.workspace['maxima'])[iqoi+2]/model_params.y_scales[iqoi] ## first two are Hs,Tp
         data_QoIs[iqoi].y0_hat_.append(excd_data)
         print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}, WEC-Sim y: {:.4e}'.format(data_QoIs[iqoi].sparsity,
             excd_data.y0_hat,excd_data.y0))
@@ -285,7 +285,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             eng.workspace['Hs'] = float(excd_data.x0_hat[0])
             eng.workspace['Tp'] = float(excd_data.x0_hat[1])
             eng.wecSim(nargout=0,stdout=out,stderr=err)
-            excd_data.y0 = np.squeeze(eng.workspace['maxima'])[iqoi+2] ## first two are Hs,Tp
+            excd_data.y0 = np.squeeze(eng.workspace['maxima'])[iqoi+2]/model_params.y_scales[iqoi] ## first two are Hs,Tp
             data_QoIs[iqoi].y0_hat_.append(excd_data)
  
         #### -------------------------------------------------------------------------------- ####
@@ -380,7 +380,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             eng.workspace['Hs'] = float(excd_data.x0_hat[0])
             eng.workspace['Tp'] = float(excd_data.x0_hat[1])
             eng.wecSim(nargout=0,stdout=out,stderr=err)
-            excd_data.y0        = np.squeeze(eng.workspace['maxima'])[iqoi+2] ## first two are Hs,Tp
+            excd_data.y0        = np.squeeze(eng.workspace['maxima'])[iqoi+2]/model_params.y_scales[iqoi] ## first two are Hs,Tp
             data_QoIs[iqoi].y0_hat_.append(excd_data)
 
 
