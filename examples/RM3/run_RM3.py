@@ -52,6 +52,19 @@ def main(solver, r=0, random_state=None):
             print(r'    y0: True={:.2f}, PCE={:.2f}, epsilon={:.2f}%'.format(y, y_hat,(y_hat-y)/y*100))
         y_train = np.array(y_train)
         RM3_T50[iqoi].y = y_train 
+    # data_grid = np.load('RM3_Grid.npy', allow_pickle=True).tolist()
+    # x_train = data_grid.x 
+    # ## get train data, if not available, return training samples to run
+    # ## set matlabengine workspace variables
+    # # eng.workspace['deg'] = float(deg)
+    # eng.workspace['phaseSeed'] = float(theta)
+    # y_train = []
+    # for iHs, iTp in tqdm(x_train.T, ncols=80, desc='   [WEC-SIM]' ):
+        # eng.workspace['Hs'] = float(iHs)
+        # eng.workspace['Tp'] = float(iTp)
+        # eng.wecSim(nargout=0,stdout=out,stderr=err)
+        # y_train.append(np.squeeze(eng.workspace['maxima']))
+    # y_train = np.array(y_train)
 
     return RM3_T50
 
@@ -78,6 +91,7 @@ if __name__ == '__main__':
         print('\n#################################################################################')
         print(' >>>  File: ', __file__)
         print(' >>>  Start UQRA : Theta: {:d}, -{:d}'.format(theta,  i))
+        print(' >>>  Start UQRA : Theta: {:d}, {:d}'.format(theta, i))
         print(' >>>  Test data R={:d}'.format(r))
         print('#################################################################################\n')
         res.append(main(solver, r=r, random_state=irepeat))
