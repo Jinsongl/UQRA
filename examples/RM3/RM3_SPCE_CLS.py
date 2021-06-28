@@ -17,7 +17,7 @@ import itertools, copy, math, collections
 import multiprocessing as mp
 import random
 import scipy
-# import matlab.engine
+import matlab.engine
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
@@ -443,7 +443,7 @@ if __name__ == '__main__':
     np.set_printoptions(suppress=True)
     uqra_env = uqra.environment.NDBC46022()
 
-    # eng = matlab.engine.start_matlab()
+    eng = matlab.engine.start_matlab()
     out = io.StringIO()
     err = io.StringIO()
     ## ------------------------ Define solver ----------------------- ###
