@@ -392,6 +392,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             data_excd.y0 = y0[iqoi]/model_params.y_scales[iqoi] ## first two are Hs,Tp
             data_QoIs[iqoi].y0_hat_.append(data_excd)
 
+
             data_train.xi  = np.concatenate([data_train.xi, data_excd.xi0_hat.reshape(ndim, 1)], axis=1)
             data_train.x   = np.concatenate([data_train.x , data_excd.x0_hat.reshape(ndim, 1)], axis=1)
             data_train.y   = np.concatenate([data_train.y , y0.reshape(1,-1)], axis=0)
