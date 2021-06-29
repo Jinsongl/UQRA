@@ -76,6 +76,9 @@ def absolute_converge(y, err=1e-4):
 
 def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     random.seed(random_state)
+    ## ------------------------ Initialize parameters ----------------- ###
+    ndim, deg = model_params.ndim, model_params.degs
+    max_sparsity  = 30
     ## ------------------------ Initialize uqra.Data() objects ----------------- ###
     ### object contain all training samples
     data_train = uqra.Data()
@@ -103,9 +106,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     data_QoIs = [copy.deepcopy(data_init) for _ in range(34)] 
 
 
-    ## ------------------------ Initialize parameters ----------------- ###
-    ndim, deg = model_params.ndim, model_params.degs
-    max_sparsity  = 30
     ## ------------------------ Updating DoE parameters ----------------- ###
     idoe_params = copy.deepcopy(doe_params)
     idoe_params.ndim = ndim
@@ -153,6 +153,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     if np.amax(abs(xi_exploration0-iglobal_data.xi_train[:,:n_samples])) > 1e-6 \
     or np.amax(abs(x_exploration0-iglobal_data.x_train[:,:n_samples])) > 1e-6  :
         print('   - x/xi values in cached data not match, running WEC-Sim ...')
+        print(xi_exploration0)
+        print(iglobal_data.xi_train[:,:n_samples])
         eng.workspace['deg']       = float(deg)
         eng.workspace['phaseSeed'] = float(theta)
         y_exploration0 = []
@@ -442,7 +444,7 @@ if __name__ == '__main__':
     ## not used for practice, only for benchmark validation
     # ith_batch  = 0
     # batch_size = 1
-    random_state = 100
+    random_state = 0
     np.random.seed(random_state)
     random.seed(random_state)
     np.set_printoptions(precision=4)
@@ -508,7 +510,7 @@ if __name__ == '__main__':
 
     print('\n#################################################################################')
     print(' >>>  File: ', __file__)
-    print(' >>>  Start UQRA : Theta: {:d}, [{:d}x{:d}]-{:d}'.format(theta, batch_size, ith_batch, i))
+    print(' >>>  Start UQRA : Theta: {:d}'.format(theta))
     print(' >>>  Test data R={:d}'.format(r))
     print('#################################################################################\n')
     print('   > {:<25s}'.format('Input/Output Directories:'))
