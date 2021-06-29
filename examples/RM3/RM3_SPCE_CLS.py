@@ -74,7 +74,7 @@ def absolute_converge(y, err=1e-4):
         res = (error < err, error)
     return res 
 
-def main(model_params, doe_params, solver, r=0, random_state=None):
+def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     random.seed(random_state)
     ### object contain all training samples
     data_train = uqra.Data()
@@ -98,6 +98,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
     print('     - {:<23s} : {}'.format(' Candidate filename'  , filename_cand  ))
 
     if filename_cand:
+        random.seed(random_state)
         data_cand = np.load(os.path.join(data_dir_cand, filename_cand))
         data_cand = data_cand[:ndim,random.sample(range(data_cand.shape[1]), k=idoe_params.num_cand)]
         data_cand = data_cand * deg ** 0.5 if doe_params.doe_sampling.upper() in ['CLS4', 'CLS5'] else data_cand
@@ -215,8 +216,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         eng.workspace['Hs'] = float(data_excd.x0_hat[0])
         eng.workspace['Tp'] = float(data_excd.x0_hat[1])
         eng.wecSim(nargout=0,stdout=out,stderr=err)
-        y0 = np.squeeze(eng.workspace['maxima'])[2:]/model_params.y_scales[iqoi] ## first two are Hs,Tp
-        data_excd.y0 = y0[iqoi]/model_params.y_scales[iqoi] ## first two are Hs,Tp
+        y0 = np.squeeze(eng.workspace['maxima'])[2:] ## first two are Hs,Tp
+        data_excd.y0 = y0[iqoi]/model_params.y_scales[iqoi] 
         data_QoIs[iqoi].y0_hat_.append(data_excd)
         print('     - Sparsity={:<2d}, y0 test[PCE]: {:.4e}, WEC-Sim y: {:.4e}'.format(data_QoIs[iqoi].sparsity,
             data_excd.y0_hat,data_excd.y0))
@@ -289,10 +290,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_excd.y0_hat = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
             data_excd.x0_hat = x_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
             data_excd.xi0_hat= xi_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
+            eng.workspace['deg']       = float(deg)
+            eng.workspace['phaseSeed'] = float(theta)
             eng.workspace['Hs'] = float(data_excd.x0_hat[0])
             eng.workspace['Tp'] = float(data_excd.x0_hat[1])
             eng.wecSim(nargout=0,stdout=out,stderr=err)
-            y0 = np.squeeze(eng.workspace['maxima'])[2:]/model_params.y_scales[iqoi] ## first two are Hs,Tp
+            y0 = np.squeeze(eng.workspace['maxima'])[2:] ## first two are Hs,Tp
             data_excd.y0 = y0[iqoi]/model_params.y_scales[iqoi] ## first two are Hs,Tp
             data_QoIs[iqoi].y0_hat_.append(data_excd)
  
@@ -388,10 +391,12 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_excd.y0_hat    = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
             data_excd.x0_hat    = x_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
             data_excd.xi0_hat   = xi_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
+            eng.workspace['deg']       = float(deg)
+            eng.workspace['phaseSeed'] = float(theta)
             eng.workspace['Hs'] = float(data_excd.x0_hat[0])
             eng.workspace['Tp'] = float(data_excd.x0_hat[1])
             eng.wecSim(nargout=0,stdout=out,stderr=err)
-            y0 = np.squeeze(eng.workspace['maxima'])[2:]/model_params.y_scales[iqoi] ## first two are Hs,Tp
+            y0 = np.squeeze(eng.workspace['maxima'])[2:] ## first two are Hs,Tp
             data_excd.y0 = y0[iqoi]/model_params.y_scales[iqoi] ## first two are Hs,Tp
             data_QoIs[iqoi].y0_hat_.append(data_excd)
 
@@ -449,7 +454,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 0
+    r, theta   = 0, 1
     ith_batch  = 0
     batch_size = 1
     np.random.seed(100)
@@ -532,7 +537,7 @@ if __name__ == '__main__':
         print('   > {:<25s}'.format('Input/Output files'))
         print('     - {:<23s} : {}'.format(' Test input data'   , filename_testin))
         print('     - {:<23s} : {}'.format(' Test output data'  , filename_test  ))
-        res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat))
+        res.append(main(model_params, doe_params, solver, r=r, random_state=irepeat, theta=theta))
     if len(res) == 1:
         res = res[0]
     filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}S{:d}'.format(solver.nickname, 
