@@ -323,8 +323,15 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             else:
                 pass
 
-            data_cand_DoI_iqoi = idoe_params.domain_of_interest(data_QoIs[iqoi].y0_hat_[-1].y0_hat, xi_test, 
-                    data_QoIs[iqoi].y_test_hat, n_centroid=20, epsilon=0.1)
+            y0_hat_err = abs(data_QoIs[iqoi].y0_hat_[-1].y0_hat - data_QoIs[iqoi].y0_hat_[-1].y0)/data_QoIs[iqoi].y0_hat_[-1].y0
+            if y0_hat_err < 0.1:
+                data_cand_DoI_iqoi = idoe_params.domain_of_interest(data_QoIs[iqoi].y0_hat_[-1].y0_hat, xi_test, 
+                        data_QoIs[iqoi].y_test_hat, n_centroid=5, epsilon=0.1)
+            else:
+                data_cand_DoI_iqoi = idoe_params.domain_of_interest(data_QoIs[iqoi].y0_hat_[-1].y0_hat, xi_test, 
+                        data_QoIs[iqoi].y_test_hat, n_centroid=1, epsilon=0.2)
+            # data_cand_DoI_iqoi = idoe_params.domain_of_interest(data_QoIs[iqoi].y0_hat_[-1].y0_hat, xi_test, 
+                    # data_QoIs[iqoi].y_test_hat, n_centroid=5, epsilon=0.2)
 
             data_QoIs[iqoi].DoI_xi_.append(data_cand_DoI_iqoi)
             data_QoIs[iqoi].DoI_x_.append(solver.map_domain(data_cand_DoI_iqoi, dist_xi ))
@@ -431,7 +438,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             print('    > Values: {}'.format(y0_hat))
             print('    > Rel Error [%]: {:5.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
             print('    > Fit Score [%]: {:5.2f}, Converge: {}'.format(score_converge *100, is_score_converge  ))
-            print('    > Error of response at x0 [%]: {:5.2f}, y0_hat: {:.2f}, y0: {:.2f}'.format(is_PCE_accurate*100, 
+            print('    > Error of response at x0 [%]: {}, {:5.2f}, y0_hat: {:.2f}, y0: {:.2f}'.format(
+                data_QoIs[iqoi].y0_hat_[-1].x0_hat, is_PCE_accurate*100, 
                 data_QoIs[iqoi].y0_hat_[-1].y0_hat, data_QoIs[iqoi].y0_hat_[-1].y0))
             print('     -------------------------------------------')
 
@@ -454,7 +462,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 11
+    r, theta   = 0, 3
     ith_batch  = 0
     batch_size = 1
     np.random.seed(100)
