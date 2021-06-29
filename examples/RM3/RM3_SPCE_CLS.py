@@ -225,7 +225,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
         data_train.xi  = np.concatenate([data_train.xi, data_excd.xi0_hat.reshape(ndim, 1)], axis=1)
         data_train.x   = np.concatenate([data_train.x , data_excd.x0_hat.reshape(ndim, 1)], axis=1)
         data_train.y   = np.concatenate([data_train.y , y0.reshape(1,-1)], axis=0)
-        data_train.xi_index = uqra.list_union(data_train.xi_index, np.argmin(abs(y_test_hat-data_excd.y0_hat))[0])
 
     n_samples_deg = n_samples
     ##############################################################################################
@@ -300,7 +299,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_train.xi  = np.concatenate([data_train.xi, data_excd.xi0_hat.reshape(ndim, 1)], axis=1)
             data_train.x   = np.concatenate([data_train.x , data_excd.x0_hat.reshape(ndim, 1)], axis=1)
             data_train.y   = np.concatenate([data_train.y , y0.reshape(1,-1)], axis=0)
-            data_train.xi_index = uqra.list_union(data_train.xi_index, np.argmin(abs(y_test_hat-data_excd.y0_hat))[0])
         #### -------------------------------------------------------------------------------- ####
         print('   > 2. exploitation step (SIGNIFICANT basis)... ')
         #### -------------------------------------------------------------------------------- ####
@@ -400,7 +398,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None):
             data_train.xi  = np.concatenate([data_train.xi, data_excd.xi0_hat.reshape(ndim, 1)], axis=1)
             data_train.x   = np.concatenate([data_train.x , data_excd.x0_hat.reshape(ndim, 1)], axis=1)
             data_train.y   = np.concatenate([data_train.y , y0.reshape(1,-1)], axis=0)
-            data_train.xi_index = uqra.list_union(data_train.xi_index, np.argmin(abs(y_test_hat-data_excd.y0_hat))[0])
 
 
 
