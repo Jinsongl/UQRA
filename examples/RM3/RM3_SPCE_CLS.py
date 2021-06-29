@@ -426,7 +426,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             ## accuracy of PCE model at identified x0
             is_PCE_accurate = abs(data_QoIs[iqoi].y0_hat_[-1].y0_hat - data_QoIs[iqoi].y0_hat_[-1].y0)/data_QoIs[iqoi].y0_hat_[-1].y0
             data_QoIs[iqoi].iteration_converge = is_y0_converge and is_score_converge and is_PCE_accurate < 0.1 
-            is_QoIs_converge.append([is_y0_converge, is_score_converge])
+            is_QoIs_converge.append([is_y0_converge, is_score_converge, is_PCE_accurate < 0.1])
             print('  > QoI: {:<25s}'.format(headers[iqoi]))
             print('    > Values: {}'.format(y0_hat))
             print('    > Rel Error [%]: {:5.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
@@ -454,7 +454,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 1
+    r, theta   = 0, 11
     ith_batch  = 0
     batch_size = 1
     np.random.seed(100)
