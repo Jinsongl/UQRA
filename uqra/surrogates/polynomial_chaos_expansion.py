@@ -15,10 +15,12 @@ import copy
 import scipy.stats as stats
 import multiprocessing as mp
 from sklearn import linear_model, preprocessing, model_selection
+from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 from ._surrogatebase import SurrogateBase
 import uqra, math
 from scipy import sparse
+
 class PolynomialChaosExpansion(SurrogateBase):
     """
     Class to build polynomial chaos expansion (PCE) model
@@ -93,6 +95,7 @@ class PolynomialChaosExpansion(SurrogateBase):
         else:
             return w
 
+    @ignore_warnings(category=ConvergenceWarning)
     def fit(self, method, x, y, w=None, **kwargs):
         """
         fit PCE model with data set(x,y) with specified method
