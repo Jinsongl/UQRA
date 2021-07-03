@@ -108,6 +108,7 @@ def ECDF(x, alpha, compress=False, **kwargs):
     x = np.array(x)
     side     = kwargs.get('side', 'right')
     hinge    = kwargs.get('hinge' , np.inf)
+    decimals = kwargs.get('decimals', 2)
 
     if not compress:
         if x.ndim == 1:
@@ -133,7 +134,7 @@ def ECDF(x, alpha, compress=False, **kwargs):
             x_compress = x_ecdf.x[:boots_idx]
             xmin, xmax = np.nanmin(x_compress[x_compress != -np.inf]), np.nanmax(x_compress[x_compress != -np.inf])
             x_ecdf_x_norm = (x_compress - xmin)/(xmax-xmin)
-            _, compressed_idx = np.unique(np.round(x_ecdf_x_norm, decimals=2), return_index=True)
+            _, compressed_idx = np.unique(np.round(x_ecdf_x_norm, decimals=decimals), return_index=True)
             x_ecdf.x = np.concatenate((x_ecdf.x[compressed_idx], x_ecdf.x[boots_idx:]))
             x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[boots_idx:]))
             x_ecdf.n = len(x_ecdf.x)
@@ -148,7 +149,7 @@ def ECDF(x, alpha, compress=False, **kwargs):
                 x_compress = x_ecdf.x[:boots_idx]
                 xmin, xmax = np.nanmin(x_compress[x_compress != -np.inf]), np.nanmax(x_compress[x_compress != -np.inf])
                 x_ecdf_x_norm = (x_compress - xmin)/(xmax-xmin)
-                _, compressed_idx = np.unique(np.round(x_ecdf_x_norm, decimals=2), return_index=True)
+                _, compressed_idx = np.unique(np.round(x_ecdf_x_norm, decimals=decimals), return_index=True)
                 x_ecdf.x = np.concatenate((x[compressed_idx,:], x[boots_idx:,:]), axis=0).T
                 x_ecdf.y = np.concatenate((x_ecdf.y[compressed_idx], x_ecdf.y[boots_idx:-1]), axis=0).T
                 x_ecdf.n = len(x_ecdf.x)
@@ -162,7 +163,7 @@ def ECDF(x, alpha, compress=False, **kwargs):
                     x_compress = x_ecdf.x[:boots_idx]
                     xmin, xmax = np.nanmin(x_compress[x_compress != -np.inf]), np.nanmax(x_compress[x_compress != -np.inf])
                     x_ecdf_x_norm = (x_compress - xmin)/(xmax-xmin)
-                    _, compressed_idx = np.unique(np.round(x_ecdf_x_norm, decimals=2), return_index=True)
+                    _, compressed_idx = np.unique(np.round(x_ecdf_x_norm, decimals=decimals), return_index=True)
                     ix_ecdf.x = np.concatenate((ix_ecdf.x[compressed_idx], ix_ecdf.x[boots_idx:]))
                     ix_ecdf.y = np.concatenate((ix_ecdf.y[compressed_idx], ix_ecdf.y[boots_idx:]))
                     ix_ecdf.n = len(ix_ecdf.x)
