@@ -207,7 +207,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
         data_QoIs[iqoi].sparsity = len(pce_model.active_index)
         y_test_hat = pce_model.predict(xi_test, n_jobs=model_params.n_jobs)
         y_test_hat[x_test[0]<3]    = -np.inf ## Hs > 3 for exceedance from experience
-        data_QoIs[iqoi].y_test_hat = y_test_hat
         data_QoIs[iqoi].model_.append(pce_model)
         data_QoIs[iqoi].score_.append(pce_model.score)
         data_QoIs[iqoi].cv_err_.append(pce_model.cv_error)
@@ -218,6 +217,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
         data_excd.y0_hat = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
         data_excd.x0_hat = x_test [:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
         data_excd.xi0_hat= xi_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
+        data_excd.yhat_ecdf = uqra.ECDF(y_test_hat, model_params.pf, compress=True, decimals=4)
         eng.workspace['deg']       = float(deg)
         eng.workspace['phaseSeed'] = float(theta)
         eng.workspace['Hs'] = float(data_excd.x0_hat[0])
@@ -241,9 +241,9 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
         while i_iteration <= 20:
             ####-------------------------------------------------------------------------------- ####
             print('          Sequential Optimal Design: Iteration # {:d} >'.format(i_iteration))
+            n_samples = min(3, max(3,max_sparsity)) 
             print('   > 1. exploration step (FULL basis)... ')
             ####-------------------------------------------------------------------------------- ####
-            n_samples = min(3, max(3,max_sparsity)) 
             # min(max_sparsity, model_params.alpha *pce_model.num_basis - n_samples_deg, 5)
             # n_samples = min(10, max_sparsity) #len(active_index)
             print('     - Adding {:d} exploration optimal samples ... '.format(n_samples))
@@ -385,6 +385,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             data_excd.y0_hat    = uqra.metrics.mquantiles(y_test_hat, 1-model_params.pf)
             data_excd.x0_hat    = x_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
             data_excd.xi0_hat   = xi_test[:,np.argmin(abs(y_test_hat-data_excd.y0_hat))]
+            data_excd.yhat_ecdf = uqra.ECDF(y_test_hat, model_params.pf, compress=True, decimals=4)
             eng.workspace['deg']       = float(deg)
             eng.workspace['phaseSeed'] = float(theta)
             eng.workspace['Hs'] = float(data_excd.x0_hat[0])
@@ -425,7 +426,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             print('    > Values: {}'.format(y0_hat))
             print('    > Rel Error [%]: {:5.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
             print('    > Fit Score [%]: {:5.2f}, Converge: {}'.format(score_converge *100, is_score_converge  ))
-            print('    > Error of response at x0 [%]: {}, {:5.2f}, y0_hat: {:.2f}, y0: {:.2f}'.format(
+            print('    > Error of response at x0: {}, {:5.2f}%, y0_hat: {:.2f}, y0: {:.2f}'.format(
                 data_QoIs[iqoi].y0_hat_[-1].x0_hat, is_PCE_accurate*100, 
                 data_QoIs[iqoi].y0_hat_[-1].y0_hat, data_QoIs[iqoi].y0_hat_[-1].y0))
             print('     -------------------------------------------')
@@ -439,7 +440,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 3  ## r is the number of repeated MCS samples, availble in 0 to 9
+    r, theta   = 0, 11  ## r is the number of repeated MCS samples, availble in 0 to 9
     ## batch parameters are used to validate the uncertainty due to sampling on same theta and same r
     ## not used for practice, only for benchmark validation
     # ith_batch  = 0
@@ -471,9 +472,9 @@ if __name__ == '__main__':
     model_params.abs_err = 1e-4
     model_params.rel_err = 2.5e-2
     model_params.n_jobs  = mp.cpu_count()
-    model_params.channel = [2, 23, 24, 30]
+    model_params.channel = [2, 12, 23, 24, 25]
     model_params.y_scales= np.zeros(34)
-    model_params.y_scales[model_params.channel]= [1, 1e6, 1e7, 1e6]
+    model_params.y_scales[model_params.channel]= [1, 1e7, 1e6, 1e7, 1]
     model_params.update_basis()
     model_params.info()
     ## ------------------------ UQRA DOE Parameters ----------------- ###
@@ -505,7 +506,6 @@ if __name__ == '__main__':
     filename = '{:s}_Adap{:d}{:s}_{:s}E5R{:d}_global.npy'.format(solver.nickname, 
             solver.ndim, model_params.basis[:3], doe_params.doe_nickname(), r)
     global_data = np.load(os.path.join(data_dir_result, filename), allow_pickle=True).tolist()
-    print(global_data[0].__dict__.keys())
     headers  = global_data[0].headers
 
     print('\n#################################################################################')
