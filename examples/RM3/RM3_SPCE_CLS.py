@@ -440,7 +440,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 0  ## r is the number of repeated MCS samples, availble in 0 to 9
+    r, theta   = 0, 11  ## r is the number of repeated MCS samples, availble in 0 to 9
     ## batch parameters are used to validate the uncertainty due to sampling on same theta and same r
     ## not used for practice, only for benchmark validation
     # ith_batch  = 0
