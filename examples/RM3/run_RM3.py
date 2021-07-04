@@ -21,6 +21,8 @@ import matlab.engine
 # warnings.filterwarnings(action="ignore", module="scipy", message="^internal gelsd")
 sys.stdout  = uqra.utilities.classes.Logger()
 
+class Data():
+    pass
 
 
 def main(solver, r=0, random_state=None):
@@ -54,14 +56,9 @@ def main(solver, r=0, random_state=None):
 
 
     RM3_Mcs1000= np.load('RM3_Mcs1000.npy', allow_pickle=True).tolist()
-    yscales = [1,1e6,1e7,1e6]
     x_train = RM3_Mcs1000.x[:,100*r: 100*(r+1)]
-    print(100*r, 100*(r+1))
-    
-    ## get train data, if not available, return training samples to run
-    ## set matlabengine workspace variables
-    # eng.workspace['deg'] = float(deg)
-    # eng.workspace['phaseSeed'] = float(theta)
+    print(x_train.shape)
+
     y_train = []
     for iHs, iTp in tqdm(x_train.T, ncols=80, desc='   [WEC-SIM]' ):
         eng.workspace['phaseSeed'] = float(theta)
@@ -71,8 +68,67 @@ def main(solver, r=0, random_state=None):
         y = np.squeeze(eng.workspace['maxima'])
         y_train.append(y)
     y_train = np.array(y_train)
+    RM3_Mcs1000.headers = eng.workspace['maxima']
     RM3_Mcs1000.y = y_train 
+
+    print(len(RM3_Mcs1000.headers), RM3_Mcs1000.y.shape )
     return RM3_Mcs1000
+
+    # RM3_DoE_Mcs = np.load('RM3_DoE_Mcs.npy', allow_pickle=True).tolist()
+    # print(RM3_DoE_Mcs[r].__dict__.keys())
+    # RM3_DoE_Mcs = RM3_DoE_Mcs[r]
+
+    # x_train = RM3_DoE_Mcs.McsD.x
+    # print(x_train.shape)
+
+    # y_train = []
+    # for iHs, iTp in tqdm(x_train.T, ncols=80, desc='   [WEC-SIM]' ):
+        # eng.workspace['phaseSeed'] = float(theta)
+        # eng.workspace['Hs'] = float(iHs)
+        # eng.workspace['Tp'] = float(iTp)
+        # eng.wecSim(nargout=0,stdout=out,stderr=err)
+        # y = np.squeeze(eng.workspace['maxima'])
+        # y_train.append(y)
+    # y_train = np.array(y_train)
+    # RM3_DoE_Mcs.McsD.y = y_train
+
+
+    # x_train = RM3_DoE_Mcs.McsS.x
+    # print(x_train.shape)
+
+    # y_train = []
+    # for iHs, iTp in tqdm(x_train.T, ncols=80, desc='   [WEC-SIM]' ):
+        # eng.workspace['phaseSeed'] = float(theta)
+        # eng.workspace['Hs'] = float(iHs)
+        # eng.workspace['Tp'] = float(iTp)
+        # eng.wecSim(nargout=0,stdout=out,stderr=err)
+        # y = np.squeeze(eng.workspace['maxima'])
+        # y_train.append(y)
+    # y_train = np.array(y_train)
+    # RM3_DoE_Mcs.McsS.y = y_train
+
+
+    # return RM3_DoE_Mcs 
+
+
+
+    # RM3_RAO = uqra.Data() 
+    # Tp = np.arange(2,52.5,0.5)
+    # RM3_RAO.x = np.array([np.ones(len(Tp))*2, Tp])
+    # x_train = RM3_RAO.x
+    # print(x_train.shape)
+
+    # y_train = []
+    # for iHs, iTp in tqdm(x_train.T, ncols=80, desc='   [WEC-SIM]' ):
+        # eng.workspace['phaseSeed'] = float(theta)
+        # eng.workspace['Hs'] = float(iHs)
+        # eng.workspace['Tp'] = float(iTp)
+        # eng.wecSim(nargout=0,stdout=out,stderr=err)
+        # y = np.squeeze(eng.workspace['maxima'])
+        # y_train.append(y)
+    # y_train = np.array(y_train)
+    # RM3_RAO.y = y_train
+    # return RM3_RAO 
 
 
 
@@ -117,7 +173,7 @@ if __name__ == '__main__':
     print('#################################################################################\n')
     res = main(solver, r=r, random_state=100)
     # filename = '{:s}_T50_R{:d}S{:d}'.format(solver.nickname, r, theta)
-    filename = 'RM3Mcs1000S{:d}_r{:d}.npy'.format(theta, r)
+    filename = 'RM3_DoE_Mcs_r{:d}.npy'.format(r)
     eng.quit()
     # ## ============ Saving QoIs ============
     try:
