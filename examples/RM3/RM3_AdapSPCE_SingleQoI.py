@@ -77,6 +77,7 @@ def absolute_converge(y, err=1e-4):
 def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     random.seed(random_state)
     ## ------------------------ Initialize parameters ----------------- ###
+    ndim  = model_params.ndim
     max_sparsity  = 6  ## initialize n_samples
     ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
 
@@ -84,7 +85,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     ### data object containing results from intermedia steps
     ## attribute ending with '_' is a collection of variables after each iteration
     data_init = uqra.Data()
-    data_init.ndim         = model_params.ndim
+    data_init.ndim         = ndim
     data_init.y0_hat_      = []
     data_init.cv_err_      = []
     data_init.model_       = []
@@ -103,9 +104,10 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     ## attribute ending with '_' is a collection of variables after each iteration
     data_QoIs = [copy.deepcopy(data_init) for _ in range(34)] 
     ## nested list, [data_ideg_QoIs[data_iqoi_ideg]]   34 outputs in total
-    data_degs_QoIs = [data_QoIs for _ in range(model_params.degs[-1])] 
+    data_degs_QoIs = [copy.deepcopy(data_QoIs) for _ in range(model_params.degs[-1])] 
 
     for iqoi in model_params.channel:
+        random.seed(random_state)
         deg = model_params.degs[0]
         ### object contain all training samples
         data_train = uqra.Data()
@@ -120,7 +122,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             print('==================================================================================\n')
 
             data_ideg_QoIs = data_degs_QoIs[deg] ## list of uqra.Data()
-            data_ideg_QoIs.deg = deg
+            data_ideg_QoIs[iqoi].deg = deg
             ## data_ideg_QoIs was assigned before: overfitting occurs for some QoIs
             ## new resutls will be appended to current results for order p = deg
             ## However, for higher order models, results will be cleared
@@ -452,10 +454,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
 
                 print('   4. converge check ...')
                 is_QoIs_converge = [] 
-                y0_hat = [idata.y0_hat for idata in data_QoIs[iqoi].y0_hat_] 
+                y0_hat = np.array([ idata.y0_hat for idata in data_ideg_QoIs[iqoi].y0_hat_])
                 is_y0_converge   , y0_converge_err = relative_converge(y0_hat, err=2*model_params.rel_err)
                 is_score_converge, score_converge  = threshold_converge(data_ideg_QoIs[iqoi].score_)
-                is_PCE_accurate = abs(data_QoIs[iqoi].y0_hat_[-1].y0_hat - data_QoIs[iqoi].y0_hat_[-1].y0)/data_QoIs[iqoi].y0_hat_[-1].y0
+                is_PCE_accurate = abs(data_ideg_QoIs[iqoi].y0_hat.y0_hat - data_ideg_QoIs[iqoi].y0_hat.y0)\
+                        /data_ideg_QoIs[iqoi].y0_hat.y0
                 data_ideg_QoIs[iqoi].iteration_converge = is_y0_converge and is_score_converge and is_PCE_accurate < 0.1 
 
                 print('  >  QoI: {:<25s}'.format(headers[iqoi]))
@@ -463,8 +466,8 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
                 print('     >  Rel Error : {:5.2f} %, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
                 print('     >  Fit Score : {:5.2f} %, Converge: {}'.format(score_converge *100, is_score_converge  ))
                 print('     >  Error of response at x0: {}, {:5.2f} %, y0_hat: {:.2f}, y0: {:.2f}'.format(
-                    data_QoIs[iqoi].y0_hat_[-1].x0_hat, is_PCE_accurate*100, 
-                    data_QoIs[iqoi].y0_hat_[-1].y0_hat, data_QoIs[iqoi].y0_hat_[-1].y0))
+                    data_ideg_QoIs[iqoi].y0_hat.x0_hat, is_PCE_accurate*100, 
+                    data_ideg_QoIs[iqoi].y0_hat.y0_hat, data_ideg_QoIs[iqoi].y0_hat.y0))
                 print('     -------------------------------------------')
 
                 i_iteration +=1
@@ -513,7 +516,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 9## r is the number of repeated MCS samples, availble in 0 to 9
+    r, theta   = 0, 1## r is the number of repeated MCS samples, availble in 0 to 9
     ## batch parameters are used to validate the uncertainty due to sampling on same theta and same r
     ## not used for practice, only for benchmark validation
     # ith_batch  = 0
