@@ -487,7 +487,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             iheader   = headers[iqoi]
             data_iqoi = [data_ideg_QoIs[iqoi] for data_ideg_QoIs in data_degs_QoIs[model_params.degs[0]: deg+1]]
             cv_err_iqoi_degs = np.array([idata.cv_err for idata in data_iqoi]).T
-            y0_hat_iqoi_degs = np.array([idata.y0_hat for idata in data_iqoi]).T
+            y0_hat_iqoi_degs = np.array([idata.y0_hat.y0_hat for idata in data_iqoi]).T
             score_iqoi_degs  = np.array([idata.score  for idata in data_iqoi]).T
             is_overfit       , overfit_vals    = overfitting_check(cv_err_iqoi_degs) ## check Overfitting
             is_y0_converge   , y0_converge_err = relative_converge(y0_hat_iqoi_degs, err=model_params.rel_err)
@@ -511,7 +511,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
 
 if __name__ == '__main__':
     ## ------------------------ Displaying set up ------------------- ###
-    r, theta   = 0, 1## r is the number of repeated MCS samples, availble in 0 to 9
+    r, theta   = 0, 9## r is the number of repeated MCS samples, availble in 0 to 9
     ## batch parameters are used to validate the uncertainty due to sampling on same theta and same r
     ## not used for practice, only for benchmark validation
     # ith_batch  = 0
