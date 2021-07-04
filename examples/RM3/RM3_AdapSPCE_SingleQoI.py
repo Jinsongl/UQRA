@@ -77,7 +77,6 @@ def absolute_converge(y, err=1e-4):
 def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     random.seed(random_state)
     ## ------------------------ Initialize parameters ----------------- ###
-    ndim, deg = model_params.ndim, model_params.degs[0]
     max_sparsity  = 6  ## initialize n_samples
     ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
 
@@ -85,8 +84,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     ### data object containing results from intermedia steps
     ## attribute ending with '_' is a collection of variables after each iteration
     data_init = uqra.Data()
-    data_init.ndim         = ndim 
-    data_init.deg          = deg 
+    data_init.ndim         = model_params.ndim
     data_init.y0_hat_      = []
     data_init.cv_err_      = []
     data_init.model_       = []
@@ -104,11 +102,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     ## data object while building p-order PCE iteratively
     ## attribute ending with '_' is a collection of variables after each iteration
     data_QoIs = [copy.deepcopy(data_init) for _ in range(34)] 
-    data_degs_QoIs = [data_QoIs for _ in range(model_params.degs[-1])] ## nested list, [data_ideg_QoIs[data_iqoi_ideg]]   34 outputs in total
-
-
+    ## nested list, [data_ideg_QoIs[data_iqoi_ideg]]   34 outputs in total
+    data_degs_QoIs = [data_QoIs for _ in range(model_params.degs[-1])] 
 
     for iqoi in model_params.channel:
+        deg = model_params.degs[0]
         ### object contain all training samples
         data_train = uqra.Data()
         data_train.xi_index = []
@@ -122,6 +120,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             print('==================================================================================\n')
 
             data_ideg_QoIs = data_degs_QoIs[deg] ## list of uqra.Data()
+            data_ideg_QoIs.deg = deg
             ## data_ideg_QoIs was assigned before: overfitting occurs for some QoIs
             ## new resutls will be appended to current results for order p = deg
             ## However, for higher order models, results will be cleared
