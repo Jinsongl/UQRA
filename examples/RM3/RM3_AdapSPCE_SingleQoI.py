@@ -470,7 +470,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
 
                 i_iteration +=1
                 if data_ideg_QoIs[iqoi].iteration_converge:
-                    print('         !< Model converge for order {:d} >!'.format(deg))
+                    print('         !< Iteration converge for order {:d} >!'.format(deg))
                     break
                 if data_train.x.shape[1] > model_params.alpha*orth_poly.num_basis:
                     print('     PCE(d={:d},p={:d}) !< Number of samples exceeding {:.2f}P >!'.format(
@@ -502,10 +502,15 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             print('     >  Fit Score [%]: {:5.2f}, Converge: {}'.format(score_converge *100, is_score_converge  ))
             print('--------------------------------------------------')
 
-            if is_overfit:
+            if data_degs_QoIs[deg][iqoi].deg_overfit:
                 deg = deg - 1
+                continue
             else:
                 deg = deg + 1
+                if data_degs_QoIs[deg][iqoi].deg_converge:
+                    break
+                else:
+                    continue
 
     return data_degs_QoIs
 
