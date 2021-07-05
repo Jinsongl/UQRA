@@ -513,8 +513,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             print('     >  Rel Error [%]: {:5.2f}, Converge: {}'.format(y0_converge_err*100, is_y0_converge     ))
             print('     >  Fit Score [%]: {:5.2f}, Converge: {}'.format(score_converge *100, is_score_converge  ))
             print('--------------------------------------------------')
-
-            if not data_degs_QoIs[deg][iqoi].deg_overfit and data_degs_QoIs[deg][iqoi].deg_converge:
+            if len(y0_hat_iqoi_degs) < 3:
+                deg = deg + 1
+                continue
+            if not data_degs_QoIs[deg][iqoi].deg_overfit and data_degs_QoIs[deg][iqoi].deg_converge and \
+                    data_degs_QoIs[deg][iqoi].iteration_converge:
                 break
             elif data_degs_QoIs[deg][iqoi].deg_overfit:
                 deg = deg - 1
