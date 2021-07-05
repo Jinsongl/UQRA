@@ -78,7 +78,6 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     random.seed(random_state)
     ## ------------------------ Initialize parameters ----------------- ###
     ndim  = model_params.ndim
-    max_sparsity  = 6  ## initialize n_samples
     ndim_deg_cases  = np.array(list(itertools.product([model_params.ndim,], model_params.degs)))
 
 
@@ -109,6 +108,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
     for iqoi in model_params.channel:
         random.seed(random_state)
         deg = model_params.degs[0]
+        max_sparsity  = 6  ## initialize n_samples
         ### object contain all training samples
         data_train = uqra.Data()
         data_train.xi_index = []
