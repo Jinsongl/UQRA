@@ -206,7 +206,10 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
 
             print(' ------------------------------------------------------------')
             print('   Build PCE (p={:d}) model with {} '.format(deg, model_params.fitting))
-            assert np.array_equal( data_train.x, solver.map_domain(data_train.xi, dist_xi))
+            if np.amax(abs(data_train.x-solver.map_domain(data_train.xi, dist_xi))) > 1e-6:
+                print(data_train.x[:,:3])
+                print(solver.map_domain(data_train.xi, dist_xi)[:,:3])
+                raise ValueError
             weight    = idoe_params.sampling_weight()   ## weight function
             data_train= data_ideg_QoIs[iqoi].data_train_[-1]
             pce_model = uqra.PCE(orth_poly)
@@ -245,7 +248,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
             print('     - {:<32s} : {}'.format('Sparsity', data_ideg_QoIs[iqoi].sparsity))
             print('     - {:<32s} : x0={}, y0={:.4e}'.format('Estiamted exceedance value',data_excd.x0_hat, data_excd.y0_hat)) 
             print('     - {:<32s} : y={:.4e}, err={:.2f} %'.format('Response with true system at x0', data_excd.y0,
-                (data_excd.y0_hat - data_excd.y0)/data_excd.y0)) 
+                (data_excd.y0_hat - data_excd.y0)/data_excd.y0 *100)) 
 
             ## don't waste data, save this one sample into training set
             data_train.xi  = np.concatenate([data_train.xi, data_excd.xi0_hat.reshape(ndim, 1)], axis=1)
@@ -296,7 +299,11 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
 
                 print(' ------------------------------------------------------------')
                 print('   Build PCE (p={:d}) model with {} '.format(deg, model_params.fitting))
-                assert np.array_equal( data_train.x, solver.map_domain(data_train.xi, dist_xi))
+                if np.amax(abs(data_train.x-solver.map_domain(data_train.xi, dist_xi))) > 1e-6:
+                    print(data_train.x[:,:3])
+                    print(solver.map_domain(data_train.xi, dist_xi)[:,:3])
+                    raise ValueError
+
                 pce_model = uqra.PCE(orth_poly)
                 weight    = doe_params.sampling_weight()   ## weight function
                 print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], 
@@ -331,7 +338,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
                 print('     - {:<32s} : {}'.format('Sparsity', data_ideg_QoIs[iqoi].sparsity))
                 print('     - {:<32s} : x0={}, y0={:.4e}'.format('Estiamted exceedance value',data_excd.x0_hat, data_excd.y0_hat)) 
                 print('     - {:<32s} : y={:.4e}, err={:.2f} %'.format('Response with true system at x0',data_excd.y0,
-                    (data_excd.y0_hat - data_excd.y0)/data_excd.y0)) 
+                    (data_excd.y0_hat - data_excd.y0)/data_excd.y0*100)) 
 
                 ## don't waste data, save this one sample into training set
                 data_train.xi  = np.concatenate([data_train.xi, data_excd.xi0_hat.reshape(ndim, 1)], axis=1)
@@ -401,7 +408,10 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
      
                 print(' ------------------------------------------------------------')
                 print('   Build PCE (p={:d}) model with {} '.format(deg, model_params.fitting))
-                assert np.array_equal( data_train.x, solver.map_domain(data_train.xi, dist_xi))
+                if np.amax(abs(data_train.x-solver.map_domain(data_train.xi, dist_xi))) > 1e-6:
+                    print(data_train.x[:,:3])
+                    print(solver.map_domain(data_train.xi, dist_xi)[:,:3])
+                    raise ValueError
                 pce_model = uqra.PCE(orth_poly)
                 weight    = doe_params.sampling_weight()   ## weight function
                 print('     - {:<32s} : ({},{}),    Alpha: {:.2f}'.format('X train', data_train.x.shape[1], 
@@ -438,7 +448,7 @@ def main(model_params, doe_params, solver, r=0, random_state=None, theta=None):
                 print('     - {:<32s} : {}'.format('Sparsity', data_ideg_QoIs[iqoi].sparsity))
                 print('     - {:<32s} : x0={}, y0={:.4e}'.format('Estiamted exceedance value',data_excd.x0_hat, data_excd.y0_hat)) 
                 print('     - {:<32s} : y={:.4e}, err={:.2f} %'.format('Response with true system at x0',data_excd.y0,
-                    (data_excd.y0_hat - data_excd.y0)/data_excd.y0)) 
+                    (data_excd.y0_hat - data_excd.y0)/data_excd.y0*100)) 
 
                 ## don't waste data, save this one sample into training set
                 data_train.xi  = np.concatenate([data_train.xi, data_excd.xi0_hat.reshape(ndim, 1)], axis=1)
