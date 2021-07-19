@@ -21,7 +21,6 @@ class EnvBase(object):
 
     def ppf(self):
         raise NotImplementedError
-
     
     def rvs(self):
         raise NotImplementedError
