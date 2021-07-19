@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2017 Jinsong Liu <jinsongliu@utexas.edu>
+# Copyright © 2019 Jinsong Liu <jinsongliu@utexas.edu>
 #
 # Distributed under terms of the GNU-License license.
 
@@ -10,89 +10,101 @@
 
 """
 
-import csv
-import os
-import numpy as np
+import numpy as np, scipy as sp, scipy.stats as stats
+import os, sys, warnings, collections, csv, itertools, math
+from statsmodels.distributions.empirical_distribution import ECDF as mECDF
+import copy
 
-def iter_loadtxt(filename, delimiter=',', skiprows=0, dtype=float):
-    def iter_func():
-        with open(filename, 'r') as infile:
-            for _ in range(skiprows):
-                next(infile)
-            for line in infile:
-                line = line.rstrip().split(delimiter)
-                for item in line:
-                    yield dtype(item)
-        iter_loadtxt.rowlength = len(line)
+Ecdf2plot = collections.namedtuple('Ecdf2plot', ['x','y'])
 
-    data = np.fromiter(iter_func(), dtype=dtype)
-    data = data.reshape((-1, iter_loadtxt.rowlength))
+def ordinal(n):
+    return "%d%s" % (n,"tsnrhtdd"[(math.floor(n/10)%10!=1)*(n%10<4)*n%10::4])
+
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
+
+def enablePrint():
+    sys.stdout.close()
+    sys.stdout = sys.__stdout__
+
+
+def num2print(n):
+    if n<100:
+        return '{:d}'.format(n)
+    else:
+        __str ='{:.0E}'.format(n) 
+        if int(__str[0]) == 1:
+            return 'E'+__str[-1] 
+        else:
+            return __str[0]+'E'+__str[-1] 
+
+def upload2gdrive(filename, data, parent_id):
+    """
+    upload file specified with filename to google drive under folder with id parent_id. 
+    If upload successfully, delete filename from local. Otherwise, try 5 more times and keep filename locally 
+    """
+    current_os  = sys.platform
+    if current_os.upper()[:3] == 'WIN':
+        gdrive= "C:\Software\gdrive.exe "
+    elif current_os.upper() == 'DARWIN':
+        gdrive = "gdrive "
+    else:
+        raise ValueError('Operating system {} not found'.format(current_os)) 
+
+    filename_name, filename_ext = os.path.splitext(filename)
+    filename_ext = filename_ext if filename_ext else '.npy'
+    filename = filename_name + filename_ext
+    np.save(filename, data)
+
+    upload_success = False
+    n_times2upload = 1 
+
+    # print(r'   * {:<15s} : {}'.format('Uploading', filename[26:]))
+    print(r'   * {:<15s} : {}'.format('Uploading', filename))
+    while (not upload_success) and n_times2upload <=5:
+        command = ' '.join([gdrive, 'upload ', filename,' --parent ', parent_id])
+        upload_message = os.popen(command).read().upper()
+
+        if 'UPLOADED' in upload_message: 
+            upload_success=True
+            rm_file_command = ' '.join(['rm ', filename])
+            os.popen(rm_file_command)
+        else:
+            # print(r"Progress {:2.1%}".format(x / 10), end="\r")
+            print('   * {:<7s} : {:d}/ 5'.format('trial', n_times2upload),end="\r")
+        n_times2upload +=1
+
+def check_int(x):
+    if x is None:
+        return None
+    else:
+        int_x = int(x)
+        if int_x != x:
+            raise ValueError("deg must be integer, {} given".format(x))
+        if int_x < 0:
+            raise ValueError("deg must be non-negative, {} given".format(x))
+        return int_x
+
+def _load_data_from_file(fname, data_dir=os.getcwd()):
+    """
+    load data from give file at current directory (default)
+    """
+    try:
+        data = np.load(fname)
+    except FileNotFoundError:
+        ## get a list of all files in data_dir
+        allfiles = [f for f in os.listdir(data_dir) if os.isfile(join(data_dir, f))]
+        similar_files = [f for f in allfiles if f.startswith(fname)]
+        if len(similar_files) == 1:
+            data = np.load(similar_files[0])
+        else:
+            raise ValueError('FileNotFoundError, {:d} similar files exists'.format(len(similar_files)))
     return data
 
-
-def isFilesExist(Dir,filenames):
-    res = []
-    for filename in filenames:
-        res.append(os.path.isfile(Dir+'/'+filename))
-    return sum(res)
-
-def setfilename(params):
-    i = 0
-    filenames = [params.outfileName]
-    for j in xrange(params.numRows):
-        filenames.append(params.outfileName + str(j))
-    if params.scheme == 'QUAD':
-        dirname = params.site +'/'+ params.scheme + '_' + '{:0>2d}'.format(list(params.schemePts)[-1])[:2]+'_'+ params.rule.upper() 
+def time_in_range(start, end, x):
+    """Return true if x is in the range [start, end]"""
+    if start <= end:
+        return start <= x <= end
     else:
-        dirname = params.site +'/'+ params.scheme + '_' + '{:2.0E}'.format(params.nsamplesDone)[:2]+'{:2.0E}'.format(params.nsamplesDone)[-1]+'_'+ params.rule.upper() 
-    NEWDIR = './Data/'+dirname
-    if not os.path.exists(NEWDIR):
-        os.makedirs(NEWDIR)
-
-    extension = '_' + '{:0>3d}'.format(i)+'.csv' 
-    filenames_new = [filename + extension for filename in filenames]
-    # while os.path.isfile(NEWDIR+'/'+filenames[0]+extension) or os.path.isfile(NEWDIR+'/'+filenames[1]+extension):
-    while isFilesExist(NEWDIR, filenames_new):
-        i+=1
-        extension = '_' + '{:0>3d}'.format(i)+'.csv' 
-        filenames_new = [filename + extension for filename in filenames]
-    # filenames = [filename + extension for filename in filenames]
-    params.updateDir(NEWDIR) 
-    return filenames_new
-
-def save_data(data, filename, dir_name=None, tags=None):
-    """
-    Parameters:
-    data:
-      1. ndarray: directly save data
-      2. list of ndarray: save each element in list individually
-    """
-    ## if data is ndarray type, direct save data with given filename, no tag needed
-    print('===>>> Saving data to: {}'.format(dir_name))
-
-    if isinstance(data, (np.ndarray, np.generic)):
-        if tags is None:
-            np.save(os.path.join(dir_name, filename), data)
-        else:
-            if isinstance(tags, str):
-                pass
-            elif isinstance(tags, list) and len(tags) ==1:
-                tags = tags[0]
-            else:
-                raise ValueError('More than one tags provided, len(tags) = {:d}'.format(len(tags)))
-            np.save(os.path.join(dir_name, filename + tags), data)
-    ## if data is list of ndarray type, save each ndarray in list with given filename differentaed with tag 
-    elif isinstance(data, list) :
-        assert len(data) == len(tags), "Length of data set to save and length of tags available must be same, but len(data)={}, len(tags)={}".format(len(data), len(tags))
-        for idata, itag in zip(data, tags):
-            np.save(os.path.join(dir_name, filename + '{}'.format(itag) ), idata)
-    else:
-        raise ValueError('Input data type not defined')
-
-def _save_datax(data, filename, dirname=None):
-    for idata in data:
-        print('saving data of shape: {}'.format(idata.shape))
-        data_all = np.hstack((data_all, idata))
-
-
+        return start <= x or x <= end
 
