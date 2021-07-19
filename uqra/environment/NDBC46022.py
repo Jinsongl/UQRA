@@ -7,12 +7,8 @@
 # Distributed under terms of the GNU-License license.
 
 """
-Long-term extreme response analysis of offshore structures by combining importance sampling with subset simulation Ying Min Low, Xiaoxu Huang
-
-Haver S. On the prediction of extreme wave crest heights. In: Proceedings of the 7th international workshop on wave hindcasting and forecasting, Meteorological Service of Canada. 2002.
-
-Johannessen, K. and Nygaard, E. (2000): “Metocean Design Criteria for Kvitebjørn”, Statoil Report , C193-KVB-N-FD-0001, Rev. date: 2000-12-14, Stavanger, 2000.
-
+Reference:
+Jonathan C Berg. Extreme ocean wave conditions for northern California wave energy conversion device. Technical report, Sandia National Laboratories, Albuquerque, NM. Report No. SAND2011-9304, 2011. 
 """
 import numpy as np
 import scipy.stats as stats
