@@ -45,96 +45,6 @@ class ExperimentParameters(Parameters):
         self.poly_name = poly_name
         self._check_wiener_askey_polynomials()
 
-    def update_filenames(self, filename_template=None, **kwargs):
-        """
-        Create/update filenames related to data in/output
-        """
-        ### Check for parameters
-        self._check_wiener_askey_polynomials() ### also return distribution name to specified polynomials
-        if self.optimality is not None:
-            try:
-                ndim, deg   = self.ndim, self.deg
-                poly_name   = self.poly_name
-                doe_sampling= self.doe_sampling.capitalize()
-                num_cand    = self.num_cand
-            except AttributeError:
-                raise ValueError('ExperimentParameters.update_filenames: missing attributes:  \
-                        [ndim, deg, poly_name, doe_sampling, num_cand] ')
-        else:
-            try:
-                ndim   = self.ndim
-                poly_name   = self.poly_name
-                doe_sampling= self.doe_sampling.capitalize()
-            except AttributeError:
-                raise ValueError('ExperimentParameters.update_filenames: missing attributes:  \
-                        [ndim, poly_name, doe_sampling] ')
-
-
-        ## 1 user defined filenames: direct assign, 1st priority
-        self.fname_cand  = kwargs.get('filename_cand'  , None)
-        self.fname_design= kwargs.get('filename_design', None)
-
-        isFileNameAssigned = np.array([self.fname_cand, self.fname_design]) != None
-        if isFileNameAssigned.all():
-            ## user defined filenames have first priority
-            pass
-
-        ## 2: filename template function is given
-        elif filename_template:
-            ### filenames are based on given template function
-            ### but user defined filenames are first priority
-            if self.fname_cand is None:
-                self.fname_cand = filename_template
-
-            if self.fname_design is None:
-                def fname_design(s):
-                    if callable(self.fname_cand):
-                        fname_design = os.path.splitext(self.fname_cand(s))[0]
-                    else:
-                        fname_design = os.path.splitext(self.fname_cand)[0]  ## remove extension .npy if any
-                    res = fname_design + '_{:d}{:s}{:s}.npy'.format(ndim, poly_name[:3], str(deg))
-                    return res 
-                self.fname_design = fname_design
-            
-        ## 3: if none of above are given, will return system defined filenames 
-        else:
-            if poly_name.lower().startswith('leg'):
-                distname = 'uniform'
-            elif poly_name.lower().startswith('hem'):
-                distname = 'norm'
-            else:
-                raise NotImplementedError
-            if doe_sampling.lower() == 'lhs':
-                self.fname_cand   = lambda r: None
-                self.fname_design = lambda n: r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim, distname)
-
-            elif doe_sampling[:3].lower() == 'mcs':
-                self.fname_cand   = lambda s: r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, distname)
-                self.fname_design = lambda s: r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
-                        doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
-
-            elif doe_sampling[:3].lower() == 'cls':
-                self.fname_cand   = lambda s: r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
-                self.fname_design = lambda s: r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
-                        doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
-            else:
-                self.fname_cand   = lambda s : r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, distname)
-                self.fname_design = lambda s : r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
-                        doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
-
-    def update_nicknames(self):
-        """
-        Return a list of nickname(s) for doe_sampling and all the doe_optimality specified
-        """
-        try:
-            doe_sampling = self.doe_sampling
-            doe_optimality = self.optimality
-            if not isinstance(doe_optimality, (list, tuple)):
-                doe_optimality = [doe_optimality,]
-        except AttributeError:
-            raise ValueError(' doe_sampling and doe_optimality attributes must given to update nicknames')
-        self.nicknames = [self.doe_nickname(doe_sampling, ioptimality) for ioptimality in doe_optimality]
-
     def doe_nickname(self):
         """
         Return DoE nickname for one specific doe_sampling and doe_optimality set, e.g. MCS-D
@@ -147,23 +57,6 @@ class ExperimentParameters(Parameters):
             assert doe_optimality.isalpha() and len(doe_optimality) ==1
             nickname = str(doe_sampling).capitalize()+str(doe_optimality).upper()
         return nickname
-
-    def update_output_dir(self, **kwargs):
-        """
-        update directories for working and data saving.
-            Takes either a string argument or a dictionary argument
-
-        self.update_output_dir(MDOEL_NAME)  (set as default and has priority).
-            if solver.nickname is given, kwargs is ignored
-        self.update_output_dir(pwd=, data_dir_result=, figure_dir=)
-
-        Updating directories of
-            pwd: present working directory, self.pwd
-            data_dir_result: directory saving all data, self.data_dir_result
-            figure_dir: directory saving all figures, self.figure_dir
-        """
-        self.data_dir_cand    = kwargs.get('data_dir_cand'   , self.data_dir_cand    )
-        self.data_dir_optimal = kwargs.get('data_dir_optimal', self.data_dir_optimal )
 
     def sampling_weight(self, w=None):
         """
@@ -337,6 +230,129 @@ class ExperimentParameters(Parameters):
             res = data_cand_DoI
         return res 
 
+    def _check_wiener_askey_polynomials(self):
+        """
+        check and set underlying Wiener-Askey distributions
+        """
+        doe_sampling = self.doe_sampling.upper()
+        poly_name    = self.poly_name.upper()
+
+        if doe_sampling == 'MCS' and poly_name == 'LEG':
+            self.dist_xi     = stats.uniform(-1,2)
+            self.xi_distname = 'uniform'
+
+        elif doe_sampling == 'MCS' and poly_name == 'HEME':
+            self.dist_xi     = stats.norm(0,1)
+            self.xi_distname = 'norm'
+
+        elif doe_sampling == 'CLS1' and poly_name == 'LEG':
+            self.dist_xi     = stats.uniform(-1,2)
+            self.xi_distname = 'uniform'
+
+        elif doe_sampling == 'CLS4' and poly_name == 'HEM':
+            self.dist_xi     = stats.norm(0,np.sqrt(0.5))
+            self.xi_distname = 'norm'
+
+        elif doe_sampling == 'LHS'and poly_name == 'LEG':
+            self.dist_xi     = stats.uniform(-1,2)
+            self.xi_distname = 'uniform'
+
+        elif doe_sampling == 'LHS'and poly_name == 'HEME':
+            self.dist_xi     = stats.norm(0,1)
+            self.xi_distname = 'norm'
+        else:
+            raise ValueError(' Error: {:s}-{:s} is not defined'.format(doe_sampling, poly_name))
+
+    def update_nicknames(self):
+        """
+        Return a list of nickname(s) for doe_sampling and all the doe_optimality specified
+        """
+        try:
+            doe_sampling = self.doe_sampling
+            doe_optimality = self.optimality
+            if not isinstance(doe_optimality, (list, tuple)):
+                doe_optimality = [doe_optimality,]
+        except AttributeError:
+            raise ValueError(' doe_sampling and doe_optimality attributes must given to update nicknames')
+        self.nicknames = [self.doe_nickname(doe_sampling, ioptimality) for ioptimality in doe_optimality]
+
+    def update_filenames(self, filename_template=None, **kwargs):
+        """
+        Create/update filenames related to data in/output
+        """
+        ### Check for parameters
+        self._check_wiener_askey_polynomials() ### also return distribution name to specified polynomials
+        if self.optimality is not None:
+            try:
+                ndim, deg   = self.ndim, self.deg
+                poly_name   = self.poly_name
+                doe_sampling= self.doe_sampling.capitalize()
+                num_cand    = self.num_cand
+            except AttributeError:
+                raise ValueError('ExperimentParameters.update_filenames: missing attributes:  \
+                        [ndim, deg, poly_name, doe_sampling, num_cand] ')
+        else:
+            try:
+                ndim   = self.ndim
+                poly_name   = self.poly_name
+                doe_sampling= self.doe_sampling.capitalize()
+            except AttributeError:
+                raise ValueError('ExperimentParameters.update_filenames: missing attributes:  \
+                        [ndim, poly_name, doe_sampling] ')
+
+
+        ## 1 user defined filenames: direct assign, 1st priority
+        self.fname_cand  = kwargs.get('filename_cand'  , None)
+        self.fname_design= kwargs.get('filename_design', None)
+
+        isFileNameAssigned = np.array([self.fname_cand, self.fname_design]) != None
+        if isFileNameAssigned.all():
+            ## user defined filenames have first priority
+            pass
+
+        ## 2: filename template function is given
+        elif filename_template:
+            ### filenames are based on given template function
+            ### but user defined filenames are first priority
+            if self.fname_cand is None:
+                self.fname_cand = filename_template
+
+            if self.fname_design is None:
+                def fname_design(s):
+                    if callable(self.fname_cand):
+                        fname_design = os.path.splitext(self.fname_cand(s))[0]
+                    else:
+                        fname_design = os.path.splitext(self.fname_cand)[0]  ## remove extension .npy if any
+                    res = fname_design + '_{:d}{:s}{:s}.npy'.format(ndim, poly_name[:3], str(deg))
+                    return res 
+                self.fname_design = fname_design
+            
+        ## 3: if none of above are given, will return system defined filenames 
+        else:
+            if poly_name.lower().startswith('leg'):
+                distname = 'uniform'
+            elif poly_name.lower().startswith('hem'):
+                distname = 'norm'
+            else:
+                raise NotImplementedError
+            if doe_sampling.lower() == 'lhs':
+                self.fname_cand   = lambda r: None
+                self.fname_design = lambda n: r'DoE_Lhs{:d}_{:d}{:s}.npy'.format(n,ndim, distname)
+
+            elif doe_sampling[:3].lower() == 'mcs':
+                self.fname_cand   = lambda s: r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, distname)
+                self.fname_design = lambda s: r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
+                        doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
+
+            elif doe_sampling[:3].lower() == 'cls':
+                self.fname_cand   = lambda s: r'DoE_{:s}E6D{:d}R{:d}.npy'.format(doe_sampling, ndim, s)
+                self.fname_design = lambda s: r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
+                        doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
+            else:
+                self.fname_cand   = lambda s : r'DoE_{:s}E6R{:d}_{:s}.npy'.format(doe_sampling, s, distname)
+                self.fname_design = lambda s : r'DoE_{:s}E{:d}R{:d}_{:d}{:s}{:s}.npy'.format(
+                        doe_sampling, math.ceil(np.log10(num_cand)), s, ndim, poly_name[:3], str(deg))
+
     def _default_data_dir(self):
         """
         WORKING_DIR/
@@ -372,38 +388,22 @@ class ExperimentParameters(Parameters):
         self.data_dir_cand    = data_dir_cand
         self.data_dir_optimal = data_dir_optimal 
 
-    def _check_wiener_askey_polynomials(self):
+    def update_output_dir(self, **kwargs):
         """
-        check and set underlying Wiener-Askey distributions
+        update directories for working and data saving.
+            Takes either a string argument or a dictionary argument
+
+        self.update_output_dir(MDOEL_NAME)  (set as default and has priority).
+            if solver.nickname is given, kwargs is ignored
+        self.update_output_dir(pwd=, data_dir_result=, figure_dir=)
+
+        Updating directories of
+            pwd: present working directory, self.pwd
+            data_dir_result: directory saving all data, self.data_dir_result
+            figure_dir: directory saving all figures, self.figure_dir
         """
-        doe_sampling = self.doe_sampling.upper()
-        poly_name    = self.poly_name.upper()
-
-        if doe_sampling == 'MCS' and poly_name == 'LEG':
-            self.dist_xi     = stats.uniform(-1,2)
-            self.xi_distname = 'uniform'
-
-        elif doe_sampling == 'MCS' and poly_name == 'HEME':
-            self.dist_xi     = stats.norm(0,1)
-            self.xi_distname = 'norm'
-
-        elif doe_sampling == 'CLS1' and poly_name == 'LEG':
-            self.dist_xi     = stats.uniform(-1,2)
-            self.xi_distname = 'uniform'
-
-        elif doe_sampling == 'CLS4' and poly_name == 'HEM':
-            self.dist_xi     = stats.norm(0,np.sqrt(0.5))
-            self.xi_distname = 'norm'
-
-        elif doe_sampling == 'LHS'and poly_name == 'LEG':
-            self.dist_xi     = stats.uniform(-1,2)
-            self.xi_distname = 'uniform'
-
-        elif doe_sampling == 'LHS'and poly_name == 'HEME':
-            self.dist_xi     = stats.norm(0,1)
-            self.xi_distname = 'norm'
-        else:
-            raise ValueError(' Error: {:s}-{:s} is not defined'.format(doe_sampling, poly_name))
+        self.data_dir_cand    = kwargs.get('data_dir_cand'   , self.data_dir_cand    )
+        self.data_dir_optimal = kwargs.get('data_dir_optimal', self.data_dir_optimal )
 
 ### ----------------- Modeling Parameters() -----------------
 class Modeling(Parameters):
