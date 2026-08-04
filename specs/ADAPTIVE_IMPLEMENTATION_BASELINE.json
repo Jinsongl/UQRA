@@ -22,6 +22,22 @@
     "pytest": "8.3.5"
   },
   "verification_command": "python -m pytest tests/compatibility -q",
+  "phase5_phase6_verification": {
+    "date": "2026-08-04",
+    "tests_passed": 20,
+    "terminal_outcomes_covered": 6,
+    "multi_inner_loop_covered": true,
+    "runtime_invariants_audited": 12,
+    "canonical_hermite_fixture": {
+      "rng": "numpy.random.Generator(PCG64)",
+      "seed": 314159,
+      "cv_seed": 2718,
+      "candidate_hash": "12d21aa864778e0967425bc5f309b4af1be01bd83c467602cfbf7b57b3166ce0",
+      "test_hash": "6c36b08f9f9ece715b4c1ff26554520389a8304b6c62540a0fd8a67198702630",
+      "trace_hash": "c48d45f5e90fd76fda6ac325c7fb0deb1fb5bed4fe030b65c74352dd986c4820",
+      "model_call_count": 12
+    }
+  },
   "source_evidence": [
     "examples/Branches_AdapSPCE.py",
     "uqra/surrogates/polynomial_chaos_expansion.py",

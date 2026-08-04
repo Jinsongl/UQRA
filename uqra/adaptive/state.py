@@ -115,3 +115,22 @@ class AdaptiveState:
             raise AssertionError("model call and unique coordinate counts differ")
         if len(self.evaluated_global_ids) != len(self.evaluated_coordinate_hashes):
             raise AssertionError("two global IDs identify the same coordinate")
+        expected_hashes = {coordinate_hash(self.candidate_xi[:, i]) for i in self.evaluated_global_ids}
+        if expected_hashes != self.evaluated_coordinate_hashes:
+            raise AssertionError("global_id to coordinate identity changed")
+        if self.global_ids.tolist() != list(range(self.candidate_xi.shape[1])):
+            raise AssertionError("global ID sequence changed")
+        if self.candidate_xi.flags.writeable:
+            raise AssertionError("candidate pool is writeable")
+        if len(self.active_path) != len(set(self.active_path)):
+            raise AssertionError("active_path contains duplicates")
+        if self.selected_active_ids != self.active_path[:len(self.selected_active_ids)]:
+            raise AssertionError("selected active basis is not a LARS path prefix")
+        if self.doi_local_to_global != self.doi_global_ids:
+            raise AssertionError("DoI local-to-global mapping is inconsistent")
+        if len(self.doi_global_ids) != len(set(self.doi_global_ids)):
+            raise AssertionError("DoI global IDs contain duplicates")
+        if not set(self.global_added_ids).issubset(set(self.evaluated_global_ids)):
+            raise AssertionError("global additions are not evaluated")
+        if not set(self.doi_added_ids).issubset(set(self.evaluated_global_ids)):
+            raise AssertionError("DoI additions are not evaluated")
