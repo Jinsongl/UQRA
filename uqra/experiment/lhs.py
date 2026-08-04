@@ -9,10 +9,8 @@
 """
 
 """
-import inspect
 import numpy as np
-import scipy
-import pyDOE2
+from uqra.experiment._lhs import lhs
 from uqra.experiment._experimentbase import ExperimentBase
 from uqra.utilities.helpers import num2print
 
@@ -72,7 +70,7 @@ class LatinHyperCube(ExperimentBase):
 
         lhs_u = []
         for isize in size:
-            u = pyDOE2.lhs(self.ndim, samples=isize, 
+            u = lhs(self.ndim, samples=isize,
                     criterion=self.criterion, iterations=self.iterations,random_state=random_state).T
             lhs_u.append(u)
         lhs_u = np.squeeze(lhs_u)

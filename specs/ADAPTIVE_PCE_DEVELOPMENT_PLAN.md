@@ -177,6 +177,8 @@
 
 ## 8. 阶段 10：依赖和持续集成现代化
 
+**状态：已完成。**
+
 ### 8.1 工作内容
 
 1. 处理 `pyDOE2` 在 Python 3.12 中使用已删除 `imp` 模块的问题；
@@ -194,6 +196,8 @@
 - CI 可重复执行真实 Hermite fixture 和端到端 benchmark；
 - 不依赖临时 `PYTHONPATH` 或手动安装未声明依赖；
 - Python 版本边界和弃用依赖均在安装文档中明确记录。
+
+> 阶段结果（2026-08-04）：已用内部兼容 LHS 实现移除 `pyDOE2` 及其 `imp` 导入路径；清理 `sklearn` 重复占位依赖并添加 Python 3.11/3.12 精确锁；在全新 Python 3.11.15 venv 中无需临时 `PYTHONPATH` 完成安装并通过 35 项兼容性测试；CI 建立 Python 3.11/投稿目标 3.12 矩阵，并由稳定的 `Adaptive compatibility gate` 聚合阶段 6--9 明确门槛与完整兼容性套件。详见 `ADAPTIVE_PCE_PHASE10_ENVIRONMENT_CI_SUMMARY.md`。
 
 ## 9. 阶段 11：投稿实验与合并发布
 
@@ -224,10 +228,10 @@
 
 ## 11. 下一执行动作
 
-下一轮开发从阶段 10 开始，首先完成：
+下一轮开发从阶段 11 开始，首先完成：
 
-1. 解除 `pyDOE2` 对已删除 `imp` 模块的依赖；
-2. 整理并锁定安装依赖与验证版本；
-3. 在干净 Python 3.11 环境运行完整兼容性测试；
-4. 建立投稿目标环境和 Python 3.11 的 CI 矩阵；
-5. 将阶段 6--9 的 Hermite、benchmark 和历史诊断测试设为合并门槛。
+1. 冻结 `publication` 配置、输入和实验协议；
+2. 预注册预算、DoI 回退、CV、外层稳定次数和 accuracy/validity 条件；
+3. 执行敏感性分析并单独统计 `overfit_fallback`；
+4. 区分 canonical UQRA、现代兼容实现和 portable 对照结果；
+5. 完成代码审查和行为回归报告后准备合并发布。

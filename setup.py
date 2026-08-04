@@ -17,13 +17,17 @@ DESCRIPTION = 'Python package for Uncertainty Quantification'
 URL = 'https://github.com/me/myproject'
 EMAIL = 'me@example.com'
 AUTHOR = 'Jinsong Liu'
-REQUIRES_PYTHON = '>=3.6.0'
+REQUIRES_PYTHON = '>=3.11,<3.13'
 VERSION = '0.1.0'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-        'numpy', 'sklearn', 'scipy', 'pyDOE2', 'tqdm', 'scikit-learn', 'statsmodels',
-    # 'requests', 'maya', 'records',
+    'numpy>=1.26.4,<2',
+    'scipy>=1.15.2,<1.16',
+    'scikit-learn>=1.6.1,<1.7',
+    'pandas>=2.2.3,<2.3',
+    'statsmodels>=0.14.4,<0.15',
+    'tqdm>=4.67.1,<5',
 ]
 
 # What packages are optional?
@@ -121,7 +125,8 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy'
     ],

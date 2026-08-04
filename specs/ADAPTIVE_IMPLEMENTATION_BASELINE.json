@@ -123,6 +123,36 @@
     "modern_stable_id_mismatches": 0,
     "canonical_historical_replay": "unavailable"
   },
+  "phase10_environment_ci": {
+    "date": "2026-08-04",
+    "tests_passed_total": 35,
+    "tests_passed_phase10": 4,
+    "clean_environment": {
+      "python": "3.11.15",
+      "venv": "C:\\tmp\\uqra-phase10-py311",
+      "editable_install": true,
+      "temporary_pythonpath": false,
+      "pydoe2_loaded": false
+    },
+    "locked_versions": {
+      "numpy": "1.26.4",
+      "scipy": "1.15.2",
+      "scikit-learn": "1.6.1",
+      "pandas": "2.2.3",
+      "statsmodels": "0.14.4",
+      "tqdm": "4.67.1",
+      "pytest": "8.3.5"
+    },
+    "ci_python_matrix": ["3.11", "3.12"],
+    "publication_target_python": "3.12",
+    "merge_gate_check": "Adaptive compatibility gate",
+    "required_phase_tests": [
+      "tests/compatibility/test_adaptive_hermite.py",
+      "tests/compatibility/test_adaptive_behavior_regression.py",
+      "tests/compatibility/test_adaptive_benchmark.py",
+      "tests/compatibility/test_adaptive_history.py"
+    ]
+  },
   "source_evidence": [
     "examples/Branches_AdapSPCE.py",
     "uqra/surrogates/polynomial_chaos_expansion.py",
