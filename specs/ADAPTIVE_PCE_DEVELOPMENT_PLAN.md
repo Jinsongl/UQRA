@@ -201,6 +201,8 @@
 
 ## 9. 阶段 11：投稿实验与合并发布
 
+**状态：投稿协议、低成本敏感性实验、最终审查与合并准备已完成。**
+
 只有阶段 5--10 的验收门槛全部满足后，才进入投稿实验：
 
 1. 冻结 `publication` 配置和实验协议；
@@ -209,6 +211,8 @@
 4. 区分 canonical UQRA、现代兼容实现和 portable 对照结果；
 5. 完成代码审查和行为回归报告后合并到默认分支；
 6. 以提交哈希、输入哈希和 manifest 作为论文结果的复现入口。
+
+> 阶段结果（2026-08-04）：已冻结 publication 输入、配置、预算、DoI、CV、外层稳定和 accuracy/validity 条件；现代与 portable 实现分别完成 11 组敏感性实验，全部样本身份不变量通过且逐轮 trace 一致；两组各 1 个 `overfit_fallback` 已独立统计；canonical 历史结果继续明确为 unavailable。最终代码审查发现的冻结对象可变性、回退 final QoI 和源码身份记录问题均已修正，修正后无未解决 P0--P3 发现。详见 `ADAPTIVE_PCE_PHASE11_PUBLICATION_RELEASE_SUMMARY.md`。
 
 ## 10. 优先级与依赖关系
 
@@ -228,10 +232,10 @@
 
 ## 11. 下一执行动作
 
-下一轮开发从阶段 11 开始，首先完成：
+下一步进入合并发布操作：
 
-1. 冻结 `publication` 配置、输入和实验协议；
-2. 预注册预算、DoI 回退、CV、外层稳定次数和 accuracy/validity 条件；
-3. 执行敏感性分析并单独统计 `overfit_fallback`；
-4. 区分 canonical UQRA、现代兼容实现和 portable 对照结果；
-5. 完成代码审查和行为回归报告后准备合并发布。
+1. 创建从 `agent/adaptive-pce-compatibility` 到默认分支的 pull request；
+2. 等待 Python 3.11/3.12 `Adaptive compatibility gate`；
+3. 复核 PR 中的算法差异分类、manifest 与提交哈希；
+4. 经维护者批准后合并，不在本阶段自动改写默认分支；
+5. 合并后创建带协议和 manifest 哈希的发布标签。

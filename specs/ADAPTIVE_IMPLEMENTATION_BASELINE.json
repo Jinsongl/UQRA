@@ -153,6 +153,29 @@
       "tests/compatibility/test_adaptive_history.py"
     ]
   },
+  "phase11_publication_release": {
+    "date": "2026-08-04",
+    "tests_passed_total": 38,
+    "tests_passed_phase11": 3,
+    "protocol_hash": "83bd8d563911151e0e2e614ae93c1606fa766131efb2fa551e3cd785bffad398",
+    "stable_manifest_hash": "5257f1c12037c0388da2f33346ed6648bd99d8c8cbf60a03bc0c310bbb8d06e6",
+    "source_tree_hash": "92b469be99e216e3d7716fa1f8682d65c9594338ceff11bf8738a0d8caa18560",
+    "sensitivity_cases_per_runnable_implementation": 11,
+    "implementation_results": {
+      "canonical_uqra": "unavailable_evidence_only",
+      "modern_compatible": "completed",
+      "portable_control": "completed"
+    },
+    "portable_basis_max_abs_error": 0.0,
+    "modern_portable_trace_equivalence": true,
+    "overfit_fallback_counts": {
+      "canonical_uqra": null,
+      "modern_compatible": 1,
+      "portable_control": 1
+    },
+    "final_code_review_findings": 0,
+    "reproduce_command": "python -m uqra.adaptive.publication --output artifacts/adaptive_phase11_publication_manifest.json"
+  },
   "source_evidence": [
     "examples/Branches_AdapSPCE.py",
     "uqra/surrogates/polynomial_chaos_expansion.py",

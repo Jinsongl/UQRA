@@ -36,6 +36,7 @@ jobs:
           tests/compatibility/test_adaptive_behavior_regression.py
           tests/compatibility/test_adaptive_benchmark.py
           tests/compatibility/test_adaptive_history.py
+          tests/compatibility/test_adaptive_publication.py
       - name: Complete compatibility suite
         run: python -m pytest tests/compatibility -q
 
