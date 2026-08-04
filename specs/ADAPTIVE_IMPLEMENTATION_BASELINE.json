@@ -59,6 +59,45 @@
     "score_tolerance": 2e-12,
     "literal_index_trace_hash": "da31f4bebb92e49260adfa2b393b5ed7ed322bd3808e6f40c414f0dbb9edea31"
   },
+  "phase8_deterministic_benchmark": {
+    "date": "2026-08-04",
+    "tests_passed_total": 29,
+    "tests_passed_phase8": 2,
+    "benchmark": "phase8_two_dimensional_hermite",
+    "input_seed": 424242,
+    "cv_seed": 8080,
+    "candidate_hash": "8d704fb57e7a4f61c8d1cd79cfe5ae2797d876127731b3cea75bee06391dfb20",
+    "test_hash": "0b4abeeea9cb8974268b6f15e9f2f970135151da83f990aa2bb11c81697df6a4",
+    "stable_manifest_hash": "9dfbb1edc928466c55c096fab451b14f570358446139412ee5393d6945edeeb4",
+    "reproduce_command": "python -m uqra.adaptive.benchmark --scenario all --output artifacts/adaptive_phase8_manifest.json",
+    "scenarios": {
+      "converged": {
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "c25652b6a7c137988ef4e5196725c4e643b09672f0da25d36cc9f3cbaee4a77e",
+        "model_call_count": 12
+      },
+      "max_order": {
+        "status": "nonconverged",
+        "stop_reason": "max_order_reached",
+        "trace_hash": "3292c38bc3bef255848f92bd9bf716ea1fa24242c1f70a53750dd9cd05c04614",
+        "model_call_count": 20
+      },
+      "overfit_fallback": {
+        "status": "overfit_fallback",
+        "stop_reason": "overfit_rebuild_not_converged",
+        "trace_hash": "ff53db846dbdc95f69a1999e507ac4edace9f9ab35f660025b346126e2688767",
+        "model_call_count": 20,
+        "trigger": "deterministic manifest-only CV schedule"
+      },
+      "runtime_failure": {
+        "status": "runtime_failure",
+        "stop_reason": "runtime_failure",
+        "trace_hash": "916fbf79ac99da25a110bd0b2a9065791ad1fa9bc727af4329039b628afd0f62",
+        "model_call_count": 0
+      }
+    }
+  },
   "source_evidence": [
     "examples/Branches_AdapSPCE.py",
     "uqra/surrogates/polynomial_chaos_expansion.py",
