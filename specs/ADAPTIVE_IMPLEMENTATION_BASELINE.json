@@ -1,0 +1,31 @@
+{
+  "canonical_commit": "09c7042f8c35a262a942224e2367540b5fd2b077",
+  "candidate_history_data": "unavailable",
+  "test_history_data": "unavailable",
+  "implementation": "uqra.adaptive",
+  "trace_schema": "uqra.adaptive.controller.RoundTrace",
+  "profiles": ["literal_legacy", "dissertation", "publication"],
+  "verification_fixture": {
+    "name": "two_dimensional_hermite_like",
+    "rng": "numpy.random.Generator(PCG64)",
+    "seed": 72819,
+    "cv_seed": 41,
+    "candidate_hash": "20667bd25030d3ab8b33a2e3c70e5f6cf23a14227da864bc96959a9ae16f7bb6",
+    "test_hash": "852aca64c6b7f36670a8f5606865100b6d9b0a874aada8e07287308a30114454",
+    "profile": "publication"
+  },
+  "verified_dependencies": {
+    "python": "3.11",
+    "numpy": "1.26.4",
+    "scipy": "1.15.2",
+    "scikit-learn": "1.6.1",
+    "pytest": "8.3.5"
+  },
+  "verification_command": "python -m pytest tests/compatibility -q",
+  "source_evidence": [
+    "examples/Branches_AdapSPCE.py",
+    "uqra/surrogates/polynomial_chaos_expansion.py",
+    "uqra/experiment/optimal_design.py",
+    "uqra/setting.py"
+  ]
+}
