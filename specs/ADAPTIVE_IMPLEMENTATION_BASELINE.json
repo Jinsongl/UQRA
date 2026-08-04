@@ -1,7 +1,7 @@
 {
   "canonical_commit": "09c7042f8c35a262a942224e2367540b5fd2b077",
-  "candidate_history_data": "unavailable",
-  "test_history_data": "unavailable",
+  "candidate_history_data": "canonical_unavailable; related_normal_mcs_recovered",
+  "test_history_data": "canonical_four_branch_unavailable; related_normal_mcs_recovered",
   "implementation": "uqra.adaptive",
   "trace_schema": "uqra.adaptive.controller.RoundTrace",
   "profiles": ["literal_legacy", "dissertation", "publication"],
@@ -97,6 +97,31 @@
         "model_call_count": 0
       }
     }
+  },
+  "phase9_history_recovery": {
+    "date": "2026-08-04",
+    "tests_passed_total": 31,
+    "tests_passed_phase9": 2,
+    "inventory": "specs/ADAPTIVE_PCE_PHASE9_HISTORY_INVENTORY.json",
+    "canonical_source_root": "G:\\My Drive\\MUSE_UQ_DATA",
+    "canonical_source_root_status": "unavailable",
+    "recovered_normal_mcs_sha256": "1291aa325cad1e4b01cdfc15cc2e98c5abd9f0b4fe9ea8151168bd180c21c486",
+    "recovered_normal_mcs_shape": [10, 1000000],
+    "diagnostic_kind": "source_semantics_diagnostic_not_historical_replay",
+    "diagnostic_seed": 20260804,
+    "diagnostic_hash": "1e275fe9d6d9febc90717f9e9e4188b2067252db90abb0a83dbd17e6ede8595e",
+    "idx01": {
+      "retained_ids": 66,
+      "coordinate_identity_mismatches": 66,
+      "false_exclusions": 66,
+      "missed_prior_samples": 5
+    },
+    "idx02": {
+      "selected_ids": 32,
+      "global_identity_mismatches": 32
+    },
+    "modern_stable_id_mismatches": 0,
+    "canonical_historical_replay": "unavailable"
   },
   "source_evidence": [
     "examples/Branches_AdapSPCE.py",

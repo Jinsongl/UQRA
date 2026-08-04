@@ -21,6 +21,8 @@
 - [ADAPTIVE_PCE_PHASE5_AUDIT_SUMMARY.md](ADAPTIVE_PCE_PHASE5_AUDIT_SUMMARY.md)：记录阶段 5 状态机审查、六类终止测试矩阵、trace 证据、不变量逐项审计和阶段 6 真实 Hermite fixture 结果。
 - [ADAPTIVE_PCE_PHASE7_REGRESSION_SUMMARY.md](ADAPTIVE_PCE_PHASE7_REGRESSION_SUMMARY.md)：记录冻结 Hermite 输入上的 legacy/现代预处理、LARS/CV、RRQR、D/S、DoI、累积观测和停止位置逐轮行为回归。
 - [ADAPTIVE_PCE_PHASE8_BENCHMARK_SUMMARY.md](ADAPTIVE_PCE_PHASE8_BENCHMARK_SUMMARY.md)：记录确定性二维 benchmark、四类终止 manifest、样本身份验收、稳定哈希和可重现运行命令。
+- [ADAPTIVE_PCE_PHASE9_HISTORY_RECOVERY_SUMMARY.md](ADAPTIVE_PCE_PHASE9_HISTORY_RECOVERY_SUMMARY.md)：记录历史归档搜索、恢复/缺失边界，以及 IDX-01/IDX-02 在真实历史坐标池上的 literal 诊断。
+- [ADAPTIVE_PCE_PHASE9_HISTORY_INVENTORY.json](ADAPTIVE_PCE_PHASE9_HISTORY_INVENTORY.json)：记录恢复文件的来源、形状、dtype、SHA-256、重复副本和 unavailable 项。
 
 ## 命名约定
 

@@ -4,6 +4,7 @@ from .doi import DomainOfInterest, build_doi
 from .optimal_design import greedy_optimal_ids, optimality_scores, rrqr_initial_ids
 from .profiles import (CompatibilityProfile, dissertation_profile,
                        literal_legacy_profile, publication_profile)
+from .history import archived_array_identity, historical_literal_index_diagnostic
 from .regression import (DOIBehaviorTrace, FrozenHermiteInputs, LarsBehaviorTrace,
                          OEDRoundTrace, canonical_legacy_lars_trace,
                          compare_doi, compare_oed_rounds, compare_preprocessing,
@@ -20,4 +21,5 @@ __all__ = ["AdaptiveResult", "AdaptiveSparsePCE", "AdaptiveState", "Compatibilit
            "FrozenHermiteInputs", "LarsBehaviorTrace", "OEDRoundTrace",
            "canonical_legacy_lars_trace", "compare_doi", "compare_oed_rounds",
            "compare_preprocessing", "freeze_hermite_inputs", "literal_index_bug_trace",
-           "modern_lars_trace"]
+           "modern_lars_trace", "archived_array_identity",
+           "historical_literal_index_diagnostic"]

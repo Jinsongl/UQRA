@@ -1,0 +1,82 @@
+{
+  "schema": "uqra.adaptive.phase9-history-inventory/v1",
+  "audit_date": "2026-08-04",
+  "canonical_source_root": "G:\\My Drive\\MUSE_UQ_DATA",
+  "canonical_source_root_status": "unavailable",
+  "recovered": [
+    {
+      "role": "related_historical_normal_mcs_pool",
+      "source": "G:\\03_Archive\\UT_Work\\Working_Papers\\Sparse_Optimal_PCE\\Codes\\Possion\\Samples\\MCS\\Norm\\DoE_McsE6R0.npy",
+      "shape": [10, 1000000], "dtype": "float64", "size_bytes": 80000128,
+      "sha256": "1291aa325cad1e4b01cdfc15cc2e98c5abd9f0b4fe9ea8151168bd180c21c486",
+      "provenance": "historical Sparse_Optimal_PCE archive; not proven to be the canonical FourBranch test or candidate file"
+    },
+    {
+      "role": "related_historical_uniform_mcs_pool",
+      "source": "G:\\03_Archive\\UT_Work\\Working_Papers\\Sparse_Optimal_PCE\\Codes\\Possion\\Samples\\MCS\\Uniform\\DoE_McsE6R0.npy",
+      "shape": [10, 1000000], "dtype": "float64", "size_bytes": 80000128,
+      "sha256": "b0ef49680092a82f5b0da0661354d17950114491d97d40394879fc535ec94c81",
+      "provenance": "historical Sparse_Optimal_PCE archive; distribution is incompatible with the Hermite FourBranch run"
+    },
+    {
+      "role": "four_branch_sampling_summary_all",
+      "shape": [3, 1], "dtype": "float64", "size_bytes": 152,
+      "sha256": "643688771ae214fd2df96c4b8db0915e49b8f0e61c24f12e204d5698e427fac6",
+      "sources": [
+        "G:\\03_Archive\\UT_Work\\Working_Papers\\2024_Adaptive_SPCE_OED\\Data\\benchmarks_sampling_effects\\Branches_p10_all.npy",
+        "G:\\03_Archive\\UT_Work\\Working_Papers\\Adaptive_SPCE_OED\\Data\\benchmarks_sampling_effects\\Branches_p10_all.npy",
+        "G:\\03_Archive\\UT_Work\\Working_Papers\\Sparse_Optimal_PCE\\Data\\benchmarks_sampling_effects\\Branches_p10_all.npy",
+        "F:\\05_WorkingPapers\\2020_Sparse_Optimal_PCE\\Data\\benchmarks_sampling_effects\\Branches_p10_all.npy",
+        "F:\\05_WorkingPapers\\2021_Adaptive_SPCE_OED\\Data\\benchmarks_sampling_effects\\Branches_p10_all.npy",
+        "F:\\05_WorkingPapers\\2024_Adaptive_SPCE_OED_new\\Data\\benchmarks_sampling_effects\\Branches_p10_all.npy",
+        "F:\\05_WorkingPapers\\2024_Adaptive_SPCE_SOD\\Data\\benchmarks_sampling_effects\\Branches_p10_all.npy"
+      ]
+    },
+    {
+      "role": "four_branch_sampling_summary_d_optimal",
+      "shape": [3, 13], "dtype": "float64", "size_bytes": 440,
+      "sha256": "747e4f32a982631bed308cf3377150f5d96d29f5f73c487c65b8c8072792402a",
+      "sources": [
+        "G:\\03_Archive\\UT_Work\\Working_Papers\\2024_Adaptive_SPCE_OED\\Data\\benchmarks_sampling_effects\\Branches_p10_D.npy",
+        "G:\\03_Archive\\UT_Work\\Working_Papers\\Adaptive_SPCE_OED\\Data\\benchmarks_sampling_effects\\Branches_p10_D.npy",
+        "G:\\03_Archive\\UT_Work\\Working_Papers\\Sparse_Optimal_PCE\\Data\\benchmarks_sampling_effects\\Branches_p10_D.npy",
+        "F:\\05_WorkingPapers\\2020_Sparse_Optimal_PCE\\Data\\benchmarks_sampling_effects\\Branches_p10_D.npy",
+        "F:\\05_WorkingPapers\\2021_Adaptive_SPCE_OED\\Data\\benchmarks_sampling_effects\\Branches_p10_D.npy",
+        "F:\\05_WorkingPapers\\2024_Adaptive_SPCE_OED_new\\Data\\benchmarks_sampling_effects\\Branches_p10_D.npy",
+        "F:\\05_WorkingPapers\\2024_Adaptive_SPCE_SOD\\Data\\benchmarks_sampling_effects\\Branches_p10_D.npy"
+      ]
+    },
+    {
+      "role": "four_branch_sampling_summary_mcs",
+      "shape": [3, 13], "dtype": "float64", "size_bytes": 440,
+      "sha256": "06a8bdf4267dee38dfbc5c45f8dbd0b441cb6cc3fac1deb1c4df06c4cf7f94ac",
+      "sources": [
+        "G:\\03_Archive\\UT_Work\\Working_Papers\\2024_Adaptive_SPCE_OED\\Data\\benchmarks_sampling_effects\\Branches_p10_mcs.npy",
+        "G:\\03_Archive\\UT_Work\\Working_Papers\\Adaptive_SPCE_OED\\Data\\benchmarks_sampling_effects\\Branches_p10_mcs.npy",
+        "G:\\03_Archive\\UT_Work\\Working_Papers\\Sparse_Optimal_PCE\\Data\\benchmarks_sampling_effects\\Branches_p10_mcs.npy",
+        "F:\\05_WorkingPapers\\2020_Sparse_Optimal_PCE\\Data\\benchmarks_sampling_effects\\Branches_p10_mcs.npy",
+        "F:\\05_WorkingPapers\\2021_Adaptive_SPCE_OED\\Data\\benchmarks_sampling_effects\\Branches_p10_mcs.npy",
+        "F:\\05_WorkingPapers\\2024_Adaptive_SPCE_OED_new\\Data\\benchmarks_sampling_effects\\Branches_p10_mcs.npy",
+        "F:\\05_WorkingPapers\\2024_Adaptive_SPCE_SOD\\Data\\benchmarks_sampling_effects\\Branches_p10_mcs.npy"
+      ]
+    }
+  ],
+  "unavailable": [
+    {"role": "canonical_four_branch_candidate_pool_1e5", "reason": "configured G:\\My Drive\\MUSE_UQ_DATA\\ExperimentalDesign\\Random tree is absent"},
+    {"role": "canonical_four_branch_test_set_1e6", "reason": "configured McsE6R0 file was not found in searched G:/F: archives"},
+    {"role": "canonical_four_branch_input_bundle", "reason": "no archived Branches_AdapSPCE input bundle was found"},
+    {"role": "canonical_adaptive_four_branch_round_results", "reason": "only aggregate sampling-effect arrays were recovered; no per-round IDs, QoI, Pf, or trace"},
+    {"role": "historical_rng_state", "reason": "no Python random state, NumPy state, candidate permutations, or CV shuffle state was archived"}
+  ],
+  "literal_diagnostic": {
+    "input_sha256": "1291aa325cad1e4b01cdfc15cc2e98c5abd9f0b4fe9ea8151168bd180c21c486",
+    "input_slice": "dimensions 0:2, all 1000000 samples",
+    "classification": "source_semantics_diagnostic_not_historical_replay",
+    "seed": 20260804, "sample_size_per_order": 100000,
+    "idx01": {"retained_ids": 66, "coordinate_identity_mismatches": 66, "false_exclusions": 66, "missed_prior_samples": 5, "prior_samples_present_in_next_pool": 5},
+    "idx02": {"selected_ids": 32, "global_identity_mismatches": 32},
+    "modern_stable_id_result": {"cross_order_coordinate_identity_mismatches": 0, "doi_global_identity_mismatches": 0},
+    "literal_trace_hash": "9bc1745a3fd1ec345695c0f05022084ffca8b393eafac9fc0cb5492cb5241b3a",
+    "diagnostic_hash": "1e275fe9d6d9febc90717f9e9e4188b2067252db90abb0a83dbd17e6ede8595e"
+  }
+}
