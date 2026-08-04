@@ -38,6 +38,27 @@
       "model_call_count": 12
     }
   },
+  "phase7_behavior_regression": {
+    "date": "2026-08-04",
+    "tests_passed_total": 27,
+    "tests_passed_phase7": 7,
+    "input_seed": 90210,
+    "cv_seed": 73,
+    "candidate_hash": "d039c83d213d76005ff19fe777c453e4c98cb3b06ec11836cf1e334daf781406",
+    "test_hash": "2ed85b454ba489711e21b5ae60ecd27479d273fb010db7480a83e4eaf8e534db",
+    "train_hash": "3cd85228431b0f80965bb4d8133ca1d285efaaaba0570f45ecdd112753e08b10",
+    "preprocessing_max_abs_error": 0.0,
+    "cv_path_max_abs_error": 0.0,
+    "lars_path": [0, 2, 3, 4],
+    "selected_active_ids": [0, 2, 3, 4],
+    "rrqr_ids": [16, 9, 40, 34, 24, 3],
+    "d_selected_ids": [21, 29, 33],
+    "d_score_max_abs_error": 3.552713678800501e-15,
+    "s_selected_ids": [6, 21, 35],
+    "s_score_max_abs_error": 8.881784197001252e-15,
+    "score_tolerance": 2e-12,
+    "literal_index_trace_hash": "da31f4bebb92e49260adfa2b393b5ed7ed322bd3808e6f40c414f0dbb9edea31"
+  },
   "source_evidence": [
     "examples/Branches_AdapSPCE.py",
     "uqra/surrogates/polynomial_chaos_expansion.py",

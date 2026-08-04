@@ -19,6 +19,7 @@
 - [SOURCE_CORRECTION_HANDOFF.md](SOURCE_CORRECTION_HANDOFF.md)：用于直接启动源码修改的实施交接上下文，汇总工作边界、缺陷编号、修正顺序、验证目标、禁止事项和待裁决问题。
 - [ADAPTIVE_PCE_DEVELOPMENT_PLAN.md](ADAPTIVE_PCE_DEVELOPMENT_PLAN.md)：规定兼容核心初版完成后的实现审查、真实 Hermite 验证、逐轮行为回归、历史数据恢复、环境现代化和投稿发布顺序。
 - [ADAPTIVE_PCE_PHASE5_AUDIT_SUMMARY.md](ADAPTIVE_PCE_PHASE5_AUDIT_SUMMARY.md)：记录阶段 5 状态机审查、六类终止测试矩阵、trace 证据、不变量逐项审计和阶段 6 真实 Hermite fixture 结果。
+- [ADAPTIVE_PCE_PHASE7_REGRESSION_SUMMARY.md](ADAPTIVE_PCE_PHASE7_REGRESSION_SUMMARY.md)：记录冻结 Hermite 输入上的 legacy/现代预处理、LARS/CV、RRQR、D/S、DoI、累积观测和停止位置逐轮行为回归。
 
 ## 命名约定
 
