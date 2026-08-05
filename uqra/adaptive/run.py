@@ -8,14 +8,16 @@ import json
 from pathlib import Path
 import sys
 
-from .benchmark import BENCHMARK_NAME, run_suite
+from .benchmark_registry import get_benchmark
 
 
 CONFIG_SCHEMA = "uqra.adaptive.runner-config/v1"
+CONFIG_SCHEMA_V2 = "uqra.adaptive.runner-config/v2"
+SUPPORTED_CONFIG_SCHEMAS = {CONFIG_SCHEMA, CONFIG_SCHEMA_V2}
 MANIFEST_SCHEMA = "uqra.adaptive.runner-manifest/v1"
 TRACE_SCHEMA = "uqra.adaptive.trace/v1"
 RUNNER_KIND = "deterministic_benchmark"
-SCENARIOS = {"converged", "max_order", "overfit_fallback", "runtime_failure"}
+V1_BENCHMARK = "phase8_two_dimensional_hermite"
 
 
 def _canonical_hash(payload) -> str:
@@ -35,7 +37,7 @@ def validate_config(config):
         raise ValueError(f"runner config missing fields: {', '.join(missing)}")
     if unknown:
         raise ValueError(f"runner config has unknown fields: {', '.join(unknown)}")
-    if config["schema"] != CONFIG_SCHEMA:
+    if config["schema"] not in SUPPORTED_CONFIG_SCHEMAS:
         raise ValueError(f"unsupported runner config schema: {config['schema']!r}")
     if config["purpose"] != "software_benchmark" or config["scale"] != "reduced":
         raise ValueError("this entry point only accepts reduced software_benchmark configs")
@@ -48,15 +50,16 @@ def validate_config(config):
         raise ValueError("runner fields must be exactly: kind, benchmark, scenarios")
     if runner["kind"] != RUNNER_KIND:
         raise ValueError(f"unsupported runner kind: {runner['kind']!r}")
-    if runner["benchmark"] != BENCHMARK_NAME:
-        raise ValueError(f"unsupported benchmark: {runner['benchmark']!r}")
+    if config["schema"] == CONFIG_SCHEMA and runner["benchmark"] != V1_BENCHMARK:
+        raise ValueError(f"runner config v1 only supports benchmark: {V1_BENCHMARK}")
+    benchmark = get_benchmark(runner["benchmark"])
     scenarios = runner["scenarios"]
     if (not isinstance(scenarios, list) or not scenarios
             or any(not isinstance(item, str) for item in scenarios)):
         raise ValueError("runner.scenarios must be a non-empty string array")
     if len(scenarios) != len(set(scenarios)):
         raise ValueError("runner.scenarios must not contain duplicates")
-    unsupported = sorted(set(scenarios).difference(SCENARIOS))
+    unsupported = sorted(set(scenarios).difference(benchmark.scenarios))
     if unsupported:
         raise ValueError(f"unsupported scenarios: {', '.join(unsupported)}")
 
@@ -90,13 +93,14 @@ def validate_manifest(manifest):
     if manifest["config_hash"] != _canonical_hash(manifest["config"]):
         raise ValueError("runner manifest config hash is invalid")
     run = manifest["run"]
-    if not isinstance(run, dict) or run.get("benchmark") != BENCHMARK_NAME:
+    if not isinstance(run, dict):
         raise ValueError("runner manifest benchmark is invalid")
+    benchmark = get_benchmark(run.get("benchmark"))
     scenarios = run.get("scenarios")
     if not isinstance(scenarios, dict) or not scenarios:
         raise ValueError("runner manifest has no scenario results")
     for name, result in scenarios.items():
-        if name not in SCENARIOS or not isinstance(result, dict):
+        if name not in benchmark.scenarios or not isinstance(result, dict):
             raise ValueError(f"runner manifest scenario is invalid: {name!r}")
         if result.get("scenario") != name or not isinstance(result.get("trace"), list):
             raise ValueError(f"runner manifest trace is invalid: {name!r}")
@@ -115,7 +119,8 @@ def validate_manifest(manifest):
 
 def run_config(config):
     config = validate_config(config)
-    benchmark_manifest = run_suite(config["runner"]["scenarios"])
+    benchmark = get_benchmark(config["runner"]["benchmark"])
+    benchmark_manifest = benchmark.run(config["runner"]["scenarios"])
     manifest = {
         "schema": MANIFEST_SCHEMA,
         "trace_schema": TRACE_SCHEMA,
