@@ -51,6 +51,10 @@ def source_tree_identity(root):
 def provenance(config_path, output_path):
     root = Path(__file__).resolve().parents[2]
     dirty = _git(root, "status", "--porcelain")
+    reproduce_arguments = [
+        "python", "-m", "uqra.adaptive.run", "--config", Path(config_path).as_posix(),
+        "--output", Path(output_path).as_posix(),
+    ]
     return {
         "git": {
             "commit": _git(root, "rev-parse", "HEAD"),
@@ -62,10 +66,7 @@ def provenance(config_path, output_path):
             "python": platform.python_version(), "numpy": np.__version__,
             "scipy": scipy.__version__, "scikit_learn": sklearn.__version__,
         },
-        "reproduce_command": (
-            f"python -m uqra.adaptive.run --config {Path(config_path).as_posix()} "
-            f"--output {Path(output_path).as_posix()}"
-        ),
+        "reproduce_command": subprocess.list2cmdline(reproduce_arguments),
     }
 
 

@@ -220,7 +220,7 @@ def test_config_driven_cli_writes_manifest(tmp_path):
 
 
 def test_cli_materializes_complete_manifest_evidence_package(tmp_path):
-    output = tmp_path / "four-branch-manifest.json"
+    output = tmp_path / "evidence package" / "four-branch-manifest.json"
     assert main(["--config", str(FOUR_BRANCH_CONFIG), "--output", str(output)]) == 0
     manifest = json.loads(output.read_text(encoding="utf-8"))
 
@@ -230,6 +230,7 @@ def test_cli_materializes_complete_manifest_evidence_package(tmp_path):
     assert provenance["source_tree"]["tracked_files"] > 0
     assert set(provenance["environment"]) == {"python", "numpy", "scipy", "scikit_learn"}
     assert str(FOUR_BRANCH_CONFIG).replace("\\", "/") in provenance["reproduce_command"]
+    assert f'--output "{output.as_posix()}"' in provenance["reproduce_command"]
 
     artifacts = manifest["artifacts"]
     assert set(artifacts["inputs"]) == {"candidate", "test", "reference"}
