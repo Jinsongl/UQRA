@@ -1,0 +1,50 @@
+name: Adaptive compatibility
+
+on:
+  pull_request:
+  push:
+    branches: [main, master, agent/adaptive-pce-compatibility]
+
+jobs:
+  compatibility-matrix:
+    name: Python ${{ matrix.python-version }} compatibility
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.11"
+            requirements: requirements/compatibility-py311.txt
+          - python-version: "3.12"
+            requirements: requirements/compatibility-py312.txt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: ${{ matrix.requirements }}
+      - name: Install locked environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r "${{ matrix.requirements }}"
+          python -m pip install --no-deps -e .
+      - name: Stage 6-11 merge requirements
+        run: >-
+          python -m pytest -q
+          tests/compatibility/test_adaptive_hermite.py
+          tests/compatibility/test_adaptive_behavior_regression.py
+          tests/compatibility/test_adaptive_benchmark.py
+          tests/compatibility/test_adaptive_history.py
+          tests/compatibility/test_adaptive_publication.py
+      - name: Complete compatibility suite
+        run: python -m pytest tests/compatibility -q
+
+  adaptive-compatibility-gate:
+    name: Adaptive compatibility gate
+    if: ${{ always() }}
+    needs: compatibility-matrix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce matrix result
+        run: test "${{ needs.compatibility-matrix.result }}" = success

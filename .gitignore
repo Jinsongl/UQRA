@@ -84,8 +84,11 @@ celerybeat-schedule
 # Environments
 .env
 .venv
+.venv-*/
 env/
 venv/
+.conda/
+.conda-pkgs/
 ENV/
 env.bak/
 venv.bak/
@@ -124,3 +127,11 @@ src/Data/
 # WEC-SIM
 slprj/
 output/
+
+# Reproducible generated outputs
+artifacts/
+
+# Local migration inputs (not part of the unified source tree)
+adaptive_stage/
+phase10_stage/
+phase11_stage/

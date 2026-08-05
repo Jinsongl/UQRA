@@ -1,0 +1,2076 @@
+{
+  "dependencies": {
+    "numpy": "1.26.4",
+    "python": "3.11.15",
+    "scikit_learn": "1.6.1",
+    "scipy": "1.15.2"
+  },
+  "git": {
+    "branch": "codex/integrate-uqra",
+    "commit": "9ac4af2f23c09cbcece8c880c678407e5e454cd5",
+    "worktree_dirty": false
+  },
+  "modern_vs_portable": {
+    "accuracy_strict": {
+      "qoi_abs_difference": 0.0,
+      "selected_ids_equal": true,
+      "status_equal": true,
+      "stop_reason_equal": true,
+      "trace_hash_equal": true
+    },
+    "baseline": {
+      "qoi_abs_difference": 0.0,
+      "selected_ids_equal": true,
+      "status_equal": true,
+      "stop_reason_equal": true,
+      "trace_hash_equal": true
+    },
+    "budget_high": {
+      "qoi_abs_difference": 0.0,
+      "selected_ids_equal": true,
+      "status_equal": true,
+      "stop_reason_equal": true,
+      "trace_hash_equal": true
+    },
+    "budget_low": {
+      "qoi_abs_difference": 0.0,
+      "selected_ids_equal": true,
+      "status_equal": true,
+      "stop_reason_equal": true,
+      "trace_hash_equal": true
+    },
+    "cv_folds_5": {
+      "qoi_abs_difference": 0.0,
+      "selected_ids_equal": true,
+      "status_equal": true,
+      "stop_reason_equal": true,
+      "trace_hash_equal": true
+    },
+    "doi_global": {
+      "qoi_abs_difference": 0.0,
+      "selected_ids_equal": true,
+      "status_equal": true,
+      "stop_reason_equal": true,
+      "trace_hash_equal": true
+    },
+    "doi_radius_narrow": {
+      "qoi_abs_difference": 0.0,
+      "selected_ids_equal": true,
+      "status_equal": true,
+      "stop_reason_equal": true,
+      "trace_hash_equal": true
+    },
+    "doi_radius_wide": {
+      "qoi_abs_difference": 0.0,
+      "selected_ids_equal": true,
+      "status_equal": true,
+      "stop_reason_equal": true,
+      "trace_hash_equal": true
+    },
+    "doi_skip": {
+      "qoi_abs_difference": 0.0,
+      "selected_ids_equal": true,
+      "status_equal": true,
+      "stop_reason_equal": true,
+      "trace_hash_equal": true
+    },
+    "outer_stable_2": {
+      "qoi_abs_difference": 0.0,
+      "selected_ids_equal": true,
+      "status_equal": true,
+      "stop_reason_equal": true,
+      "trace_hash_equal": true
+    },
+    "overfit_fallback": {
+      "qoi_abs_difference": 0.0,
+      "selected_ids_equal": true,
+      "status_equal": true,
+      "stop_reason_equal": true,
+      "trace_hash_equal": true
+    }
+  },
+  "overfit_fallback_counts": {
+    "canonical_uqra": null,
+    "modern_compatible": 1,
+    "portable_control": 1
+  },
+  "portable_basis_max_abs_error": 0.0,
+  "protocol": {
+    "base_parameters": {
+      "accuracy_max_cv_error": 1e-06,
+      "candidate_seed": 424242,
+      "controller_seed": 424242,
+      "criterion": "S",
+      "cv_folds": 4,
+      "cv_seed": 8080,
+      "cv_shuffle": true,
+      "doi_fallback": "expand",
+      "doi_radius": 0.55,
+      "inner_qoi_tolerance": null,
+      "inner_stable_checks": 1,
+      "max_inner_iterations": 3,
+      "minimum_doi_size": 4,
+      "order_budget_factor": 2.0,
+      "order_max": 3,
+      "order_min": 1,
+      "outer_stable_checks": 1,
+      "overfit_rebuild": true,
+      "qoi_epsilon": 1e-12,
+      "qoi_tolerance": 0.05,
+      "validity": "all sample-identity invariants and finite QoI/CV"
+    },
+    "implementations": {
+      "canonical_uqra": "historical replay unavailable; evidence-only comparator",
+      "modern_compatible": "AdaptiveSparsePCE with uqra.Hermite",
+      "portable_control": "AdaptiveSparsePCE with independent NumPy Hermite-E evaluator"
+    },
+    "input": {
+      "candidate_hash": "8d704fb57e7a4f61c8d1cd79cfe5ae2797d876127731b3cea75bee06391dfb20",
+      "candidate_shape": [
+        2,
+        96
+      ],
+      "rng": "numpy.random.Generator(PCG64)",
+      "seed": 424242,
+      "test_hash": "0b4abeeea9cb8974268b6f15e9f2f970135151da83f990aa2bb11c81697df6a4",
+      "test_shape": [
+        2,
+        128
+      ]
+    },
+    "overfit_reporting": "reported separately; never pooled with ordinary convergence",
+    "protocol_hash": "83bd8d563911151e0e2e614ae93c1606fa766131efb2fa551e3cd785bffad398",
+    "protocol_version": 1,
+    "reproduce_command": "python -m uqra.adaptive.publication --output artifacts/adaptive_phase11_publication_manifest.json",
+    "schema": "uqra.adaptive.publication-protocol/v1",
+    "sensitivity_cases": {
+      "accuracy_strict": {
+        "accuracy_max_cv_error": 1e-32
+      },
+      "baseline": {},
+      "budget_high": {
+        "order_budget_factor": 2.5
+      },
+      "budget_low": {
+        "order_budget_factor": 1.5
+      },
+      "cv_folds_5": {
+        "cv_folds": 5
+      },
+      "doi_global": {
+        "doi_fallback": "global"
+      },
+      "doi_radius_narrow": {
+        "doi_radius": 0.35
+      },
+      "doi_radius_wide": {
+        "doi_radius": 0.8
+      },
+      "doi_skip": {
+        "doi_fallback": "skip"
+      },
+      "outer_stable_2": {
+        "outer_stable_checks": 2
+      },
+      "overfit_fallback": {
+        "overfit_schedule": {
+          "1": 1.0,
+          "2": 2.0,
+          "3": 3.0
+        }
+      }
+    }
+  },
+  "reproduce_command": "python -m uqra.adaptive.publication --output artifacts/adaptive_phase11_publication_manifest.json",
+  "results": {
+    "canonical_uqra": {
+      "allowed_evidence": [
+        "phase7 canonical kernel fixture",
+        "phase9 archive inventory"
+      ],
+      "prohibited_claim": "historical final Pf reproduction",
+      "reason": "canonical FourBranch inputs, RNG state, and per-round archive unavailable",
+      "result_kind": "evidence_only",
+      "status": "unavailable"
+    },
+    "modern_compatible": {
+      "accuracy_strict": {
+        "accuracy_passed": false,
+        "case": "accuracy_strict",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90,
+          12,
+          24,
+          91,
+          79,
+          25,
+          67,
+          19,
+          33
+        ],
+        "final_cv_error": 4.4947353042109305e-31,
+        "final_qoi": 1.080690842803102,
+        "implementation": "modern_compatible",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 20,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            5.059417963905269e-31
+          ],
+          [
+            3,
+            4.4947353042109305e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101,
+          1.080690842803102
+        ],
+        "overrides": {
+          "accuracy_max_cv_error": 1e-32
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 2,
+          "doi_refit": 2,
+          "global_refit": 3,
+          "initial_design": 3,
+          "initial_fit": 3,
+          "inner_loop_stopped": 3,
+          "order_completed": 3,
+          "order_started": 3,
+          "terminated": 1
+        },
+        "status": "nonconverged",
+        "stop_reason": "max_order_reached",
+        "trace_hash": "3292c38bc3bef255848f92bd9bf716ea1fa24242c1f70a53750dd9cd05c04614",
+        "validity_passed": true
+      },
+      "baseline": {
+        "accuracy_passed": true,
+        "case": "baseline",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90
+        ],
+        "final_cv_error": 5.059417963905269e-31,
+        "final_qoi": 1.080690842803101,
+        "implementation": "modern_compatible",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            5.059417963905269e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101
+        ],
+        "overrides": {},
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "c25652b6a7c137988ef4e5196725c4e643b09672f0da25d36cc9f3cbaee4a77e",
+        "validity_passed": true
+      },
+      "budget_high": {
+        "accuracy_passed": true,
+        "case": "budget_high",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          3,
+          14,
+          12,
+          56,
+          25,
+          51,
+          90,
+          19,
+          52,
+          28,
+          24,
+          31,
+          34,
+          75,
+          67,
+          18,
+          33,
+          21,
+          70
+        ],
+        "final_cv_error": 3.8705230670450813e-31,
+        "final_qoi": 1.0806908428031015,
+        "implementation": "modern_compatible",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 25,
+        "order_cv_history": [
+          [
+            1,
+            0.18217544066678518
+          ],
+          [
+            2,
+            1.9352386057851076e-30
+          ],
+          [
+            3,
+            3.8705230670450813e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          0.9527982908371566,
+          1.0806908428031021,
+          1.0806908428031015
+        ],
+        "overrides": {
+          "order_budget_factor": 2.5
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.5,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 3,
+          "doi_refit": 3,
+          "global_refit": 4,
+          "initial_design": 3,
+          "initial_fit": 3,
+          "inner_loop_stopped": 3,
+          "order_completed": 3,
+          "order_started": 3,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "37f2e636ccc7cc15013d25644f9a9259c3c1bfc98d0dbcadf6398b37eafda5c6",
+        "validity_passed": true
+      },
+      "budget_low": {
+        "accuracy_passed": true,
+        "case": "budget_low",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          56,
+          90,
+          28,
+          12
+        ],
+        "final_cv_error": 1.7020084895198133e-30,
+        "final_qoi": 1.0806908428031012,
+        "implementation": "modern_compatible",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 9,
+        "order_cv_history": [
+          [
+            1,
+            0.35066109717203836
+          ],
+          [
+            2,
+            1.7020084895198133e-30
+          ]
+        ],
+        "outer_qoi_history": [
+          1.1030874087533005,
+          1.0806908428031012
+        ],
+        "overrides": {
+          "order_budget_factor": 1.5
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 1.5,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "58c9c93801d1ef16ed04326d183c160187a49e06ee6226dbc12b2885cd16feea",
+        "validity_passed": true
+      },
+      "cv_folds_5": {
+        "accuracy_passed": true,
+        "case": "cv_folds_5",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90
+        ],
+        "final_cv_error": 1.9852485866743626e-31,
+        "final_qoi": 1.080690842803101,
+        "implementation": "modern_compatible",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.21164385530596336
+          ],
+          [
+            2,
+            1.9852485866743626e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101
+        ],
+        "overrides": {
+          "cv_folds": 5
+        },
+        "profile": {
+          "cv_folds": 5,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "e7e767bfd2a591cbe4b82085fd4cd637db9a1391f0dbdcd8070c96759ad6c328",
+        "validity_passed": true
+      },
+      "doi_global": {
+        "accuracy_passed": true,
+        "case": "doi_global",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90
+        ],
+        "final_cv_error": 5.059417963905269e-31,
+        "final_qoi": 1.080690842803101,
+        "implementation": "modern_compatible",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            5.059417963905269e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101
+        ],
+        "overrides": {
+          "doi_fallback": "global"
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "global",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "c25652b6a7c137988ef4e5196725c4e643b09672f0da25d36cc9f3cbaee4a77e",
+        "validity_passed": true
+      },
+      "doi_radius_narrow": {
+        "accuracy_passed": true,
+        "case": "doi_radius_narrow",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          90,
+          18,
+          33
+        ],
+        "final_cv_error": 1.8781829311826357e-30,
+        "final_qoi": 1.080690842803102,
+        "implementation": "modern_compatible",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            1.8781829311826357e-30
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803102
+        ],
+        "overrides": {
+          "doi_radius": 0.35
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "b45c5a00f9c73bdca7b7ebe83618eb761f0ddf56d82990f5ce460d8cf7aeaf6c",
+        "validity_passed": true
+      },
+      "doi_radius_wide": {
+        "accuracy_passed": true,
+        "case": "doi_radius_wide",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          55,
+          59,
+          61
+        ],
+        "final_cv_error": 1.4912475559390367e-30,
+        "final_qoi": 1.0806908428031015,
+        "implementation": "modern_compatible",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            1.4912475559390367e-30
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.0806908428031015
+        ],
+        "overrides": {
+          "doi_radius": 0.8
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "1e3b22549d97ae4079db3e20b77ea006ea96d48f3b67f51d4b5963b64a6ae259",
+        "validity_passed": true
+      },
+      "doi_skip": {
+        "accuracy_passed": true,
+        "case": "doi_skip",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90
+        ],
+        "final_cv_error": 5.059417963905269e-31,
+        "final_qoi": 1.080690842803101,
+        "implementation": "modern_compatible",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            5.059417963905269e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101
+        ],
+        "overrides": {
+          "doi_fallback": "skip"
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "skip",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "c25652b6a7c137988ef4e5196725c4e643b09672f0da25d36cc9f3cbaee4a77e",
+        "validity_passed": true
+      },
+      "outer_stable_2": {
+        "accuracy_passed": true,
+        "case": "outer_stable_2",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90,
+          12,
+          24,
+          91,
+          79,
+          25,
+          67,
+          19,
+          33
+        ],
+        "final_cv_error": 4.4947353042109305e-31,
+        "final_qoi": 1.080690842803102,
+        "implementation": "modern_compatible",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 20,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            5.059417963905269e-31
+          ],
+          [
+            3,
+            4.4947353042109305e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101,
+          1.080690842803102
+        ],
+        "overrides": {
+          "outer_stable_checks": 2
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 2,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 2,
+          "doi_refit": 2,
+          "global_refit": 3,
+          "initial_design": 3,
+          "initial_fit": 3,
+          "inner_loop_stopped": 3,
+          "order_completed": 3,
+          "order_started": 3,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "3292c38bc3bef255848f92bd9bf716ea1fa24242c1f70a53750dd9cd05c04614",
+        "validity_passed": true
+      },
+      "overfit_fallback": {
+        "accuracy_passed": false,
+        "case": "overfit_fallback",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90,
+          12,
+          24,
+          91,
+          79,
+          25,
+          67,
+          19,
+          33
+        ],
+        "final_cv_error": 2.0,
+        "final_qoi": 1.080690842803102,
+        "implementation": "modern_compatible",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": true,
+        "model_call_count": 20,
+        "order_cv_history": [
+          [
+            1,
+            1.0
+          ],
+          [
+            2,
+            2.0
+          ],
+          [
+            3,
+            3.0
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101,
+          1.080690842803102
+        ],
+        "overrides": {
+          "overfit_schedule": {
+            "1": 1.0,
+            "2": 2.0,
+            "3": 3.0
+          }
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 2,
+          "doi_refit": 2,
+          "global_refit": 3,
+          "initial_design": 3,
+          "initial_fit": 3,
+          "inner_loop_stopped": 3,
+          "order_completed": 3,
+          "order_started": 3,
+          "overfit_detected": 1,
+          "overfit_rebuild": 1,
+          "terminated": 1
+        },
+        "status": "overfit_fallback",
+        "stop_reason": "overfit_rebuild_not_converged",
+        "trace_hash": "ff53db846dbdc95f69a1999e507ac4edace9f9ab35f660025b346126e2688767",
+        "validity_passed": true
+      }
+    },
+    "portable_control": {
+      "accuracy_strict": {
+        "accuracy_passed": false,
+        "case": "accuracy_strict",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90,
+          12,
+          24,
+          91,
+          79,
+          25,
+          67,
+          19,
+          33
+        ],
+        "final_cv_error": 4.4947353042109305e-31,
+        "final_qoi": 1.080690842803102,
+        "implementation": "portable_control",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 20,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            5.059417963905269e-31
+          ],
+          [
+            3,
+            4.4947353042109305e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101,
+          1.080690842803102
+        ],
+        "overrides": {
+          "accuracy_max_cv_error": 1e-32
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 2,
+          "doi_refit": 2,
+          "global_refit": 3,
+          "initial_design": 3,
+          "initial_fit": 3,
+          "inner_loop_stopped": 3,
+          "order_completed": 3,
+          "order_started": 3,
+          "terminated": 1
+        },
+        "status": "nonconverged",
+        "stop_reason": "max_order_reached",
+        "trace_hash": "3292c38bc3bef255848f92bd9bf716ea1fa24242c1f70a53750dd9cd05c04614",
+        "validity_passed": true
+      },
+      "baseline": {
+        "accuracy_passed": true,
+        "case": "baseline",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90
+        ],
+        "final_cv_error": 5.059417963905269e-31,
+        "final_qoi": 1.080690842803101,
+        "implementation": "portable_control",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            5.059417963905269e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101
+        ],
+        "overrides": {},
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "c25652b6a7c137988ef4e5196725c4e643b09672f0da25d36cc9f3cbaee4a77e",
+        "validity_passed": true
+      },
+      "budget_high": {
+        "accuracy_passed": true,
+        "case": "budget_high",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          3,
+          14,
+          12,
+          56,
+          25,
+          51,
+          90,
+          19,
+          52,
+          28,
+          24,
+          31,
+          34,
+          75,
+          67,
+          18,
+          33,
+          21,
+          70
+        ],
+        "final_cv_error": 3.8705230670450813e-31,
+        "final_qoi": 1.0806908428031015,
+        "implementation": "portable_control",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 25,
+        "order_cv_history": [
+          [
+            1,
+            0.18217544066678518
+          ],
+          [
+            2,
+            1.9352386057851076e-30
+          ],
+          [
+            3,
+            3.8705230670450813e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          0.9527982908371566,
+          1.0806908428031021,
+          1.0806908428031015
+        ],
+        "overrides": {
+          "order_budget_factor": 2.5
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.5,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 3,
+          "doi_refit": 3,
+          "global_refit": 4,
+          "initial_design": 3,
+          "initial_fit": 3,
+          "inner_loop_stopped": 3,
+          "order_completed": 3,
+          "order_started": 3,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "37f2e636ccc7cc15013d25644f9a9259c3c1bfc98d0dbcadf6398b37eafda5c6",
+        "validity_passed": true
+      },
+      "budget_low": {
+        "accuracy_passed": true,
+        "case": "budget_low",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          56,
+          90,
+          28,
+          12
+        ],
+        "final_cv_error": 1.7020084895198133e-30,
+        "final_qoi": 1.0806908428031012,
+        "implementation": "portable_control",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 9,
+        "order_cv_history": [
+          [
+            1,
+            0.35066109717203836
+          ],
+          [
+            2,
+            1.7020084895198133e-30
+          ]
+        ],
+        "outer_qoi_history": [
+          1.1030874087533005,
+          1.0806908428031012
+        ],
+        "overrides": {
+          "order_budget_factor": 1.5
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 1.5,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "58c9c93801d1ef16ed04326d183c160187a49e06ee6226dbc12b2885cd16feea",
+        "validity_passed": true
+      },
+      "cv_folds_5": {
+        "accuracy_passed": true,
+        "case": "cv_folds_5",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90
+        ],
+        "final_cv_error": 1.9852485866743626e-31,
+        "final_qoi": 1.080690842803101,
+        "implementation": "portable_control",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.21164385530596336
+          ],
+          [
+            2,
+            1.9852485866743626e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101
+        ],
+        "overrides": {
+          "cv_folds": 5
+        },
+        "profile": {
+          "cv_folds": 5,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "e7e767bfd2a591cbe4b82085fd4cd637db9a1391f0dbdcd8070c96759ad6c328",
+        "validity_passed": true
+      },
+      "doi_global": {
+        "accuracy_passed": true,
+        "case": "doi_global",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90
+        ],
+        "final_cv_error": 5.059417963905269e-31,
+        "final_qoi": 1.080690842803101,
+        "implementation": "portable_control",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            5.059417963905269e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101
+        ],
+        "overrides": {
+          "doi_fallback": "global"
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "global",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "c25652b6a7c137988ef4e5196725c4e643b09672f0da25d36cc9f3cbaee4a77e",
+        "validity_passed": true
+      },
+      "doi_radius_narrow": {
+        "accuracy_passed": true,
+        "case": "doi_radius_narrow",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          90,
+          18,
+          33
+        ],
+        "final_cv_error": 1.8781829311826357e-30,
+        "final_qoi": 1.080690842803102,
+        "implementation": "portable_control",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            1.8781829311826357e-30
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803102
+        ],
+        "overrides": {
+          "doi_radius": 0.35
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "b45c5a00f9c73bdca7b7ebe83618eb761f0ddf56d82990f5ce460d8cf7aeaf6c",
+        "validity_passed": true
+      },
+      "doi_radius_wide": {
+        "accuracy_passed": true,
+        "case": "doi_radius_wide",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          55,
+          59,
+          61
+        ],
+        "final_cv_error": 1.4912475559390367e-30,
+        "final_qoi": 1.0806908428031015,
+        "implementation": "portable_control",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            1.4912475559390367e-30
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.0806908428031015
+        ],
+        "overrides": {
+          "doi_radius": 0.8
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "1e3b22549d97ae4079db3e20b77ea006ea96d48f3b67f51d4b5963b64a6ae259",
+        "validity_passed": true
+      },
+      "doi_skip": {
+        "accuracy_passed": true,
+        "case": "doi_skip",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90
+        ],
+        "final_cv_error": 5.059417963905269e-31,
+        "final_qoi": 1.080690842803101,
+        "implementation": "portable_control",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 12,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            5.059417963905269e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101
+        ],
+        "overrides": {
+          "doi_fallback": "skip"
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "skip",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 1,
+          "doi_refit": 1,
+          "global_refit": 2,
+          "initial_design": 2,
+          "initial_fit": 2,
+          "inner_loop_stopped": 2,
+          "order_completed": 2,
+          "order_started": 2,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "c25652b6a7c137988ef4e5196725c4e643b09672f0da25d36cc9f3cbaee4a77e",
+        "validity_passed": true
+      },
+      "outer_stable_2": {
+        "accuracy_passed": true,
+        "case": "outer_stable_2",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90,
+          12,
+          24,
+          91,
+          79,
+          25,
+          67,
+          19,
+          33
+        ],
+        "final_cv_error": 4.4947353042109305e-31,
+        "final_qoi": 1.080690842803102,
+        "implementation": "portable_control",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": false,
+        "model_call_count": 20,
+        "order_cv_history": [
+          [
+            1,
+            0.310036170589806
+          ],
+          [
+            2,
+            5.059417963905269e-31
+          ],
+          [
+            3,
+            4.4947353042109305e-31
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101,
+          1.080690842803102
+        ],
+        "overrides": {
+          "outer_stable_checks": 2
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 2,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 2,
+          "doi_refit": 2,
+          "global_refit": 3,
+          "initial_design": 3,
+          "initial_fit": 3,
+          "inner_loop_stopped": 3,
+          "order_completed": 3,
+          "order_started": 3,
+          "terminated": 1
+        },
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "3292c38bc3bef255848f92bd9bf716ea1fa24242c1f70a53750dd9cd05c04614",
+        "validity_passed": true
+      },
+      "overfit_fallback": {
+        "accuracy_passed": false,
+        "case": "overfit_fallback",
+        "evaluated_global_ids": [
+          0,
+          57,
+          37,
+          78,
+          38,
+          65,
+          76,
+          44,
+          6,
+          3,
+          14,
+          90,
+          12,
+          24,
+          91,
+          79,
+          25,
+          67,
+          19,
+          33
+        ],
+        "final_cv_error": 2.0,
+        "final_qoi": 1.080690842803102,
+        "implementation": "portable_control",
+        "invariant_checks": {
+          "additions_were_unevaluated": true,
+          "state_invariants": true,
+          "trace_is_cumulative": true,
+          "unique_calls_match_coordinates": true,
+          "unique_calls_match_ids": true
+        },
+        "is_overfit_fallback": true,
+        "model_call_count": 20,
+        "order_cv_history": [
+          [
+            1,
+            1.0
+          ],
+          [
+            2,
+            2.0
+          ],
+          [
+            3,
+            3.0
+          ]
+        ],
+        "outer_qoi_history": [
+          1.0315017145287781,
+          1.080690842803101,
+          1.080690842803102
+        ],
+        "overrides": {
+          "overfit_schedule": {
+            "1": 1.0,
+            "2": 2.0,
+            "3": 3.0
+          }
+        },
+        "profile": {
+          "cv_folds": 4,
+          "cv_seed": 8080,
+          "cv_shuffle": true,
+          "doi_fallback": "expand",
+          "initial_sparsity": 0,
+          "inner_qoi_tolerance": null,
+          "inner_stable_checks": 1,
+          "literal_outer_break": true,
+          "max_inner_iterations": 3,
+          "minimum_doi_size": 4,
+          "name": "publication",
+          "order_budget_factor": 2.0,
+          "outer_stable_checks": 1,
+          "overfit_rebuild": true,
+          "qoi_epsilon": 1e-12,
+          "qoi_tolerance": 0.05
+        },
+        "stage_counts": {
+          "doi_constructed": 2,
+          "doi_refit": 2,
+          "global_refit": 3,
+          "initial_design": 3,
+          "initial_fit": 3,
+          "inner_loop_stopped": 3,
+          "order_completed": 3,
+          "order_started": 3,
+          "overfit_detected": 1,
+          "overfit_rebuild": 1,
+          "terminated": 1
+        },
+        "status": "overfit_fallback",
+        "stop_reason": "overfit_rebuild_not_converged",
+        "trace_hash": "ff53db846dbdc95f69a1999e507ac4edace9f9ab35f660025b346126e2688767",
+        "validity_passed": true
+      }
+    }
+  },
+  "schema": "uqra.adaptive.publication-manifest/v1",
+  "source_tree_hash": "78eb3cd3f436cd3c22c12ac02b821ce4a4ddf2f8187e9177454a13da33fdac9a",
+  "stable_manifest_hash": "1061e3494f139195a0656d85b72efe9b7352ae22d4ea3b398b167823491ae415"
+}

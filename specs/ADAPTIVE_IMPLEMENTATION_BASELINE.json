@@ -1,0 +1,185 @@
+{
+  "canonical_commit": "09c7042f8c35a262a942224e2367540b5fd2b077",
+  "candidate_history_data": "canonical_unavailable; related_normal_mcs_recovered",
+  "test_history_data": "canonical_four_branch_unavailable; related_normal_mcs_recovered",
+  "implementation": "uqra.adaptive",
+  "trace_schema": "uqra.adaptive.controller.RoundTrace",
+  "profiles": ["literal_legacy", "dissertation", "publication"],
+  "verification_fixture": {
+    "name": "two_dimensional_hermite_like",
+    "rng": "numpy.random.Generator(PCG64)",
+    "seed": 72819,
+    "cv_seed": 41,
+    "candidate_hash": "20667bd25030d3ab8b33a2e3c70e5f6cf23a14227da864bc96959a9ae16f7bb6",
+    "test_hash": "852aca64c6b7f36670a8f5606865100b6d9b0a874aada8e07287308a30114454",
+    "profile": "publication"
+  },
+  "verified_dependencies": {
+    "python": "3.11",
+    "numpy": "1.26.4",
+    "scipy": "1.15.2",
+    "scikit-learn": "1.6.1",
+    "pytest": "8.3.5"
+  },
+  "verification_command": "python -m pytest tests/compatibility -q",
+  "phase5_phase6_verification": {
+    "date": "2026-08-04",
+    "tests_passed": 20,
+    "terminal_outcomes_covered": 6,
+    "multi_inner_loop_covered": true,
+    "runtime_invariants_audited": 12,
+    "canonical_hermite_fixture": {
+      "rng": "numpy.random.Generator(PCG64)",
+      "seed": 314159,
+      "cv_seed": 2718,
+      "candidate_hash": "12d21aa864778e0967425bc5f309b4af1be01bd83c467602cfbf7b57b3166ce0",
+      "test_hash": "6c36b08f9f9ece715b4c1ff26554520389a8304b6c62540a0fd8a67198702630",
+      "trace_hash": "c48d45f5e90fd76fda6ac325c7fb0deb1fb5bed4fe030b65c74352dd986c4820",
+      "model_call_count": 12
+    }
+  },
+  "phase7_behavior_regression": {
+    "date": "2026-08-04",
+    "tests_passed_total": 27,
+    "tests_passed_phase7": 7,
+    "input_seed": 90210,
+    "cv_seed": 73,
+    "candidate_hash": "d039c83d213d76005ff19fe777c453e4c98cb3b06ec11836cf1e334daf781406",
+    "test_hash": "2ed85b454ba489711e21b5ae60ecd27479d273fb010db7480a83e4eaf8e534db",
+    "train_hash": "3cd85228431b0f80965bb4d8133ca1d285efaaaba0570f45ecdd112753e08b10",
+    "preprocessing_max_abs_error": 0.0,
+    "cv_path_max_abs_error": 0.0,
+    "lars_path": [0, 2, 3, 4],
+    "selected_active_ids": [0, 2, 3, 4],
+    "rrqr_ids": [16, 9, 40, 34, 24, 3],
+    "d_selected_ids": [21, 29, 33],
+    "d_score_max_abs_error": 3.552713678800501e-15,
+    "s_selected_ids": [6, 21, 35],
+    "s_score_max_abs_error": 8.881784197001252e-15,
+    "score_tolerance": 2e-12,
+    "literal_index_trace_hash": "da31f4bebb92e49260adfa2b393b5ed7ed322bd3808e6f40c414f0dbb9edea31"
+  },
+  "phase8_deterministic_benchmark": {
+    "date": "2026-08-04",
+    "tests_passed_total": 29,
+    "tests_passed_phase8": 2,
+    "benchmark": "phase8_two_dimensional_hermite",
+    "input_seed": 424242,
+    "cv_seed": 8080,
+    "candidate_hash": "8d704fb57e7a4f61c8d1cd79cfe5ae2797d876127731b3cea75bee06391dfb20",
+    "test_hash": "0b4abeeea9cb8974268b6f15e9f2f970135151da83f990aa2bb11c81697df6a4",
+    "stable_manifest_hash": "9dfbb1edc928466c55c096fab451b14f570358446139412ee5393d6945edeeb4",
+    "reproduce_command": "python -m uqra.adaptive.benchmark --scenario all --output artifacts/adaptive_phase8_manifest.json",
+    "scenarios": {
+      "converged": {
+        "status": "converged",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "c25652b6a7c137988ef4e5196725c4e643b09672f0da25d36cc9f3cbaee4a77e",
+        "model_call_count": 12
+      },
+      "max_order": {
+        "status": "nonconverged",
+        "stop_reason": "max_order_reached",
+        "trace_hash": "3292c38bc3bef255848f92bd9bf716ea1fa24242c1f70a53750dd9cd05c04614",
+        "model_call_count": 20
+      },
+      "overfit_fallback": {
+        "status": "overfit_fallback",
+        "stop_reason": "overfit_rebuild_not_converged",
+        "trace_hash": "ff53db846dbdc95f69a1999e507ac4edace9f9ab35f660025b346126e2688767",
+        "model_call_count": 20,
+        "trigger": "deterministic manifest-only CV schedule"
+      },
+      "runtime_failure": {
+        "status": "runtime_failure",
+        "stop_reason": "runtime_failure",
+        "trace_hash": "916fbf79ac99da25a110bd0b2a9065791ad1fa9bc727af4329039b628afd0f62",
+        "model_call_count": 0
+      }
+    }
+  },
+  "phase9_history_recovery": {
+    "date": "2026-08-04",
+    "tests_passed_total": 31,
+    "tests_passed_phase9": 2,
+    "inventory": "specs/ADAPTIVE_PCE_PHASE9_HISTORY_INVENTORY.json",
+    "canonical_source_root": "G:\\My Drive\\MUSE_UQ_DATA",
+    "canonical_source_root_status": "unavailable",
+    "recovered_normal_mcs_sha256": "1291aa325cad1e4b01cdfc15cc2e98c5abd9f0b4fe9ea8151168bd180c21c486",
+    "recovered_normal_mcs_shape": [10, 1000000],
+    "diagnostic_kind": "source_semantics_diagnostic_not_historical_replay",
+    "diagnostic_seed": 20260804,
+    "diagnostic_hash": "1e275fe9d6d9febc90717f9e9e4188b2067252db90abb0a83dbd17e6ede8595e",
+    "idx01": {
+      "retained_ids": 66,
+      "coordinate_identity_mismatches": 66,
+      "false_exclusions": 66,
+      "missed_prior_samples": 5
+    },
+    "idx02": {
+      "selected_ids": 32,
+      "global_identity_mismatches": 32
+    },
+    "modern_stable_id_mismatches": 0,
+    "canonical_historical_replay": "unavailable"
+  },
+  "phase10_environment_ci": {
+    "date": "2026-08-04",
+    "tests_passed_total": 35,
+    "tests_passed_phase10": 4,
+    "clean_environment": {
+      "python": "3.11.15",
+      "venv": "C:\\tmp\\uqra-phase10-py311",
+      "editable_install": true,
+      "temporary_pythonpath": false,
+      "pydoe2_loaded": false
+    },
+    "locked_versions": {
+      "numpy": "1.26.4",
+      "scipy": "1.15.2",
+      "scikit-learn": "1.6.1",
+      "pandas": "2.2.3",
+      "statsmodels": "0.14.4",
+      "tqdm": "4.67.1",
+      "pytest": "8.3.5"
+    },
+    "ci_python_matrix": ["3.11", "3.12"],
+    "publication_target_python": "3.12",
+    "merge_gate_check": "Adaptive compatibility gate",
+    "required_phase_tests": [
+      "tests/compatibility/test_adaptive_hermite.py",
+      "tests/compatibility/test_adaptive_behavior_regression.py",
+      "tests/compatibility/test_adaptive_benchmark.py",
+      "tests/compatibility/test_adaptive_history.py"
+    ]
+  },
+  "phase11_publication_release": {
+    "date": "2026-08-04",
+    "tests_passed_total": 38,
+    "tests_passed_phase11": 3,
+    "protocol_hash": "83bd8d563911151e0e2e614ae93c1606fa766131efb2fa551e3cd785bffad398",
+    "stable_manifest_hash": "5257f1c12037c0388da2f33346ed6648bd99d8c8cbf60a03bc0c310bbb8d06e6",
+    "source_tree_hash": "92b469be99e216e3d7716fa1f8682d65c9594338ceff11bf8738a0d8caa18560",
+    "sensitivity_cases_per_runnable_implementation": 11,
+    "implementation_results": {
+      "canonical_uqra": "unavailable_evidence_only",
+      "modern_compatible": "completed",
+      "portable_control": "completed"
+    },
+    "portable_basis_max_abs_error": 0.0,
+    "modern_portable_trace_equivalence": true,
+    "overfit_fallback_counts": {
+      "canonical_uqra": null,
+      "modern_compatible": 1,
+      "portable_control": 1
+    },
+    "final_code_review_findings": 0,
+    "reproduce_command": "python -m uqra.adaptive.publication --output artifacts/adaptive_phase11_publication_manifest.json"
+  },
+  "source_evidence": [
+    "examples/Branches_AdapSPCE.py",
+    "uqra/surrogates/polynomial_chaos_expansion.py",
+    "uqra/experiment/optimal_design.py",
+    "uqra/setting.py"
+  ]
+}
