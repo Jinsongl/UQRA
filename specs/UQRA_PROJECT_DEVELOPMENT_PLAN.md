@@ -5,6 +5,9 @@
 项目仓库：`https://github.com/Jinsongl/UQRA`  
 当前发布基线：`v0.1.0`
 
+执行进度、当前 PR、阻塞项和下一动作由
+`specs/UQRA_PROJECT_PROGRESS_BOARD.md` 维护；本文件只定义项目范围、阶段和验收门。
+
 ## 1. 项目目标与边界
 
 本计划只管理 UQRA 软件项目：以博士论文算法定义、冻结的 canonical UQRA 源码和 `UQRA_COMPATIBILITY_DECISIONS.md` 为权威基准，开发并持续完善现代 Python 可用、可复现、可测试的 UQRA-compatible 自适应稀疏 PCE runner 及其通用功能。

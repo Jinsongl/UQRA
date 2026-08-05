@@ -18,6 +18,7 @@
 - [UQRA_COMPATIBILITY_DECISIONS.md](UQRA_COMPATIBILITY_DECISIONS.md)：规定稳定候选样本身份、跨阶累积观测、LARS/OED/DoI 兼容行为、已知源码歧义、实施顺序和验证门槛。
 - [SOURCE_CORRECTION_HANDOFF.md](SOURCE_CORRECTION_HANDOFF.md)：用于直接启动源码修改的实施交接上下文，汇总工作边界、缺陷编号、修正顺序、验证目标、禁止事项和待裁决问题。
 - [UQRA_PROJECT_DEVELOPMENT_PLAN.md](UQRA_PROJECT_DEVELOPMENT_PLAN.md)：UQRA 软件项目主计划，规定 U0--U6、项目边界、runner 发布门和向论文项目交付的唯一接口。
+- [UQRA_PROJECT_PROGRESS_BOARD.md](UQRA_PROJECT_PROGRESS_BOARD.md)：UQRA 软件项目执行看板，追踪当前任务状态、优先级、依赖、阻塞条件、验收证据和下一动作。
 - [ADAPTIVE_PCE_DEVELOPMENT_PLAN.md](ADAPTIVE_PCE_DEVELOPMENT_PLAN.md)：记录兼容核心初版完成后的实现审查、真实 Hermite 验证、逐轮行为回归、历史数据恢复、环境现代化、publication 配置资格验证和软件发布过程。
 - [DISSERTATION_NUMERICAL_REPRODUCTION_PLAN.md](DISSERTATION_NUMERICAL_REPRODUCTION_PLAN.md)：指向独立论文仓库完整复现计划的交接文件；本仓库只保留 runner 接口和项目边界。
 - [ADAPTIVE_PCE_PHASE5_AUDIT_SUMMARY.md](ADAPTIVE_PCE_PHASE5_AUDIT_SUMMARY.md)：记录阶段 5 状态机审查、六类终止测试矩阵、trace 证据、不变量逐项审计和阶段 6 真实 Hermite fixture 结果。
