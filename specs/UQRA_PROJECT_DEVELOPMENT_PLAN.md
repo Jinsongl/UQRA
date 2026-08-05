@@ -113,12 +113,15 @@ UQRA benchmark 的配置、目录和 manifest 必须明确标记：
 
 ### U5——正式 Runner 发布门
 
-**状态：基本完成；`v0.1.0` 已通过发布门，交付 schema 与示例配置仍待补齐。**
+**状态：已完成。**
 
-已完成固定 release tag、Python 3.11/3.12 环境锁、可执行入口、双版本兼容性测试、
-required CI、冻结 manifest、源码树哈希、行为回归摘要和已知限制。剩余工作集中在
-独立配置 schema、结果/manifest schema、下游示例配置以及可集中下载的 release
-evidence package；这些项目完成后可将 U5 标记为全部完成。
+已完成固定 release tag、Python 3.11/3.12 环境锁、配置驱动入口、双版本兼容性
+测试、required CI、版本化配置/runner manifest/trace schema、两个下游示例配置、
+冻结 manifest、源码树哈希、行为回归摘要、已知限制和集中 evidence package。
+2026-08-05 在全新克隆的独立 Python 3.11.15 环境中按锁文件安装成功，完整兼容性
+套件为 `42 passed`，smoke/full 两个配置均生成通过契约校验的 manifest；同日
+Python 3.12.13 完整兼容性套件亦为 `42 passed`。交付证据见
+`specs/releases/UQRA_V0.1.0_EVIDENCE.md`。
 
 交付物：
 
@@ -158,9 +161,15 @@ evidence package；这些项目完成后可将 U5 标记为全部完成。
 
 ## 5. 当前最小下一目标
 
-**UQRA-MV1：补齐 `v0.1.0` 的下游 runner 交付包。**
+**UQRA-MV1：已完成。**
 
-最低验收：固定 commit、干净环境命令、配置模板、完整 manifest、当前兼容测试、确定性回归结果和已知限制齐全。论文项目是否拥有 FourBranch 等算例资产不阻塞 UQRA 通用功能发布，但不得用软件回归结果冒充论文算例复现。
+完成证据：固定 tag/commit、干净环境命令、版本化 schema、两个配置模板、完整
+manifest、Python 3.11/3.12 的 42 项兼容性测试、全新克隆验收、确定性回归结果和
+已知限制均已进入 evidence package。论文项目是否拥有 FourBranch 等算例资产不
+阻塞 UQRA 通用功能发布，但不得用软件回归结果冒充论文算例复现。
+
+下一最小目标转为 U4 通用软件 benchmark 扩展与 U6 持续维护；新增正式发布应使用
+新版本号，不得静默覆盖 `v0.1.0`。
 
 ## 6. 历史文档关系
 

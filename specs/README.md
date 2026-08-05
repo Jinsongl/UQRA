@@ -28,6 +28,8 @@
 - [ADAPTIVE_PCE_PHASE10_ENVIRONMENT_CI_SUMMARY.md](ADAPTIVE_PCE_PHASE10_ENVIRONMENT_CI_SUMMARY.md)：记录 pyDOE2 移除、依赖锁、干净 Python 3.11 验证、Python 3.12 CI 和合并门槛。
 - [ADAPTIVE_PCE_PHASE11_PUBLICATION_RELEASE_SUMMARY.md](ADAPTIVE_PCE_PHASE11_PUBLICATION_RELEASE_SUMMARY.md)：记录冻结投稿协议、敏感性分析、三类实现边界、最终代码审查和合并准备。
 - [ADAPTIVE_PCE_PHASE11_FROZEN_MANIFEST.json](ADAPTIVE_PCE_PHASE11_FROZEN_MANIFEST.json)：保存投稿协议、输入/源码哈希、现代与 portable 逐案例结果及独立 overfit 统计。
+- [releases/UQRA_V0.1.0_EVIDENCE.md](releases/UQRA_V0.1.0_EVIDENCE.md)：汇总 `v0.1.0` 算法基线、M1 版本化交付接口、环境锁、schema、示例配置、全新克隆验收、允许声明和禁止声明。
+- [releases/UQRA_V0.1.0_EVIDENCE.json](releases/UQRA_V0.1.0_EVIDENCE.json)：保存上述交付证据的机器可读摘要与关键哈希。
 
 ## 命名约定
 
