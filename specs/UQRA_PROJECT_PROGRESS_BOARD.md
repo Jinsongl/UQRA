@@ -81,7 +81,7 @@
 
 | ID | 归属 / 优先级 | 任务 | 当前证据 | 完成门 |
 | --- | --- | --- | --- | --- |
-| BENCH-02 | M2.2 / P1 | FourBranch reduced benchmark | BENCH-01 已完成；开始定义冻结输入与配置 | 固定输入/seed/hash、DoI 路径、manifest、trace 和重复性测试通过 |
+| BENCH-02 | M2.2 / P1 | FourBranch reduced benchmark | `four_branch_reduced_v1` 已注册；三套独立 seed/shape/hash 已冻结；DoI 路径和 manifest 重复性通过；Python 3.11/3.12 均 `46 passed` | 远端双版本 CI 和审查通过后完成 |
 
 ### ⏳ 待开始
 

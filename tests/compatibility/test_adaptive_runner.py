@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from uqra.adaptive.benchmark_registry import benchmark_names, get_benchmark
+from uqra.adaptive.four_branch_reduced import INPUT_HASHES
 from uqra.adaptive.run import (CONFIG_SCHEMA, CONFIG_SCHEMA_V2, MANIFEST_SCHEMA, TRACE_SCHEMA,
                                load_config, main, run_config, validate_config,
                                validate_manifest)
@@ -12,6 +13,7 @@ from uqra.adaptive.run import (CONFIG_SCHEMA, CONFIG_SCHEMA_V2, MANIFEST_SCHEMA,
 ROOT = Path(__file__).resolve().parents[2]
 SMOKE_CONFIG = ROOT / "examples" / "configs" / "adaptive_reduced_smoke.json"
 V2_SMOKE_CONFIG = ROOT / "examples" / "configs" / "adaptive_registry_v2_smoke.json"
+FOUR_BRANCH_CONFIG = ROOT / "examples" / "configs" / "four_branch_reduced_v1.json"
 
 
 def test_published_json_schemas_and_examples_are_well_formed():
@@ -30,6 +32,7 @@ def test_published_json_schemas_and_examples_are_well_formed():
         ROOT / "examples" / "configs" / "adaptive_reduced_full.json": CONFIG_SCHEMA,
         V2_SMOKE_CONFIG: CONFIG_SCHEMA_V2,
         ROOT / "examples" / "configs" / "adaptive_registry_v2_full.json": CONFIG_SCHEMA_V2,
+        FOUR_BRANCH_CONFIG: CONFIG_SCHEMA_V2,
     }
     for path, expected_schema in examples.items():
         assert load_config(path)["schema"] == expected_schema
@@ -80,6 +83,25 @@ def test_v2_registry_config_is_valid_and_repeatable():
     assert validate_manifest(first)
     assert first["stable_manifest_hash"] == second["stable_manifest_hash"]
     assert first["config"]["schema"] == CONFIG_SCHEMA_V2
+
+
+def test_four_branch_reduced_config_is_registered_and_repeatable():
+    config = load_config(FOUR_BRANCH_CONFIG)
+    first = run_config(config)
+    second = run_config(config)
+    assert validate_manifest(first)
+    assert first["stable_manifest_hash"] == second["stable_manifest_hash"]
+    run = first["run"]
+    assert run["input"]["historical_replay"] is False
+    datasets = run["input"]["datasets"]
+    assert len({item["seed"] for item in datasets.values()}) == 3
+    assert len({item["sha256"] for item in datasets.values()}) == 3
+    assert {name: item["sha256"] for name, item in datasets.items()} == INPUT_HASHES
+    result = run["scenarios"]["reduced"]
+    assert result["candidate_hash"] == datasets["candidate"]["sha256"]
+    assert result["test_hash"] == datasets["test"]["sha256"]
+    assert result["reference_hash"] == datasets["reference"]["sha256"]
+    assert result["stage_counts"]["doi_constructed"] >= 1
 
 
 def test_config_driven_cli_writes_manifest(tmp_path):

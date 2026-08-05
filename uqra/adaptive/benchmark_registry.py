@@ -10,6 +10,9 @@ from types import MappingProxyType
 from typing import Callable, Mapping, Sequence
 
 from .benchmark import BENCHMARK_NAME, run_suite
+from .four_branch_reduced import (BENCHMARK_NAME as FOUR_BRANCH_NAME,
+                                  SCENARIO as FOUR_BRANCH_SCENARIO,
+                                  run_suite as run_four_branch_suite)
 
 
 @dataclass(frozen=True)
@@ -26,6 +29,11 @@ _REGISTRY = {
         name=BENCHMARK_NAME,
         scenarios=("converged", "max_order", "overfit_fallback", "runtime_failure"),
         run=run_suite,
+    ),
+    FOUR_BRANCH_NAME: BenchmarkDefinition(
+        name=FOUR_BRANCH_NAME,
+        scenarios=(FOUR_BRANCH_SCENARIO,),
+        run=run_four_branch_suite,
     ),
 }
 
