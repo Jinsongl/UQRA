@@ -71,6 +71,11 @@
 python -m uqra.adaptive.publication --output artifacts/adaptive_phase11_publication_manifest.json
 ```
 
-冻结 manifest hash：`5257f1c12037c0388da2f33346ed6648bd99d8c8cbf60a03bc0c310bbb8d06e6`；源码树 hash：`92b469be99e216e3d7716fa1f8682d65c9594338ceff11bf8738a0d8caa18560`。
+冻结 manifest hash：`1061e3494f139195a0656d85b72efe9b7352ae22d4ea3b398b167823491ae415`；源码树 hash：`78eb3cd3f436cd3c22c12ac02b821ce4a4ddf2f8187e9177454a13da33fdac9a`。
+
+2026-08-05 集成审计发现旧冻结文件的源码树 hash 与最终源码不一致。以上
+manifest 已在 Python 3.11.15 锁定环境中从提交
+`9ac4af2f23c09cbcece8c880c678407e5e454cd5` 重新生成；同一源码随后在
+Python 3.12.13 中通过完整兼容性回归。
 
 CI 的阶段必需测试已加入 `test_adaptive_publication.py`。合并前应创建 pull request，等待 `Adaptive compatibility gate` 在 Python 3.11/3.12 均通过，再由仓库管理员执行默认分支合并和发布标签操作。

@@ -6,8 +6,8 @@
     "scipy": "1.15.2"
   },
   "git": {
-    "branch": "agent/adaptive-pce-compatibility",
-    "commit": "50e95e81de43841dff227512fb08209bd0e00559",
+    "branch": "codex/integrate-uqra",
+    "commit": "9ac4af2f23c09cbcece8c880c678407e5e454cd5",
     "worktree_dirty": false
   },
   "modern_vs_portable": {
@@ -2071,6 +2071,6 @@
     }
   },
   "schema": "uqra.adaptive.publication-manifest/v1",
-  "source_tree_hash": "92b469be99e216e3d7716fa1f8682d65c9594338ceff11bf8738a0d8caa18560",
-  "stable_manifest_hash": "5257f1c12037c0388da2f33346ed6648bd99d8c8cbf60a03bc0c310bbb8d06e6"
+  "source_tree_hash": "78eb3cd3f436cd3c22c12ac02b821ce4a4ddf2f8187e9177454a13da33fdac9a",
+  "stable_manifest_hash": "1061e3494f139195a0656d85b72efe9b7352ae22d4ea3b398b167823491ae415"
 }
