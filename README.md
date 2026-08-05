@@ -40,7 +40,18 @@ python -m uqra.adaptive.run --config examples/configs/adaptive_reduced_smoke.jso
 python -m uqra.adaptive.run --config examples/configs/adaptive_reduced_full.json
 ```
 
-The configuration, runner-manifest, and trace contracts are published under
+The v1 examples above remain supported for the `v0.2.0` delivery contract. New
+benchmark configurations use the v2 static registry contract:
+
+```bash
+python -m uqra.adaptive.run --config examples/configs/adaptive_registry_v2_smoke.json
+python -m uqra.adaptive.run --config examples/configs/adaptive_registry_v2_full.json
+```
+
+The v2 `runner.benchmark` value must be a name published by UQRA's static
+registry. Python module paths and configuration-driven imports are not accepted.
+
+The v1/v2 configuration, runner-manifest, and trace contracts are published under
 [`schemas/`](schemas/). This entry point intentionally accepts only
 `purpose: software_benchmark` and `scale: reduced`; formal paper-production
 experiments belong to the independent paper repository.

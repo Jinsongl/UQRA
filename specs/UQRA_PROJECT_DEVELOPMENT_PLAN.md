@@ -3,7 +3,7 @@
 状态：执行中  
 版本：2026-08-05 split-plan v2  
 项目仓库：`https://github.com/Jinsongl/UQRA`  
-当前发布基线：`v0.1.0`
+当前发布基线：`v0.2.0`
 
 执行进度、当前 PR、阻塞项和下一动作由
 `specs/UQRA_PROJECT_PROGRESS_BOARD.md` 维护；本文件只定义项目范围、阶段和验收门。
@@ -147,7 +147,26 @@ Python 3.12.13 完整兼容性套件亦为 `42 passed`。交付证据见
 - canonical 源码始终保持冻结；
 - portable runner 不进入 UQRA 生产实现。
 
-## 4. 向论文项目交付的唯一接口
+## 4. 交付里程碑与任务编号
+
+`U0--U6` 表示长期工作流，不随单次发布关闭；`M0--M3` 表示可验收的交付
+里程碑；`BENCH-*`、`LEG-*`、`REG-*`、`PKG-*`、`CI-*` 和 `SCHEMA-*`
+表示看板中的具体任务。任务 ID 不替代里程碑编号，每项任务必须在看板中标明所属
+里程碑或持续工作流。
+
+| 里程碑 | 状态 | 范围 | 完成门 |
+| --- | --- | --- | --- |
+| M0 治理与边界 | 已完成 | 主计划、项目/论文边界、兼容性裁决和证据清单 | 计划与边界进入版本控制 |
+| M1 Runner 契约与可审计发布（历史称 UQRA-MV1） | 已完成 | config/manifest/trace schema、CLI、两个示例、evidence package、clean-clone 验收 | Python 3.11/3.12、required CI、发布证据和正式版本全部通过；对应 `v0.2.0` |
+| M2.1 Benchmark 注册与配置契约 | 进行中 | 受控 benchmark registry、config v2 和 schema；对应 `BENCH-01` | 配置只能选择已注册 benchmark，禁止任意 Python 导入，并通过 schema 与回归测试 |
+| M2.2 首个多路径缩减基准 | 待开始 | FourBranch reduced；对应 `BENCH-02` | 固定输入、seed、数据 hash、DoI 路径、manifest、trace 和重复性测试通过 |
+| M2.3 多问题 Benchmark 验收 | 待开始 | `BENCH-03--06` | 至少三个不同性质的缩减 benchmark 通过统一 schema、CI 和声明边界验收 |
+| M3 包装与跨环境质量 | 待开始 | `PKG-*`、`CI-*`、`SCHEMA-*` | wheel/sdist、版本源、标准 schema 校验和支持平台 CI 达到发布门 |
+
+`LEG-*` 和 `REG-*` 属于 U1/U3 的证据闭环任务，不并入 M2 benchmark 交付，也不
+因 M2 完成而自动关闭。
+
+## 5. 向论文项目交付的唯一接口
 
 每次正式交付必须是不可含混的证据包，至少包含：
 
@@ -162,19 +181,20 @@ Python 3.12.13 完整兼容性套件亦为 `42 passed`。交付证据见
 
 论文仓库不得复制 `uqra/adaptive` 后形成第二套正式算法。需要算法变更时，回到本项目完成裁决、实现、测试和新版本交付。
 
-## 5. 当前最小下一目标
+## 6. 当前最小下一目标
 
-**UQRA-MV1：已完成。**
+**M1 Runner 契约与可审计发布：已完成。** 历史文档中的 `UQRA-MV1` 与 M1
+是同一里程碑，不再作为独立编号使用。
 
 完成证据：固定 tag/commit、干净环境命令、版本化 schema、两个配置模板、完整
 manifest、Python 3.11/3.12 的 42 项兼容性测试、全新克隆验收、确定性回归结果和
 已知限制均已进入 evidence package。论文项目是否拥有 FourBranch 等算例资产不
 阻塞 UQRA 通用功能发布，但不得用软件回归结果冒充论文算例复现。
 
-下一最小目标转为 U4 通用软件 benchmark 扩展与 U6 持续维护；新增正式发布应使用
-新版本号，不得静默覆盖 `v0.1.0`。
+当前最小目标为 **M2.1 Benchmark 注册与配置契约**，对应看板任务 `BENCH-01`。
+M2.1 完成后才启动 M2.2；新增正式发布应使用新版本号，不得静默覆盖 `v0.2.0`。
 
-## 6. 历史文档关系
+## 7. 历史文档关系
 
 - `ADAPTIVE_PCE_DEVELOPMENT_PLAN.md`：既有阶段 5–11 的详细开发记录；
 - `DISSERTATION_NUMERICAL_REPRODUCTION_PLAN.md`：指向独立论文仓库完整复现计划的交接接口，本仓库不再管理 R0--R7；
