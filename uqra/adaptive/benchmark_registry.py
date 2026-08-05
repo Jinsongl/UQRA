@@ -13,6 +13,12 @@ from .benchmark import BENCHMARK_NAME, run_suite
 from .four_branch_reduced import (BENCHMARK_NAME as FOUR_BRANCH_NAME,
                                   SCENARIO as FOUR_BRANCH_SCENARIO,
                                   run_suite as run_four_branch_suite)
+from .gayton_reduced import (BENCHMARK_NAME as GAYTON_NAME,
+                             SCENARIO as GAYTON_SCENARIO,
+                             run_suite as run_gayton_suite)
+from .ishigami_reduced import (BENCHMARK_NAME as ISHIGAMI_NAME,
+                               SCENARIO as ISHIGAMI_SCENARIO,
+                               run_suite as run_ishigami_suite)
 
 
 @dataclass(frozen=True)
@@ -34,6 +40,12 @@ _REGISTRY = {
         name=FOUR_BRANCH_NAME,
         scenarios=(FOUR_BRANCH_SCENARIO,),
         run=run_four_branch_suite,
+    ),
+    GAYTON_NAME: BenchmarkDefinition(
+        name=GAYTON_NAME, scenarios=(GAYTON_SCENARIO,), run=run_gayton_suite,
+    ),
+    ISHIGAMI_NAME: BenchmarkDefinition(
+        name=ISHIGAMI_NAME, scenarios=(ISHIGAMI_SCENARIO,), run=run_ishigami_suite,
     ),
 }
 
