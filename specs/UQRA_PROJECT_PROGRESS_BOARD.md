@@ -28,14 +28,14 @@
 | 项目 | 当前值 | 状态/证据 |
 | --- | --- | --- |
 | 默认分支 | `master` | ✅ `v0.2.0` 已发布 |
-| 当前工作分支 | `codex/complete-m23-benchmarks` | 🔄 M2.3 多问题 benchmark 验收 |
-| 最近 PR | [#7 Complete M2.3 multi-benchmark acceptance](https://github.com/Jinsongl/UQRA/pull/7) | 🔄 Draft；required CI 已通过 |
-| Python 3.11 | `52 passed` | ✅ [CI run 30980439387](https://github.com/Jinsongl/UQRA/actions/runs/30980439387) |
-| Python 3.12 | `52 passed` | ✅ [CI run 30980439387](https://github.com/Jinsongl/UQRA/actions/runs/30980439387) |
+| 当前工作分支 | `codex/schema-contract-validation` | 🔄 SCHEMA-01 + SCHEMA-02 |
+| 最近 PR | [#7 Complete M2.3 multi-benchmark acceptance](https://github.com/Jinsongl/UQRA/pull/7) | ✅ 已合并；merge `1d3dacd` |
+| Python 3.11 | `58 passed` | ✅ SCHEMA 本地完整 compatibility 验收 |
+| Python 3.12 | `58 passed` | ✅ SCHEMA 本地完整 compatibility 验收 |
 | Required check | `Adaptive compatibility gate` | ✅ 通过 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.2.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.2.0) | ✅ 指向合并提交 `3445464d` |
-| 下一版本 | 待 M2.1--M2.3 完成范围确定 | ⏳ 不提前承诺版本号 |
+| 下一版本 | 待 M3 完成范围确定 | ⏳ 不提前承诺版本号 |
 
 ## 3. 编号体系与里程碑路线
 
@@ -50,7 +50,7 @@
 | M2.1 Benchmark 注册与配置契约 | ✅ 已完成 | U4、U6 | BENCH-01 | 静态 registry、config v2、双版本 45 项测试和 required gate 通过 |
 | M2.2 首个多路径缩减基准 | ✅ 已完成 | U4 | BENCH-02 | FourBranch reduced 的输入身份、DoI、trace、重复性和 PR #6 required gate 通过 |
 | M2.3 多问题 Benchmark 验收 | ✅ 已完成 | U4 | BENCH-03、BENCH-04、BENCH-06 | 三基准统一 contract hash 与双版本 `52 passed`；required gate 通过 |
-| M3 包装与跨环境质量 | ⏳ 待开始 | U6 | PKG-01--04、CI-01、SCHEMA-01 | 包装、版本源、schema 验证和跨平台 CI 达到发布门 |
+| M3 包装与跨环境质量 | 🔄 进行中 | U6 | PKG-01--04、CI-01、SCHEMA-01/02 | SCHEMA-01/02 已启动；包装、版本源、schema 验证和跨平台 CI 达到发布门 |
 
 `LEG-01/02` 与 `REG-01/02` 是 U1/U3 的证据闭环任务，不属于 M2，也不因 M2 完成
 而自动关闭。
@@ -85,7 +85,8 @@
 
 | ID | 归属 / 优先级 | 任务 | 当前证据 | 完成门 |
 | --- | --- | --- | --- | --- |
-当前无已启动的离散任务；下一主线为 M3，需单独启动后再移入本节。
+| SCHEMA-01 | M3 / P2 | 对齐 config v2、manifest 与 reduced benchmark 契约 | 发布 schema 已覆盖 config v1/v2、Phase 8 与三个 reduced benchmark；双版本 `58 passed` | required CI 通过并合并 |
+| SCHEMA-02 | M3 / P2 | 使用 Draft 2020-12 标准校验器验证 config/manifest/trace | 五个示例/benchmark 的生成产物已通过标准校验；错误 scenario 组合有拒绝测试 | required CI 通过并合并 |
 
 ### ⏳ 待开始
 
@@ -120,7 +121,6 @@
 | PKG-03 | M3 / P2 | 建立 `uqra.__version__` 唯一版本源 | 包、CLI、manifest 版本一致 |
 | PKG-04 | M3 / P2 | 清理 Python 3.12 转义警告 | 兼容性测试无对应 SyntaxWarning/DeprecationWarning |
 | CI-01 | M3 / P2 | 扩展 Windows/Linux CI | Python 3.11/3.12 在支持平台通过 |
-| SCHEMA-01 | M3 / P2 | 增加标准 JSON Schema 验证器测试 | 示例和生成 manifest 同时通过运行时与标准 schema 校验 |
 
 ### ⛔ 阻塞：历史资产
 
