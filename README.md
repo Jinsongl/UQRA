@@ -33,6 +33,18 @@ python -m uqra.adaptive.benchmark --scenario all --output artifacts/adaptive_pha
 python -m uqra.adaptive.publication --output artifacts/adaptive_phase11_publication_manifest.json
 ```
 
+Run the versioned, configuration-driven reduced benchmark entry point:
+
+```bash
+python -m uqra.adaptive.run --config examples/configs/adaptive_reduced_smoke.json
+python -m uqra.adaptive.run --config examples/configs/adaptive_reduced_full.json
+```
+
+The configuration, runner-manifest, and trace contracts are published under
+[`schemas/`](schemas/). This entry point intentionally accepts only
+`purpose: software_benchmark` and `scale: reduced`; formal paper-production
+experiments belong to the independent paper repository.
+
 The algorithm decisions, phased audit summaries, frozen protocol, and known
 historical-data limits are documented in [`specs/`](specs/README.md).
 

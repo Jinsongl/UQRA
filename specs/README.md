@@ -17,7 +17,10 @@
 
 - [UQRA_COMPATIBILITY_DECISIONS.md](UQRA_COMPATIBILITY_DECISIONS.md)：规定稳定候选样本身份、跨阶累积观测、LARS/OED/DoI 兼容行为、已知源码歧义、实施顺序和验证门槛。
 - [SOURCE_CORRECTION_HANDOFF.md](SOURCE_CORRECTION_HANDOFF.md)：用于直接启动源码修改的实施交接上下文，汇总工作边界、缺陷编号、修正顺序、验证目标、禁止事项和待裁决问题。
-- [ADAPTIVE_PCE_DEVELOPMENT_PLAN.md](ADAPTIVE_PCE_DEVELOPMENT_PLAN.md)：规定兼容核心初版完成后的实现审查、真实 Hermite 验证、逐轮行为回归、历史数据恢复、环境现代化和投稿发布顺序。
+- [UQRA_PROJECT_DEVELOPMENT_PLAN.md](UQRA_PROJECT_DEVELOPMENT_PLAN.md)：UQRA 软件项目主计划，规定 U0--U6、项目边界、runner 发布门和向论文项目交付的唯一接口。
+- [UQRA_PROJECT_PROGRESS_BOARD.md](UQRA_PROJECT_PROGRESS_BOARD.md)：UQRA 软件项目执行看板，追踪当前任务状态、优先级、依赖、阻塞条件、验收证据和下一动作。
+- [ADAPTIVE_PCE_DEVELOPMENT_PLAN.md](ADAPTIVE_PCE_DEVELOPMENT_PLAN.md)：记录兼容核心初版完成后的实现审查、真实 Hermite 验证、逐轮行为回归、历史数据恢复、环境现代化、publication 配置资格验证和软件发布过程。
+- [DISSERTATION_NUMERICAL_REPRODUCTION_PLAN.md](DISSERTATION_NUMERICAL_REPRODUCTION_PLAN.md)：指向独立论文仓库完整复现计划的交接文件；本仓库只保留 runner 接口和项目边界。
 - [ADAPTIVE_PCE_PHASE5_AUDIT_SUMMARY.md](ADAPTIVE_PCE_PHASE5_AUDIT_SUMMARY.md)：记录阶段 5 状态机审查、六类终止测试矩阵、trace 证据、不变量逐项审计和阶段 6 真实 Hermite fixture 结果。
 - [ADAPTIVE_PCE_PHASE7_REGRESSION_SUMMARY.md](ADAPTIVE_PCE_PHASE7_REGRESSION_SUMMARY.md)：记录冻结 Hermite 输入上的 legacy/现代预处理、LARS/CV、RRQR、D/S、DoI、累积观测和停止位置逐轮行为回归。
 - [ADAPTIVE_PCE_PHASE8_BENCHMARK_SUMMARY.md](ADAPTIVE_PCE_PHASE8_BENCHMARK_SUMMARY.md)：记录确定性二维 benchmark、四类终止 manifest、样本身份验收、稳定哈希和可重现运行命令。
@@ -26,6 +29,8 @@
 - [ADAPTIVE_PCE_PHASE10_ENVIRONMENT_CI_SUMMARY.md](ADAPTIVE_PCE_PHASE10_ENVIRONMENT_CI_SUMMARY.md)：记录 pyDOE2 移除、依赖锁、干净 Python 3.11 验证、Python 3.12 CI 和合并门槛。
 - [ADAPTIVE_PCE_PHASE11_PUBLICATION_RELEASE_SUMMARY.md](ADAPTIVE_PCE_PHASE11_PUBLICATION_RELEASE_SUMMARY.md)：记录冻结投稿协议、敏感性分析、三类实现边界、最终代码审查和合并准备。
 - [ADAPTIVE_PCE_PHASE11_FROZEN_MANIFEST.json](ADAPTIVE_PCE_PHASE11_FROZEN_MANIFEST.json)：保存投稿协议、输入/源码哈希、现代与 portable 逐案例结果及独立 overfit 统计。
+- [releases/UQRA_V0.1.0_EVIDENCE.md](releases/UQRA_V0.1.0_EVIDENCE.md)：汇总 `v0.1.0` 算法基线、M1 版本化交付接口、环境锁、schema、示例配置、全新克隆验收、允许声明和禁止声明。
+- [releases/UQRA_V0.1.0_EVIDENCE.json](releases/UQRA_V0.1.0_EVIDENCE.json)：保存上述交付证据的机器可读摘要与关键哈希。
 
 ## 命名约定
 

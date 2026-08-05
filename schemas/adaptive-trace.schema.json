@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Jinsongl/UQRA/schemas/adaptive-trace.schema.json",
+  "title": "UQRA adaptive trace row v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "order", "stage", "transition_from", "transition_to", "inner_iteration",
+    "evaluated_global_ids", "active_path", "selected_active_ids", "cv_path",
+    "added_global_ids", "doi_global_ids", "doi_local_ids", "qoi", "order_target",
+    "order_budget", "evaluated_before", "evaluated_after", "remaining_budget",
+    "refit_count", "model_call_count", "candidate_hash", "inner_stop_reason",
+    "fallback_used", "rebuild_order", "rebuild_sample_ids", "error_type", "error_message"
+  ],
+  "properties": {
+    "order": {"type": "integer", "minimum": 0},
+    "stage": {"type": "string", "minLength": 1},
+    "transition_from": {"type": "string", "minLength": 1},
+    "transition_to": {"type": "string", "minLength": 1},
+    "inner_iteration": {"type": "integer", "minimum": 0},
+    "evaluated_global_ids": {"$ref": "#/$defs/integerArray"},
+    "active_path": {"$ref": "#/$defs/integerArray"},
+    "selected_active_ids": {"$ref": "#/$defs/integerArray"},
+    "cv_path": {"type": "array", "items": {"type": "number"}},
+    "added_global_ids": {"$ref": "#/$defs/integerArray"},
+    "doi_global_ids": {"$ref": "#/$defs/integerArray"},
+    "doi_local_ids": {"$ref": "#/$defs/integerArray"},
+    "qoi": {"type": ["number", "null"]},
+    "order_target": {"type": ["integer", "null"]},
+    "order_budget": {"type": ["integer", "null"]},
+    "evaluated_before": {"type": "integer", "minimum": 0},
+    "evaluated_after": {"type": "integer", "minimum": 0},
+    "remaining_budget": {"type": ["integer", "null"], "minimum": 0},
+    "refit_count": {"type": "integer", "minimum": 0},
+    "model_call_count": {"type": "integer", "minimum": 0},
+    "candidate_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "inner_stop_reason": {"type": ["string", "null"]},
+    "fallback_used": {"type": ["string", "null"]},
+    "rebuild_order": {"type": ["integer", "null"]},
+    "rebuild_sample_ids": {"$ref": "#/$defs/integerArray"},
+    "error_type": {"type": ["string", "null"]},
+    "error_message": {"type": ["string", "null"]}
+  },
+  "$defs": {
+    "integerArray": {"type": "array", "items": {"type": "integer", "minimum": 0}}
+  }
+}

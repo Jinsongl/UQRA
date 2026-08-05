@@ -1,0 +1,41 @@
+{
+  "schema": "uqra.release-evidence/v1",
+  "release": {
+    "tag": "v0.1.0",
+    "merge_commit": "6479f1803ae66583616fc3cd65d0c90cefe9053e",
+    "m1_contract_commit": "c6fea079fa742fca160cdc2b90ab10bcdda364c3"
+  },
+  "environments": {
+    "python_3_11": {"version": "3.11.15", "compatibility_tests_passed": 42},
+    "python_3_12": {"version": "3.12.13", "compatibility_tests_passed": 42},
+    "clean_clone_python_3_11": {
+      "version": "3.11.15",
+      "install_succeeded": true,
+      "compatibility_tests_passed": 42,
+      "smoke_manifest_valid": true,
+      "full_manifest_valid": true,
+      "worktree_clean_after_validation": true
+    }
+  },
+  "hashes": {
+    "requirements_py311": "77d9605d0ad90356e12ed4dc4f5b4dc8287de7b5e3564130268417e69566379e",
+    "requirements_py312": "4b04dc01a6443a8052ec22b4189a5264f75a30d30914a4065445f3f1229cce9c",
+    "config_schema": "0cf0cab928ca9e6de75d123aafef18a2cbf54711a202e3e606a09c451a2617c5",
+    "manifest_schema": "f7f26e3f65a59ff141e0a66f1b17b78b73f65a7148ebb03264902672a1ef88ae",
+    "trace_schema": "a0ff2757181a8fa07cc6762ecc43cc122dfd4b045fce76aec0d4f2fd149c09c0",
+    "smoke_config": "c907b688de35399e9f4034ea3cdf9d33fd31430a927bf385d6d0742c5086596c",
+    "full_config": "afbeb3f4788fb6d5b9c0543cae1dc2c344a6d53847f8615f4bfc7910c26dd486",
+    "v0_1_0_source_tree": "78eb3cd3f436cd3c22c12ac02b821ce4a4ddf2f8187e9177454a13da33fdac9a",
+    "v0_1_0_publication_manifest": "1061e3494f139195a0656d85b72efe9b7352ae22d4ea3b398b167823491ae415",
+    "clean_clone_smoke_config": "fc4cd5b8fb37f49ba0306c6d1314cd0d087852ad58521823351ea1f4abbc22f0",
+    "clean_clone_smoke_manifest": "6bb6603ddfe78ff2fafc8cceeb2c02354b7700dea619c220fe2dd270d8705b53",
+    "clean_clone_full_config": "1174509ba03b4f2d9faae43e9a7fb93259cf7ec1885280bee0d834b6047c1258",
+    "clean_clone_full_manifest": "1d0701414cb8b5956ed99820927bb3cb1a17ae546fe4496458f8f5985bc1ac36"
+  },
+  "scope": {
+    "purpose": "software_benchmark",
+    "scale": "reduced",
+    "paper_production_supported_by_this_entry_point": false,
+    "canonical_historical_fourbranch_replay": "unavailable"
+  }
+}

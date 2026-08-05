@@ -1,0 +1,13 @@
+{
+  "schema": "uqra.adaptive.runner-config/v1",
+  "purpose": "software_benchmark",
+  "scale": "reduced",
+  "runner": {
+    "kind": "deterministic_benchmark",
+    "benchmark": "phase8_two_dimensional_hermite",
+    "scenarios": ["converged", "max_order", "overfit_fallback", "runtime_failure"]
+  },
+  "output": {
+    "manifest": "artifacts/examples/adaptive_reduced_full_manifest.json"
+  }
+}
