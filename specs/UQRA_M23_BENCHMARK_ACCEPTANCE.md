@@ -30,10 +30,14 @@ Gayton 的移位分布只用于 reduced 软件路径覆盖，明确不是论文�
 
 ## 固定结果
 
-| Benchmark | Reference metric | Trace hash | Stable manifest hash |
+| Benchmark | Reference metric | Contract trace hash | Contract manifest hash |
 | --- | --- | --- | --- |
-| Ishigami | variance `13.814374748854757` | `c2079398...f850` | `cbe5bad7...808a` |
-| Gayton | failure probability `0.108642578125` | `3b49d8ac...a3d0` | `5f660e4e...7ae` |
+| Ishigami | variance `13.814374748854757` | `697fb5aa...a91c` | `37ebf3d4...daad7` |
+| Gayton | failure probability `0.108642578125` | `fdf6a793...0de9` | `db980133...be02` |
+
+Raw trace 和 stable manifest 仍保留，用于同一运行环境内的逐位重复性诊断。跨平台
+required gate 使用 contract hash：它保留状态转换、阶次、样本/DoI ID、预算、停止
+原因和候选池身份，排除会随 BLAS/LAPACK 产生末位差异的 `cv_path` 与 `qoi` 浮点值。
 
 ## 本地验收
 
@@ -43,7 +47,7 @@ Gayton 的移位分布只用于 reduced 软件路径覆盖，明确不是论文�
 - config v1 不能选择 v2 registry benchmark；
 - config v2 schema 的 benchmark 枚举与 registry 一致；
 - candidate、test、reference 的 seed 和 SHA-256 相互独立；
-- manifest 与 trace 重复运行一致，Ishigami/Gayton 进一步锁定为固定 hash；
+- raw manifest/trace 在同一平台重复运行一致；跨平台结构行为锁定为 contract hash；
 - 三个 benchmark 均触发 DoI 路径并通过 manifest v1 契约验证。
 
 最终完成门：远端 Python 3.11/3.12 与 `Adaptive compatibility gate` 通过，PR 审查完成。

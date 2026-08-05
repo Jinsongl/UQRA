@@ -6,13 +6,15 @@ import pytest
 from uqra.adaptive.benchmark_registry import benchmark_names, get_benchmark
 from uqra.adaptive.four_branch_reduced import INPUT_HASHES
 from uqra.adaptive.gayton_reduced import (
-    EXPECTED_MANIFEST_HASH as GAYTON_MANIFEST_HASH,
-    EXPECTED_REFERENCE_FAILURE_PROBABILITY, EXPECTED_TRACE_HASH as GAYTON_TRACE_HASH,
+    EXPECTED_CONTRACT_MANIFEST_HASH as GAYTON_MANIFEST_HASH,
+    EXPECTED_REFERENCE_FAILURE_PROBABILITY,
+    EXPECTED_CONTRACT_TRACE_HASH as GAYTON_TRACE_HASH,
     gayton_limit_state,
 )
 from uqra.adaptive.ishigami_reduced import (
-    EXPECTED_MANIFEST_HASH as ISHIGAMI_MANIFEST_HASH,
-    EXPECTED_REFERENCE_VARIANCE, EXPECTED_TRACE_HASH as ISHIGAMI_TRACE_HASH,
+    EXPECTED_CONTRACT_MANIFEST_HASH as ISHIGAMI_MANIFEST_HASH,
+    EXPECTED_REFERENCE_VARIANCE,
+    EXPECTED_CONTRACT_TRACE_HASH as ISHIGAMI_TRACE_HASH,
     ishigami,
 )
 from uqra.adaptive.run import (CONFIG_SCHEMA, CONFIG_SCHEMA_V2, MANIFEST_SCHEMA, TRACE_SCHEMA,
@@ -153,8 +155,8 @@ def test_ishigami_nonlinearity_interaction_and_frozen_results():
     run = get_benchmark("ishigami_reduced_v1").run(["reduced"])
     scenario = run["scenarios"]["reduced"]
     assert scenario["reference_metric"]["value"] == EXPECTED_REFERENCE_VARIANCE
-    assert scenario["trace_hash"] == ISHIGAMI_TRACE_HASH
-    assert run["stable_manifest_hash"] == ISHIGAMI_MANIFEST_HASH
+    assert scenario["contract_trace_hash"] == ISHIGAMI_TRACE_HASH
+    assert run["contract_manifest_hash"] == ISHIGAMI_MANIFEST_HASH
 
 
 def test_gayton_local_failure_domain_and_frozen_results():
@@ -164,8 +166,8 @@ def test_gayton_local_failure_domain_and_frozen_results():
     scenario = run["scenarios"]["reduced"]
     assert scenario["reference_metric"]["value"] == EXPECTED_REFERENCE_FAILURE_PROBABILITY
     assert 0.0 < scenario["reference_metric"]["value"] < 1.0
-    assert scenario["trace_hash"] == GAYTON_TRACE_HASH
-    assert run["stable_manifest_hash"] == GAYTON_MANIFEST_HASH
+    assert scenario["contract_trace_hash"] == GAYTON_TRACE_HASH
+    assert run["contract_manifest_hash"] == GAYTON_MANIFEST_HASH
 
 
 def test_config_driven_cli_writes_manifest(tmp_path):

@@ -13,6 +13,23 @@ from .profiles import publication_profile
 from .state import array_hash
 
 
+def _canonical_hash(payload):
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+
+
+def contract_trace_hash(trace):
+    """Hash discrete behavior while excluding BLAS-sensitive floating diagnostics."""
+    payload = []
+    for row in trace:
+        item = asdict(row)
+        item.pop("cv_path", None)
+        item.pop("qoi", None)
+        payload.append(item)
+    return _canonical_hash(payload)
+
+
 def dataset_identity(arrays, seeds):
     return {
         name: {"role": name, "rng": "numpy.random.Generator(PCG64)",
@@ -49,6 +66,7 @@ def run_reduced_fixture(*, name, arrays, seeds, cv_seed, model, vandermonde,
         "reference_metric": reference_metric(reference),
         "doi_center_test_ids": boundary_ids.tolist(),
         "trace_hash": result.trace_hash(), "trace_rows": len(result.trace),
+        "contract_trace_hash": contract_trace_hash(result.trace),
         "stage_counts": dict(sorted(stages.items())),
         "model_call_count": result.state.model_call_count,
         "evaluated_global_ids": list(result.state.evaluated_global_ids),
@@ -63,7 +81,10 @@ def run_reduced_fixture(*, name, arrays, seeds, cv_seed, model, vandermonde,
                   "datasets": dataset_identity(arrays, seeds)},
         "scenarios": {"reduced": scenario},
     }
-    manifest["stable_manifest_hash"] = hashlib.sha256(
-        json.dumps(manifest, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-    ).hexdigest()
+    contract_manifest = json.loads(json.dumps(manifest, allow_nan=False))
+    for item in contract_manifest["scenarios"].values():
+        item.pop("trace", None)
+        item.pop("trace_hash", None)
+    manifest["contract_manifest_hash"] = _canonical_hash(contract_manifest)
+    manifest["stable_manifest_hash"] = _canonical_hash(manifest)
     return manifest
