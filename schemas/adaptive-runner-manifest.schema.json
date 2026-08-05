@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Jinsongl/UQRA/schemas/adaptive-runner-manifest.schema.json",
+  "title": "UQRA adaptive runner manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "trace_schema", "purpose", "scale", "config_hash", "config", "run", "stable_manifest_hash"],
+  "properties": {
+    "schema": {"const": "uqra.adaptive.runner-manifest/v1"},
+    "trace_schema": {"const": "uqra.adaptive.trace/v1"},
+    "purpose": {"const": "software_benchmark"},
+    "scale": {"const": "reduced"},
+    "config_hash": {"$ref": "#/$defs/hash"},
+    "config": {"$ref": "adaptive-runner-config.schema.json"},
+    "stable_manifest_hash": {"$ref": "#/$defs/hash"},
+    "run": {
+      "type": "object",
+      "required": ["schema_version", "benchmark", "input", "git", "dependencies", "reproduce_command", "scenarios", "stable_manifest_hash"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "benchmark": {"const": "phase8_two_dimensional_hermite"},
+        "input": {"type": "object"},
+        "git": {"type": "object"},
+        "dependencies": {"type": "object"},
+        "reproduce_command": {"type": "string"},
+        "stable_manifest_hash": {"$ref": "#/$defs/hash"},
+        "scenarios": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "required": ["scenario", "status", "stop_reason", "trace_hash", "trace"],
+            "properties": {
+              "scenario": {"type": "string"},
+              "status": {"type": "string"},
+              "stop_reason": {"type": "string"},
+              "trace_hash": {"$ref": "#/$defs/hash"},
+              "trace": {"type": "array", "items": {"$ref": "adaptive-trace.schema.json"}}
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

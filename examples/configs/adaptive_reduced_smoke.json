@@ -1,0 +1,13 @@
+{
+  "schema": "uqra.adaptive.runner-config/v1",
+  "purpose": "software_benchmark",
+  "scale": "reduced",
+  "runner": {
+    "kind": "deterministic_benchmark",
+    "benchmark": "phase8_two_dimensional_hermite",
+    "scenarios": ["converged"]
+  },
+  "output": {
+    "manifest": "artifacts/examples/adaptive_reduced_smoke_manifest.json"
+  }
+}
