@@ -5,6 +5,16 @@ import pytest
 
 from uqra.adaptive.benchmark_registry import benchmark_names, get_benchmark
 from uqra.adaptive.four_branch_reduced import INPUT_HASHES
+from uqra.adaptive.gayton_reduced import (
+    EXPECTED_MANIFEST_HASH as GAYTON_MANIFEST_HASH,
+    EXPECTED_REFERENCE_FAILURE_PROBABILITY, EXPECTED_TRACE_HASH as GAYTON_TRACE_HASH,
+    gayton_limit_state,
+)
+from uqra.adaptive.ishigami_reduced import (
+    EXPECTED_MANIFEST_HASH as ISHIGAMI_MANIFEST_HASH,
+    EXPECTED_REFERENCE_VARIANCE, EXPECTED_TRACE_HASH as ISHIGAMI_TRACE_HASH,
+    ishigami,
+)
 from uqra.adaptive.run import (CONFIG_SCHEMA, CONFIG_SCHEMA_V2, MANIFEST_SCHEMA, TRACE_SCHEMA,
                                load_config, main, run_config, validate_config,
                                validate_manifest)
@@ -14,6 +24,8 @@ ROOT = Path(__file__).resolve().parents[2]
 SMOKE_CONFIG = ROOT / "examples" / "configs" / "adaptive_reduced_smoke.json"
 V2_SMOKE_CONFIG = ROOT / "examples" / "configs" / "adaptive_registry_v2_smoke.json"
 FOUR_BRANCH_CONFIG = ROOT / "examples" / "configs" / "four_branch_reduced_v1.json"
+ISHIGAMI_CONFIG = ROOT / "examples" / "configs" / "ishigami_reduced_v1.json"
+GAYTON_CONFIG = ROOT / "examples" / "configs" / "gayton_reduced_v1.json"
 
 
 def test_published_json_schemas_and_examples_are_well_formed():
@@ -33,6 +45,8 @@ def test_published_json_schemas_and_examples_are_well_formed():
         V2_SMOKE_CONFIG: CONFIG_SCHEMA_V2,
         ROOT / "examples" / "configs" / "adaptive_registry_v2_full.json": CONFIG_SCHEMA_V2,
         FOUR_BRANCH_CONFIG: CONFIG_SCHEMA_V2,
+        ISHIGAMI_CONFIG: CONFIG_SCHEMA_V2,
+        GAYTON_CONFIG: CONFIG_SCHEMA_V2,
     }
     for path, expected_schema in examples.items():
         assert load_config(path)["schema"] == expected_schema
@@ -110,6 +124,48 @@ def test_four_branch_reduced_config_is_registered_and_repeatable():
     assert result["test_hash"] == datasets["test"]["sha256"]
     assert result["reference_hash"] == datasets["reference"]["sha256"]
     assert result["stage_counts"]["doi_constructed"] >= 1
+
+
+@pytest.mark.parametrize("path", [FOUR_BRANCH_CONFIG, ISHIGAMI_CONFIG, GAYTON_CONFIG])
+def test_m23_reduced_benchmark_contract(path):
+    config = load_config(path)
+    first, second = run_config(config), run_config(config)
+    assert validate_manifest(first)
+    assert first["stable_manifest_hash"] == second["stable_manifest_hash"]
+    run = first["run"]
+    assert run["input"]["purpose"] == "software_benchmark"
+    assert run["input"]["scale"] == "reduced"
+    assert run["input"]["historical_replay"] is False
+    assert run["input"].get("paper_production", False) is False
+    datasets = run["input"]["datasets"]
+    assert set(datasets) == {"candidate", "test", "reference"}
+    assert len({item["seed"] for item in datasets.values()}) == 3
+    assert len({item["sha256"] for item in datasets.values()}) == 3
+    scenario = run["scenarios"]["reduced"]
+    assert scenario["stage_counts"]["doi_constructed"] >= 1
+    assert scenario["trace_hash"] == second["run"]["scenarios"]["reduced"]["trace_hash"]
+
+
+def test_ishigami_nonlinearity_interaction_and_frozen_results():
+    xi = [[0.5, 0.5], [0.0, 0.0], [0.0, 1.0]]
+    values = ishigami(xi)
+    assert values[1] != values[0]  # x3 changes the response through x1*x3 interaction
+    run = get_benchmark("ishigami_reduced_v1").run(["reduced"])
+    scenario = run["scenarios"]["reduced"]
+    assert scenario["reference_metric"]["value"] == EXPECTED_REFERENCE_VARIANCE
+    assert scenario["trace_hash"] == ISHIGAMI_TRACE_HASH
+    assert run["stable_manifest_hash"] == ISHIGAMI_MANIFEST_HASH
+
+
+def test_gayton_local_failure_domain_and_frozen_results():
+    assert gayton_limit_state([[0.0], [0.0]])[0] > 0.0
+    assert gayton_limit_state([[2.0], [2.0]])[0] < 0.0
+    run = get_benchmark("gayton_reduced_v1").run(["reduced"])
+    scenario = run["scenarios"]["reduced"]
+    assert scenario["reference_metric"]["value"] == EXPECTED_REFERENCE_FAILURE_PROBABILITY
+    assert 0.0 < scenario["reference_metric"]["value"] < 1.0
+    assert scenario["trace_hash"] == GAYTON_TRACE_HASH
+    assert run["stable_manifest_hash"] == GAYTON_MANIFEST_HASH
 
 
 def test_config_driven_cli_writes_manifest(tmp_path):

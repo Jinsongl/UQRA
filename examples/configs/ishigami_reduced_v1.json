@@ -1,0 +1,1 @@
+{"schema":"uqra.adaptive.runner-config/v2","purpose":"software_benchmark","scale":"reduced","runner":{"kind":"deterministic_benchmark","benchmark":"ishigami_reduced_v1","scenarios":["reduced"]},"output":{"manifest":"artifacts/examples/ishigami_reduced_v1_manifest.json"}}

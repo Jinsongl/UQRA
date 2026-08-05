@@ -15,7 +15,7 @@
       "required": ["kind", "benchmark", "scenarios"],
       "properties": {
         "kind": {"const": "deterministic_benchmark"},
-        "benchmark": {"enum": ["four_branch_reduced_v1", "phase8_two_dimensional_hermite"]},
+        "benchmark": {"enum": ["four_branch_reduced_v1", "gayton_reduced_v1", "ishigami_reduced_v1", "phase8_two_dimensional_hermite"]},
         "scenarios": {
           "type": "array",
           "minItems": 1,

@@ -47,6 +47,8 @@ benchmark configurations use the v2 static registry contract:
 python -m uqra.adaptive.run --config examples/configs/adaptive_registry_v2_smoke.json
 python -m uqra.adaptive.run --config examples/configs/adaptive_registry_v2_full.json
 python -m uqra.adaptive.run --config examples/configs/four_branch_reduced_v1.json
+python -m uqra.adaptive.run --config examples/configs/ishigami_reduced_v1.json
+python -m uqra.adaptive.run --config examples/configs/gayton_reduced_v1.json
 ```
 
 The v2 `runner.benchmark` value must be a name published by UQRA's static
