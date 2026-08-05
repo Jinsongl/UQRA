@@ -14,6 +14,7 @@ import numpy as np
 
 from .controller import AdaptiveSparsePCE
 from .profiles import publication_profile
+from .reduced_fixture import contract_trace_hash
 from .state import array_hash
 
 
@@ -110,6 +111,7 @@ def run_scenario():
         "doi_center_test_ids": boundary_ids.tolist(),
         "trace_hash": result.trace_hash(),
         "trace_rows": len(result.trace),
+        "contract_trace_hash": contract_trace_hash(result.trace),
         "stage_counts": dict(sorted(stages.items())),
         "model_call_count": result.state.model_call_count,
         "evaluated_global_ids": list(result.state.evaluated_global_ids),
@@ -130,12 +132,20 @@ def run_suite(scenarios=None):
             "purpose": "software_benchmark",
             "scale": "reduced",
             "historical_replay": False,
+            "paper_production": False,
             "failure_definition": "min(g1,g2,g3,g4) <= 0",
             "cv_seed": CV_SEED,
             "datasets": _identity_payload(arrays),
         },
         "scenarios": {SCENARIO: run_scenario()},
     }
+    contract_manifest = json.loads(json.dumps(manifest, allow_nan=False))
+    for scenario in contract_manifest["scenarios"].values():
+        scenario.pop("trace", None)
+        scenario.pop("trace_hash", None)
+    manifest["contract_manifest_hash"] = hashlib.sha256(
+        json.dumps(contract_manifest, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
     manifest["stable_manifest_hash"] = hashlib.sha256(
         json.dumps(manifest, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
     ).hexdigest()

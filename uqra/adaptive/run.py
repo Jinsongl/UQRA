@@ -9,12 +9,13 @@ from pathlib import Path
 import sys
 
 from .benchmark_registry import get_benchmark
+from .manifest import build_artifacts, provenance, write_artifacts
 
 
 CONFIG_SCHEMA = "uqra.adaptive.runner-config/v1"
 CONFIG_SCHEMA_V2 = "uqra.adaptive.runner-config/v2"
 SUPPORTED_CONFIG_SCHEMAS = {CONFIG_SCHEMA, CONFIG_SCHEMA_V2}
-MANIFEST_SCHEMA = "uqra.adaptive.runner-manifest/v1"
+MANIFEST_SCHEMA = "uqra.adaptive.runner-manifest/v2"
 TRACE_SCHEMA = "uqra.adaptive.trace/v1"
 RUNNER_KIND = "deterministic_benchmark"
 V1_BENCHMARK = "phase8_two_dimensional_hermite"
@@ -83,7 +84,7 @@ def load_config(path):
 def validate_manifest(manifest):
     """Check invariants required by the published runner-manifest v1 contract."""
     required = {"schema", "trace_schema", "purpose", "scale", "config_hash",
-                "config", "run", "stable_manifest_hash"}
+                "config", "run", "provenance", "artifacts", "stable_manifest_hash"}
     if not isinstance(manifest, dict) or set(manifest) != required:
         raise ValueError("runner manifest fields do not match the v1 contract")
     if manifest["schema"] != MANIFEST_SCHEMA or manifest["trace_schema"] != TRACE_SCHEMA:
@@ -111,16 +112,18 @@ def validate_manifest(manifest):
             raise ValueError(f"runner manifest contains an invalid trace row: {name!r}")
     stable = copy.deepcopy(manifest)
     expected = stable.pop("stable_manifest_hash")
+    stable.pop("provenance", None)
     stable.get("run", {}).pop("git", None)
     if expected != _canonical_hash(stable):
         raise ValueError("runner stable manifest hash is invalid")
     return True
 
 
-def run_config(config):
+def _run_config_bundle(config, *, config_path="<in-memory-config>", output_path=None):
     config = validate_config(config)
     benchmark = get_benchmark(config["runner"]["benchmark"])
     benchmark_manifest = benchmark.run(config["runner"]["scenarios"])
+    output_path = Path(output_path or config["output"]["manifest"])
     manifest = {
         "schema": MANIFEST_SCHEMA,
         "trace_schema": TRACE_SCHEMA,
@@ -130,11 +133,19 @@ def run_config(config):
         "config": config,
         "run": benchmark_manifest,
     }
+    manifest["provenance"] = provenance(config_path, output_path)
+    manifest["artifacts"], files = build_artifacts(manifest, benchmark.inputs(), output_path)
     stable = copy.deepcopy(manifest)
+    stable.pop("provenance", None)
     stable.get("run", {}).pop("git", None)
     manifest["stable_manifest_hash"] = _canonical_hash(stable)
     validate_manifest(manifest)
-    return manifest
+    return manifest, files
+
+
+def run_config(config):
+    """Execute a config and return its complete in-memory manifest."""
+    return _run_config_bundle(config)[0]
 
 
 def main(argv=None):
@@ -145,10 +156,13 @@ def main(argv=None):
     arguments = parser.parse_args(argv)
     try:
         config = load_config(arguments.config)
-        manifest = run_config(config)
         output = arguments.output or Path(config["output"]["manifest"])
+        manifest, files = _run_config_bundle(
+            config, config_path=arguments.config, output_path=output,
+        )
         payload = json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False) + "\n"
         output.parent.mkdir(parents=True, exist_ok=True)
+        write_artifacts(output, files)
         output.write_text(payload, encoding="utf-8")
     except ValueError as error:
         parser.error(str(error))

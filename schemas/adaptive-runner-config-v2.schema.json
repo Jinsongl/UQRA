@@ -32,5 +32,30 @@
       "required": ["manifest"],
       "properties": {"manifest": {"type": "string", "minLength": 1}}
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "runner": {"properties": {"benchmark": {"const": "phase8_two_dimensional_hermite"}}}
+        }
+      },
+      "then": {
+        "properties": {
+          "runner": {
+            "properties": {
+              "scenarios": {
+                "items": {"enum": ["converged", "max_order", "overfit_fallback", "runtime_failure"]}
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "runner": {"properties": {"scenarios": {"const": ["reduced"]}}}
+        }
+      }
+    }
+  ]
 }

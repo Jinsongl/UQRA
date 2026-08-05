@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Jinsongl/UQRA/schemas/adaptive-runner-manifest-v2.schema.json",
+  "title": "UQRA adaptive runner manifest v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "trace_schema", "purpose", "scale", "config_hash", "config", "run", "provenance", "artifacts", "stable_manifest_hash"],
+  "properties": {
+    "schema": {"const": "uqra.adaptive.runner-manifest/v2"},
+    "trace_schema": {"const": "uqra.adaptive.trace/v1"},
+    "purpose": {"const": "software_benchmark"},
+    "scale": {"const": "reduced"},
+    "config_hash": {"$ref": "#/$defs/hash"},
+    "config": {
+      "oneOf": [
+        {"$ref": "adaptive-runner-config.schema.json"},
+        {"$ref": "adaptive-runner-config-v2.schema.json"}
+      ]
+    },
+    "stable_manifest_hash": {"$ref": "#/$defs/hash"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "artifacts": {"$ref": "#/$defs/artifacts"},
+    "run": {"$ref": "#/$defs/run"}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "fileIdentity": {
+      "type": "object",
+      "required": ["path", "size_bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "sha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["git", "source_tree", "environment", "reproduce_command"],
+      "properties": {
+        "git": {
+          "type": "object", "additionalProperties": false,
+          "required": ["commit", "branch", "worktree_dirty"],
+          "properties": {
+            "commit": {"type": ["string", "null"]},
+            "branch": {"type": ["string", "null"]},
+            "worktree_dirty": {"type": ["boolean", "null"]}
+          }
+        },
+        "source_tree": {
+          "type": "object", "additionalProperties": false,
+          "required": ["algorithm", "sha256", "tracked_files"],
+          "properties": {
+            "algorithm": {"const": "sha256"},
+            "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+            "tracked_files": {"type": ["integer", "null"], "minimum": 0}
+          }
+        },
+        "environment": {
+          "type": "object", "additionalProperties": false,
+          "required": ["python", "numpy", "scipy", "scikit_learn"],
+          "properties": {
+            "python": {"type": "string"}, "numpy": {"type": "string"},
+            "scipy": {"type": "string"}, "scikit_learn": {"type": "string"}
+          }
+        },
+        "reproduce_command": {"type": "string", "minLength": 1}
+      }
+    },
+    "artifacts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["inputs", "traces", "results", "output_summary"],
+      "properties": {
+        "inputs": {
+          "type": "object", "minProperties": 2,
+          "additionalProperties": {
+            "allOf": [{"$ref": "#/$defs/fileIdentity"}],
+            "required": ["role", "shape", "dtype", "array_size_bytes"],
+            "properties": {
+              "role": {"type": "string"},
+              "shape": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+              "dtype": {"type": "string"},
+              "array_size_bytes": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        "traces": {
+          "type": "object", "minProperties": 1,
+          "additionalProperties": {
+            "allOf": [{"$ref": "#/$defs/fileIdentity"}],
+            "required": ["rows", "raw_trace_hash", "raw_trace_hash_scope", "contract_trace_hash", "contract_trace_hash_scope"],
+            "properties": {
+              "rows": {"type": "integer", "minimum": 0},
+              "raw_trace_hash": {"$ref": "#/$defs/hash"},
+              "raw_trace_hash_scope": {"const": "full_precision_trace"},
+              "contract_trace_hash": {"$ref": "#/$defs/hash"},
+              "contract_trace_hash_scope": {"const": "discrete_trace_without_cv_path_or_qoi"}
+            }
+          }
+        },
+        "results": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/fileIdentity"}},
+        "output_summary": {"$ref": "#/$defs/fileIdentity"}
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "required": ["scenario", "status", "stop_reason", "trace_hash", "trace"],
+      "properties": {
+        "scenario": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1},
+        "stop_reason": {"type": "string", "minLength": 1},
+        "trace_hash": {"$ref": "#/$defs/hash"},
+        "contract_trace_hash": {"$ref": "#/$defs/hash"},
+        "trace": {"type": "array", "items": {"$ref": "adaptive-trace.schema.json"}}
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "benchmark", "input", "scenarios", "stable_manifest_hash"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "benchmark": {"enum": ["four_branch_reduced_v1", "gayton_reduced_v1", "ishigami_reduced_v1", "phase8_two_dimensional_hermite"]},
+        "input": {"type": "object"},
+        "git": {"type": "object"},
+        "dependencies": {"type": "object"},
+        "reproduce_command": {"type": "string", "minLength": 1},
+        "contract_manifest_hash": {"$ref": "#/$defs/hash"},
+        "stable_manifest_hash": {"$ref": "#/$defs/hash"},
+        "scenarios": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"$ref": "#/$defs/scenario"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"benchmark": {"const": "phase8_two_dimensional_hermite"}}},
+          "then": {"required": ["git", "dependencies", "reproduce_command"]},
+          "else": {
+            "required": ["contract_manifest_hash"],
+            "properties": {
+              "input": {
+                "required": ["purpose", "scale", "historical_replay", "paper_production", "datasets"],
+                "properties": {
+                  "purpose": {"const": "software_benchmark"},
+                  "scale": {"const": "reduced"},
+                  "historical_replay": {"const": false},
+                  "paper_production": {"const": false},
+                  "datasets": {
+                    "type": "object",
+                    "required": ["candidate", "test", "reference"]
+                  }
+                }
+              },
+              "scenarios": {
+                "required": ["reduced"],
+                "properties": {"reduced": {"required": ["contract_trace_hash"]}}
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

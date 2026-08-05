@@ -173,7 +173,7 @@ Python 3.12.13 完整兼容性套件亦为 `42 passed`。交付证据见
 | M2.1 Benchmark 注册与配置契约 | 已完成 | 受控 benchmark registry、config v2 和 schema；对应 `BENCH-01` | 配置只能选择已注册 benchmark，禁止任意 Python 导入；PR #6 双版本 45 项兼容性测试和 required gate 通过 |
 | M2.2 首个多路径缩减基准 | 已完成 | FourBranch reduced；对应 `BENCH-02` | 固定输入、seed、数据 hash、DoI 路径、manifest、trace、重复性测试和 PR #6 required gate 通过 |
 | M2.3 多问题 Benchmark 验收 | 已完成 | `BENCH-03`、`BENCH-04`、`BENCH-06` | FourBranch、Ishigami、Gayton 通过统一 schema、身份、contract hash、双版本测试和 required gate |
-| M3 包装、契约一致性与跨环境质量 | 待开始 | `PKG-*`、`CI-*`、`SCHEMA-*`、`MANIFEST-*` | wheel/sdist、版本源、运行时与发布 schema 一致、标准 schema 校验、完整来源/环境身份和支持平台 CI 达到发布门 |
+| M3 包装、契约一致性与跨环境质量 | 进行中 | `PKG-*`、`CI-*`、`SCHEMA-*`、`MANIFEST-*` | wheel/sdist、版本源、运行时与发布 schema 一致、标准 schema 校验、完整来源/环境身份和支持平台 CI 达到发布门 |
 | M4 受控论文生产接口与下游交付契约 | 待开始 | `PROD-*`、`DATA-*`、`CV-*`、`PROV-*`、`REL-*` | 论文仓库可通过版本化配置和冻结外部数据调用唯一 UQRA runner，并获得通过正式 schema 校验的 manifest、trace、来源环境身份和输入/输出哈希 |
 
 `LEG-*` 和 `REG-*` 属于 U1/U3 的证据闭环任务，不并入 M2 benchmark 交付，也不
@@ -234,8 +234,11 @@ manifest、Python 3.11/3.12 的 42 项兼容性测试、全新克隆验收、确
 已知限制均已进入 evidence package。论文项目是否拥有 FourBranch 等算例资产不
 阻塞 UQRA 通用功能发布，但不得用软件回归结果冒充论文算例复现。
 
-M2.3 已完成，证据见 `UQRA_M23_BENCHMARK_ACCEPTANCE.md`。下一最小目标转为
-**M3 包装、契约一致性与跨环境质量**；按顺序完成 M3 后再启动 M4 受控论文生产
+M2.3 已通过 PR #7（merge `1d3dacd`）完成，证据见
+`UQRA_M23_BENCHMARK_ACCEPTANCE.md`。**M3 包装、契约一致性与跨环境质量**已启动，
+`SCHEMA-01` 与 `SCHEMA-02` 已通过 PR #8 的 required gate；当前执行
+`MANIFEST-01` 与 `MANIFEST-02`，统一来源、环境、输入和输出文件身份。按顺序完成
+M3 后再启动 M4 受控论文生产
 接口。新增正式发布必须使用新版本号，不得静默覆盖 `v0.2.0`。
 
 ## 7. 历史文档关系

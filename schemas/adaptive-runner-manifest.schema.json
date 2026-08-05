@@ -11,38 +11,76 @@
     "purpose": {"const": "software_benchmark"},
     "scale": {"const": "reduced"},
     "config_hash": {"$ref": "#/$defs/hash"},
-    "config": {"$ref": "adaptive-runner-config.schema.json"},
+    "config": {
+      "oneOf": [
+        {"$ref": "adaptive-runner-config.schema.json"},
+        {"$ref": "adaptive-runner-config-v2.schema.json"}
+      ]
+    },
     "stable_manifest_hash": {"$ref": "#/$defs/hash"},
+    "run": {"$ref": "#/$defs/run"}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scenario": {
+      "type": "object",
+      "required": ["scenario", "status", "stop_reason", "trace_hash", "trace"],
+      "properties": {
+        "scenario": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1},
+        "stop_reason": {"type": "string", "minLength": 1},
+        "trace_hash": {"$ref": "#/$defs/hash"},
+        "contract_trace_hash": {"$ref": "#/$defs/hash"},
+        "trace": {"type": "array", "items": {"$ref": "adaptive-trace.schema.json"}}
+      }
+    },
     "run": {
       "type": "object",
-      "required": ["schema_version", "benchmark", "input", "git", "dependencies", "reproduce_command", "scenarios", "stable_manifest_hash"],
+      "additionalProperties": false,
+      "required": ["schema_version", "benchmark", "input", "scenarios", "stable_manifest_hash"],
       "properties": {
         "schema_version": {"const": 1},
-        "benchmark": {"const": "phase8_two_dimensional_hermite"},
+        "benchmark": {"enum": ["four_branch_reduced_v1", "gayton_reduced_v1", "ishigami_reduced_v1", "phase8_two_dimensional_hermite"]},
         "input": {"type": "object"},
         "git": {"type": "object"},
         "dependencies": {"type": "object"},
-        "reproduce_command": {"type": "string"},
+        "reproduce_command": {"type": "string", "minLength": 1},
+        "contract_manifest_hash": {"$ref": "#/$defs/hash"},
         "stable_manifest_hash": {"$ref": "#/$defs/hash"},
         "scenarios": {
           "type": "object",
           "minProperties": 1,
-          "additionalProperties": {
-            "type": "object",
-            "required": ["scenario", "status", "stop_reason", "trace_hash", "trace"],
+          "additionalProperties": {"$ref": "#/$defs/scenario"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"benchmark": {"const": "phase8_two_dimensional_hermite"}}},
+          "then": {"required": ["git", "dependencies", "reproduce_command"]},
+          "else": {
+            "required": ["contract_manifest_hash"],
             "properties": {
-              "scenario": {"type": "string"},
-              "status": {"type": "string"},
-              "stop_reason": {"type": "string"},
-              "trace_hash": {"$ref": "#/$defs/hash"},
-              "trace": {"type": "array", "items": {"$ref": "adaptive-trace.schema.json"}}
+              "input": {
+                "required": ["purpose", "scale", "historical_replay", "paper_production", "datasets"],
+                "properties": {
+                  "purpose": {"const": "software_benchmark"},
+                  "scale": {"const": "reduced"},
+                  "historical_replay": {"const": false},
+                  "paper_production": {"const": false},
+                  "datasets": {
+                    "type": "object",
+                    "required": ["candidate", "test", "reference"]
+                  }
+                }
+              },
+              "scenarios": {
+                "required": ["reduced"],
+                "properties": {"reduced": {"required": ["contract_trace_hash"]}}
+              }
             }
           }
         }
-      }
+      ]
     }
-  },
-  "$defs": {
-    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }
 }
