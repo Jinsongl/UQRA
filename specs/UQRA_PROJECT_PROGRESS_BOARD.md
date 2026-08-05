@@ -29,9 +29,9 @@
 | --- | --- | --- |
 | 默认分支 | `master` | ✅ `v0.2.0` 已发布 |
 | 当前工作分支 | `codex/normalize-roadmap-numbering` | 🔄 统一里程碑与任务编号 |
-| 最近 PR | [#5 Update project progress board for v0.2.0](https://github.com/Jinsongl/UQRA/pull/5) | ✅ 已合并 |
-| Python 3.11 | `42 passed` | ✅ [CI run 30972668606](https://github.com/Jinsongl/UQRA/actions/runs/30972668606) |
-| Python 3.12 | `42 passed` | ✅ [CI run 30972668606](https://github.com/Jinsongl/UQRA/actions/runs/30972668606) |
+| 最近 PR | [#6 Add M2.1 benchmark registry contract](https://github.com/Jinsongl/UQRA/pull/6) | 🔄 Draft；CI 已通过 |
+| Python 3.11 | `45 passed` | ✅ [CI run 30978105375](https://github.com/Jinsongl/UQRA/actions/runs/30978105375) |
+| Python 3.12 | `45 passed` | ✅ [CI run 30978105375](https://github.com/Jinsongl/UQRA/actions/runs/30978105375) |
 | Required check | `Adaptive compatibility gate` | ✅ 通过 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.2.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.2.0) | ✅ 指向合并提交 `3445464d` |
@@ -47,8 +47,8 @@
 | --- | --- | --- | --- | --- |
 | M0 治理与边界 | ✅ 已完成 | U0 | 计划与边界文档 | 进入版本控制并明确项目/论文边界 |
 | M1 Runner 契约与可审计发布（原 UQRA-MV1） | ✅ 已完成 | U5、U6 | schema、CLI、示例、evidence、clean-clone、REL-01/02 | `v0.2.0`、双版本 CI 和 required gate 通过 |
-| M2.1 Benchmark 注册与配置契约 | 🔄 进行中 | U4、U6 | BENCH-01 | 本地实现与双版本 45 项测试通过；待远端 CI/审查 |
-| M2.2 首个多路径缩减基准 | ⏳ 待开始 | U4 | BENCH-02 | FourBranch reduced 的输入身份、trace 与重复性证据完整 |
+| M2.1 Benchmark 注册与配置契约 | ✅ 已完成 | U4、U6 | BENCH-01 | 静态 registry、config v2、双版本 45 项测试和 required gate 通过 |
+| M2.2 首个多路径缩减基准 | 🔄 进行中 | U4 | BENCH-02 | FourBranch reduced 的输入身份、trace 与重复性证据完整 |
 | M2.3 多问题 Benchmark 验收 | ⏳ 待开始 | U4 | BENCH-03--06 | 至少三个不同性质 benchmark 通过统一验收 |
 | M3 包装与跨环境质量 | ⏳ 待开始 | U6 | PKG-01--04、CI-01、SCHEMA-01 | 包装、版本源、schema 验证和跨平台 CI 达到发布门 |
 
@@ -63,7 +63,7 @@
 | U1 Legacy 基准恢复 | ⛔ 阻塞 | 可恢复证据有限；历史候选池、测试集和 RNG/CV 状态缺失 | 执行 Legacy 环境审计并形成正式阻塞结论 |
 | U2 Modern 核心实现 | ✅ 已完成 | 核心算法完成，当前发布基线为 `v0.2.0` | 核心变更继续遵守裁决和回归门 |
 | U3 内核与逐轮行为回归 | ✅ 已完成（可获得证据范围） | Phase 5--8 证据完整；历史 FourBranch trace 不可用 | 建立统一结案矩阵，与 U1 阻塞结论互链 |
-| U4 通用软件 benchmark | 🔄 进行中 | 二维 Hermite 缩减 benchmark 完成；多问题扩展是当前主线 | 启动受控 benchmark registry/config v2 |
+| U4 通用软件 benchmark | 🔄 进行中 | M2.1 registry/config v2 完成；多问题扩展是当前主线 | 实现 M2.2 FourBranch reduced benchmark |
 | U5 Runner 发布门 | ✅ 已完成 | M1 schema、CLI、示例、evidence、PR #4 和 `v0.2.0` 发布均完成 | 按版本化流程维护后续交付 |
 | U6 版本化维护 | 🔄 进行中 | required CI 和版本化变更流程已建立 | 持续处理 benchmark、包装和依赖质量任务 |
 
@@ -75,18 +75,18 @@
 | --- | --- | --- | --- | --- |
 | REL-01 | M0/M1 / P0 | 合并 M0/M1 交付 | PR #4；Python 3.11/3.12 和聚合 gate 全部通过 | ✅ 已合并到 `master` |
 | REL-02 | M1 / P0 | 发布 `v0.2.0` | tag、GitHub Release、required gate | ✅ 已发布 |
+| BENCH-01 | M2.1 / P1 | 受控 benchmark registry/config v2 | PR #6；Python 3.11/3.12 均 `45 passed`；required gate 通过 | ✅ 完成，作为 M2.2 注册入口 |
 
 ### 🔄 进行中
 
 | ID | 归属 / 优先级 | 任务 | 当前证据 | 完成门 |
 | --- | --- | --- | --- | --- |
-| BENCH-01 | M2.1 / P1 | 设计受控 benchmark registry/config v2 | 静态 registry、v2 schema、两个示例；Python 3.11/3.12 均 `45 passed` | 禁止任意 Python 导入；配置能选择已注册 benchmark；远端 CI 和审查通过 |
+| BENCH-02 | M2.2 / P1 | FourBranch reduced benchmark | BENCH-01 已完成；开始定义冻结输入与配置 | 固定输入/seed/hash、DoI 路径、manifest、trace 和重复性测试通过 |
 
 ### ⏳ 待开始
 
 | ID | 归属 / 优先级 | 任务 | 前置条件 | 完成门 |
 | --- | --- | --- | --- | --- |
-| BENCH-02 | M2.2 / P1 | FourBranch reduced benchmark | BENCH-01 | 固定输入/seed/hash、DoI 路径、manifest、trace 和重复性测试通过 |
 | LEG-01 | U1 / P1 | Legacy Python 3.8/3.9 环境审计 | 无 | 依赖、可运行入口和失败类型形成可审计报告 |
 | REG-01 | U3 / P1 | U3 行为回归结案矩阵 | LEG-01 可并行 | 已验证项与 `unavailable` 项逐项对应证据，无状态歧义 |
 

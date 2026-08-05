@@ -158,8 +158,8 @@ Python 3.12.13 完整兼容性套件亦为 `42 passed`。交付证据见
 | --- | --- | --- | --- |
 | M0 治理与边界 | 已完成 | 主计划、项目/论文边界、兼容性裁决和证据清单 | 计划与边界进入版本控制 |
 | M1 Runner 契约与可审计发布（历史称 UQRA-MV1） | 已完成 | config/manifest/trace schema、CLI、两个示例、evidence package、clean-clone 验收 | Python 3.11/3.12、required CI、发布证据和正式版本全部通过；对应 `v0.2.0` |
-| M2.1 Benchmark 注册与配置契约 | 进行中 | 受控 benchmark registry、config v2 和 schema；对应 `BENCH-01` | 配置只能选择已注册 benchmark，禁止任意 Python 导入，并通过 schema 与回归测试 |
-| M2.2 首个多路径缩减基准 | 待开始 | FourBranch reduced；对应 `BENCH-02` | 固定输入、seed、数据 hash、DoI 路径、manifest、trace 和重复性测试通过 |
+| M2.1 Benchmark 注册与配置契约 | 已完成 | 受控 benchmark registry、config v2 和 schema；对应 `BENCH-01` | 配置只能选择已注册 benchmark，禁止任意 Python 导入；PR #6 双版本 45 项兼容性测试和 required gate 通过 |
+| M2.2 首个多路径缩减基准 | 进行中 | FourBranch reduced；对应 `BENCH-02` | 固定输入、seed、数据 hash、DoI 路径、manifest、trace 和重复性测试通过 |
 | M2.3 多问题 Benchmark 验收 | 待开始 | `BENCH-03--06` | 至少三个不同性质的缩减 benchmark 通过统一 schema、CI 和声明边界验收 |
 | M3 包装与跨环境质量 | 待开始 | `PKG-*`、`CI-*`、`SCHEMA-*` | wheel/sdist、版本源、标准 schema 校验和支持平台 CI 达到发布门 |
 
@@ -191,8 +191,9 @@ manifest、Python 3.11/3.12 的 42 项兼容性测试、全新克隆验收、确
 已知限制均已进入 evidence package。论文项目是否拥有 FourBranch 等算例资产不
 阻塞 UQRA 通用功能发布，但不得用软件回归结果冒充论文算例复现。
 
-当前最小目标为 **M2.1 Benchmark 注册与配置契约**，对应看板任务 `BENCH-01`。
-M2.1 完成后才启动 M2.2；新增正式发布应使用新版本号，不得静默覆盖 `v0.2.0`。
+当前最小目标为 **M2.2 首个多路径缩减基准**，对应看板任务 `BENCH-02`。
+M2.2 使用注册表中的 FourBranch reduced 配置验证输入身份、DoI 路径、manifest、
+trace 和重复性；新增正式发布应使用新版本号，不得静默覆盖 `v0.2.0`。
 
 ## 7. 历史文档关系
 
