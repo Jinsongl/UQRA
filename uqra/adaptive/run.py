@@ -17,6 +17,7 @@ SUPPORTED_CONFIG_SCHEMAS = {CONFIG_SCHEMA, CONFIG_SCHEMA_V2}
 MANIFEST_SCHEMA = "uqra.adaptive.runner-manifest/v1"
 TRACE_SCHEMA = "uqra.adaptive.trace/v1"
 RUNNER_KIND = "deterministic_benchmark"
+V1_BENCHMARK = "phase8_two_dimensional_hermite"
 
 
 def _canonical_hash(payload) -> str:
@@ -49,6 +50,8 @@ def validate_config(config):
         raise ValueError("runner fields must be exactly: kind, benchmark, scenarios")
     if runner["kind"] != RUNNER_KIND:
         raise ValueError(f"unsupported runner kind: {runner['kind']!r}")
+    if config["schema"] == CONFIG_SCHEMA and runner["benchmark"] != V1_BENCHMARK:
+        raise ValueError(f"runner config v1 only supports benchmark: {V1_BENCHMARK}")
     benchmark = get_benchmark(runner["benchmark"])
     scenarios = runner["scenarios"]
     if (not isinstance(scenarios, list) or not scenarios

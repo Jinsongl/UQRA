@@ -54,6 +54,14 @@ def test_registry_rejects_module_paths_and_unknown_benchmarks():
         validate_config(config)
 
 
+def test_v1_contract_cannot_select_v2_registry_benchmarks():
+    config = load_config(SMOKE_CONFIG)
+    config["runner"]["benchmark"] = "four_branch_reduced_v1"
+    config["runner"]["scenarios"] = ["reduced"]
+    with pytest.raises(ValueError, match="v1 only supports"):
+        validate_config(config)
+
+
 def test_runner_rejects_paper_production_and_unknown_fields():
     config = load_config(SMOKE_CONFIG)
     config["purpose"] = "paper_production"
