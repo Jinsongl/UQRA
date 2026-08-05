@@ -9,9 +9,13 @@
 1. `UQRA_COMPATIBILITY_DECISIONS.md` 中的算法裁决；
 2. `SOURCE_CORRECTION_HANDOFF.md` 中的实施边界和验收要求；
 3. canonical UQRA 源码及博士论文中的数学定义；
-4. 经明确预注册的投稿实验协议。
+4. 经明确预注册的 publication 配置资格协议。
 
-当前实现分支为 `agent/adaptive-pce-compatibility`，初版提交为 `4c9a9e8653fdb07272f8ddb4ca62a50b7050432e`。
+本计划的实现与发布工作已完成。当前发布基线为默认分支 `master`、
+合并 PR [#3](https://github.com/Jinsongl/UQRA/pull/3)、合并提交
+`6479f1803ae66583616fc3cd65d0c90cefe9053e` 和发布标签 `v0.1.0`。
+历史开发分支 `agent/adaptive-pce-compatibility` 及初版提交
+`4c9a9e8653fdb07272f8ddb4ca62a50b7050432e` 仅保留用于追溯。
 
 ## 2. 当前基线
 
@@ -197,13 +201,15 @@
 - 不依赖临时 `PYTHONPATH` 或手动安装未声明依赖；
 - Python 版本边界和弃用依赖均在安装文档中明确记录。
 
-> 阶段结果（2026-08-04）：已用内部兼容 LHS 实现移除 `pyDOE2` 及其 `imp` 导入路径；清理 `sklearn` 重复占位依赖并添加 Python 3.11/3.12 精确锁；在全新 Python 3.11.15 venv 中无需临时 `PYTHONPATH` 完成安装并通过 35 项兼容性测试；CI 建立 Python 3.11/投稿目标 3.12 矩阵，并由稳定的 `Adaptive compatibility gate` 聚合阶段 6--9 明确门槛与完整兼容性套件。详见 `ADAPTIVE_PCE_PHASE10_ENVIRONMENT_CI_SUMMARY.md`。
+> 阶段结果（2026-08-04）：已用内部兼容 LHS 实现移除 `pyDOE2` 及其 `imp` 导入路径；清理 `sklearn` 重复占位依赖并添加 Python 3.11/3.12 精确锁；在全新 Python 3.11.15 venv 中无需临时 `PYTHONPATH` 完成安装并通过当时阶段范围内的 35 项兼容性测试；CI 建立 Python 3.11/投稿目标 3.12 矩阵，并由稳定的 `Adaptive compatibility gate` 聚合阶段 6--9 明确门槛与完整兼容性套件。详见 `ADAPTIVE_PCE_PHASE10_ENVIRONMENT_CI_SUMMARY.md`。
+>
+> 发布更新（2026-08-05）：纳入阶段 11 publication 测试后，完整兼容性套件在 Python 3.11.15 和 Python 3.12.13 中均为 `38 passed`；`Adaptive compatibility gate` 已配置为 `master` 的 required check。
 
-## 9. 阶段 11：投稿实验与合并发布
+## 9. 阶段 11：publication 配置资格验证、敏感性测试与软件发布
 
 **状态：投稿协议、低成本敏感性实验、最终审查与合并准备已完成。**
 
-只有阶段 5--10 的验收门槛全部满足后，才进入投稿实验：
+只有阶段 5--10 的验收门槛全部满足后，才进入 publication 配置资格验证：
 
 1. 冻结 `publication` 配置和实验协议；
 2. 预注册预算、DoI 回退、CV、外层稳定次数和 accuracy/validity 条件；
@@ -225,17 +231,19 @@
   -> 阶段 8：确定性 benchmark 集成
   -> 阶段 9：历史数据恢复与四分支追踪
   -> 阶段 10：环境与 CI 固化
-  -> 阶段 11：投稿实验与合并发布
+  -> 阶段 11：publication 配置资格验证、敏感性测试与软件发布
 ```
 
-阶段 9 的外部数据恢复可以与阶段 5--8 并行准备，但不得绕过阶段 7 的中间行为验证。当前最高优先级是阶段 5、6 和 7；三者完成前，当前实现应保持为待审查兼容分支。
+阶段 9 的外部数据恢复曾与阶段 5--8 并行准备，但未绕过阶段 7 的中间行为验证。阶段 5--11 均已达到各自声明范围内的验收门槛，并已形成 `v0.1.0` 发布基线；本文件不再把已完成阶段列为当前开发优先级。历史 canonical 大型输入不可用以及正式论文规模实验尚未执行，继续作为明确的声明边界，而不是阶段 5--11 的未完成项。
 
-## 11. 下一执行动作
+## 11. 完成状态与后续交接
 
-下一步进入合并发布操作：
+本计划原定的合并发布操作已经完成：
 
-1. 创建从 `agent/adaptive-pce-compatibility` 到默认分支的 pull request；
-2. 等待 Python 3.11/3.12 `Adaptive compatibility gate`；
-3. 复核 PR 中的算法差异分类、manifest 与提交哈希；
-4. 经维护者批准后合并，不在本阶段自动改写默认分支；
-5. 合并后创建带协议和 manifest 哈希的发布标签。
+1. PR [#3](https://github.com/Jinsongl/UQRA/pull/3) 已合并到默认分支 `master`；
+2. Python 3.11/3.12 `Adaptive compatibility gate` 已通过并设为 required check；
+3. 算法差异分类、冻结 manifest 与源码树哈希已经复核并刷新；
+4. 合并提交为 `6479f1803ae66583616fc3cd65d0c90cefe9053e`；
+5. 发布标签 `v0.1.0` 已创建并推送。
+
+后续 UQRA 软件维护、runner 交付包和通用 benchmark 扩展应由项目主计划管理；博士论文正式规模的数值与科学结论复现应按专项复现计划从 R0 开始。本文件保留为阶段 5--11 的历史实施与验收记录。
