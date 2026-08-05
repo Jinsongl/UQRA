@@ -28,10 +28,10 @@
 | 项目 | 当前值 | 状态/证据 |
 | --- | --- | --- |
 | 默认分支 | `master` | ✅ `v0.2.0` 已发布 |
-| 当前工作分支 | `codex/schema-contract-validation` | 🔄 SCHEMA-01 + SCHEMA-02 |
-| 最近 PR | [#7 Complete M2.3 multi-benchmark acceptance](https://github.com/Jinsongl/UQRA/pull/7) | ✅ 已合并；merge `1d3dacd` |
-| Python 3.11 | `58 passed` | ✅ SCHEMA 本地完整 compatibility 验收 |
-| Python 3.12 | `58 passed` | ✅ SCHEMA 本地完整 compatibility 验收 |
+| 当前工作分支 | `codex/schema-contract-validation` | 🔄 MANIFEST-01 + MANIFEST-02 |
+| 最近 PR | [#8 Validate published runner schemas](https://github.com/Jinsongl/UQRA/pull/8) | 🔄 Ready；required gate 已通过；继续承载 MANIFEST 完整性提交 |
+| Python 3.11 | `59 passed` | ✅ MANIFEST 本地完整 compatibility 验收 |
+| Python 3.12 | `59 passed` | ✅ MANIFEST 本地完整 compatibility 验收 |
 | Required check | `Adaptive compatibility gate` | ✅ 通过 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.2.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.2.0) | ✅ 指向合并提交 `3445464d` |
@@ -87,6 +87,8 @@
 | --- | --- | --- | --- | --- |
 | SCHEMA-01 | M3 / P2 | 对齐 config v2、manifest 与 reduced benchmark 契约 | 发布 schema 已覆盖 config v1/v2、Phase 8 与三个 reduced benchmark；双版本 `58 passed` | required CI 通过并合并 |
 | SCHEMA-02 | M3 / P2 | 使用 Draft 2020-12 标准校验器验证 config/manifest/trace | 五个示例/benchmark 的生成产物已通过标准校验；错误 scenario 组合有拒绝测试 | required CI 通过并合并 |
+| MANIFEST-01 | M3 / P2 | 记录完整来源与环境身份 | commit、branch、dirty、源码树 hash、Python/NumPy/SciPy/scikit-learn 和复现命令已进入统一 manifest | 双版本完整测试与 required CI 通过 |
+| MANIFEST-02 | M3 / P2 | 记录输入和输出 artifact 身份 | CLI 已物化 candidate/test/reference、trace、结果和摘要侧车文件，并校验路径、大小和文件 SHA-256 | 双版本完整测试与 required CI 通过 |
 
 ### ⏳ 待开始
 
@@ -121,6 +123,8 @@
 | PKG-03 | M3 / P2 | 建立 `uqra.__version__` 唯一版本源 | 包、CLI、manifest 版本一致 |
 | PKG-04 | M3 / P2 | 清理 Python 3.12 转义警告 | 兼容性测试无对应 SyntaxWarning/DeprecationWarning |
 | CI-01 | M3 / P2 | 扩展 Windows/Linux CI | Python 3.11/3.12 在支持平台通过 |
+| MANIFEST-01 | M3 / P2 | 完整来源和环境身份 | Git/源码树/解释器/核心依赖/复现命令均可审计 |
+| MANIFEST-02 | M3 / P2 | 输入与输出文件身份 | 数据、trace、结果和摘要的路径、大小、SHA-256 均对应实际落盘字节 |
 
 ### ⛔ 阻塞：历史资产
 

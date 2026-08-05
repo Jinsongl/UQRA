@@ -236,7 +236,9 @@ manifest、Python 3.11/3.12 的 42 项兼容性测试、全新克隆验收、确
 
 M2.3 已通过 PR #7（merge `1d3dacd`）完成，证据见
 `UQRA_M23_BENCHMARK_ACCEPTANCE.md`。**M3 包装、契约一致性与跨环境质量**已启动，
-当前执行 `SCHEMA-01` 与 `SCHEMA-02`；按顺序完成 M3 后再启动 M4 受控论文生产
+`SCHEMA-01` 与 `SCHEMA-02` 已通过 PR #8 的 required gate；当前执行
+`MANIFEST-01` 与 `MANIFEST-02`，统一来源、环境、输入和输出文件身份。按顺序完成
+M3 后再启动 M4 受控论文生产
 接口。新增正式发布必须使用新版本号，不得静默覆盖 `v0.2.0`。
 
 ## 7. 历史文档关系

@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -36,7 +37,8 @@ def test_published_json_schemas_and_examples_are_well_formed():
     schemas = {
         "adaptive-runner-config.schema.json": CONFIG_SCHEMA,
         "adaptive-runner-config-v2.schema.json": CONFIG_SCHEMA_V2,
-        "adaptive-runner-manifest.schema.json": MANIFEST_SCHEMA,
+        "adaptive-runner-manifest.schema.json": "uqra.adaptive.runner-manifest/v1",
+        "adaptive-runner-manifest-v2.schema.json": MANIFEST_SCHEMA,
         "adaptive-trace.schema.json": TRACE_SCHEMA,
     }
     for name in schemas:
@@ -61,6 +63,7 @@ def _published_schema_validators():
         "adaptive-runner-config.schema.json",
         "adaptive-runner-config-v2.schema.json",
         "adaptive-runner-manifest.schema.json",
+        "adaptive-runner-manifest-v2.schema.json",
         "adaptive-trace.schema.json",
     ]
     schemas = {name: json.loads((ROOT / "schemas" / name).read_text(encoding="utf-8"))
@@ -81,7 +84,7 @@ def test_examples_and_generated_artifacts_pass_published_draft202012_schemas(pat
                      else "adaptive-runner-config-v2.schema.json")
     validators[config_schema].validate(config)
     manifest = run_config(config)
-    validators["adaptive-runner-manifest.schema.json"].validate(manifest)
+    validators["adaptive-runner-manifest-v2.schema.json"].validate(manifest)
     for scenario in manifest["run"]["scenarios"].values():
         for row in scenario["trace"]:
             validators["adaptive-trace.schema.json"].validate(row)
@@ -214,3 +217,37 @@ def test_config_driven_cli_writes_manifest(tmp_path):
     output = tmp_path / "manifest.json"
     assert main(["--config", str(SMOKE_CONFIG), "--output", str(output)]) == 0
     assert validate_manifest(json.loads(output.read_text(encoding="utf-8")))
+
+
+def test_cli_materializes_complete_manifest_evidence_package(tmp_path):
+    output = tmp_path / "four-branch-manifest.json"
+    assert main(["--config", str(FOUR_BRANCH_CONFIG), "--output", str(output)]) == 0
+    manifest = json.loads(output.read_text(encoding="utf-8"))
+
+    provenance = manifest["provenance"]
+    assert set(provenance["git"]) == {"commit", "branch", "worktree_dirty"}
+    assert len(provenance["source_tree"]["sha256"]) == 64
+    assert provenance["source_tree"]["tracked_files"] > 0
+    assert set(provenance["environment"]) == {"python", "numpy", "scipy", "scikit_learn"}
+    assert str(FOUR_BRANCH_CONFIG).replace("\\", "/") in provenance["reproduce_command"]
+
+    artifacts = manifest["artifacts"]
+    assert set(artifacts["inputs"]) == {"candidate", "test", "reference"}
+    identities = list(artifacts["inputs"].values())
+    identities += list(artifacts["traces"].values())
+    identities += list(artifacts["results"].values())
+    identities.append(artifacts["output_summary"])
+    for identity in identities:
+        path = output.parent / identity["path"]
+        payload = path.read_bytes()
+        assert len(payload) == identity["size_bytes"]
+        assert hashlib.sha256(payload).hexdigest() == identity["sha256"]
+
+    for identity in artifacts["inputs"].values():
+        assert identity["shape"]
+        assert identity["dtype"] == "float64"
+        assert identity["array_size_bytes"] > 0
+    trace = artifacts["traces"]["reduced"]
+    assert trace["raw_trace_hash"] == manifest["run"]["scenarios"]["reduced"]["trace_hash"]
+    assert trace["contract_trace_hash"] == manifest["run"]["scenarios"]["reduced"]["contract_trace_hash"]
+    assert trace["raw_trace_hash_scope"] != trace["contract_trace_hash_scope"]

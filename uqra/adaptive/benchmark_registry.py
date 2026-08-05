@@ -9,15 +9,18 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Callable, Mapping, Sequence
 
-from .benchmark import BENCHMARK_NAME, run_suite
+from .benchmark import BENCHMARK_NAME, frozen_benchmark_inputs, run_suite
 from .four_branch_reduced import (BENCHMARK_NAME as FOUR_BRANCH_NAME,
                                   SCENARIO as FOUR_BRANCH_SCENARIO,
+                                  frozen_inputs as four_branch_inputs,
                                   run_suite as run_four_branch_suite)
 from .gayton_reduced import (BENCHMARK_NAME as GAYTON_NAME,
                              SCENARIO as GAYTON_SCENARIO,
+                             frozen_inputs as gayton_inputs,
                              run_suite as run_gayton_suite)
 from .ishigami_reduced import (BENCHMARK_NAME as ISHIGAMI_NAME,
                                SCENARIO as ISHIGAMI_SCENARIO,
+                               frozen_inputs as ishigami_inputs,
                                run_suite as run_ishigami_suite)
 
 
@@ -28,6 +31,7 @@ class BenchmarkDefinition:
     name: str
     scenarios: tuple[str, ...]
     run: Callable[[Sequence[str] | None], dict]
+    inputs: Callable[[], Mapping[str, object]]
 
 
 _REGISTRY = {
@@ -35,17 +39,21 @@ _REGISTRY = {
         name=BENCHMARK_NAME,
         scenarios=("converged", "max_order", "overfit_fallback", "runtime_failure"),
         run=run_suite,
+        inputs=lambda: dict(zip(("candidate", "test"), frozen_benchmark_inputs())),
     ),
     FOUR_BRANCH_NAME: BenchmarkDefinition(
         name=FOUR_BRANCH_NAME,
         scenarios=(FOUR_BRANCH_SCENARIO,),
         run=run_four_branch_suite,
+        inputs=four_branch_inputs,
     ),
     GAYTON_NAME: BenchmarkDefinition(
         name=GAYTON_NAME, scenarios=(GAYTON_SCENARIO,), run=run_gayton_suite,
+        inputs=gayton_inputs,
     ),
     ISHIGAMI_NAME: BenchmarkDefinition(
         name=ISHIGAMI_NAME, scenarios=(ISHIGAMI_SCENARIO,), run=run_ishigami_suite,
+        inputs=ishigami_inputs,
     ),
 }
 
