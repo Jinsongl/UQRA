@@ -1,6 +1,6 @@
 # M2.3 多问题 Benchmark 本地验收摘要
 
-状态：本地验收完成，待远端 required CI 与审查  
+状态：已完成；本地与远端 required CI 均通过  
 日期：2026-08-05
 
 ## 范围与声明边界
@@ -50,4 +50,5 @@ required gate 使用 contract hash：它保留状态转换、阶次、样本/DoI
 - raw manifest/trace 在同一平台重复运行一致；跨平台结构行为锁定为 contract hash；
 - 三个 benchmark 均触发 DoI 路径并通过 manifest v1 契约验证。
 
-最终完成门：远端 Python 3.11/3.12 与 `Adaptive compatibility gate` 通过，PR 审查完成。
+完成门证据：PR #7 的 Python 3.11/3.12 与 `Adaptive compatibility gate` 通过；
+cross-platform contract hash 修复提交为 `7e2bdc8`。

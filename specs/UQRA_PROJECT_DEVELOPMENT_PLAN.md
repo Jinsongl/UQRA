@@ -1,7 +1,7 @@
 # UQRA-compatible 自适应稀疏 PCE 项目开发计划
 
 状态：执行中  
-版本：2026-08-05 split-plan v2  
+版本：2026-08-05 split-plan v3
 项目仓库：`https://github.com/Jinsongl/UQRA`  
 当前发布基线：`v0.2.0`
 
@@ -39,7 +39,7 @@ canonical 文件只读。核心算法限定在 `uqra/adaptive/`；为支持现�
 
 ### U1——Legacy 基准恢复
 
-**状态：未完成；受历史资产和陈旧环境阻塞。**
+**状态：审计已完成；canonical replay 永久受历史资产缺失阻塞。**
 
 工作内容：
 
@@ -49,7 +49,16 @@ canonical 文件只读。核心算法限定在 `uqra/adaptive/`；为支持现�
 - 尝试运行 `examples/Branches_AdapSPCE.py`；
 - 保存可获得的逐轮输出，不合成缺失历史数据。
 
-完成门：成功得到可追踪 legacy 基准，或形成经证据支持的 `blocked by missing assets` 结论。阻塞状态不能被写成成功复现。
+`LEG-01` 的正式结论为 `blocked by missing historical assets`：canonical FourBranch
+候选池、测试集、逐轮输出及 RNG/CV 状态均未恢复，现有相关历史 MCS 池和汇总数组
+不足以反推原运行。该结论关闭 Legacy 恢复审计，不代表成功复现，也不阻塞 M3、M4
+或论文项目建立独立生成的 reconstructed baseline。证据见
+`ADAPTIVE_PCE_PHASE9_HISTORY_RECOVERY_SUMMARY.md` 和
+`ADAPTIVE_PCE_PHASE9_HISTORY_INVENTORY.json`。
+
+完成门：成功得到可追踪 legacy 基准，或形成经证据支持的
+`blocked by missing historical assets` 正式结论。后者已经满足；除非发现具有可验证
+来源的新历史资产，不再重新打开 canonical replay。
 
 ### U2——Modern UQRA-compatible 核心实现
 
@@ -144,13 +153,16 @@ Python 3.12.13 完整兼容性套件亦为 `42 passed`。交付证据见
 - 核心算法变更必须引用兼容性裁决并增加回归测试；
 - 发布后的行为变化必须产生新版本，不得静默覆盖旧结果；
 - 论文项目发现的问题以最小复现、配置、commit 和 trace 反馈；
+- 已发布 config、manifest 和 trace schema 的行为变化必须提供版本升级或迁移说明；
+- 下游 paper-production 配置只调用已发布的受控接口，不得绕过 runner 直接形成第二套执行契约；
 - canonical 源码始终保持冻结；
 - portable runner 不进入 UQRA 生产实现。
 
 ## 4. 交付里程碑与任务编号
 
-`U0--U6` 表示长期工作流，不随单次发布关闭；`M0--M3` 表示可验收的交付
-里程碑；`BENCH-*`、`LEG-*`、`REG-*`、`PKG-*`、`CI-*` 和 `SCHEMA-*`
+`U0--U6` 表示长期工作流，不随单次发布关闭；`M0--M4` 表示可验收的交付
+里程碑；`BENCH-*`、`LEG-*`、`REG-*`、`PKG-*`、`CI-*`、`SCHEMA-*`、
+`MANIFEST-*`、`PROD-*`、`DATA-*`、`CV-*`、`PROV-*` 和 `REL-*`
 表示看板中的具体任务。任务 ID 不替代里程碑编号，每项任务必须在看板中标明所属
 里程碑或持续工作流。
 
@@ -160,11 +172,42 @@ Python 3.12.13 完整兼容性套件亦为 `42 passed`。交付证据见
 | M1 Runner 契约与可审计发布（历史称 UQRA-MV1） | 已完成 | config/manifest/trace schema、CLI、两个示例、evidence package、clean-clone 验收 | Python 3.11/3.12、required CI、发布证据和正式版本全部通过；对应 `v0.2.0` |
 | M2.1 Benchmark 注册与配置契约 | 已完成 | 受控 benchmark registry、config v2 和 schema；对应 `BENCH-01` | 配置只能选择已注册 benchmark，禁止任意 Python 导入；PR #6 双版本 45 项兼容性测试和 required gate 通过 |
 | M2.2 首个多路径缩减基准 | 已完成 | FourBranch reduced；对应 `BENCH-02` | 固定输入、seed、数据 hash、DoI 路径、manifest、trace、重复性测试和 PR #6 required gate 通过 |
-| M2.3 多问题 Benchmark 验收 | 进行中（本地验收完成） | `BENCH-03`、`BENCH-04`、`BENCH-06` | FourBranch、Ishigami、Gayton 已通过统一 schema、身份、manifest/trace 和双版本本地测试；待远端 CI/审查 |
-| M3 包装与跨环境质量 | 待开始 | `PKG-*`、`CI-*`、`SCHEMA-*` | wheel/sdist、版本源、标准 schema 校验和支持平台 CI 达到发布门 |
+| M2.3 多问题 Benchmark 验收 | 已完成 | `BENCH-03`、`BENCH-04`、`BENCH-06` | FourBranch、Ishigami、Gayton 通过统一 schema、身份、contract hash、双版本测试和 required gate |
+| M3 包装、契约一致性与跨环境质量 | 待开始 | `PKG-*`、`CI-*`、`SCHEMA-*`、`MANIFEST-*` | wheel/sdist、版本源、运行时与发布 schema 一致、标准 schema 校验、完整来源/环境身份和支持平台 CI 达到发布门 |
+| M4 受控论文生产接口与下游交付契约 | 待开始 | `PROD-*`、`DATA-*`、`CV-*`、`PROV-*`、`REL-*` | 论文仓库可通过版本化配置和冻结外部数据调用唯一 UQRA runner，并获得通过正式 schema 校验的 manifest、trace、来源环境身份和输入/输出哈希 |
 
 `LEG-*` 和 `REG-*` 属于 U1/U3 的证据闭环任务，不并入 M2 benchmark 交付，也不
 因 M2 完成而自动关闭。
+
+### M3 任务边界
+
+M3 修复现有软件交付契约和实现之间的差异，不引入具体论文算例：
+
+- `SCHEMA-01`：修复 config v2 与 runner manifest schema 的引用、benchmark 和必需字段不一致；
+- `SCHEMA-02`：使用 Draft 2020-12 校验器实际验证 config、manifest 和 trace；
+- `CI-01`：将标准 schema 验证加入 required CI；
+- `MANIFEST-01`：统一记录 Git commit、dirty 状态、源码树 hash、Python/依赖版本和复现命令；
+- `MANIFEST-02`：统一记录输入、结果文件、trace 和输出摘要的路径、大小与哈希；
+- `PKG-01`：确保 schema、验证依赖及相关资源正确进入 wheel/sdist。
+
+### M4 任务边界
+
+M4 提供不绑定具体论文参数的受控通用接口：
+
+- `PROD-01`：定义 `paper-production config v1`；
+- `PROD-02`：定义 `paper-production manifest v1`；
+- `PROD-03`：实现严格校验、禁止任意代码导入的通用执行入口；
+- `DATA-01`：定义外部 candidate/test/reference 数据集的角色、shape、dtype、分布、变量顺序、生成协议、文件身份和 SHA-256 契约；
+- `CV-01`：记录实际 CV fold identity/hash，而不只记录 seed；
+- `PROV-01`：定义 experiment、replicate、主种子及派生种子的身份规则；
+- `PROD-04`：增加不承担论文数值结论的小规模 paper-production smoke fixture；
+- `PROD-05`：完成干净环境及受支持 Python 版本验收；
+- `REL-01`：发布包含生产接口、schema、迁移说明和证据包的新 UQRA 版本。
+
+M4 完成后，具体 `four_branch_reconstructed_v1` 配置、正式规模 candidate/test/reference
+生成、重复次数、批量调度、统计聚合、表图和科学结论仍由论文仓库管理。论文仓库可以
+包装和批量调用 UQRA 入口，但不得复制核心算法或绕过版本化 runner 直接实例化一套
+独立生产流程。
 
 ## 5. 向论文项目交付的唯一接口
 
@@ -191,10 +234,9 @@ manifest、Python 3.11/3.12 的 42 项兼容性测试、全新克隆验收、确
 已知限制均已进入 evidence package。论文项目是否拥有 FourBranch 等算例资产不
 阻塞 UQRA 通用功能发布，但不得用软件回归结果冒充论文算例复现。
 
-M2.2 已完成。当前最小目标为 **M2.3 多问题 Benchmark 验收**；FourBranch、
-Ishigami 和 Gayton 的本地统一验收已通过，完成证据见
-`UQRA_M23_BENCHMARK_ACCEPTANCE.md`，待远端 CI 与审查关闭完成门。新增正式发布应
-使用新版本号，不得静默覆盖 `v0.2.0`。
+M2.3 已完成，证据见 `UQRA_M23_BENCHMARK_ACCEPTANCE.md`。下一最小目标转为
+**M3 包装、契约一致性与跨环境质量**；按顺序完成 M3 后再启动 M4 受控论文生产
+接口。新增正式发布必须使用新版本号，不得静默覆盖 `v0.2.0`。
 
 ## 7. 历史文档关系
 
