@@ -1,0 +1,22 @@
+{
+  "audit_date": "2026-08-06",
+  "auditor": "pip-audit 2.10.1",
+  "environment": {
+    "platform": "Windows",
+    "python": "3.12.13"
+  },
+  "input": {
+    "path": "requirements/compatibility-py312.txt",
+    "sha256": "72ca2226fb5a4e9b7e964cebbccb3236aecffa4b2ffd9719ac307c325c0bc737"
+  },
+  "result": {
+    "known_vulnerabilities": 0,
+    "status": "pass"
+  },
+  "tooling_upgrades": {
+    "pytest": "8.3.5 -> 9.1.1",
+    "setuptools": "75.8.2 -> 83.0.0",
+    "wheel": "0.45.1 -> 0.47.0"
+  },
+  "version": "0.3.0"
+}

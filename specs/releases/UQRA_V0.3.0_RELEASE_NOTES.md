@@ -50,8 +50,8 @@ are not historical replay, paper-production results, or scientific reproduction.
 - [x] Version source changed to `0.3.0`.
 - [x] Packaging scripts generalized beyond `0.2.0`.
 - [x] Vulnerable test/build tooling pins upgraded.
-- [ ] Final wheel and sdist rebuilt from the release-preparation commit.
-- [ ] Final distribution hashes and clean-install evidence frozen.
+- [x] Final wheel and sdist rebuilt from release-preparation commit `2da9847`.
+- [x] Final distribution hashes and clean-install evidence frozen.
 - [ ] Windows/Python 3.12 required gate passes on the release-preparation PR.
 - [ ] Release-preparation PR merged to `master`.
 - [ ] Annotated `v0.3.0` tag created from the approved merge commit.

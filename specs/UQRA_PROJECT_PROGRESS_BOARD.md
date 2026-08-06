@@ -35,7 +35,7 @@
 | Required check | `Adaptive compatibility gate` | ✅ Windows/Python 3.12 run `31062848792` 通过 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.2.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.2.0) | ✅ 指向合并提交 `3445464d` |
-| 下一版本 | `v0.3.0` | 🔄 版本、发布说明、安全审计和候选包验收进行中；尚未打 tag 或发布 |
+| 下一版本 | `v0.3.0` | 🔄 本地候选包、安全审计和 clean-install 证据已冻结，待 required gate；尚未打 tag 或发布 |
 
 ## 3. 编号体系与里程碑路线
 
