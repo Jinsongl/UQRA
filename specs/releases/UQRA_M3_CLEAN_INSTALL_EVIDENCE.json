@@ -1,0 +1,64 @@
+{
+  "schema": "uqra.packaging.clean-install-evidence-set/v1",
+  "source_commit": "dd2c50319736db56aef55d3e3e50f8a0ad4dde88",
+  "environment": {
+    "platform": "win32",
+    "python": "3.12.13"
+  },
+  "reports": [
+    {
+      "install_kind": "wheel",
+      "manifest": {
+        "path": "runner-manifest.json",
+        "sha256": "39ac105697353126c140963f1adf2968e00c43e4cc7e43e44a298af0db191bd6",
+        "size_bytes": 31650
+      },
+      "schemas": [
+        "adaptive-runner-config.schema.json",
+        "adaptive-runner-config-v2.schema.json",
+        "adaptive-runner-manifest.schema.json",
+        "adaptive-runner-manifest-v2.schema.json",
+        "adaptive-trace.schema.json"
+      ],
+      "source_artifact": {
+        "name": "uqra-0.2.0-py3-none-any.whl",
+        "sha256": "374f8e19d1b91cce0ad9768ac4f6a8bdbe2248556183b9d7daf7f67e69fc3a43",
+        "size_bytes": 196544
+      },
+      "versions": {
+        "uqra_cli": "0.2.0",
+        "uqra_distribution": "0.2.0",
+        "uqra_manifest": "0.2.0",
+        "uqra_runtime": "0.2.0",
+        "uqra_source": "0.2.0"
+      }
+    },
+    {
+      "install_kind": "sdist",
+      "manifest": {
+        "path": "runner-manifest.json",
+        "sha256": "3e6707c4820533981ec256bfdd6058968c2eaad0014f6695a5fcf89b56789539",
+        "size_bytes": 31650
+      },
+      "schemas": [
+        "adaptive-runner-config.schema.json",
+        "adaptive-runner-config-v2.schema.json",
+        "adaptive-runner-manifest.schema.json",
+        "adaptive-runner-manifest-v2.schema.json",
+        "adaptive-trace.schema.json"
+      ],
+      "source_artifact": {
+        "name": "uqra-0.2.0.tar.gz",
+        "sha256": "9366e9fd2656845ae67962eccce8fd6084c1f17524ae71d65edb66c1155d0fd1",
+        "size_bytes": 170288
+      },
+      "versions": {
+        "uqra_cli": "0.2.0",
+        "uqra_distribution": "0.2.0",
+        "uqra_manifest": "0.2.0",
+        "uqra_runtime": "0.2.0",
+        "uqra_source": "0.2.0"
+      }
+    }
+  ]
+}

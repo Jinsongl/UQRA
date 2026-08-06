@@ -20,8 +20,8 @@ class Hermite(PolyBase):
     Probabilists Hermite polynomial
 
     Orthoganality:
-    probabilists: \int Hm(x) Hn(x) exp(-x^2/2) dx = sqrt(2pi) n! 1{mn}
-    physicists  : \int Hm(x) Hn(x) exp(-x^2  ) dx = sqrt(pi)  2**n  n! 1{mn}
+    probabilists: \\int Hm(x) Hn(x) exp(-x^2/2) dx = sqrt(2pi) n! 1{mn}
+    physicists  : \\int Hm(x) Hn(x) exp(-x^2  ) dx = sqrt(pi)  2**n  n! 1{mn}
 
     """
 
@@ -41,7 +41,7 @@ class Hermite(PolyBase):
         """
         Gauss-HermiteE quadrature.
         Computes the sample points and weights for Gauss-HermiteE quadrature. 
-        These sample points and weights will correctly integrate polynomials of degree 2*deg - 1 or less over the interval [-\inf, \inf] with the weight function f(x) = \exp(-x^2/2) for probabilists and weight function f(x) = \exp(-x^2) for physicists
+        These sample points and weights will correctly integrate polynomials of degree 2*deg - 1 or less over the interval [-\\inf, \\inf] with the weight function f(x) = \\exp(-x^2/2) for probabilists and weight function f(x) = \\exp(-x^2) for physicists
 
         Parameters:	
         deg : int
@@ -254,7 +254,6 @@ class Hermite(PolyBase):
             self.coef = np.ones((self.num_basis,))
         return str(sum([ibasis * icoef for ibasis, icoef in zip(self.basis, self.coef)]))
         # raise NotImplementedError
-
 
 
 

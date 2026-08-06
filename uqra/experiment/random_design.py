@@ -97,7 +97,7 @@ class CLS(ExperimentBase):
             Ref: Table 2 of "A Christoffel function weighted least squares algorithm for collocation approximations, 
             Akil Harayan, John D. Jakeman, and Tao Zhou"
             Domain D    | Sampling density domain   |     Sampling density v(y) |
-            [-1,1]^d    |   [1,1]^d                 |   1/(pi ^d \prod _{i=1} ^ d sqrt(1-x_i^2)) 
+            [-1,1]^d    |   [1,1]^d                 |   1/(pi ^d \\prod _{i=1} ^ d sqrt(1-x_i^2))
             """
 
             u = stats.uniform.rvs(0,np.pi,size=(self.ndim, size))
@@ -178,5 +178,3 @@ class QuasiMCS(ExperimentBase):
 
         # elif self.method.upper() in ['SOBOL', 'SOB', 'S']:
             # raise NotImplementedError 
-
-

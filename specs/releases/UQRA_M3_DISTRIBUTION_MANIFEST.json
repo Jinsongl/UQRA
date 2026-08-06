@@ -1,0 +1,33 @@
+{
+  "artifacts": [
+    {
+      "kind": "wheel",
+      "name": "uqra-0.2.0-py3-none-any.whl",
+      "schema_members": [
+        "uqra-0.2.0.data/data/schemas/adaptive-runner-config-v2.schema.json",
+        "uqra-0.2.0.data/data/schemas/adaptive-runner-config.schema.json",
+        "uqra-0.2.0.data/data/schemas/adaptive-runner-manifest-v2.schema.json",
+        "uqra-0.2.0.data/data/schemas/adaptive-runner-manifest.schema.json",
+        "uqra-0.2.0.data/data/schemas/adaptive-trace.schema.json"
+      ],
+      "sha256": "374f8e19d1b91cce0ad9768ac4f6a8bdbe2248556183b9d7daf7f67e69fc3a43",
+      "size_bytes": 196544
+    },
+    {
+      "kind": "sdist",
+      "name": "uqra-0.2.0.tar.gz",
+      "schema_members": [
+        "uqra-0.2.0/schemas/adaptive-runner-config-v2.schema.json",
+        "uqra-0.2.0/schemas/adaptive-runner-config.schema.json",
+        "uqra-0.2.0/schemas/adaptive-runner-manifest-v2.schema.json",
+        "uqra-0.2.0/schemas/adaptive-runner-manifest.schema.json",
+        "uqra-0.2.0/schemas/adaptive-trace.schema.json"
+      ],
+      "sha256": "9366e9fd2656845ae67962eccce8fd6084c1f17524ae71d65edb66c1155d0fd1",
+      "size_bytes": 170288
+    }
+  ],
+  "schema": "uqra.packaging.distribution-manifest/v1",
+  "source_commit": "dd2c50319736db56aef55d3e3e50f8a0ad4dde88",
+  "version": "0.2.0"
+}

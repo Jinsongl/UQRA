@@ -49,7 +49,7 @@ def upload2gdrive(filename, data, parent_id):
     """
     current_os  = sys.platform
     if current_os.upper()[:3] == 'WIN':
-        gdrive= "C:\Software\gdrive.exe "
+        gdrive= r"C:\Software\gdrive.exe "
     elif current_os.upper() == 'DARWIN':
         gdrive = "gdrive "
     else:
@@ -700,4 +700,3 @@ def time_in_range(start, end, x):
         return start <= x <= end
     else:
         return start <= x or x <= end
-

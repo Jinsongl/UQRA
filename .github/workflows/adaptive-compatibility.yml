@@ -3,48 +3,50 @@ name: Adaptive compatibility
 on:
   pull_request:
   push:
-    branches: [main, master, agent/adaptive-pce-compatibility]
+    branches: [master]
 
 jobs:
-  compatibility-matrix:
-    name: Python ${{ matrix.python-version }} compatibility
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - python-version: "3.11"
-            requirements: requirements/compatibility-py311.txt
-          - python-version: "3.12"
-            requirements: requirements/compatibility-py312.txt
+  windows-python312:
+    name: Windows Python 3.12 acceptance
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache: pip
-          cache-dependency-path: ${{ matrix.requirements }}
+          cache-dependency-path: requirements/compatibility-py312.txt
       - name: Install locked environment
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r "${{ matrix.requirements }}"
-          python -m pip install --no-deps -e .
-      - name: Stage 6-11 merge requirements
-        run: >-
-          python -m pytest -q
-          tests/compatibility/test_adaptive_hermite.py
-          tests/compatibility/test_adaptive_behavior_regression.py
-          tests/compatibility/test_adaptive_benchmark.py
-          tests/compatibility/test_adaptive_history.py
-          tests/compatibility/test_adaptive_publication.py
-      - name: Complete compatibility suite
+          python -m pip install -r requirements/compatibility-py312.txt
+          python -m pip install --no-deps --no-build-isolation -e .
+      - name: Complete compatibility, schema, and warning suite
         run: python -m pytest tests/compatibility -q
+      - name: Build and clean-install wheel and sdist
+        shell: pwsh
+        run: >-
+          ./tools/packaging/run_clean_install.ps1
+          -Python (Get-Command python).Source
+          -ArtifactDir "${{ runner.temp }}/uqra-dist"
+          -WorkDir "${{ runner.temp }}/uqra-clean-install"
+          -EvidenceDir "${{ runner.temp }}/uqra-packaging-evidence"
+          -SourceCommit "${{ github.sha }}"
+      - name: Upload packaging evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: uqra-windows-python312-packaging-evidence
+          path: |
+            ${{ runner.temp }}/uqra-dist/*
+            ${{ runner.temp }}/uqra-packaging-evidence/**
+          if-no-files-found: error
 
   adaptive-compatibility-gate:
     name: Adaptive compatibility gate
     if: ${{ always() }}
-    needs: compatibility-matrix
+    needs: windows-python312
+    # This job only aggregates the Windows result; it is not Ubuntu compatibility validation.
     runs-on: ubuntu-latest
     steps:
-      - name: Enforce matrix result
-        run: test "${{ needs.compatibility-matrix.result }}" = success
+      - name: Enforce Windows Python 3.12 result
+        run: test "${{ needs.windows-python312.result }}" = success

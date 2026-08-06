@@ -19,7 +19,7 @@ class PowerSpectrum(object):
     Definitions:
     - ACF: for a real, stationary signal x(t), its ACF R is defined as: R(tau) = E[x(t)x(t+tau)]
     - PSD: Fourier transform of R(tau) is called the Power spectral denstity (PSD), Sx/pxx
-    => Sx(w_rad) = \int R(tau) exp(-2*pi*j*w_rad*tau) d tau
+    => Sx(w_rad) = \\int R(tau) exp(-2*pi*j*w_rad*tau) d tau
 
     Properties:
     1. since Sx is an average of the magnitude squared of the Fourier transform
@@ -30,9 +30,9 @@ class PowerSpectrum(object):
     3. Dual relationship: R(tau) = int Sx(w_rad) exp(2*pi*j*w_rad*tau) d tau
     4. At tau=0, R(0) = E[x(t)^2] = int Sx(w_rad) dw, "variance" = Area under curve
     5. Parseval's Identity:
-        Assume x(t) ergodic in the autocorrelation, i.e. R(tau) = E[x(t) x(t+tau)] = \lim_{T->inf} 1/T \int_{-T/2} ^{T/2} x(t) x(t+tau) dt
+        Assume x(t) ergodic in the autocorrelation, i.e. R(tau) = E[x(t) x(t+tau)] = \\lim_{T->inf} 1/T \\int_{-T/2} ^{T/2} x(t) x(t+tau) dt
         for any signal x(t):
-        lim_{T->inf} 1/T \int _{-T/2} ^{T/2} x(t)^2 dt = \int_{-inf} ^{inf} Sx(w_rad) dw
+        lim_{T->inf} 1/T \\int _{-T/2} ^{T/2} x(t)^2 dt = \\int_{-inf} ^{inf} Sx(w_rad) dw
 
     """
 
@@ -306,6 +306,5 @@ class PowerSpectrum(object):
             eta = np.sum(ampf * np.cos(2*np.pi*psd_w*t + theta),axis=0)
 
         return t, eta
-
 
 
