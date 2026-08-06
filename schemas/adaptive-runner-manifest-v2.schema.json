@@ -60,6 +60,7 @@
           "type": "object", "additionalProperties": false,
           "required": ["python", "numpy", "scipy", "scikit_learn"],
           "properties": {
+            "uqra": {"type": "string"},
             "python": {"type": "string"}, "numpy": {"type": "string"},
             "scipy": {"type": "string"}, "scikit_learn": {"type": "string"}
           }

@@ -12,6 +12,8 @@ import numpy as np
 import scipy
 import sklearn
 
+from uqra._version import __version__
+
 def _json_bytes(payload):
     return (json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n").encode()
 
@@ -63,7 +65,7 @@ def provenance(config_path, output_path):
         },
         "source_tree": source_tree_identity(root),
         "environment": {
-            "python": platform.python_version(), "numpy": np.__version__,
+            "uqra": __version__, "python": platform.python_version(), "numpy": np.__version__,
             "scipy": scipy.__version__, "scikit_learn": sklearn.__version__,
         },
         "reproduce_command": subprocess.list2cmdline(reproduce_arguments),

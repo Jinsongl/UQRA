@@ -1,3 +1,44 @@
 [build-system]
 requires = ["setuptools==75.8.2", "wheel==0.45.1"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "uqra"
+dynamic = ["version"]
+description = "Python package for Uncertainty Quantification"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = {file = "LICENSE"}
+authors = [
+  {name = "Jinsong Liu", email = "jinsongliu@utexas.edu"},
+]
+dependencies = [
+  "numpy>=1.26.4,<2",
+  "scipy>=1.15.2,<1.16",
+  "scikit-learn>=1.6.1,<1.7",
+  "pandas>=2.2.3,<2.3",
+  "statsmodels>=0.14.4,<0.15",
+  "tqdm>=4.67.1,<5",
+]
+classifiers = [
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+]
+
+[project.urls]
+Homepage = "https://github.com/Jinsongl/UQRA"
+Repository = "https://github.com/Jinsongl/UQRA"
+
+[project.scripts]
+uqra-adaptive-runner = "uqra.adaptive.run:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "uqra._version.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["uqra", "uqra.*"]
+exclude = ["tests", "tests.*"]

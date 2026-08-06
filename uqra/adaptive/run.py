@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 import sys
 
+from uqra._version import __version__
+
 from .benchmark_registry import get_benchmark
 from .manifest import build_artifacts, provenance, write_artifacts
 
@@ -150,6 +152,7 @@ def run_config(config):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--output", type=Path,
                         help="override output.manifest from the configuration")
