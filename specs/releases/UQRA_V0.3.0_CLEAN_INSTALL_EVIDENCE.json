@@ -1,0 +1,46 @@
+{
+  "acceptance": [
+    {
+      "install_kind": "wheel",
+      "manifest_sha256": "3ed29396402c02b3a7fa68c5f6ef76e0449b798500325382cb987487845b290f",
+      "platform": "win32",
+      "python": "3.12.13",
+      "schema_count": 5,
+      "source_artifact": {
+        "name": "uqra-0.3.0-py3-none-any.whl",
+        "sha256": "922b3f92848b5b65f363fa790ac87e014731830b93247e7f942fabb46b16d7c2",
+        "size_bytes": 196254
+      },
+      "versions": {
+        "uqra_cli": "0.3.0",
+        "uqra_distribution": "0.3.0",
+        "uqra_manifest": "0.3.0",
+        "uqra_runtime": "0.3.0",
+        "uqra_source": "0.3.0"
+      }
+    },
+    {
+      "install_kind": "sdist",
+      "manifest_sha256": "e0e56d5ab8f2481b004dc122be1675d408901a2f10e7b8c0a65b6b0e9103f6ef",
+      "platform": "win32",
+      "python": "3.12.13",
+      "schema_count": 5,
+      "source_artifact": {
+        "name": "uqra-0.3.0.tar.gz",
+        "sha256": "9c1347a699a3cd4ee67ed3b909d9f185d24d499fff1bb902869bd2db9e78d45b",
+        "size_bytes": 170728
+      },
+      "versions": {
+        "uqra_cli": "0.3.0",
+        "uqra_distribution": "0.3.0",
+        "uqra_manifest": "0.3.0",
+        "uqra_runtime": "0.3.0",
+        "uqra_source": "0.3.0"
+      }
+    }
+  ],
+  "generated_at": "2026-08-06T11:02:19+08:00",
+  "schema": "uqra.packaging.release-clean-install-evidence/v1",
+  "source_commit": "2da9847",
+  "version": "0.3.0"
+}

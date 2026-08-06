@@ -12,18 +12,22 @@ $artifactPath = [System.IO.Path]::GetFullPath($ArtifactDir)
 $workPath = [System.IO.Path]::GetFullPath($WorkDir)
 $evidencePath = [System.IO.Path]::GetFullPath($EvidenceDir)
 New-Item -ItemType Directory -Force -Path $artifactPath, $workPath, $evidencePath | Out-Null
+$versionFile = Join-Path $root 'uqra\_version.py'
+$version = & $Python -c "import runpy, sys; print(runpy.run_path(sys.argv[1])['__version__'])" $versionFile
+if ($LASTEXITCODE -ne 0 -or -not $version) { throw 'unable to determine UQRA version' }
 
 & $Python -m build --no-isolation --outdir $artifactPath $root
 if ($LASTEXITCODE -ne 0) { throw 'distribution build failed' }
 
-$wheel = Get-ChildItem -LiteralPath $artifactPath -Filter 'uqra-0.2.0-*.whl'
-$sdist = Get-ChildItem -LiteralPath $artifactPath -Filter 'uqra-0.2.0.tar.gz'
+$wheel = Get-ChildItem -LiteralPath $artifactPath -Filter "uqra-$version-*.whl"
+$sdist = Get-ChildItem -LiteralPath $artifactPath -Filter "uqra-$version.tar.gz"
 if ($wheel.Count -ne 1 -or $sdist.Count -ne 1) { throw 'expected exactly one wheel and one sdist' }
 
 & $Python (Join-Path $PSScriptRoot 'create_distribution_manifest.py') `
     --dist-dir $artifactPath `
     --output (Join-Path $evidencePath 'distribution-manifest.json') `
-    --source-commit $SourceCommit
+    --source-commit $SourceCommit `
+    --version $version
 if ($LASTEXITCODE -ne 0) { throw 'distribution manifest validation failed' }
 
 foreach ($item in @(@{Kind='wheel'; Artifact=$wheel.FullName}, @{Kind='sdist'; Artifact=$sdist.FullName})) {
