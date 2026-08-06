@@ -12,7 +12,8 @@ $artifactPath = [System.IO.Path]::GetFullPath($ArtifactDir)
 $workPath = [System.IO.Path]::GetFullPath($WorkDir)
 $evidencePath = [System.IO.Path]::GetFullPath($EvidenceDir)
 New-Item -ItemType Directory -Force -Path $artifactPath, $workPath, $evidencePath | Out-Null
-$version = & $Python -c "import runpy; print(runpy.run_path(r'$root\uqra\_version.py')['__version__'])"
+$versionFile = Join-Path $root 'uqra\_version.py'
+$version = & $Python -c "import runpy, sys; print(runpy.run_path(sys.argv[1])['__version__'])" $versionFile
 if ($LASTEXITCODE -ne 0 -or -not $version) { throw 'unable to determine UQRA version' }
 
 & $Python -m build --no-isolation --outdir $artifactPath $root

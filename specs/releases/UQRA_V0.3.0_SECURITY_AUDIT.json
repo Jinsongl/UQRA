@@ -7,7 +7,7 @@
   },
   "input": {
     "path": "requirements/compatibility-py312.txt",
-    "sha256": "72ca2226fb5a4e9b7e964cebbccb3236aecffa4b2ffd9719ac307c325c0bc737"
+    "git_blob_sha256": "51a49cdfc1ea25732789b5a1f5bc474acd95ee976483375c988880cbea4a5f78"
   },
   "result": {
     "known_vulnerabilities": 0,
