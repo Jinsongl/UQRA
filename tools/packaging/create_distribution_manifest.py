@@ -39,10 +39,11 @@ def main(argv=None):
     parser.add_argument("--dist-dir", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--source-commit", required=True)
+    parser.add_argument("--version", required=True)
     arguments = parser.parse_args(argv)
 
-    paths = sorted(arguments.dist_dir.glob("uqra-0.2.0-*.whl"))
-    paths += sorted(arguments.dist_dir.glob("uqra-0.2.0.tar.gz"))
+    paths = sorted(arguments.dist_dir.glob(f"uqra-{arguments.version}-*.whl"))
+    paths += sorted(arguments.dist_dir.glob(f"uqra-{arguments.version}.tar.gz"))
     if len(paths) != 2:
         raise RuntimeError(f"expected one wheel and one sdist, found: {[p.name for p in paths]}")
     artifacts = []
@@ -62,7 +63,7 @@ def main(argv=None):
         })
     manifest = {
         "schema": "uqra.packaging.distribution-manifest/v1",
-        "version": "0.2.0",
+        "version": arguments.version,
         "source_commit": arguments.source_commit,
         "artifacts": artifacts,
     }

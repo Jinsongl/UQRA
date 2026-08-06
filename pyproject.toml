@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools==75.8.2", "wheel==0.45.1"]
+requires = ["setuptools==83.0.0", "wheel==0.47.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ dynamic = ["version"]
 description = "Python package for Uncertainty Quantification"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
-license = {file = "LICENSE"}
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 authors = [
   {name = "Jinsong Liu", email = "jinsongliu@utexas.edu"},
 ]
@@ -21,7 +22,6 @@ dependencies = [
   "tqdm>=4.67.1,<5",
 ]
 classifiers = [
-  "License :: OSI Approved :: BSD License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",

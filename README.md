@@ -4,6 +4,10 @@ UQRA is a Python package for uncertainty quantification and risk analysis. This
 repository combines the canonical UT Austin/MUSE implementation with the
 audited adaptive sparse polynomial chaos expansion (PCE) compatibility work.
 
+The source tree is preparing the `v0.3.0` release candidate. The latest
+published release remains `v0.2.0` until the release-preparation PR, final
+required gate, annotated tag, and GitHub Release are complete.
+
 ## Supported environments
 
 - CPython 3.12（唯一正式、持续验证环境：Windows）

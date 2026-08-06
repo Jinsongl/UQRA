@@ -28,14 +28,14 @@
 | 项目 | 当前值 | 状态/证据 |
 | --- | --- | --- |
 | 默认分支 | `master` | ✅ `v0.2.0` 已发布 |
-| 当前基线 / 工作分支 | `master` / `codex/m3-merge-evidence` | ✅ M3 综合验收及合并证据同步完成 |
+| 当前基线 / 工作分支 | `master` / `codex/release-v0.3.0` | 🔄 `v0.3.0` release candidate preparation |
 | 最近 PR | [#10 Complete M3 Windows packaging acceptance](https://github.com/Jinsongl/UQRA/pull/10) | ✅ 已合并；merge `1c8040bf7b988b08d0488abaee84b09db956808f`；最终 required run [31062848792](https://github.com/Jinsongl/UQRA/actions/runs/31062848792) |
 | Python 3.11 | 允许安装但未持续验证 | ➖ 不作为 M3 完成门；如取消安装支持，另行同步元数据、README、锁和发布说明 |
 | 正式验证环境 | Windows + Python 3.12 | 🔄 唯一正式、持续验证环境；最近基线 `59 passed` |
 | Required check | `Adaptive compatibility gate` | ✅ Windows/Python 3.12 run `31062848792` 通过 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.2.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.2.0) | ✅ 指向合并提交 `3445464d` |
-| 下一版本 | 待 M3 完成范围确定 | ⏳ 不提前承诺版本号 |
+| 下一版本 | `v0.3.0` | 🔄 版本、发布说明、安全审计和候选包验收进行中；尚未打 tag 或发布 |
 
 ## 3. 编号体系与里程碑路线
 

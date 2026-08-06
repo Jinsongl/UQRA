@@ -3,7 +3,7 @@
 状态：执行中  
 版本：2026-08-06 split-plan v4
 项目仓库：`https://github.com/Jinsongl/UQRA`  
-当前发布基线：`v0.2.0`
+当前发布基线：`v0.2.0`；`v0.3.0` release candidate preparation 进行中
 
 执行进度、当前 PR、阻塞项和下一动作由
 `specs/UQRA_PROJECT_PROGRESS_BOARD.md` 维护；本文件只定义项目范围、阶段和验收门。

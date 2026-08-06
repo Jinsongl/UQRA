@@ -5,7 +5,7 @@ scikit-learn==1.6.1
 pandas==2.2.3
 statsmodels==0.14.4
 tqdm==4.67.1
-pytest==8.3.5
+pytest==9.1.1
 joblib==1.5.3
 threadpoolctl==3.6.0
 python-dateutil==2.9.0.post0
@@ -17,8 +17,8 @@ iniconfig==2.3.0
 pluggy==1.6.0
 six==1.17.0
 colorama==0.4.6
-setuptools==75.8.2
-wheel==0.45.1
+setuptools==83.0.0
+wheel==0.47.0
 jsonschema==4.23.0
 jsonschema-specifications==2025.4.1
 referencing==0.36.2
