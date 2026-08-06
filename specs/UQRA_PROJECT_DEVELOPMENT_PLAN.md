@@ -249,7 +249,8 @@ M2.3 已通过 PR #7（merge `1d3dacd`）完成，证据见
 `31057779411`）完成并合并。`PKG-02/03` 已通过 PR #9（merge
 `a72a624e45b1a3437d3335989d61954a3bd22959`；required run `31061159434`）完成。
 `PKG-01/04` 与 `CI-01` 已通过 PR #10 的 Windows/Python 3.12 required run
-`31062594561`；wheel/sdist、双 clean-install、schema、manifest v2 evidence 和 warning
+`31062848792`，并以 merge `1c8040bf7b988b08d0488abaee84b09db956808f` 合并；
+wheel/sdist、双 clean-install、schema、manifest v2 evidence 和 warning
 门证据已冻结，M3 完成。下一步先评估 `v0.3.0` 发布，再启动 M4 受控论文生产
 接口。新增正式发布必须使用新版本号，不得静默覆盖 `v0.2.0`。
 

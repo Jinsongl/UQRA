@@ -3,7 +3,11 @@
 状态：完成
 验收日期：2026-08-06  
 冻结源码提交：`dd2c50319736db56aef55d3e3e50f8a0ad4dde88`
-远端 required run：[`31062594561`](https://github.com/Jinsongl/UQRA/actions/runs/31062594561)
+PR：[PR #10](https://github.com/Jinsongl/UQRA/pull/10)
+
+合并提交：`1c8040bf7b988b08d0488abaee84b09db956808f`
+
+远端 required run：[`31062848792`](https://github.com/Jinsongl/UQRA/actions/runs/31062848792)
 
 ## 验收范围
 
