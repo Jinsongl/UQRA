@@ -27,15 +27,15 @@
 
 | 项目 | 当前值 | 状态/证据 |
 | --- | --- | --- |
-| 默认分支 | `master` | ✅ `v0.2.0` 已发布 |
-| 当前基线 / 工作分支 | `master` / `codex/release-v0.3.0` | 🔄 `v0.3.0` release candidate preparation |
-| 最近 PR | [#10 Complete M3 Windows packaging acceptance](https://github.com/Jinsongl/UQRA/pull/10) | ✅ 已合并；merge `1c8040bf7b988b08d0488abaee84b09db956808f`；最终 required run [31062848792](https://github.com/Jinsongl/UQRA/actions/runs/31062848792) |
+| 默认分支 | `master` | ✅ `v0.3.0` 已发布 |
+| 当前基线 / 工作分支 | `master` / `codex/v0.3.0-release-record` | 🔄 发布后记录同步 |
+| 最近 PR | [#12 Prepare UQRA v0.3.0 release candidate](https://github.com/Jinsongl/UQRA/pull/12) | ✅ 已合并；merge `7c2bb050dc3e02882929811b5dd9c8878d17e7d5`；最终 required run [31068171070](https://github.com/Jinsongl/UQRA/actions/runs/31068171070) |
 | Python 3.11 | 允许安装但未持续验证 | ➖ 不作为 M3 完成门；如取消安装支持，另行同步元数据、README、锁和发布说明 |
-| 正式验证环境 | Windows + Python 3.12 | 🔄 唯一正式、持续验证环境；最近基线 `59 passed` |
-| Required check | `Adaptive compatibility gate` | ✅ Windows/Python 3.12 run `31062848792` 通过 |
+| 正式验证环境 | Windows + Python 3.12 | ✅ 唯一正式、持续验证环境；发布基线 `61 passed` |
+| Required check | `Adaptive compatibility gate` | ✅ 候选 run [31067701606](https://github.com/Jinsongl/UQRA/actions/runs/31067701606) 及 review 修复后最终 run [31068171070](https://github.com/Jinsongl/UQRA/actions/runs/31068171070) 通过 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
-| 当前 Release | [`v0.2.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.2.0) | ✅ 指向合并提交 `3445464d` |
-| 下一版本 | `v0.3.0` | 🔄 本地候选包、安全审计和 clean-install 证据已冻结，待 required gate；尚未打 tag 或发布 |
+| 当前 Release | [`v0.3.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.3.0) | ✅ annotated tag 指向合并提交 `7c2bb050dc3e02882929811b5dd9c8878d17e7d5`；附件下载哈希和仓库外 Python 3.12 smoke 通过 |
+| 下一版本 | `v0.3.x` 维护线 | 🔄 优先处理兼容性、安全更新和发布自动化；新功能另立里程碑 |
 
 ## 3. 编号体系与里程碑路线
 
@@ -61,11 +61,11 @@
 | --- | --- | --- | --- |
 | U0 治理冻结与证据清单 | ✅ 已完成 | 项目/论文边界、主计划、历史计划和交接接口已固化 | 随新裁决持续维护证据清单 |
 | U1 Legacy 基准恢复 | ⛔ 阻塞 | 可恢复证据有限；历史候选池、测试集和 RNG/CV 状态缺失 | 执行 Legacy 环境审计并形成正式阻塞结论 |
-| U2 Modern 核心实现 | ✅ 已完成 | 核心算法完成，当前发布基线为 `v0.2.0` | 核心变更继续遵守裁决和回归门 |
+| U2 Modern 核心实现 | ✅ 已完成 | 核心算法完成，当前发布基线为 `v0.3.0` | 核心变更继续遵守裁决和回归门 |
 | U3 内核与逐轮行为回归 | ✅ 已完成（可获得证据范围） | Phase 5--8 证据完整；历史 FourBranch trace 不可用 | 建立统一结案矩阵，与 U1 阻塞结论互链 |
-| U4 通用软件 benchmark | ✅ 已完成（M2 范围） | M2.1--M2.3 均通过；BENCH-05 保留为可选扩展 | 转入 M3 包装与跨环境质量 |
+| U4 通用软件 benchmark | ✅ 已完成（M2 范围） | M2.1--M2.3 已随 `v0.3.0` 发布；BENCH-05 保留为可选扩展 | 在 `v0.3.x` 维护契约与回归证据 |
 | U5 Runner 发布门 | ✅ 已完成 | M1 schema、CLI、示例、evidence、PR #4 和 `v0.2.0` 发布均完成 | 按版本化流程维护后续交付 |
-| U6 版本化维护 | 🔄 进行中 | M3 包装、版本源、警告门和 Windows/Python 3.12 required CI 已建立 | 评估 `v0.3.0` 发布并持续维护 |
+| U6 版本化维护 | 🔄 进行中 | `v0.3.0` 已发布；M3 包装、版本源、警告门和 Windows/Python 3.12 required CI 已建立 | 维护 `v0.3.x`，优先改进可复现构建与发布自动化 |
 
 ## 5. 当前焦点
 
