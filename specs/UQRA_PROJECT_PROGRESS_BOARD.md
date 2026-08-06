@@ -28,11 +28,11 @@
 | 项目 | 当前值 | 状态/证据 |
 | --- | --- | --- |
 | 默认分支 | `master` | ✅ `v0.2.0` 已发布 |
-| 当前基线 / 工作分支 | `master` / `codex/m3-packaging-ci` | ✅ M3 综合验收完成，PR #10 待合并 |
-| 最近 PR | [#10 Complete M3 Windows packaging acceptance](https://github.com/Jinsongl/UQRA/pull/10) | ✅ Windows/Python 3.12 required run [31062594561](https://github.com/Jinsongl/UQRA/actions/runs/31062594561) 通过 |
+| 当前基线 / 工作分支 | `master` / `codex/m3-merge-evidence` | ✅ M3 综合验收及合并证据同步完成 |
+| 最近 PR | [#10 Complete M3 Windows packaging acceptance](https://github.com/Jinsongl/UQRA/pull/10) | ✅ 已合并；merge `1c8040bf7b988b08d0488abaee84b09db956808f`；最终 required run [31062848792](https://github.com/Jinsongl/UQRA/actions/runs/31062848792) |
 | Python 3.11 | 允许安装但未持续验证 | ➖ 不作为 M3 完成门；如取消安装支持，另行同步元数据、README、锁和发布说明 |
 | 正式验证环境 | Windows + Python 3.12 | 🔄 唯一正式、持续验证环境；最近基线 `59 passed` |
-| Required check | `Adaptive compatibility gate` | ✅ Windows/Python 3.12 run `31062594561` 通过 |
+| Required check | `Adaptive compatibility gate` | ✅ Windows/Python 3.12 run `31062848792` 通过 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.2.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.2.0) | ✅ 指向合并提交 `3445464d` |
 | 下一版本 | 待 M3 完成范围确定 | ⏳ 不提前承诺版本号 |
@@ -91,9 +91,9 @@
 | MANIFEST-02 | M3 / P2 | 记录输入和输出 artifact 身份 | PR #8；输入、trace、结果和摘要的实际大小及 SHA-256 经磁盘复核 | ✅ 完成并合并 |
 | PKG-02 | M3 / P2 | 将主要元数据迁移到 `pyproject.toml` | PR #9；`setup.py` 及 upload/tag 逻辑已移除 | ✅ 完成并合并 |
 | PKG-03 | M3 / P2 | 建立 `uqra.__version__` 唯一版本源 | PR #9；runtime、distribution、CLI 和 manifest 均报告 `0.2.0` | ✅ 完成并合并 |
-| PKG-01 | M3 / P2 | 构建并测试 sdist/wheel | 两种包均含五个 schema；两个仓库外 Python 3.12.13 环境完成安装和 [`evidence`](releases/UQRA_M3_PACKAGING_ACCEPTANCE.md) 验收 | ✅ 完成；required run `31062594561` |
-| PKG-04 | M3 / P2 | 清理 Python 3.12 警告 | UQRA 自身 SyntaxWarning/DeprecationWarning 已清理；严格 `compileall` 回归门和 compatibility `61 passed` | ✅ 完成；required run `31062594561` |
-| CI-01 | M3 / P2 | 建立 Windows/Python 3.12 required CI | Windows job 覆盖锁、完整 suite、schema、构建、双 clean-install、manifest v2 和 warning 门 | ✅ 完成；required run `31062594561` |
+| PKG-01 | M3 / P2 | 构建并测试 sdist/wheel | 两种包均含五个 schema；两个仓库外 Python 3.12.13 环境完成安装和 [`evidence`](releases/UQRA_M3_PACKAGING_ACCEPTANCE.md) 验收 | ✅ 完成；required run `31062848792` |
+| PKG-04 | M3 / P2 | 清理 Python 3.12 警告 | UQRA 自身 SyntaxWarning/DeprecationWarning 已清理；严格 `compileall` 回归门和 compatibility `61 passed` | ✅ 完成；required run `31062848792` |
+| CI-01 | M3 / P2 | 建立 Windows/Python 3.12 required CI | Windows job 覆盖锁、完整 suite、schema、构建、双 clean-install、manifest v2 和 warning 门 | ✅ 完成；required run `31062848792` |
 
 ### ⏳ 待开始
 
@@ -140,7 +140,7 @@
 | M0 项目治理与边界 | ✅ 已完成 | commit `9ee5ed6` |
 | M1 Runner 契约与可审计发布（原 UQRA-MV1） | ✅ 已完成 | commits `c6fea07`、`c69032d`；42 项兼容性测试；U5 交付门和 `specs/releases/` |
 | `v0.2.0` runner contracts release | ✅ 已完成 | PR #4、merge `3445464d`、GitHub Release |
-| M3 包装、契约一致性与跨环境质量 | ✅ 已完成 | PR #9；PR #10；Windows/Python 3.12 run `31062594561`；冻结 packaging evidence |
+| M3 包装、契约一致性与跨环境质量 | ✅ 已完成 | PR #9；PR #10 merge `1c8040bf`；Windows/Python 3.12 run `31062848792`；冻结 packaging evidence |
 
 ## 8. 更新流程
 
