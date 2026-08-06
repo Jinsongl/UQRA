@@ -42,3 +42,6 @@ version = {attr = "uqra._version.__version__"}
 [tool.setuptools.packages.find]
 include = ["uqra", "uqra.*"]
 exclude = ["tests", "tests.*"]
+
+[tool.setuptools.data-files]
+schemas = ["schemas/*.json"]

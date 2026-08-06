@@ -67,9 +67,9 @@ def ECPlot(prefix, space,figHandle=None, figname='Norway5EC2DHT'):
         ValueError('Space is Zeta or Phy')
 
     filelist = [f for f in os.listdir(os.getcwd()) if f.startswith(prefix)]
-    print prefix, " Number of files:", len(filelist)
+    print(prefix, " Number of files:", len(filelist))
     for i, filename in enumerate(filelist):
-        print "Processing file:", i
+        print("Processing file:", i)
         p = float(filename[21:-4])
         # data = np.genfromtxt(filename,delimiter=',')
         data = iter_loadtxt(filename)
@@ -85,9 +85,9 @@ def ECPlot(prefix, space,figHandle=None, figname='Norway5EC2DHT'):
         ax.text(pos[i,0],pos[i,1], 'p3='+'{:.0e}'.format(p),fontsize=10,color='Gray')
 
         if space.upper() == 'ZETA':
-            ax.set_title("Environmental Contour in $\zeta$ Space")
-            ax.set_xlabel("$\zeta_1$")
-            ax.set_ylabel("$\zeta_2$")
+            ax.set_title(r"Environmental Contour in $\zeta$ Space")
+            ax.set_xlabel(r"$\zeta_1$")
+            ax.set_ylabel(r"$\zeta_2$")
             ax.set_xlim(0,20)
             ax.set_ylim(0,20)
             # plt.axis('equal')
@@ -117,9 +117,9 @@ def sampPlot(space, prefix,labels=[], figHandle=None):
         ValueError('Space is Zeta or Phy')
 
     filelist = [f for f in os.listdir(os.getcwd()) if f.startswith(prefix)]
-    print prefix, "Number of files:", len(filelist)
+    print(prefix, "Number of files:", len(filelist))
     for i, filename in enumerate(filelist):
-        print "Processing file:",filename 
+        print("Processing file:", filename)
         # data = np.genfromtxt(filename,delimiter=',')
         data = iter_loadtxt(filename)
         data = data[:,space2plot]
@@ -129,9 +129,9 @@ def sampPlot(space, prefix,labels=[], figHandle=None):
             ax.scatter(data[:,0],data[:,1],s=50,marker = MUSEmarker[i],color=MUSEcolors[i])
 
         if space.upper() == 'ZETA':
-            ax.set_title("Traning Samples in $\zeta$ Space")
-            ax.set_xlabel("$\zeta_1$")
-            ax.set_ylabel("$\zeta_2$")
+            ax.set_title(r"Traning Samples in $\zeta$ Space")
+            ax.set_xlabel(r"$\zeta_1$")
+            ax.set_ylabel(r"$\zeta_2$")
             ax.set_xlim(0,20)
             ax.set_ylim(0,20)
             # plt.axis('equal')
@@ -162,7 +162,7 @@ def ExPlot(data,q=1e-4, R=1,labels=[],color='k',figHandle=None,figname='Exceeden
     data = data.reshape((M,R))
     conf=[]
 
-    for i in xrange(R):
+    for i in range(R):
         ecdf = ECDF(data[:,i])
         conf.append(next(ecdf.x[i] for i, xx in enumerate(1-ecdf.y) if xx<q))
         x,y = ecdf.x, ecdf.y
@@ -194,7 +194,7 @@ def ExPlot(data,q=1e-4, R=1,labels=[],color='k',figHandle=None,figname='Exceeden
 
     conf.sort()
     q0 = 1.0/M
-    print "Exceedence interval: [", conf[0], conf[-1], " ]"
+    print("Exceedence interval: [", conf[0], conf[-1], " ]")
     ax.plot([conf[0],conf[0]],[q0,q], '--', color='Gray')
     ax.plot([conf[-1],conf[-1]],[q0,q], '--', color='Gray')
     ax.plot([0, conf[-1]],[q,q], '--', color='Gray')
@@ -219,7 +219,6 @@ def ExPlot(data,q=1e-4, R=1,labels=[],color='k',figHandle=None,figname='Exceeden
     # # ax.plot(valiData.X[:,0], valiData.X[:,1],f_cv[:,1], 'o', label='6')
     # ax.legend()
     # plt.show()
-
 
 
 

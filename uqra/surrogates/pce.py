@@ -21,7 +21,7 @@ class PolynomialChaosExpansion(SurrogateBase):
     """
 
     def __init__(self, p=None, dist=None, random_seed = None):
-r       super().__init__(random_seed=random_seed)
+        super().__init__(random_seed=random_seed)
         self.name           = 'Polynomial Chaos Expansion'
         self.nickname       = 'PCE'
         self.dist_zeta_J    = dist 
@@ -209,6 +209,5 @@ r       super().__init__(random_seed=random_seed)
 
         """
         raise NotImplementedError
-
 
 

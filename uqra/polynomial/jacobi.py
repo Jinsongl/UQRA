@@ -20,7 +20,7 @@ class Jacobi(PolyBase):
     """
     Jacobi polynomials corresponds to Beta(a,b) on domain [-1,1]
     Orthogonality: 
-    \int Pm(x) Pn(x) w(x) dx = C 1{mn} 
+    \\int Pm(x) Pn(x) w(x) dx = C 1{mn}
     w(x) = (1-x)**alpha * (1+x)**beta
 
     For fixed Beta(a, b), the polynomials are orthogonal over[-1,1] with weight function (1-x)**alpha * (1+x)**beta
@@ -126,7 +126,7 @@ class Jacobi(PolyBase):
         Orthogonality:
         For fixed (a, b), the polynomials are orthogonal over[-1,1] with weight function (1-x)^a(1+x)^b
         domain: [-1,1]
-        \int Pm(x) Pn(x) w(x) dx =  1{mn} 
+        \\int Pm(x) Pn(x) w(x) dx =  1{mn}
         """
         return scipy.special.jacobi(deg, alpha, beta, monic=monic)
 
@@ -184,7 +184,7 @@ class Jacobi(PolyBase):
             Pseudo-Vandermonde matrix of given degree.
         Arguments:
             x, ndarray of shape(ndim, nsamples)
-            normalize: boolean. If true, each column is normalized such that \int_-1,1 Pm(x) Pm(x) f(x)dx = 1 w.r.t distribution f(x)
+            normalize: boolean. If true, each column is normalized such that \\int_-1,1 Pm(x) Pm(x) f(x)dx = 1 w.r.t distribution f(x)
         """
         x        = np.array(x, copy=0, ndmin=2) + 0.0
         vander   = np.ones((x.shape[1], self.num_basis), x.dtype)
@@ -374,4 +374,3 @@ class Jacobi(PolyBase):
             jacobi_str = 'Jacobi()'
             
         return jacobi_str 
-

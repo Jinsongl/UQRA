@@ -20,7 +20,7 @@ class Legendre1(PolyBase):
 
     Orthogonality:
     domain: [-1,1]
-    \int Pm(x) Pn(x) dx = 2/(2n+1) 1{mn} 
+    \\int Pm(x) Pn(x) dx = 2/(2n+1) 1{mn}
     """
 
     def __init__(self, d=None, deg=None, coef=None, domain=None, window=None, multi_index='total'):
@@ -153,7 +153,7 @@ class Legendre1(PolyBase):
             Pseudo-Vandermonde matrix of given degree.
         Arguments:
             x, ndarray of shape(ndim, nsamples)
-            normalize: boolean. If true, each column is normalized such that \int_-1,1 Pm(x) Pm(x) f(x)dx = 1 w.r.t distribution f(x)
+            normalize: boolean. If true, each column is normalized such that \\int_-1,1 Pm(x) Pm(x) f(x)dx = 1 w.r.t distribution f(x)
         """
         x        = np.array(x, copy=0, ndmin=2) + 0.0
         vander   = np.ones((x.shape[1], self.num_basis), x.dtype)
@@ -216,7 +216,7 @@ class Legendre1(PolyBase):
             Pseudo-Vandermonde matrix of given degree.
         Arguments:
             x, ndarray of shape(ndim, nsamples)
-            normalize: boolean. If true, each column is normalized such that \int_-1,1 Pm(x) Pm(x) dx = 1
+            normalize: boolean. If true, each column is normalized such that \\int_-1,1 Pm(x) Pm(x) dx = 1
         """
         x    = np.array(x, copy=0, ndmin=2) + 0.0
         d, n = x.shape
@@ -306,4 +306,3 @@ class Legendre1(PolyBase):
             self.coef = np.ones((self.num_basis,))
         return str(sum([ibasis * icoef for ibasis, icoef in zip(self.basis, self.coef)]))
         # raise NotImplementedError
-
