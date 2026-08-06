@@ -1,8 +1,9 @@
 # UQRA M3 包装与 Windows/Python 3.12 验收
 
-状态：本地完成，等待远端 required gate  
+状态：完成  
 验收日期：2026-08-06  
 冻结源码提交：`dd2c50319736db56aef55d3e3e50f8a0ad4dde88`
+远端 required run：[`31062594561`](https://github.com/Jinsongl/UQRA/actions/runs/31062594561)
 
 ## 验收范围
 

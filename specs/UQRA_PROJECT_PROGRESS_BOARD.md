@@ -28,11 +28,11 @@
 | 项目 | 当前值 | 状态/证据 |
 | --- | --- | --- |
 | 默认分支 | `master` | ✅ `v0.2.0` 已发布 |
-| 当前基线 / 工作分支 | `master` / `codex/m3-packaging-ci` | 🔄 M3 本地综合验收完成，待 PR required gate |
-| 最近 PR | [#9 Modernize package metadata and version source](https://github.com/Jinsongl/UQRA/pull/9) | ✅ 已合并；merge `a72a624e45b1a3437d3335989d61954a3bd22959`；required run [31061159434](https://github.com/Jinsongl/UQRA/actions/runs/31061159434) |
+| 当前基线 / 工作分支 | `master` / `codex/m3-packaging-ci` | ✅ M3 综合验收完成，PR #10 待合并 |
+| 最近 PR | [#10 Complete M3 Windows packaging acceptance](https://github.com/Jinsongl/UQRA/pull/10) | ✅ Windows/Python 3.12 required run [31062594561](https://github.com/Jinsongl/UQRA/actions/runs/31062594561) 通过 |
 | Python 3.11 | 允许安装但未持续验证 | ➖ 不作为 M3 完成门；如取消安装支持，另行同步元数据、README、锁和发布说明 |
 | 正式验证环境 | Windows + Python 3.12 | 🔄 唯一正式、持续验证环境；最近基线 `59 passed` |
-| Required check | `Adaptive compatibility gate` | 🔄 CI-01 已迁移为 Windows + Python 3.12，待新 PR 远端验收 |
+| Required check | `Adaptive compatibility gate` | ✅ Windows/Python 3.12 run `31062594561` 通过 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.2.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.2.0) | ✅ 指向合并提交 `3445464d` |
 | 下一版本 | 待 M3 完成范围确定 | ⏳ 不提前承诺版本号 |
@@ -50,7 +50,7 @@
 | M2.1 Benchmark 注册与配置契约 | ✅ 已完成 | U4、U6 | BENCH-01 | 静态 registry、config v2、双版本 45 项测试和 required gate 通过 |
 | M2.2 首个多路径缩减基准 | ✅ 已完成 | U4 | BENCH-02 | FourBranch reduced 的输入身份、DoI、trace、重复性和 PR #6 required gate 通过 |
 | M2.3 多问题 Benchmark 验收 | ✅ 已完成 | U4 | BENCH-03、BENCH-04、BENCH-06 | 三基准统一 contract hash 与双版本 `52 passed`；required gate 通过 |
-| M3 包装、契约一致性与跨环境质量 | 🔄 进行中 | U6 | PKG-01--04、CI-01、SCHEMA-01/02、MANIFEST-01/02 | SCHEMA-01/02、MANIFEST-01/02 已完成；包装、版本源和 Windows/Python 3.12 required CI 达到发布门 |
+| M3 包装、契约一致性与跨环境质量 | ✅ 已完成 | U6 | PKG-01--04、CI-01、SCHEMA-01/02、MANIFEST-01/02 | 全部任务完成；Windows/Python 3.12 required CI、双 clean-install 和冻结证据通过 |
 
 `LEG-01/02` 与 `REG-01/02` 是 U1/U3 的证据闭环任务，不属于 M2，也不因 M2 完成
 而自动关闭。
@@ -65,7 +65,7 @@
 | U3 内核与逐轮行为回归 | ✅ 已完成（可获得证据范围） | Phase 5--8 证据完整；历史 FourBranch trace 不可用 | 建立统一结案矩阵，与 U1 阻塞结论互链 |
 | U4 通用软件 benchmark | ✅ 已完成（M2 范围） | M2.1--M2.3 均通过；BENCH-05 保留为可选扩展 | 转入 M3 包装与跨环境质量 |
 | U5 Runner 发布门 | ✅ 已完成 | M1 schema、CLI、示例、evidence、PR #4 和 `v0.2.0` 发布均完成 | 按版本化流程维护后续交付 |
-| U6 版本化维护 | 🔄 进行中 | required CI 和版本化变更流程已建立 | 持续处理 benchmark、包装和依赖质量任务 |
+| U6 版本化维护 | 🔄 进行中 | M3 包装、版本源、警告门和 Windows/Python 3.12 required CI 已建立 | 评估 `v0.3.0` 发布并持续维护 |
 
 ## 5. 当前焦点
 
@@ -91,9 +91,9 @@
 | MANIFEST-02 | M3 / P2 | 记录输入和输出 artifact 身份 | PR #8；输入、trace、结果和摘要的实际大小及 SHA-256 经磁盘复核 | ✅ 完成并合并 |
 | PKG-02 | M3 / P2 | 将主要元数据迁移到 `pyproject.toml` | PR #9；`setup.py` 及 upload/tag 逻辑已移除 | ✅ 完成并合并 |
 | PKG-03 | M3 / P2 | 建立 `uqra.__version__` 唯一版本源 | PR #9；runtime、distribution、CLI 和 manifest 均报告 `0.2.0` | ✅ 完成并合并 |
-| PKG-01 | M3 / P2 | 构建并测试 sdist/wheel | 两种包均含五个 schema；两个仓库外 Python 3.12.13 环境完成安装和 [`evidence`](releases/UQRA_M3_PACKAGING_ACCEPTANCE.md) 验收 | ✅ 本地完成；待 PR required gate |
-| PKG-04 | M3 / P2 | 清理 Python 3.12 警告 | UQRA 自身 SyntaxWarning/DeprecationWarning 已清理；严格 `compileall` 回归门和 compatibility `61 passed` | ✅ 本地完成；待 PR required gate |
-| CI-01 | M3 / P2 | 建立 Windows/Python 3.12 required CI | Windows job 覆盖锁、完整 suite、schema、构建、双 clean-install、manifest v2 和 warning 门 | ✅ 本地完成；待 PR required gate |
+| PKG-01 | M3 / P2 | 构建并测试 sdist/wheel | 两种包均含五个 schema；两个仓库外 Python 3.12.13 环境完成安装和 [`evidence`](releases/UQRA_M3_PACKAGING_ACCEPTANCE.md) 验收 | ✅ 完成；required run `31062594561` |
+| PKG-04 | M3 / P2 | 清理 Python 3.12 警告 | UQRA 自身 SyntaxWarning/DeprecationWarning 已清理；严格 `compileall` 回归门和 compatibility `61 passed` | ✅ 完成；required run `31062594561` |
+| CI-01 | M3 / P2 | 建立 Windows/Python 3.12 required CI | Windows job 覆盖锁、完整 suite、schema、构建、双 clean-install、manifest v2 和 warning 门 | ✅ 完成；required run `31062594561` |
 
 ### ⏳ 待开始
 
@@ -140,6 +140,7 @@
 | M0 项目治理与边界 | ✅ 已完成 | commit `9ee5ed6` |
 | M1 Runner 契约与可审计发布（原 UQRA-MV1） | ✅ 已完成 | commits `c6fea07`、`c69032d`；42 项兼容性测试；U5 交付门和 `specs/releases/` |
 | `v0.2.0` runner contracts release | ✅ 已完成 | PR #4、merge `3445464d`、GitHub Release |
+| M3 包装、契约一致性与跨环境质量 | ✅ 已完成 | PR #9；PR #10；Windows/Python 3.12 run `31062594561`；冻结 packaging evidence |
 
 ## 8. 更新流程
 
