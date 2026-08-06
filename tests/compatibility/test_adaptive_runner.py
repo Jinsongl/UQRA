@@ -1,4 +1,5 @@
 import hashlib
+from importlib.metadata import version as distribution_version
 import json
 from pathlib import Path
 
@@ -6,6 +7,7 @@ import pytest
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
+import uqra
 from uqra.adaptive.benchmark_registry import benchmark_names, get_benchmark
 from uqra.adaptive.four_branch_reduced import INPUT_HASHES
 from uqra.adaptive.gayton_reduced import (
@@ -143,6 +145,16 @@ def test_config_driven_smoke_manifest_is_valid_and_repeatable():
     assert set(first["run"]["scenarios"]) == {"converged"}
 
 
+def test_distribution_runtime_cli_and_manifest_versions_agree(capsys):
+    manifest = run_config(load_config(SMOKE_CONFIG))
+    assert uqra.__version__ == distribution_version("uqra")
+    assert manifest["provenance"]["environment"]["uqra"] == uqra.__version__
+    with pytest.raises(SystemExit) as exit_info:
+        main(["--version"])
+    assert exit_info.value.code == 0
+    assert capsys.readouterr().out.strip().endswith(uqra.__version__)
+
+
 def test_v2_registry_config_is_valid_and_repeatable():
     config = load_config(V2_SMOKE_CONFIG)
     first = run_config(config)
@@ -228,7 +240,10 @@ def test_cli_materializes_complete_manifest_evidence_package(tmp_path):
     assert set(provenance["git"]) == {"commit", "branch", "worktree_dirty"}
     assert len(provenance["source_tree"]["sha256"]) == 64
     assert provenance["source_tree"]["tracked_files"] > 0
-    assert set(provenance["environment"]) == {"python", "numpy", "scipy", "scikit_learn"}
+    assert set(provenance["environment"]) == {
+        "uqra", "python", "numpy", "scipy", "scikit_learn",
+    }
+    assert provenance["environment"]["uqra"] == uqra.__version__
     assert str(FOUR_BRANCH_CONFIG).replace("\\", "/") in provenance["reproduce_command"]
     assert f'--output "{output.as_posix()}"' in provenance["reproduce_command"]
 

@@ -1,6 +1,6 @@
 # UQRA 项目进度看板
 
-状态日期：2026-08-05  
+状态日期：2026-08-06
 维护范围：UQRA 软件项目  
 主计划：[`UQRA_PROJECT_DEVELOPMENT_PLAN.md`](UQRA_PROJECT_DEVELOPMENT_PLAN.md)  
 历史实施记录：[`ADAPTIVE_PCE_DEVELOPMENT_PLAN.md`](ADAPTIVE_PCE_DEVELOPMENT_PLAN.md)
@@ -28,11 +28,11 @@
 | 项目 | 当前值 | 状态/证据 |
 | --- | --- | --- |
 | 默认分支 | `master` | ✅ `v0.2.0` 已发布 |
-| 当前工作分支 | `codex/schema-contract-validation` | 🔄 MANIFEST-01 + MANIFEST-02 |
-| 最近 PR | [#8 Validate published runner schemas](https://github.com/Jinsongl/UQRA/pull/8) | 🔄 Ready；required gate 已通过；继续承载 MANIFEST 完整性提交 |
-| Python 3.11 | `59 passed` | ✅ MANIFEST 本地完整 compatibility 验收 |
-| Python 3.12 | `59 passed` | ✅ MANIFEST 本地完整 compatibility 验收 |
-| Required check | `Adaptive compatibility gate` | ✅ 通过 |
+| 当前基线 / 工作分支 | `master` / `codex/pkg-metadata-version-source` | ✅ PKG-02 + PKG-03 本地验收完成 |
+| 最近 PR | [#8 Validate published runner schemas](https://github.com/Jinsongl/UQRA/pull/8) | ✅ 已合并；merge `116fdca5d1a212814efbb474f31f8ff3ab8d915d`；最终 required run [31057779411](https://github.com/Jinsongl/UQRA/actions/runs/31057779411) |
+| Python 3.11 | 允许安装但未持续验证 | ➖ 不作为 M3 完成门；如取消安装支持，另行同步元数据、README、锁和发布说明 |
+| 正式验证环境 | Windows + Python 3.12 | 🔄 唯一正式、持续验证环境；最近基线 `59 passed` |
+| Required check | `Adaptive compatibility gate` | ✅ PR #8 最终 run 通过；CI-01 将迁移为 Windows + Python 3.12 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.2.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.2.0) | ✅ 指向合并提交 `3445464d` |
 | 下一版本 | 待 M3 完成范围确定 | ⏳ 不提前承诺版本号 |
@@ -50,7 +50,7 @@
 | M2.1 Benchmark 注册与配置契约 | ✅ 已完成 | U4、U6 | BENCH-01 | 静态 registry、config v2、双版本 45 项测试和 required gate 通过 |
 | M2.2 首个多路径缩减基准 | ✅ 已完成 | U4 | BENCH-02 | FourBranch reduced 的输入身份、DoI、trace、重复性和 PR #6 required gate 通过 |
 | M2.3 多问题 Benchmark 验收 | ✅ 已完成 | U4 | BENCH-03、BENCH-04、BENCH-06 | 三基准统一 contract hash 与双版本 `52 passed`；required gate 通过 |
-| M3 包装与跨环境质量 | 🔄 进行中 | U6 | PKG-01--04、CI-01、SCHEMA-01/02 | SCHEMA-01/02 已启动；包装、版本源、schema 验证和跨平台 CI 达到发布门 |
+| M3 包装、契约一致性与跨环境质量 | 🔄 进行中 | U6 | PKG-01--04、CI-01、SCHEMA-01/02、MANIFEST-01/02 | SCHEMA-01/02、MANIFEST-01/02 已完成；包装、版本源和 Windows/Python 3.12 required CI 达到发布门 |
 
 `LEG-01/02` 与 `REG-01/02` 是 U1/U3 的证据闭环任务，不属于 M2，也不因 M2 完成
 而自动关闭。
@@ -85,10 +85,12 @@
 
 | ID | 归属 / 优先级 | 任务 | 当前证据 | 完成门 |
 | --- | --- | --- | --- | --- |
-| SCHEMA-01 | M3 / P2 | 对齐 config v2、manifest 与 reduced benchmark 契约 | 发布 schema 已覆盖 config v1/v2、Phase 8 与三个 reduced benchmark；双版本 `58 passed` | required CI 通过并合并 |
-| SCHEMA-02 | M3 / P2 | 使用 Draft 2020-12 标准校验器验证 config/manifest/trace | 五个示例/benchmark 的生成产物已通过标准校验；错误 scenario 组合有拒绝测试 | required CI 通过并合并 |
-| MANIFEST-01 | M3 / P2 | 记录完整来源与环境身份 | commit、branch、dirty、源码树 hash、Python/NumPy/SciPy/scikit-learn 和复现命令已进入统一 manifest | 双版本完整测试与 required CI 通过 |
-| MANIFEST-02 | M3 / P2 | 记录输入和输出 artifact 身份 | CLI 已物化 candidate/test/reference、trace、结果和摘要侧车文件，并校验路径、大小和文件 SHA-256 | 双版本完整测试与 required CI 通过 |
+| SCHEMA-01 | M3 / P2 | 对齐 config v2、manifest 与 reduced benchmark 契约 | PR #8；发布 schema 覆盖 config v1/v2、Phase 8 与三个 reduced benchmark | ✅ 完成并合并 |
+| SCHEMA-02 | M3 / P2 | 使用 Draft 2020-12 标准校验器验证 config/manifest/trace | PR #8；生成产物通过标准校验，错误 scenario 组合有拒绝测试 | ✅ 完成并合并 |
+| MANIFEST-01 | M3 / P2 | 记录完整来源与环境身份 | PR #8；commit、branch、dirty、源码树 hash、Python/依赖和复现命令完整 | ✅ 完成并合并 |
+| MANIFEST-02 | M3 / P2 | 记录输入和输出 artifact 身份 | PR #8；输入、trace、结果和摘要的实际大小及 SHA-256 经磁盘复核 | ✅ 完成并合并 |
+| PKG-02 | M3 / P2 | 将主要元数据迁移到 `pyproject.toml` | `setup.py` 及 upload/tag 逻辑已移除；Windows Python 3.12 editable 构建/安装成功 | ✅ 本地完成；待 PR required gate |
+| PKG-03 | M3 / P2 | 建立 `uqra.__version__` 唯一版本源 | runtime、distribution、CLI 和 manifest 均报告 `0.2.0`；完整 compatibility `60 passed` | ✅ 本地完成；待 PR required gate |
 
 ### ⏳ 待开始
 
@@ -119,10 +121,8 @@
 | ID | 归属 / 优先级 | 任务 | 完成门 |
 | --- | --- | --- | --- |
 | PKG-01 | M3 / P2 | 构建并测试 sdist/wheel | 从仓库外安装、导入和运行 CLI 成功 |
-| PKG-02 | M3 / P2 | 将主要元数据迁移到 `pyproject.toml` | 不再依赖旧 `setup.py upload` 发布逻辑 |
-| PKG-03 | M3 / P2 | 建立 `uqra.__version__` 唯一版本源 | 包、CLI、manifest 版本一致 |
 | PKG-04 | M3 / P2 | 清理 Python 3.12 转义警告 | 兼容性测试无对应 SyntaxWarning/DeprecationWarning |
-| CI-01 | M3 / P2 | 扩展 Windows/Linux CI | Python 3.11/3.12 在支持平台通过 |
+| CI-01 | M3 / P2 | 建立正式包装与兼容性 CI | 唯一正式矩阵为 `windows-latest` + Python 3.12；聚合 gate 不代表 Ubuntu 软件兼容性 |
 | MANIFEST-01 | M3 / P2 | 完整来源和环境身份 | Git/源码树/解释器/核心依赖/复现命令均可审计 |
 | MANIFEST-02 | M3 / P2 | 输入与输出文件身份 | 数据、trace、结果和摘要的路径、大小、SHA-256 均对应实际落盘字节 |
 

@@ -8,6 +8,8 @@ import importlib
 import numpy as np
 import pandas as pd
 
+from uqra._version import __version__
+
 from uqra.setting import Data
 from uqra.setting import Parameters
 from uqra.setting import ExperimentParameters
@@ -44,4 +46,3 @@ from uqra.surrogates.multiple_polynomial_chaos_expansion import mPCE
 from uqra.utilities import metrics as metrics
 from uqra.utilities.EllipsoidTool import EllipsoidTool
 from uqra.utilities.helpers import *
-

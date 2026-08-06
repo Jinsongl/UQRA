@@ -6,8 +6,8 @@ audited adaptive sparse polynomial chaos expansion (PCE) compatibility work.
 
 ## Supported environments
 
-- CPython 3.11
-- CPython 3.12
+- CPython 3.12（唯一正式、持续验证环境：Windows）
+- CPython 3.11（允许安装但未持续验证，不作为发布完成门）
 
 Install a locked validation environment and the package in editable mode:
 
