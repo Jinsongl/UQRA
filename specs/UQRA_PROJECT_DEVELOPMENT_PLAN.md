@@ -246,8 +246,10 @@ M2.3 已通过 PR #7（merge `1d3dacd`）完成，证据见
 `UQRA_M23_BENCHMARK_ACCEPTANCE.md`。**M3 包装、契约一致性与跨环境质量**已启动，
 `SCHEMA-01/02` 与 `MANIFEST-01/02` 已通过 PR #8（merge
 `116fdca5d1a212814efbb474f31f8ff3ab8d915d`；最终 required run
-`31057779411`）完成并合并。当前执行 `PKG-02/03`，随后按 `PKG-01`、`PKG-04`、
-`CI-01` 的顺序完成 M3，再启动 M4 受控论文生产
+`31057779411`）完成并合并。`PKG-02/03` 已通过 PR #9（merge
+`a72a624e45b1a3437d3335989d61954a3bd22959`；required run `31061159434`）完成。
+`PKG-01/04` 与 `CI-01` 已完成本地综合验收，当前等待 Windows/Python 3.12
+required gate 和合并证据，之后关闭 M3，再启动 M4 受控论文生产
 接口。新增正式发布必须使用新版本号，不得静默覆盖 `v0.2.0`。
 
 ## 7. 历史文档关系

@@ -12,11 +12,11 @@ audited adaptive sparse polynomial chaos expansion (PCE) compatibility work.
 Install a locked validation environment and the package in editable mode:
 
 ```bash
-python -m pip install -r requirements/compatibility-py311.txt
+python -m pip install -r requirements/compatibility-py312.txt
 python -m pip install --no-deps -e .
 ```
 
-Use `requirements/compatibility-py312.txt` for Python 3.12.
+Python 3.11 remains installable but is not continuously validated.
 
 ## Validation
 
@@ -25,6 +25,21 @@ Run the compatibility gate locally:
 ```bash
 python -m pytest tests/compatibility -q
 ```
+
+On Windows, build wheel/sdist and run both clean-install acceptance paths with:
+
+```powershell
+./tools/packaging/run_clean_install.ps1 `
+  -Python (Get-Command python).Source `
+  -ArtifactDir C:/tmp/uqra-dist `
+  -WorkDir C:/tmp/uqra-clean-install `
+  -EvidenceDir C:/tmp/uqra-packaging-evidence `
+  -SourceCommit (git rev-parse HEAD)
+```
+
+The required CI software-validation job is Windows with Python 3.12. Its
+Ubuntu aggregation job only reports the Windows result and is not an Ubuntu
+compatibility claim.
 
 Reproduce the deterministic benchmark and frozen publication manifest:
 
