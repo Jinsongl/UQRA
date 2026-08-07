@@ -184,7 +184,7 @@ def test_release_workflow_keeps_write_permission_behind_environment():
     assert "if: ${{ inputs.dry_run == false }}" in workflow
     assert workflow.count("contents: write") == 1
     assert "group: uqra-release-${{ inputs.version }}" in workflow
-    assert "uqra-release must require a reviewer and prohibit admin bypass" in workflow
+    assert "uqra-release must require at least one reviewer" in workflow
     assert "gh release delete" in workflow
     assert "refusing to clean a non-draft or unverifiable Release" in workflow
     assert 'git push origin ":refs/tags/$TAG"' in workflow

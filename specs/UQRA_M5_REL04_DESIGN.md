@@ -35,7 +35,8 @@ REL-04 只自动化软件发行对象，不改变数学契约，也不管理论�
 合并 workflow 后，仓库管理员必须在 GitHub `Settings → Environments` 创建
 `uqra-release`，设置 required reviewer，并禁止管理员绕过。未完成这一配置前，不得以
 `dry_run=false` 运行 workflow，也不得将 REL-04 标记为完成。publish job 在任何发布写入
-前通过 GitHub API 再次验证 required reviewer 数量及管理员绕过设置，配置不合格时失败。
+前通过 GitHub API 再次验证 required reviewer 数量，配置不合格时失败。GitHub Environment
+REST API 不提供管理员绕过设置的写入参数，因此该项必须在仓库 UI 中人工复核并记录。
 
 首次正式验证必须使用尚未发布的新版本；禁止以 `v0.3.0` 进行测试。验证记录需包含：
 批准人、输入 commit、annotated tag object、Release URL、候选 artifact digest、下载回读

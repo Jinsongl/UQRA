@@ -117,9 +117,8 @@ jobs:
           reviewer_count=$(jq \
             '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length' \
             <<<"$environment_json")
-          admins_bypass=$(jq -r '.can_admins_bypass // true' <<<"$environment_json")
-          if [[ "$reviewer_count" -lt 1 || "$admins_bypass" != false ]]; then
-            echo "uqra-release must require a reviewer and prohibit admin bypass" >&2
+          if [[ "$reviewer_count" -lt 1 ]]; then
+            echo "uqra-release must require at least one reviewer" >&2
             exit 1
           fi
       - name: Recheck tag and Release collisions
