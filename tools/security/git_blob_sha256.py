@@ -38,10 +38,11 @@ def validate_expected(actual: str, expected: str | None) -> None:
 
 def audit_identity(path: Path) -> tuple[str, str]:
     evidence = json.loads(path.read_text(encoding="utf-8"))
+    identity = evidence.get("input") or evidence.get("lock_file")
     try:
-        return evidence["input"]["path"], evidence["input"]["git_blob_sha256"]
+        return identity["path"], identity["git_blob_sha256"]
     except (KeyError, TypeError) as error:
-        raise RuntimeError("audit evidence lacks input.path or input.git_blob_sha256") from error
+        raise RuntimeError("evidence lacks lock path or git_blob_sha256") from error
 
 
 def main(argv=None) -> int:

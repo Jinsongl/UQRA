@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,7 @@ def load_tool(name: str, relative: str):
 
 git_blob = load_tool("git_blob_sha256", "tools/security/git_blob_sha256.py")
 repro = load_tool("verify_reproducible_build", "tools/packaging/verify_reproducible_build.py")
+security = load_tool("create_security_audit", "tools/security/create_security_audit.py")
 
 
 def test_lock_identity_uses_committed_blob_bytes_not_worktree_newlines():
@@ -63,3 +65,58 @@ def test_git_identity_resolves_immutable_commit_and_blob():
     )
     assert len(commit) == 40
     assert len(blob_oid) == 40
+
+
+def security_inputs(tmp_path, vulnerability, policy_updates=None):
+    workflow = tmp_path / "workflow.yml"
+    workflow.write_text("steps:\n  - uses: actions/checkout@v4\n", encoding="utf-8")
+    policy = {
+        "dependency_roles": {"runtime": ["demo"], "test_build": []},
+        "severity_overrides": {},
+        "accepted_vulnerabilities": {},
+    }
+    if policy_updates:
+        policy.update(policy_updates)
+    audit = {"dependencies": [{"name": "demo", "version": "1", "vulns": [vulnerability]}]}
+    blob = {
+        "source_commit": "a" * 40,
+        "path": "requirements/compatibility-py312.txt",
+        "git_blob_oid": "b" * 40,
+        "sha256": "c" * 64,
+    }
+    return audit, policy, blob, workflow
+
+
+def test_unresolved_high_security_finding_fails_gate(tmp_path):
+    audit, policy, blob, workflow = security_inputs(
+        tmp_path,
+        {"id": "CVE-DEMO", "aliases": [], "fix_versions": []},
+        {"severity_overrides": {"CVE-DEMO": "high"}},
+    )
+    report = security.create_report(
+        audit, policy, blob, workflow, "a" * 40, "2.10.1", date(2026, 8, 7)
+    )
+    assert report["gate"]["status"] == "fail"
+    assert report["gate"]["blocking_finding_count"] == 1
+
+
+def test_accepted_high_security_finding_is_auditable(tmp_path):
+    audit, policy, blob, workflow = security_inputs(
+        tmp_path,
+        {"id": "CVE-DEMO", "aliases": [], "fix_versions": []},
+        {
+            "severity_overrides": {"CVE-DEMO": "high"},
+            "accepted_vulnerabilities": {
+                "CVE-DEMO": {
+                    "status": "accepted_risk",
+                    "expires": "2026-09-01",
+                    "rationale": "temporary test exception"
+                }
+            },
+        },
+    )
+    report = security.create_report(
+        audit, policy, blob, workflow, "a" * 40, "2.10.1", date(2026, 8, 7)
+    )
+    assert report["gate"]["status"] == "pass"
+    assert report["findings"][0]["disposition"]["status"] == "accepted_risk"

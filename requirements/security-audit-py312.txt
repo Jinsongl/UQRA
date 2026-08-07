@@ -1,0 +1,2 @@
+# M5 security audit tooling (Windows / Python 3.12)
+pip-audit==2.10.1
