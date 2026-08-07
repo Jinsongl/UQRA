@@ -40,8 +40,8 @@
 ## 3. 编号体系与里程碑路线
 
 - `U0--U6`：长期工作流，用于表达项目责任边界和持续状态；
-- `M0--M3`：交付里程碑，用于表达可验收的阶段成果；
-- `BENCH/LEG/REG/PKG/CI/SCHEMA-*`：具体任务 ID，用于分支、PR、CI 和证据追踪。
+- `M0--M7`：交付里程碑，用于表达可验收的阶段成果；编号稳定表达范围，执行优先级由本看板确定；
+- `BENCH/LEG/REG/PKG/CI/SCHEMA/MANIFEST/PROD/DATA/CV/PROV/BUILD/SEC/PATH/REL-*`：具体任务 ID，用于分支、PR、CI 和证据追踪。
 
 | 里程碑 | 状态 | 所属工作流 | 任务映射 | 完成门摘要 |
 | --- | --- | --- | --- | --- |
@@ -51,6 +51,10 @@
 | M2.2 首个多路径缩减基准 | ✅ 已完成 | U4 | BENCH-02 | FourBranch reduced 的输入身份、DoI、trace、重复性和 PR #6 required gate 通过 |
 | M2.3 多问题 Benchmark 验收 | ✅ 已完成 | U4 | BENCH-03、BENCH-04、BENCH-06 | 三基准统一 contract hash 与双版本 `52 passed`；required gate 通过 |
 | M3 包装、契约一致性与跨环境质量 | ✅ 已完成 | U6 | PKG-01--04、CI-01、SCHEMA-01/02、MANIFEST-01/02 | 全部任务完成；Windows/Python 3.12 required CI、双 clean-install 和冻结证据通过 |
+| M4 受控论文生产接口与下游交付契约 | ⏳ 待开始 | U5、U6 | PROD-*、DATA-*、CV-*、PROV-*、REL-* | 由论文仓库明确接口需求触发；不在 UQRA 管理论文参数、表图或统计结论 |
+| M5 可复现发布与供应链自动化 | 🔄 当前优先 | U6 | BUILD-01、SEC-01/02、PATH-01、CI-02、REL-04 | 同提交字节一致构建、安全证据绑定、特殊路径回归、Release 上传与回读自动验收 |
+| M6 Legacy 与行为回归证据结案 | ⏳ 待开始 | U1、U3 | LEG-01/02、REG-01/02 | 可获得证据审计完成，不可恢复项正式标记 `unavailable`，统一结案矩阵无歧义 |
+| M7 可选软件 Benchmark 扩展 | ⏳ 候选 | U4 | BENCH-05 及后续 BENCH-* | 仅在证明独立软件验收价值后启动；继续禁止历史 replay 和论文生产声明 |
 
 `LEG-01/02` 与 `REG-01/02` 是 U1/U3 的证据闭环任务，不属于 M2，也不因 M2 完成
 而自动关闭。
@@ -80,6 +84,7 @@
 | BENCH-03 | M2.3 / P1 | Ishigami reduced | 冻结输入、非线性/交互、contract hash；双版本 `52 passed` | ✅ 完成 |
 | BENCH-04 | M2.3 / P1 | Gayton reduced | 冻结输入、局部失效域/DoI、contract hash；双版本 `52 passed` | ✅ 完成 |
 | BENCH-06 | M2.3 / P1 | 三基准统一验收 | registry/config/identity/禁止声明统一契约；required gate 通过 | ✅ 完成 |
+| REL-03 | U6 / P0 | 发布 `v0.3.0` | PR #12 merge `7c2bb050`；required run `31068171070`；Release 附件下载哈希及仓库外 Python 3.12 smoke 通过 | ✅ 完成；冻结证据不再修改 |
 
 ### 🔄 进行中
 
@@ -95,12 +100,21 @@
 | PKG-04 | M3 / P2 | 清理 Python 3.12 警告 | UQRA 自身 SyntaxWarning/DeprecationWarning 已清理；严格 `compileall` 回归门和 compatibility `61 passed` | ✅ 完成；required run `31062848792` |
 | CI-01 | M3 / P2 | 建立 Windows/Python 3.12 required CI | Windows job 覆盖锁、完整 suite、schema、构建、双 clean-install、manifest v2 和 warning 门 | ✅ 完成；required run `31062848792` |
 
+当前实施优先级：M5 高于尚未触发的 M4；编号不表示强制串行。M6 的只读证据审计可与
+M5 并行，但不得影响 M5 required gate 或修改已冻结发布证据。
+
 ### ⏳ 待开始
 
 | ID | 归属 / 优先级 | 任务 | 前置条件 | 完成门 |
 | --- | --- | --- | --- | --- |
 | LEG-01 | U1 / P1 | Legacy Python 3.8/3.9 环境审计 | 无 | 依赖、可运行入口和失败类型形成可审计报告 |
 | REG-01 | U3 / P1 | U3 行为回归结案矩阵 | LEG-01 可并行 | 已验证项与 `unavailable` 项逐项对应证据，无状态歧义 |
+| BUILD-01 | M5 / P0 | 建立 wheel/sdist 可复现构建 | `v0.3.0` 冻结清单和现有构建脚本 | 同一提交至少两次独立构建的文件名、大小和 SHA-256 完全一致 |
+| SEC-02 | M5 / P0 | 安全证据绑定锁文件 Git blob | `UQRA_V0.3.0_SECURITY_AUDIT.json` 的 review 修复经验 | 自动计算并验证 canonical Git blob SHA-256，错误摘要必须拒绝 |
+| PATH-01 | M5 / P0 | Windows 特殊路径回归 | 现有 clean-install 脚本 | 空格、单引号和非 ASCII 路径均通过版本发现、构建和 smoke |
+| SEC-01 | M5 / P1 | 持续依赖安全审计 | SEC-02 | 运行时、测试/构建、Actions 风险分类记录；正式锁零未处置高危项 |
+| CI-02 | M5 / P1 | 扩展唯一正式 release gate | BUILD-01、SEC-02、PATH-01 | Windows/Python 3.12 required job 自动执行三类验收 |
+| REL-04 | M5 / P1 | 自动化 GitHub Release 闭环 | CI-02 | 经人工批准后创建 annotated tag、上传附件、下载回读并校验哈希；失败不留下半发布状态 |
 
 ## 6. 后续队列
 
@@ -119,10 +133,15 @@
 - 预算、预期状态、`stop_reason` 和 trace hash/容差；
 - 明确禁止 `paper_production` 声明。
 
-### ⏳ 待开始：包装与跨环境质量
+### 🔄 当前优先：可复现发布与供应链自动化
 
 | ID | 归属 / 优先级 | 任务 | 完成门 |
 | --- | --- | --- | --- |
+| BUILD-01 | M5 / P0 | 可复现 wheel/sdist | 两次独立构建 SHA-256 一致，并解释/固定所有时间戳和元数据来源 |
+| SEC-01/02 | M5 / P0--P1 | 依赖审计与 Git blob 绑定 | 审计输入可追溯，错误 hash 有拒绝测试，风险按依赖角色分类 |
+| PATH-01 | M5 / P0 | Windows 特殊路径 | 空格、单引号、非 ASCII 路径回归通过 |
+| CI-02 | M5 / P1 | release gate 自动验收 | 唯一正式 Windows/Python 3.12 job 覆盖 BUILD/SEC/PATH |
+| REL-04 | M5 / P1 | tag/Release/附件回读自动化 | 保留人工批准点，已发布对象不可覆盖，下载后哈希一致 |
 
 ### ⛔ 阻塞：历史资产
 
@@ -141,6 +160,7 @@
 | M1 Runner 契约与可审计发布（原 UQRA-MV1） | ✅ 已完成 | commits `c6fea07`、`c69032d`；42 项兼容性测试；U5 交付门和 `specs/releases/` |
 | `v0.2.0` runner contracts release | ✅ 已完成 | PR #4、merge `3445464d`、GitHub Release |
 | M3 包装、契约一致性与跨环境质量 | ✅ 已完成 | PR #9；PR #10 merge `1c8040bf`；Windows/Python 3.12 run `31062848792`；冻结 packaging evidence |
+| `v0.3.0` 软件交付发布 | ✅ 已完成 | PR #12 merge `7c2bb050`；run `31068171070`；annotated tag、GitHub Release、冻结附件哈希和发布后 smoke |
 
 ## 8. 更新流程
 
