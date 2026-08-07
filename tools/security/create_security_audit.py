@@ -76,17 +76,20 @@ def classify_dependencies(
 
 def classify_actions(workflow: Path) -> list[dict]:
     actions = []
-    for reference in ACTION_PATTERN.findall(workflow.read_text(encoding="utf-8")):
-        target, separator, revision = reference.partition("@")
-        immutable = bool(separator and re.fullmatch(r"[0-9a-fA-F]{40}", revision))
-        actions.append({
-            "action": target,
-            "revision": revision or None,
-            "role": "github_actions",
-            "immutable_revision": immutable,
-            "risk": "none_detected" if immutable else "mutable_major_tag",
-            "disposition": "monitored_by_dependabot" if not immutable else "none_required",
-        })
+    paths = sorted(workflow.glob("*.yml")) if workflow.is_dir() else [workflow]
+    for path in paths:
+        for reference in ACTION_PATTERN.findall(path.read_text(encoding="utf-8")):
+            target, separator, revision = reference.partition("@")
+            immutable = bool(separator and re.fullmatch(r"[0-9a-fA-F]{40}", revision))
+            actions.append({
+                "workflow": path.name,
+                "action": target,
+                "revision": revision or None,
+                "role": "github_actions",
+                "immutable_revision": immutable,
+                "risk": "none_detected" if immutable else "mutable_major_tag",
+                "disposition": "monitored_by_dependabot" if not immutable else "none_required",
+            })
     if not actions:
         raise RuntimeError(f"no GitHub Actions references found in {workflow}")
     return actions

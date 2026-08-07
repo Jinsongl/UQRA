@@ -36,6 +36,6 @@ if ($LASTEXITCODE -notin @(0, 1)) { throw 'pip-audit execution failed' }
     --pip-audit-json $rawAudit `
     --policy (Join-Path $root 'requirements/security-policy.json') `
     --blob-identity $blobEvidence `
-    --workflow (Join-Path $root '.github/workflows/adaptive-compatibility.yml') `
+    --workflow (Join-Path $root '.github/workflows') `
     --source-commit $commit --audit-tool-version $auditVersion --output $report
 if ($LASTEXITCODE -ne 0) { throw 'security audit gate failed' }

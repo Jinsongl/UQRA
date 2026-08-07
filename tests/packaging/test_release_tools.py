@@ -23,6 +23,7 @@ def load_tool(name: str, relative: str):
 git_blob = load_tool("git_blob_sha256", "tools/security/git_blob_sha256.py")
 repro = load_tool("verify_reproducible_build", "tools/packaging/verify_reproducible_build.py")
 prepare = load_tool("prepare_build_source", "tools/packaging/prepare_build_source.py")
+release = load_tool("release_contract", "tools/release/release_contract.py")
 security = load_tool("create_security_audit", "tools/security/create_security_audit.py")
 
 
@@ -89,6 +90,106 @@ def test_build_source_archive_uses_committed_bytes(tmp_path):
     assert (destination / "pyproject.toml").read_bytes() == committed
 
 
+def test_release_version_requires_strict_semver():
+    assert release.validate_version("1.2.3") == "v1.2.3"
+    for invalid in ("v1.2.3", "1.2", "1.2.3rc1", "01.2.3"):
+        with pytest.raises(RuntimeError, match="must be X.Y.Z"):
+            release.validate_version(invalid)
+
+
+def test_release_preflight_accepts_master_commit_then_rejects_existing_tag(tmp_path):
+    repository = tmp_path / "repository"
+    (repository / "uqra").mkdir(parents=True)
+    (repository / "uqra" / "_version.py").write_text(
+        '__version__ = "1.2.3"\n', encoding="utf-8"
+    )
+    commands = [
+        ("init", "-b", "master"),
+        ("config", "user.name", "Release Test"),
+        ("config", "user.email", "release-test@example.invalid"),
+        ("add", "uqra/_version.py"),
+        ("commit", "-m", "release source"),
+    ]
+    for command in commands:
+        subprocess.run(["git", "-C", str(repository), *command], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    commit = subprocess.run(
+        ["git", "-C", str(repository), "rev-parse", "HEAD"], check=True,
+        stdout=subprocess.PIPE,
+    ).stdout.decode("ascii").strip()
+
+    report = release.preflight(repository, "1.2.3", commit, "master")
+    assert report["tag"] == "v1.2.3"
+    subprocess.run(
+        ["git", "-C", str(repository), "tag", "-a", "v1.2.3", "-m", "existing"],
+        check=True,
+    )
+    with pytest.raises(RuntimeError, match="tag already exists"):
+        release.preflight(repository, "1.2.3", commit, "master")
+
+
+def release_candidate_inputs(tmp_path):
+    distribution = tmp_path / "distribution"
+    distribution.mkdir()
+    wheel = distribution / "uqra-1.2.3-py3-none-any.whl"
+    sdist = distribution / "uqra-1.2.3.tar.gz"
+    wheel.write_bytes(b"wheel")
+    sdist.write_bytes(b"sdist")
+    artifacts = [
+        {"name": path.name, "size_bytes": path.stat().st_size,
+         "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        for path in sorted((wheel, sdist))
+    ]
+    preflight = {
+        "version": "1.2.3", "tag": "v1.2.3", "source_commit": "a" * 40,
+    }
+    build = {"source_commit": "a" * 40, "artifacts": artifacts}
+    return distribution, preflight, build
+
+
+def test_release_candidate_and_download_readback_are_byte_bound(tmp_path):
+    distribution, preflight, build = release_candidate_inputs(tmp_path)
+    candidate = release.candidate(preflight, build, distribution)
+    readback = tmp_path / "readback"
+    readback.mkdir()
+    for path in distribution.iterdir():
+        (readback / path.name).write_bytes(path.read_bytes())
+    report = release.verify_download(candidate, readback)
+    assert report["status"] == "passed"
+    assert report["artifacts"] == candidate["artifacts"]
+
+
+def test_release_candidate_rejects_commit_mismatch(tmp_path):
+    distribution, preflight, build = release_candidate_inputs(tmp_path)
+    build["source_commit"] = "b" * 40
+    with pytest.raises(RuntimeError, match="commits differ"):
+        release.candidate(preflight, build, distribution)
+
+
+def test_release_download_rejects_changed_or_extra_assets(tmp_path):
+    distribution, preflight, build = release_candidate_inputs(tmp_path)
+    candidate = release.candidate(preflight, build, distribution)
+    (distribution / candidate["artifacts"][0]["name"]).write_bytes(b"changed")
+    with pytest.raises(RuntimeError, match="differ from the approved candidate"):
+        release.verify_download(candidate, distribution)
+    (distribution / "unexpected.txt").write_text("unexpected", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="asset set differs"):
+        release.verify_download(candidate, distribution)
+
+
+def test_release_workflow_keeps_write_permission_behind_environment():
+    workflow = (ROOT / ".github/workflows/controlled-release.yml").read_text(encoding="utf-8")
+    assert "workflow_dispatch:" in workflow
+    assert "environment: uqra-release" in workflow
+    assert "if: ${{ inputs.dry_run == false }}" in workflow
+    assert workflow.count("contents: write") == 1
+    assert "group: uqra-release-${{ inputs.version }}" in workflow
+    assert "uqra-release must require at least one reviewer" in workflow
+    assert "gh release delete" in workflow
+    assert "refusing to clean a non-draft or unverifiable Release" in workflow
+    assert 'git push origin ":refs/tags/$TAG"' in workflow
+
+
 def test_git_identity_resolves_immutable_commit_and_blob():
     commit, blob_oid = git_blob.resolve_identity(
         ROOT, "HEAD", "requirements/compatibility-py312.txt"
@@ -150,3 +251,17 @@ def test_accepted_high_security_finding_is_auditable(tmp_path):
     )
     assert report["gate"]["status"] == "pass"
     assert report["findings"][0]["disposition"]["status"] == "accepted_risk"
+
+
+def test_security_audit_classifies_actions_from_all_workflows(tmp_path):
+    workflows = tmp_path / "workflows"
+    workflows.mkdir()
+    (workflows / "one.yml").write_text(
+        "steps:\n  - uses: actions/checkout@v4\n", encoding="utf-8"
+    )
+    (workflows / "two.yml").write_text(
+        "steps:\n  - uses: actions/upload-artifact@" + "a" * 40 + "\n", encoding="utf-8"
+    )
+    actions = security.classify_actions(workflows)
+    assert {item["workflow"] for item in actions} == {"one.yml", "two.yml"}
+    assert {item["risk"] for item in actions} == {"mutable_major_tag", "none_detected"}
