@@ -312,8 +312,9 @@ wheel/sdist、双 clean-install、schema、manifest v2 evidence 和 warning
 门证据已冻结，M3 完成。`v0.3.0` 已通过 PR #12（merge
 `7c2bb050dc3e02882929811b5dd9c8878d17e7d5`；最终 required run `31068171070`）发布。
 M5 的 BUILD/SEC/PATH/CI 基础能力已经完成，`REL-04` 保持 Draft 并按上述条件恢复，
-不再阻塞核心开发。当前最小下一目标是从干净 `master` 建立独立质量分支，依次完成
-`ARCH-01`、`TEST-01` 和 `PERF-01`，再依据审计结果分批实施 `OPT-01/02`；`OPT-03`
+不再阻塞核心开发。`ARCH-01` 已形成
+`UQRA_ARCH_01_ADAPTIVE_ARCHITECTURE_AUDIT.md`，当前最小下一目标是完成 `TEST-01` 和
+`PERF-01`，再依据审计结果分批实施 `OPT-01/02`；`OPT-03`
 必须单独裁决。M6 的只读审计可以并行但应保持独立提交或 PR；M4 仍由论文仓库的明确
 版本化接口需求触发；M7 保持候选。所有变更继续通过唯一正式 Windows/Python 3.12 gate，
 且不得覆盖既有 tag、Release 附件或冻结证据。
