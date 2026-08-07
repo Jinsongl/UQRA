@@ -1,6 +1,6 @@
 # UQRA v0.3.0 release notes
 
-Status: release candidate preparation
+Status: published 2026-08-06
 
 `v0.3.0` is a backward-compatible software delivery release. It packages the
 M2 benchmark work and the complete M3 contract, provenance, packaging, and
@@ -52,7 +52,7 @@ are not historical replay, paper-production results, or scientific reproduction.
 - [x] Vulnerable test/build tooling pins upgraded.
 - [x] Final wheel and sdist rebuilt from release-preparation commit `2da9847`.
 - [x] Final distribution hashes and clean-install evidence frozen.
-- [ ] Windows/Python 3.12 required gate passes on the release-preparation PR.
-- [ ] Release-preparation PR merged to `master`.
-- [ ] Annotated `v0.3.0` tag created from the approved merge commit.
-- [ ] GitHub Release created from that tag using these notes.
+- [x] Windows/Python 3.12 required gate passes on the release-preparation PR (`31068171070`).
+- [x] Release-preparation PR merged to `master` (`7c2bb050dc3e02882929811b5dd9c8878d17e7d5`).
+- [x] Annotated `v0.3.0` tag created from the approved merge commit.
+- [x] [GitHub Release](https://github.com/Jinsongl/UQRA/releases/tag/v0.3.0) created with the frozen artifacts and these notes.
