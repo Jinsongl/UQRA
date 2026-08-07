@@ -1,6 +1,6 @@
 # UQRA 项目进度看板
 
-状态日期：2026-08-06
+状态日期：2026-08-07
 维护范围：UQRA 软件项目  
 主计划：[`UQRA_PROJECT_DEVELOPMENT_PLAN.md`](UQRA_PROJECT_DEVELOPMENT_PLAN.md)  
 历史实施记录：[`ADAPTIVE_PCE_DEVELOPMENT_PLAN.md`](ADAPTIVE_PCE_DEVELOPMENT_PLAN.md)
@@ -28,20 +28,22 @@
 | 项目 | 当前值 | 状态/证据 |
 | --- | --- | --- |
 | 默认分支 | `master` | ✅ `v0.3.0` 已发布 |
-| 当前基线 / 工作分支 | `master` / `codex/v0.3.0-release-record` | 🔄 发布后记录同步 |
-| 最近 PR | [#12 Prepare UQRA v0.3.0 release candidate](https://github.com/Jinsongl/UQRA/pull/12) | ✅ 已合并；merge `7c2bb050dc3e02882929811b5dd9c8878d17e7d5`；最终 required run [31068171070](https://github.com/Jinsongl/UQRA/actions/runs/31068171070) |
+| 当前基线 / 路线校准分支 | `master` / `codex/roadmap-quality-priority` | 🔄 纯文档路线校准；不修改核心代码和冻结证据 |
+| 最近合并 PR | [#14 Complete M5 reproducible release and supply-chain gates](https://github.com/Jinsongl/UQRA/pull/14) | ✅ 已合并；merge `514075341a0bb1c198e3f9656d21a800868ea59c`；master run [31151712201](https://github.com/Jinsongl/UQRA/actions/runs/31151712201) |
+| 暂缓 PR | [#15 Implement REL-04 controlled release automation](https://github.com/Jinsongl/UQRA/pull/15) | ⏳ 保持 Draft；代码与 required run `31152911246` 已通过，等待真实新版本恢复端到端验证 |
 | Python 3.11 | 允许安装但未持续验证 | ➖ 不作为 M3 完成门；如取消安装支持，另行同步元数据、README、锁和发布说明 |
-| 正式验证环境 | Windows + Python 3.12 | ✅ 唯一正式、持续验证环境；发布基线 `61 passed` |
-| Required check | `Adaptive compatibility gate` | ✅ 候选 run [31067701606](https://github.com/Jinsongl/UQRA/actions/runs/31067701606) 及 review 修复后最终 run [31068171070](https://github.com/Jinsongl/UQRA/actions/runs/31068171070) 通过 |
+| 正式验证环境 | Windows + Python 3.12 | ✅ 唯一正式、持续验证环境；PR #14 合并后 master gate 通过 |
+| Required check | `Adaptive compatibility gate` | ✅ master run [31151712201](https://github.com/Jinsongl/UQRA/actions/runs/31151712201) 通过；Ubuntu job 仅聚合 Windows 结果 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.3.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.3.0) | ✅ annotated tag 指向合并提交 `7c2bb050dc3e02882929811b5dd9c8878d17e7d5`；附件下载哈希和仓库外 Python 3.12 smoke 通过 |
-| 下一版本 | `v0.3.x` 维护线 | 🔄 优先处理兼容性、安全更新和发布自动化；新功能另立里程碑 |
+| 下一版本 | `v0.3.x` 维护线 | 🔄 当前优先核心质量、行为基线和低风险优化；真实新版本出现时恢复 REL-04 |
 
 ## 3. 编号体系与里程碑路线
 
 - `U0--U6`：长期工作流，用于表达项目责任边界和持续状态；
 - `M0--M7`：交付里程碑，用于表达可验收的阶段成果；编号稳定表达范围，执行优先级由本看板确定；
-- `BENCH/LEG/REG/PKG/CI/SCHEMA/MANIFEST/PROD/DATA/CV/PROV/BUILD/SEC/PATH/REL-*`：具体任务 ID，用于分支、PR、CI 和证据追踪。
+- `BENCH/LEG/REG/PKG/CI/SCHEMA/MANIFEST/PROD/DATA/CV/PROV/BUILD/SEC/PATH/REL-*`：里程碑或持续工作流的具体任务 ID；
+- `ARCH/TEST/PERF/OPT-*`：跨里程碑工程质量工作流任务 ID，不构成新里程碑，也不扩大 M6 的 Legacy 结案范围。
 
 | 里程碑 | 状态 | 所属工作流 | 任务映射 | 完成门摘要 |
 | --- | --- | --- | --- | --- |
@@ -52,8 +54,8 @@
 | M2.3 多问题 Benchmark 验收 | ✅ 已完成 | U4 | BENCH-03、BENCH-04、BENCH-06 | 三基准统一 contract hash 与双版本 `52 passed`；required gate 通过 |
 | M3 包装、契约一致性与跨环境质量 | ✅ 已完成 | U6 | PKG-01--04、CI-01、SCHEMA-01/02、MANIFEST-01/02 | 全部任务完成；Windows/Python 3.12 required CI、双 clean-install 和冻结证据通过 |
 | M4 受控论文生产接口与下游交付契约 | ⏳ 待开始 | U5、U6 | PROD-*、DATA-*、CV-*、PROV-*、REL-* | 由论文仓库明确接口需求触发；不在 UQRA 管理论文参数、表图或统计结论 |
-| M5 可复现发布与供应链自动化 | 🔄 当前优先 | U6 | BUILD-01、SEC-01/02、PATH-01、CI-02、REL-04 | 同提交字节一致构建、安全证据绑定、特殊路径回归、Release 上传与回读自动验收 |
-| M6 Legacy 与行为回归证据结案 | ⏳ 待开始 | U1、U3 | LEG-01/02、REG-01/02 | 可获得证据审计完成，不可恢复项正式标记 `unavailable`，统一结案矩阵无歧义 |
+| M5 可复现发布与供应链自动化 | 🔄 基础能力完成；发布闭环暂缓 | U6 | BUILD-01、SEC-01/02、PATH-01、CI-02、REL-04 | BUILD/SEC/PATH/CI 已完成；REL-04 代码在 Draft PR #15，等待真实新版本执行端到端验收 |
+| M6 Legacy 与行为回归证据结案 | 🔄 只读审计可启动 | U1、U3 | LEG-01/02、REG-01/02 | 可获得证据审计完成，不可恢复项正式标记 `unavailable`，统一结案矩阵无歧义 |
 | M7 可选软件 Benchmark 扩展 | ⏳ 候选 | U4 | BENCH-05 及后续 BENCH-* | 仅在证明独立软件验收价值后启动；继续禁止历史 replay 和论文生产声明 |
 
 `LEG-01/02` 与 `REG-01/02` 是 U1/U3 的证据闭环任务，不属于 M2，也不因 M2 完成
@@ -69,7 +71,7 @@
 | U3 内核与逐轮行为回归 | ✅ 已完成（可获得证据范围） | Phase 5--8 证据完整；历史 FourBranch trace 不可用 | 建立统一结案矩阵，与 U1 阻塞结论互链 |
 | U4 通用软件 benchmark | ✅ 已完成（M2 范围） | M2.1--M2.3 已随 `v0.3.0` 发布；BENCH-05 保留为可选扩展 | 在 `v0.3.x` 维护契约与回归证据 |
 | U5 Runner 发布门 | ✅ 已完成 | M1 schema、CLI、示例、evidence、PR #4 和 `v0.2.0` 发布均完成 | 按版本化流程维护后续交付 |
-| U6 版本化维护 | 🔄 进行中 | `v0.3.0` 已发布；M3 包装、版本源、警告门和 Windows/Python 3.12 required CI 已建立 | 维护 `v0.3.x`，优先改进可复现构建与发布自动化 |
+| U6 版本化维护 | 🔄 进行中 | `v0.3.0` 已发布；M5 BUILD/SEC/PATH/CI 基础能力已建立，REL-04 保持 Draft | 维护现有 gate；真实新版本出现时恢复发布闭环，不阻塞核心质量优化 |
 
 ## 5. 当前焦点
 
@@ -87,6 +89,7 @@
 | REL-03 | U6 / P0 | 发布 `v0.3.0` | PR #12 merge `7c2bb050`；required run `31068171070`；Release 附件下载哈希及仓库外 Python 3.12 smoke 通过 | ✅ 完成；冻结证据不再修改 |
 | BUILD-01 / SEC-02 / PATH-01 | M5 / P0 | 可复现构建、blob 绑定和 Windows 特殊路径 | PR #14；错误 hash/构建差异拒绝测试；空格、单引号、非 ASCII 路径通过 | ✅ 完成；required run `31146285191` |
 | SEC-01 / CI-02 | M5 / P1 | 持续安全审计及唯一正式 gate 扩展 | 固定 `pip-audit`；依赖三分类；Windows/Python 3.12 全 gate；本机/CI 包摘要一致 | ✅ 完成；required run `31146285191` |
+| M5 合并验收 | M5 / P0 | 将 BUILD/SEC/PATH/CI 基础能力合入 master | PR #14 merge `514075341a0bb1c198e3f9656d21a800868ea59c` | ✅ master run `31151712201` 全绿 |
 
 ### 🔄 进行中
 
@@ -102,8 +105,9 @@
 | PKG-04 | M3 / P2 | 清理 Python 3.12 警告 | UQRA 自身 SyntaxWarning/DeprecationWarning 已清理；严格 `compileall` 回归门和 compatibility `61 passed` | ✅ 完成；required run `31062848792` |
 | CI-01 | M3 / P2 | 建立 Windows/Python 3.12 required CI | Windows job 覆盖锁、完整 suite、schema、构建、双 clean-install、manifest v2 和 warning 门 | ✅ 完成；required run `31062848792` |
 
-当前实施优先级：M5 高于尚未触发的 M4；编号不表示强制串行。M6 的只读证据审计可与
-M5 并行，但不得影响 M5 required gate 或修改已冻结发布证据。
+当前实施优先级转为工程质量工作流：先完成 `ARCH-01`、`TEST-01` 和 `PERF-01`，再按
+`OPT-01--03` 分批优化。M6 的只读证据审计可并行；M4 仍由论文仓库明确需求触发。
+REL-04 不再阻塞核心开发，恢复条件见后续队列。里程碑编号不表示强制串行。
 
 ### ⏳ 待开始
 
@@ -111,7 +115,12 @@ M5 并行，但不得影响 M5 required gate 或修改已冻结发布证据。
 | --- | --- | --- | --- | --- |
 | LEG-01 | U1 / P1 | Legacy Python 3.8/3.9 环境审计 | 无 | 依赖、可运行入口和失败类型形成可审计报告 |
 | REG-01 | U3 / P1 | U3 行为回归结案矩阵 | LEG-01 可并行 | 已验证项与 `unavailable` 项逐项对应证据，无状态歧义 |
-| REL-04 | M5 / P1 | 自动化 GitHub Release 闭环 | CI-02 | 经人工批准后创建 annotated tag、上传附件、下载回读并校验哈希；失败不留下半发布状态 |
+| ARCH-01 | 工程质量 / P0 | `uqra/adaptive/` 架构、职责与数据流审计 | 当前 master | 入口、依赖方向、状态流、公共契约和风险边界形成可审计文档 |
+| TEST-01 | 工程质量 / P0 | 关键行为与现有测试覆盖矩阵 | ARCH-01 可并行 | 逐轮行为、失败路径和证据字段的高价值缺口具备具体测试方案 |
+| PERF-01 | 工程质量 / P0 | Windows/Python 3.12 性能与内存基线 | 固定 reduced benchmark | 固定环境、输入、轮次、时间和峰值内存；结果不作为论文性能结论 |
+| OPT-01 | 工程质量 / P1 | 低风险可维护性优化 | ARCH-01、TEST-01 | 职责和重复逻辑改善，数学契约、公共 API 和完整逐轮行为不变 |
+| OPT-02 | 工程质量 / P1 | 低风险性能优化 | PERF-01、TEST-01 | 同环境前后数据证明收益；逐轮回归和正式 gate 通过 |
+| OPT-03 | 工程质量 / P2 | 受控算法路径优化 | OPT-01/02 证据稳定后另行批准 | 单项独立提交；明确 bitwise 或数值容差契约，不以最终 Pf 接近替代逐轮等价 |
 
 ## 6. 后续队列
 
@@ -130,15 +139,21 @@ M5 并行，但不得影响 M5 required gate 或修改已冻结发布证据。
 - 预算、预期状态、`stop_reason` 和 trace hash/容差；
 - 明确禁止 `paper_production` 声明。
 
-### 🔄 当前优先：可复现发布与供应链自动化
+### ✅ M5 基础能力与暂缓的发布闭环
 
 | ID | 归属 / 优先级 | 任务 | 完成门 |
 | --- | --- | --- | --- |
-| BUILD-01 | M5 / P0 | 可复现 wheel/sdist | 两次独立构建 SHA-256 一致，并解释/固定所有时间戳和元数据来源 |
-| SEC-01/02 | M5 / P0--P1 | 依赖审计与 Git blob 绑定 | 审计输入可追溯，错误 hash 有拒绝测试，风险按依赖角色分类 |
-| PATH-01 | M5 / P0 | Windows 特殊路径 | 空格、单引号、非 ASCII 路径回归通过 |
-| CI-02 | M5 / P1 | release gate 自动验收 | 唯一正式 Windows/Python 3.12 job 覆盖 BUILD/SEC/PATH |
-| REL-04 | M5 / P1 | tag/Release/附件回读自动化 | 保留人工批准点，已发布对象不可覆盖，下载后哈希一致 |
+| BUILD-01 | M5 / P0 | 可复现 wheel/sdist | ✅ 两次独立构建 SHA-256 一致，并固定时间戳和非确定性元数据来源 |
+| SEC-01/02 | M5 / P0--P1 | 依赖审计与 Git blob 绑定 | ✅ 审计输入可追溯，错误 hash 有拒绝测试，风险按依赖角色分类 |
+| PATH-01 | M5 / P0 | Windows 特殊路径 | ✅ 空格、单引号、非 ASCII 路径已在 Windows runner 回归 |
+| CI-02 | M5 / P1 | release gate 自动验收 | ✅ 唯一正式 Windows/Python 3.12 job 已覆盖 BUILD/SEC/PATH |
+| REL-04 | M5 / 暂缓 | tag/Release/附件回读自动化 | ⏳ Draft PR #15 保留实现；仅在真实新版本准备完成后恢复端到端发布验收 |
+
+REL-04 暂缓期间保留 Draft PR #15 和 `uqra-release` Environment，但不执行非 dry-run 发布，不创建新 tag 或 Release，也不以 `v0.3.0` 演练覆盖逻辑。恢复条件为：真实新版本号已确定、版本准备 PR 已合并、候选提交的正式 gate 全绿、dry-run 通过，并由人工批准 annotated tag、Release、附件上传和下载回读。任何恢复动作都不得修改 `v0.3.0` tag、附件或四份冻结证据。
+
+### 🔄 当前优先：工程质量工作流
+
+本工作流不新增 M8，也不改变 M4--M7 的名称、编号和边界。先用 `ARCH-01`、`TEST-01`、`PERF-01` 建立结构、行为与性能基线，再按证据推进 `OPT-01--03`。所有优化继续受 `uqra/adaptive/` 核心算法边界和既有数学契约约束；三个 reduced benchmark 始终保持 `software_benchmark` / `reduced`，不得声明为历史 replay、论文生产或 scientific reproduction。
 
 ### ⛔ 阻塞：历史资产
 
