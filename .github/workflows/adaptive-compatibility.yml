@@ -9,20 +9,46 @@ jobs:
   windows-python312:
     name: Windows Python 3.12 acceptance
     runs-on: windows-latest
+    env:
+      SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements/compatibility-py312.txt
+          cache-dependency-path: |
+            requirements/compatibility-py312.txt
+            requirements/security-audit-py312.txt
       - name: Install locked environment
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements/compatibility-py312.txt
+          python -m pip install -r requirements/security-audit-py312.txt
           python -m pip install --no-deps --no-build-isolation -e .
       - name: Complete compatibility, schema, and warning suite
-        run: python -m pytest tests/compatibility -q
+        run: python -m pytest tests/packaging tests/compatibility -q
+      - name: Audit dependencies and bind the lock Git blob
+        shell: pwsh
+        run: >-
+          ./tools/security/run_security_audit.ps1
+          -Python (Get-Command python).Source
+          -Repository "${{ github.workspace }}"
+          -Revision "${{ env.SOURCE_COMMIT }}"
+          -EvidenceDir "${{ runner.temp }}/uqra-security-evidence"
+      - name: Verify byte-reproducible wheel and sdist
+        shell: pwsh
+        run: |
+          $epoch = git show -s --format=%ct "${{ env.SOURCE_COMMIT }}"
+          ./tools/packaging/run_reproducible_build.ps1 `
+            -Python (Get-Command python).Source `
+            -SourceDir "${{ github.workspace }}" `
+            -OutputRoot "${{ runner.temp }}/uqra-reproducible-build" `
+            -SourceDateEpoch $epoch `
+            -SourceCommit "${{ env.SOURCE_COMMIT }}" `
+            -EvidencePath "${{ runner.temp }}/uqra-build-evidence/reproducible-build.json"
       - name: Build and clean-install wheel and sdist
         shell: pwsh
         run: >-
@@ -31,14 +57,29 @@ jobs:
           -ArtifactDir "${{ runner.temp }}/uqra-dist"
           -WorkDir "${{ runner.temp }}/uqra-clean-install"
           -EvidenceDir "${{ runner.temp }}/uqra-packaging-evidence"
-          -SourceCommit "${{ github.sha }}"
-      - name: Upload packaging evidence
+          -SourceCommit "${{ env.SOURCE_COMMIT }}"
+      - name: Exercise Windows special paths
+        shell: pwsh
+        run: |
+          $epoch = git show -s --format=%ct "${{ env.SOURCE_COMMIT }}"
+          ./tools/packaging/run_windows_path_regression.ps1 `
+            -Python (Get-Command python).Source `
+            -SourceDir "${{ github.workspace }}" `
+            -ScratchRoot "${{ runner.temp }}/uqra-special-paths" `
+            -SourceDateEpoch $epoch `
+            -EvidencePath "${{ runner.temp }}/uqra-path-evidence/windows-path-regression.json"
+      - name: Upload M5 acceptance evidence
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: uqra-windows-python312-packaging-evidence
+          name: uqra-windows-python312-m5-evidence
           path: |
+            ${{ runner.temp }}/uqra-security-evidence/**
+            ${{ runner.temp }}/uqra-reproducible-build/first/*
+            ${{ runner.temp }}/uqra-build-evidence/**
             ${{ runner.temp }}/uqra-dist/*
             ${{ runner.temp }}/uqra-packaging-evidence/**
+            ${{ runner.temp }}/uqra-path-evidence/**
           if-no-files-found: error
 
   adaptive-compatibility-gate:

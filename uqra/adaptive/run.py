@@ -150,6 +150,17 @@ def run_config(config):
     return _run_config_bundle(config)[0]
 
 
+def _write_status(message, stream=None):
+    """Write a CLI status line without failing on a narrow Windows code page."""
+    stream = stream or sys.stdout
+    try:
+        stream.write(message)
+    except UnicodeEncodeError:
+        encoding = getattr(stream, "encoding", None) or "ascii"
+        escaped = message.encode(encoding, errors="backslashreplace").decode(encoding)
+        stream.write(escaped)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -169,7 +180,7 @@ def main(argv=None):
         output.write_text(payload, encoding="utf-8")
     except ValueError as error:
         parser.error(str(error))
-    sys.stdout.write(f"wrote {output}\n")
+    _write_status(f"wrote {output}\n")
     return 0
 
 

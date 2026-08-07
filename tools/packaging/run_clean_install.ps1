@@ -16,8 +16,14 @@ $versionFile = Join-Path $root 'uqra\_version.py'
 $version = & $Python -c "import runpy, sys; print(runpy.run_path(sys.argv[1])['__version__'])" $versionFile
 if ($LASTEXITCODE -ne 0 -or -not $version) { throw 'unable to determine UQRA version' }
 
-& $Python -m build --no-isolation --outdir $artifactPath $root
-if ($LASTEXITCODE -ne 0) { throw 'distribution build failed' }
+$safeRoot = $root.Replace('\', '/')
+$sourceDateEpoch = & git -c "safe.directory=$safeRoot" -C $root show -s --format=%ct $SourceCommit
+if ($LASTEXITCODE -ne 0 -or -not $sourceDateEpoch) {
+    throw 'unable to determine source commit timestamp'
+}
+& (Join-Path $PSScriptRoot 'build_reproducible.ps1') `
+    -Python $Python -SourceDir $root -OutputDir $artifactPath `
+    -SourceDateEpoch ([long]$sourceDateEpoch) -SourceCommit $SourceCommit
 
 $wheel = Get-ChildItem -LiteralPath $artifactPath -Filter "uqra-$version-*.whl"
 $sdist = Get-ChildItem -LiteralPath $artifactPath -Filter "uqra-$version.tar.gz"

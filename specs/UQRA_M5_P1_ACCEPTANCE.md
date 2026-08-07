@@ -1,0 +1,75 @@
+# UQRA M5 P1 Acceptance
+
+日期：2026-08-07  
+范围：`SEC-01`、`CI-02`  
+状态：本地实现完成，等待 GitHub `windows-latest` / Python 3.12 required run
+
+本轮只扩展发布和供应链质量门，不修改 `uqra/adaptive/`、数学契约、v0.3.0 tag、
+Release 附件或 `specs/releases/UQRA_V0.3.0_*` 冻结证据。
+
+## SEC-01
+
+正式审计工具固定为 `pip-audit==2.10.1`。`run_security_audit.ps1` 执行以下闭环：
+
+1. 将 revision 解析为 immutable commit；
+2. 从该 commit 的 `requirements/compatibility-py312.txt` Git blob 原始字节计算 SHA-256；
+3. 对锁文件运行 pip-audit；
+4. 将全部依赖分类为 `runtime` 或 `test_build`；
+5. 将 workflow 中的 action 分类为 `github_actions`，并记录 mutable tag 风险；
+6. 输出包含 commit、工具版本、blob identity、分类、发现和处置状态的 JSON；
+7. 对未处置的 critical、high 或无法确定严重度的发现返回失败。
+
+风险接受必须具有结构化 rationale；`accepted_risk` 还必须具有未过期的日期。
+当前本地 Windows/Python 3.12.13 审计结果为零已知漏洞、零 blocking finding。
+GitHub Actions 当前使用 major tags，证据将其记录为 `mutable_major_tag`，并标明由
+Dependabot 持续监控；这不等同于 immutable SHA pinning。
+
+## CI-02
+
+唯一正式 `windows-python312` job 按顺序执行：
+
+1. 安装 Python 3.12 锁定环境及固定审计工具；
+2. 运行 packaging、compatibility、schema 和 warning suite；
+3. 执行 SEC-02 blob 绑定及 SEC-01 安全审计；
+4. 在两个独立目录执行 BUILD-01 字节一致构建；
+5. 对 wheel 和 sdist 执行 clean-install；
+6. 对空格、单引号和非 ASCII 三类 Windows 路径执行 PATH-01；
+7. 上传 BUILD、SEC、clean-install 和 PATH 机器可读证据。
+
+`adaptive-compatibility-gate` Ubuntu job 仍只聚合 Windows job 结果，不构成 Ubuntu
+软件兼容性验证。Python 3.11 仍是允许安装但未持续验证。
+
+## 完成条件
+
+完成证据见下文；`SEC-01` 和 `CI-02` 已达到完成门。
+
+## 首轮 GitHub 验证发现
+
+首轮 run `31144310084` 中 suite、SEC、BUILD 和双 clean-install 均通过。PATH-01 的空格及
+单引号案例通过；非 ASCII 案例完成安装和 runner 输出文件后，在打印中文输出路径时因
+GitHub Windows 重定向 stdout 使用 `cp1252` 而触发 `UnicodeEncodeError`。CLI 状态输出
+现已在控制台编码不能表示路径时使用 `backslashreplace`，不改变真实路径、输出文件或
+manifest 内容，并增加强制 `cp1252` 回归测试。该修复等待下一轮 required run 验证。
+
+第二轮 run `31145001359` 全部通过，并验证了非 ASCII 路径修复。证据对照同时发现 PR
+workflow 的 `github.sha` 是 synthetic merge commit，且本地遗留 `build/` 可能被
+setuptools 复用，使本地与干净 CI 包摘要不可直接比较。构建入口现从指定 commit 的
+Git tree 并通过 `git cat-file --batch` 读取 canonical blob 原始字节，为每次构建创建独立
+source staging；结束后仅清理验证属于输出目录的临时子目录。PR workflow 显式 checkout
+并绑定 `pull_request.head.sha`。
+
+## 最终验收
+
+- commit：`61080aca2ab7fc0019042d86cbbf367affd426fe`
+- required run：`31146285191`
+- Windows/Python 3.12 suite：`71 passed`
+- wheel：196029 bytes，SHA-256
+  `2fbbde65bf1bc2b58a7908ee7a6495964775cbf1feef9e629b605c61210839e1`
+- sdist：164485 bytes，SHA-256
+  `9e1a2991aab9760e363c96eed66ea1980f77b699090e697466dbe78add64f7c5`
+
+本机与 GitHub Windows runner 对同一 head commit 使用相同 epoch 构建，文件名、大小和
+SHA-256 全部一致。SEC-01/02、双 clean-install、空格/单引号/非 ASCII 路径和机器可读
+证据上传均通过。Actions runner 同时提示 `checkout@v4`、`setup-python@v5` 和
+`upload-artifact@v4` 将由 Node 20 强制切换到 Node 24；该平台迁移提示不属于依赖漏洞，
+保留为后续 Actions 供应链维护项。

@@ -23,11 +23,29 @@ from uqra.adaptive.ishigami_reduced import (
     ishigami,
 )
 from uqra.adaptive.run import (CONFIG_SCHEMA, CONFIG_SCHEMA_V2, MANIFEST_SCHEMA, TRACE_SCHEMA,
+                               _write_status,
                                load_config, main, run_config, validate_config,
                                validate_manifest)
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+class NarrowWindowsStream:
+    encoding = "cp1252"
+
+    def __init__(self):
+        self.value = ""
+
+    def write(self, value):
+        value.encode(self.encoding)
+        self.value += value
+
+
+def test_cli_status_escapes_non_ascii_path_on_narrow_windows_codepage():
+    stream = NarrowWindowsStream()
+    _write_status("wrote C:\\仓库\\manifest.json\n", stream)
+    assert stream.value == "wrote C:\\\\u4ed3\\u5e93\\manifest.json\n"
 SMOKE_CONFIG = ROOT / "examples" / "configs" / "adaptive_reduced_smoke.json"
 V2_SMOKE_CONFIG = ROOT / "examples" / "configs" / "adaptive_registry_v2_smoke.json"
 FOUR_BRANCH_CONFIG = ROOT / "examples" / "configs" / "four_branch_reduced_v1.json"
