@@ -43,3 +43,11 @@ Dependabot 持续监控；这不等同于 immutable SHA pinning。
 
 本文件在 required run 成功后补充 run URL、commit 及本地/CI 构建摘要对照；在此之前
 `SEC-01` 和 `CI-02` 不在进度看板中标记完成。
+
+## 首轮 GitHub 验证发现
+
+首轮 run `31144310084` 中 suite、SEC、BUILD 和双 clean-install 均通过。PATH-01 的空格及
+单引号案例通过；非 ASCII 案例完成安装和 runner 输出文件后，在打印中文输出路径时因
+GitHub Windows 重定向 stdout 使用 `cp1252` 而触发 `UnicodeEncodeError`。CLI 状态输出
+现已在控制台编码不能表示路径时使用 `backslashreplace`，不改变真实路径、输出文件或
+manifest 内容，并增加强制 `cp1252` 回归测试。该修复等待下一轮 required run 验证。
