@@ -1,7 +1,7 @@
 # UQRA-compatible 自适应稀疏 PCE 项目开发计划
 
 状态：执行中  
-版本：2026-08-06 split-plan v4
+版本：2026-08-07 split-plan v5
 项目仓库：`https://github.com/Jinsongl/UQRA`  
 当前发布基线：`v0.3.0`（2026-08-06 发布）
 
@@ -163,7 +163,7 @@ Python 3.12.13 完整兼容性套件亦为 `42 passed`。交付证据见
 `U0--U6` 表示长期工作流，不随单次发布关闭；`M0--M7` 表示可验收的交付
 里程碑；`BENCH-*`、`LEG-*`、`REG-*`、`PKG-*`、`CI-*`、`SCHEMA-*`、
 `MANIFEST-*`、`PROD-*`、`DATA-*`、`CV-*`、`PROV-*`、`BUILD-*`、`SEC-*`、
-`PATH-*` 和 `REL-*`
+`PATH-*`、`REL-*`、`ARCH-*`、`TEST-*`、`PERF-*` 和 `OPT-*`
 表示看板中的具体任务。任务 ID 不替代里程碑编号，每项任务必须在看板中标明所属
 里程碑或持续工作流。里程碑编号用于稳定表达范围，不强制串行实施；实际优先级由
 进度看板维护。
@@ -177,8 +177,8 @@ Python 3.12.13 完整兼容性套件亦为 `42 passed`。交付证据见
 | M2.3 多问题 Benchmark 验收 | 已完成 | `BENCH-03`、`BENCH-04`、`BENCH-06` | FourBranch、Ishigami、Gayton 通过统一 schema、身份、contract hash、双版本测试和 required gate |
 | M3 包装、契约一致性与跨环境质量 | 已完成 | `PKG-*`、`CI-*`、`SCHEMA-*`、`MANIFEST-*` | wheel/sdist、版本源、运行时与发布 schema 一致、标准 schema 校验、完整来源/环境身份和 Windows/Python 3.12 required CI 达到发布门 |
 | M4 受控论文生产接口与下游交付契约 | 待开始 | `PROD-*`、`DATA-*`、`CV-*`、`PROV-*`、`REL-*` | 论文仓库可通过版本化配置和冻结外部数据调用唯一 UQRA runner，并获得通过正式 schema 校验的 manifest、trace、来源环境身份和输入/输出哈希 |
-| M5 可复现发布与供应链自动化 | 待开始（当前优先） | `BUILD-*`、`SEC-*`、`PATH-*`、`CI-*`、`REL-*` | 同一提交可重复生成字节一致的发行包；安全审计绑定锁文件 Git blob；Windows 特殊路径和 GitHub Release 全流程具有自动验收与回读证据 |
-| M6 Legacy 与行为回归证据结案 | 待开始 | `LEG-*`、`REG-*` | 可恢复证据完成审计；不可恢复项以带依据的 `unavailable` 正式关闭；统一结案矩阵不存在状态歧义 |
+| M5 可复现发布与供应链自动化 | 基础能力完成；发布闭环暂缓 | `BUILD-*`、`SEC-*`、`PATH-*`、`CI-*`、`REL-*` | BUILD/SEC/PATH/CI 已进入正式 Windows/Python 3.12 gate；REL-04 保留 Draft 实现，在真实新版本出现时完成端到端验收 |
+| M6 Legacy 与行为回归证据结案 | 只读审计可启动 | `LEG-*`、`REG-*` | 可恢复证据完成审计；不可恢复项以带依据的 `unavailable` 正式关闭；统一结案矩阵不存在状态歧义 |
 | M7 可选软件 Benchmark 扩展 | 候选 | `BENCH-*` | 仅在具有独立软件验收价值时增加 reduced benchmark，并完整进入 registry、schema、manifest、身份和 compatibility gate |
 
 `LEG-*` 和 `REG-*` 属于 U1/U3 的证据闭环任务，不并入 M2 benchmark 交付，也不
@@ -236,6 +236,29 @@ M5 只改进软件发布和供应链质量，不改变 `uqra/adaptive/` 数学�
 M5 不扩展 Ubuntu 或 Python 3.11 正式支持声明。Release 自动化不得重写既有 tag、覆盖
 已发布附件或修改冻结证据；失败时必须在创建 tag 或公开 Release 前停止。
 
+`BUILD-01`、`SEC-01/02`、`PATH-01` 和 `CI-02` 已通过 PR #14（merge
+`514075341a0bb1c198e3f9656d21a800868ea59c`；master required run `31151712201`）进入
+正式 gate。`REL-04` 的实现和 required run `31152911246` 保留在 Draft PR #15，但端到端
+发布验收暂缓。仅当真实新版本号确定、版本准备 PR 合并、候选提交正式 gate 全绿、dry-run
+通过且人工批准后，才恢复 annotated tag、Release、附件上传和下载回读；不得使用 `v0.3.0`
+演练覆盖逻辑，也不得修改其 tag、附件或四份冻结证据。
+
+### 工程质量工作流
+
+工程质量工作流是跨里程碑的软件维护序列，不新增 M8，也不扩大 M6 的 Legacy 证据治理范围：
+
+- `ARCH-01`：审计 `uqra/adaptive/`、runner、schema、benchmark 与证据生成入口的责任边界和数据流；
+- `TEST-01`：建立关键行为、失败模式、现有测试和缺口的可追溯矩阵；
+- `PERF-01`：在正式 Windows/Python 3.12 环境固定输入、随机种子和测量方法，建立时间与内存基线；
+- `OPT-01`：实施不改变数学契约的低风险可维护性优化；
+- `OPT-02`：实施有基线、有回归门且不改变输出契约的低风险性能优化；
+- `OPT-03`：仅在前述证据稳定后单独批准算法路径优化，并明确 bitwise 或数值容差契约。
+
+行为回归至少覆盖固定输入与种子、设计点顺序、逐轮样本数、模型阶次、系数、误差指标、Pf、
+停止原因和产物身份；不得以最终 Pf 接近替代完整逐轮等价。性能证据仅用于软件工程验收，不能
+转化为论文统计结论或 scientific reproduction 声明。三个 reduced benchmark 始终保持
+`software_benchmark` / `reduced` 及相应禁止声明。
+
 ### M6 任务边界
 
 - `LEG-01`：完成 Legacy Python 3.8/3.9 环境、依赖、入口和失败类型审计；
@@ -267,7 +290,7 @@ reduced benchmark 未覆盖的软件行为；若启动，仍须标记 `purpose: 
 
 论文仓库不得复制 `uqra/adaptive` 后形成第二套正式算法。需要算法变更时，回到本项目完成裁决、实现、测试和新版本交付。
 
-## 6. 当前最小下一目标
+## 6. 当前执行策略与最小下一目标
 
 **M1 Runner 契约与可审计发布：已完成。** 历史文档中的 `UQRA-MV1` 与 M1
 是同一里程碑，不再作为独立编号使用。
@@ -288,10 +311,12 @@ M2.3 已通过 PR #7（merge `1d3dacd`）完成，证据见
 wheel/sdist、双 clean-install、schema、manifest v2 evidence 和 warning
 门证据已冻结，M3 完成。`v0.3.0` 已通过 PR #12（merge
 `7c2bb050dc3e02882929811b5dd9c8878d17e7d5`；最终 required run `31068171070`）发布。
-当前最小下一目标为 M5：先完成 `BUILD-01`、`SEC-02` 和 `PATH-01`，再接入
-`CI-02/REL-04`。M4 在论文仓库提出明确版本化生产接口需求时启动；M6 可与 M5
-并行审计；M7 保持候选。新增正式发布必须使用新版本号，不得覆盖既有 tag、Release
-附件或冻结证据。
+M5 的 BUILD/SEC/PATH/CI 基础能力已经完成，`REL-04` 保持 Draft 并按上述条件恢复，
+不再阻塞核心开发。当前最小下一目标是从干净 `master` 建立独立质量分支，依次完成
+`ARCH-01`、`TEST-01` 和 `PERF-01`，再依据审计结果分批实施 `OPT-01/02`；`OPT-03`
+必须单独裁决。M6 的只读审计可以并行但应保持独立提交或 PR；M4 仍由论文仓库的明确
+版本化接口需求触发；M7 保持候选。所有变更继续通过唯一正式 Windows/Python 3.12 gate，
+且不得覆盖既有 tag、Release 附件或冻结证据。
 
 ## 7. 历史文档关系
 
