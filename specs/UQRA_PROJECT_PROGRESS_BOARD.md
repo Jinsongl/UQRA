@@ -109,9 +109,9 @@ M5 并行，但不得影响 M5 required gate 或修改已冻结发布证据。
 | --- | --- | --- | --- | --- |
 | LEG-01 | U1 / P1 | Legacy Python 3.8/3.9 环境审计 | 无 | 依赖、可运行入口和失败类型形成可审计报告 |
 | REG-01 | U3 / P1 | U3 行为回归结案矩阵 | LEG-01 可并行 | 已验证项与 `unavailable` 项逐项对应证据，无状态歧义 |
-| BUILD-01 | M5 / P0 | 建立 wheel/sdist 可复现构建 | `v0.3.0` 冻结清单和现有构建脚本 | 同一提交至少两次独立构建的文件名、大小和 SHA-256 完全一致 |
-| SEC-02 | M5 / P0 | 安全证据绑定锁文件 Git blob | `UQRA_V0.3.0_SECURITY_AUDIT.json` 的 review 修复经验 | 自动计算并验证 canonical Git blob SHA-256，错误摘要必须拒绝 |
-| PATH-01 | M5 / P0 | Windows 特殊路径回归 | 现有 clean-install 脚本 | 空格、单引号和非 ASCII 路径均通过版本发现、构建和 smoke |
+| BUILD-01 | M5 / P0 | 建立 wheel/sdist 可复现构建 | `v0.3.0` 冻结清单和现有构建脚本 | ✅ 完成；固定 epoch/hash seed、规范化 sdist tar/gzip 时间，双目录文件名/大小/SHA-256 一致 |
+| SEC-02 | M5 / P0 | 安全证据绑定锁文件 Git blob | `UQRA_V0.3.0_SECURITY_AUDIT.json` 的 review 修复经验 | ✅ 完成；直接读取 Git blob 原始字节，绑定审计输入，错误摘要拒绝测试通过 |
+| PATH-01 | M5 / P0 | Windows 特殊路径回归 | 现有 clean-install 脚本 | ✅ 完成；空格、单引号、非 ASCII 三个独立路径的版本发现、构建、clean-install 和 smoke 通过 |
 | SEC-01 | M5 / P1 | 持续依赖安全审计 | SEC-02 | 运行时、测试/构建、Actions 风险分类记录；正式锁零未处置高危项 |
 | CI-02 | M5 / P1 | 扩展唯一正式 release gate | BUILD-01、SEC-02、PATH-01 | Windows/Python 3.12 required job 自动执行三类验收 |
 | REL-04 | M5 / P1 | 自动化 GitHub Release 闭环 | CI-02 | 经人工批准后创建 annotated tag、上传附件、下载回读并校验哈希；失败不留下半发布状态 |
