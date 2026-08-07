@@ -15,9 +15,9 @@ $second = Join-Path $outputPath 'second'
 New-Item -ItemType Directory -Force -Path $outputPath | Out-Null
 
 & (Join-Path $toolDir 'build_reproducible.ps1') -Python $Python -SourceDir $SourceDir `
-    -OutputDir $first -SourceDateEpoch $SourceDateEpoch
+    -OutputDir $first -SourceDateEpoch $SourceDateEpoch -SourceCommit $SourceCommit
 & (Join-Path $toolDir 'build_reproducible.ps1') -Python $Python -SourceDir $SourceDir `
-    -OutputDir $second -SourceDateEpoch $SourceDateEpoch
+    -OutputDir $second -SourceDateEpoch $SourceDateEpoch -SourceCommit $SourceCommit
 
 $arguments = @(
     (Join-Path $toolDir 'verify_reproducible_build.py'),

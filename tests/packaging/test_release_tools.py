@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 from datetime import date
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -21,6 +22,7 @@ def load_tool(name: str, relative: str):
 
 git_blob = load_tool("git_blob_sha256", "tools/security/git_blob_sha256.py")
 repro = load_tool("verify_reproducible_build", "tools/packaging/verify_reproducible_build.py")
+prepare = load_tool("prepare_build_source", "tools/packaging/prepare_build_source.py")
 security = load_tool("create_security_audit", "tools/security/create_security_audit.py")
 
 
@@ -57,6 +59,34 @@ def test_reproducibility_comparison_rejects_changed_bytes(tmp_path):
             "--first", str(first), "--second", str(second),
             "--source-commit", "abc", "--source-date-epoch", "315532800",
         ])
+
+
+def test_build_source_copy_excludes_generated_state(tmp_path):
+    source = tmp_path / "source"
+    destination = tmp_path / "destination"
+    (source / "package").mkdir(parents=True)
+    (source / "build").mkdir()
+    (source / "package" / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (source / "build" / "stale.py").write_text("stale\n", encoding="utf-8")
+    destination.mkdir()
+
+    prepare.from_tree(source, destination)
+
+    assert (destination / "package" / "module.py").is_file()
+    assert not (destination / "build").exists()
+
+
+def test_build_source_archive_uses_committed_bytes(tmp_path):
+    destination = tmp_path / "destination"
+    destination.mkdir()
+    prepare.from_git(ROOT, destination, "HEAD")
+    committed = subprocess.run(
+        ["git", "-c", f"safe.directory={ROOT.as_posix()}", "-C", str(ROOT),
+         "show", "HEAD:pyproject.toml"],
+        check=True,
+        stdout=subprocess.PIPE,
+    ).stdout
+    assert (destination / "pyproject.toml").read_bytes() == committed
 
 
 def test_git_identity_resolves_immutable_commit_and_blob():

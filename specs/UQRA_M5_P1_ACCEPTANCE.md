@@ -51,3 +51,9 @@ Dependabot 持续监控；这不等同于 immutable SHA pinning。
 GitHub Windows 重定向 stdout 使用 `cp1252` 而触发 `UnicodeEncodeError`。CLI 状态输出
 现已在控制台编码不能表示路径时使用 `backslashreplace`，不改变真实路径、输出文件或
 manifest 内容，并增加强制 `cp1252` 回归测试。该修复等待下一轮 required run 验证。
+
+第二轮 run `31145001359` 全部通过，并验证了非 ASCII 路径修复。证据对照同时发现 PR
+workflow 的 `github.sha` 是 synthetic merge commit，且本地遗留 `build/` 可能被
+setuptools 复用，使本地与干净 CI 包摘要不可直接比较。构建入口现从指定 commit 的
+`git archive` 为每次构建创建独立 source staging，结束后仅清理验证属于输出目录的临时
+子目录；PR workflow 显式 checkout 并绑定 `pull_request.head.sha`。该修复等待最终 run。

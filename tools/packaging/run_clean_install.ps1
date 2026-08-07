@@ -23,7 +23,7 @@ if ($LASTEXITCODE -ne 0 -or -not $sourceDateEpoch) {
 }
 & (Join-Path $PSScriptRoot 'build_reproducible.ps1') `
     -Python $Python -SourceDir $root -OutputDir $artifactPath `
-    -SourceDateEpoch ([long]$sourceDateEpoch)
+    -SourceDateEpoch ([long]$sourceDateEpoch) -SourceCommit $SourceCommit
 
 $wheel = Get-ChildItem -LiteralPath $artifactPath -Filter "uqra-$version-*.whl"
 $sdist = Get-ChildItem -LiteralPath $artifactPath -Filter "uqra-$version.tar.gz"

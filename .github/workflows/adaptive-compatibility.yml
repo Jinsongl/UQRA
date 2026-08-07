@@ -9,8 +9,12 @@ jobs:
   windows-python312:
     name: Windows Python 3.12 acceptance
     runs-on: windows-latest
+    env:
+      SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -32,18 +36,18 @@ jobs:
           ./tools/security/run_security_audit.ps1
           -Python (Get-Command python).Source
           -Repository "${{ github.workspace }}"
-          -Revision "${{ github.sha }}"
+          -Revision "${{ env.SOURCE_COMMIT }}"
           -EvidenceDir "${{ runner.temp }}/uqra-security-evidence"
       - name: Verify byte-reproducible wheel and sdist
         shell: pwsh
         run: |
-          $epoch = git show -s --format=%ct "${{ github.sha }}"
+          $epoch = git show -s --format=%ct "${{ env.SOURCE_COMMIT }}"
           ./tools/packaging/run_reproducible_build.ps1 `
             -Python (Get-Command python).Source `
             -SourceDir "${{ github.workspace }}" `
             -OutputRoot "${{ runner.temp }}/uqra-reproducible-build" `
             -SourceDateEpoch $epoch `
-            -SourceCommit "${{ github.sha }}" `
+            -SourceCommit "${{ env.SOURCE_COMMIT }}" `
             -EvidencePath "${{ runner.temp }}/uqra-build-evidence/reproducible-build.json"
       - name: Build and clean-install wheel and sdist
         shell: pwsh
@@ -53,11 +57,11 @@ jobs:
           -ArtifactDir "${{ runner.temp }}/uqra-dist"
           -WorkDir "${{ runner.temp }}/uqra-clean-install"
           -EvidenceDir "${{ runner.temp }}/uqra-packaging-evidence"
-          -SourceCommit "${{ github.sha }}"
+          -SourceCommit "${{ env.SOURCE_COMMIT }}"
       - name: Exercise Windows special paths
         shell: pwsh
         run: |
-          $epoch = git show -s --format=%ct "${{ github.sha }}"
+          $epoch = git show -s --format=%ct "${{ env.SOURCE_COMMIT }}"
           ./tools/packaging/run_windows_path_regression.ps1 `
             -Python (Get-Command python).Source `
             -SourceDir "${{ github.workspace }}" `
