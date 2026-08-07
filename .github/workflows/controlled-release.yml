@@ -1,0 +1,191 @@
+name: Controlled release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without the v prefix (X.Y.Z)
+        required: true
+        type: string
+      source_commit:
+        description: Full master commit SHA approved for release
+        required: true
+        type: string
+      dry_run:
+        description: Build and verify without creating GitHub objects
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uqra-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-release-candidate:
+    name: Prepare Windows Python 3.12 release candidate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/compatibility-py312.txt
+      - name: Install locked build environment
+        run: python -m pip install -r requirements/compatibility-py312.txt
+      - name: Reject version, commit, branch, or tag conflicts
+        shell: pwsh
+        run: >-
+          python tools/release/release_contract.py preflight
+          --repository "${{ github.workspace }}"
+          --version "${{ inputs.version }}"
+          --source-commit "${{ inputs.source_commit }}"
+          --expected-branch origin/master
+          --output "${{ runner.temp }}/uqra-release/preflight.json"
+      - name: Build byte-identical candidate twice
+        shell: pwsh
+        run: |
+          $epoch = git show -s --format=%ct "${{ inputs.source_commit }}"
+          ./tools/packaging/run_reproducible_build.ps1 `
+            -Python (Get-Command python).Source `
+            -SourceDir "${{ github.workspace }}" `
+            -OutputRoot "${{ runner.temp }}/uqra-release/build" `
+            -SourceDateEpoch $epoch `
+            -SourceCommit "${{ inputs.source_commit }}" `
+            -EvidencePath "${{ runner.temp }}/uqra-release/build.json"
+      - name: Clean-install wheel and sdist
+        shell: pwsh
+        run: >-
+          ./tools/packaging/run_clean_install.ps1
+          -Python (Get-Command python).Source
+          -ArtifactDir "${{ runner.temp }}/uqra-release/clean-dist"
+          -WorkDir "${{ runner.temp }}/uqra-release/clean-install"
+          -EvidenceDir "${{ runner.temp }}/uqra-release/clean-evidence"
+          -SourceCommit "${{ inputs.source_commit }}"
+      - name: Bind release candidate to build evidence
+        shell: pwsh
+        run: >-
+          python tools/release/release_contract.py candidate
+          --preflight "${{ runner.temp }}/uqra-release/preflight.json"
+          --build-evidence "${{ runner.temp }}/uqra-release/build.json"
+          --dist-dir "${{ runner.temp }}/uqra-release/build/first"
+          --output "${{ runner.temp }}/uqra-release/candidate/release-candidate.json"
+      - name: Stage approved candidate files
+        shell: pwsh
+        run: >-
+          Copy-Item
+          "${{ runner.temp }}/uqra-release/build/first/*"
+          "${{ runner.temp }}/uqra-release/candidate/"
+      - name: Upload approved release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: uqra-release-candidate-${{ inputs.version }}
+          path: ${{ runner.temp }}/uqra-release/candidate/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-release:
+    name: Publish after manual approval
+    if: ${{ inputs.dry_run == false }}
+    needs: prepare-release-candidate
+    runs-on: ubuntu-latest
+    environment: uqra-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: uqra-release-candidate-${{ inputs.version }}
+          path: candidate
+      - name: Require configured manual approval protection
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          environment_json=$(gh api \
+            "repos/${{ github.repository }}/environments/uqra-release")
+          reviewer_count=$(jq \
+            '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length' \
+            <<<"$environment_json")
+          admins_bypass=$(jq -r '.can_admins_bypass // true' <<<"$environment_json")
+          if [[ "$reviewer_count" -lt 1 || "$admins_bypass" != false ]]; then
+            echo "uqra-release must require a reviewer and prohibit admin bypass" >&2
+            exit 1
+          fi
+      - name: Recheck tag and Release collisions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ inputs.version }}
+        run: |
+          if git show-ref --verify --quiet "refs/tags/$TAG"; then
+            echo "tag already exists: $TAG" >&2
+            exit 1
+          fi
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "GitHub Release already exists: $TAG" >&2
+            exit 1
+          fi
+      - name: Create annotated tag, draft Release, upload, and read back
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ inputs.version }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          set -euo pipefail
+          created_tag=false
+          created_release=false
+          published=false
+          cleanup() {
+            status=$?
+            if [[ $status -ne 0 && "$published" != true ]]; then
+              safe_to_delete_tag=true
+              if [[ "$created_release" == true ]]; then
+                if [[ "$(gh release view "$TAG" --repo "${{ github.repository }}" \
+                    --json isDraft --jq .isDraft 2>/dev/null)" == true ]]; then
+                  gh release delete "$TAG" --repo "${{ github.repository }}" --yes || \
+                    safe_to_delete_tag=false
+                else
+                  echo "refusing to clean a non-draft or unverifiable Release: $TAG" >&2
+                  safe_to_delete_tag=false
+                fi
+              fi
+              if [[ "$created_tag" == true && "$safe_to_delete_tag" == true ]]; then
+                git push origin ":refs/tags/$TAG" || true
+              fi
+            fi
+            exit $status
+          }
+          trap cleanup EXIT
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" "$SOURCE_COMMIT" -m "UQRA $TAG"
+          git push origin "refs/tags/$TAG"
+          created_tag=true
+
+          gh release create "$TAG" --repo "${{ github.repository }}" --draft --verify-tag \
+            --title "UQRA $TAG" --generate-notes
+          created_release=true
+          gh release upload "$TAG" candidate/*.whl candidate/*.tar.gz \
+            candidate/release-candidate.json --repo "${{ github.repository }}"
+
+          mkdir readback
+          gh release download "$TAG" --repo "${{ github.repository }}" --dir readback \
+            --pattern "*.whl" --pattern "*.tar.gz"
+          python tools/release/release_contract.py verify-download \
+            --candidate candidate/release-candidate.json \
+            --download-dir readback \
+            --output release-download-readback.json
+          gh release upload "$TAG" release-download-readback.json --repo "${{ github.repository }}"
+          gh release edit "$TAG" --repo "${{ github.repository }}" --draft=false
+          published=true
