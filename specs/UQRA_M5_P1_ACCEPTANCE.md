@@ -41,8 +41,7 @@ Dependabot 持续监控；这不等同于 immutable SHA pinning。
 
 ## 完成条件
 
-本文件在 required run 成功后补充 run URL、commit 及本地/CI 构建摘要对照；在此之前
-`SEC-01` 和 `CI-02` 不在进度看板中标记完成。
+完成证据见下文；`SEC-01` 和 `CI-02` 已达到完成门。
 
 ## 首轮 GitHub 验证发现
 
@@ -55,5 +54,22 @@ manifest 内容，并增加强制 `cp1252` 回归测试。该修复等待下一�
 第二轮 run `31145001359` 全部通过，并验证了非 ASCII 路径修复。证据对照同时发现 PR
 workflow 的 `github.sha` 是 synthetic merge commit，且本地遗留 `build/` 可能被
 setuptools 复用，使本地与干净 CI 包摘要不可直接比较。构建入口现从指定 commit 的
-`git archive` 为每次构建创建独立 source staging，结束后仅清理验证属于输出目录的临时
-子目录；PR workflow 显式 checkout 并绑定 `pull_request.head.sha`。该修复等待最终 run。
+Git tree 并通过 `git cat-file --batch` 读取 canonical blob 原始字节，为每次构建创建独立
+source staging；结束后仅清理验证属于输出目录的临时子目录。PR workflow 显式 checkout
+并绑定 `pull_request.head.sha`。
+
+## 最终验收
+
+- commit：`61080aca2ab7fc0019042d86cbbf367affd426fe`
+- required run：`31146285191`
+- Windows/Python 3.12 suite：`71 passed`
+- wheel：196029 bytes，SHA-256
+  `2fbbde65bf1bc2b58a7908ee7a6495964775cbf1feef9e629b605c61210839e1`
+- sdist：164485 bytes，SHA-256
+  `9e1a2991aab9760e363c96eed66ea1980f77b699090e697466dbe78add64f7c5`
+
+本机与 GitHub Windows runner 对同一 head commit 使用相同 epoch 构建，文件名、大小和
+SHA-256 全部一致。SEC-01/02、双 clean-install、空格/单引号/非 ASCII 路径和机器可读
+证据上传均通过。Actions runner 同时提示 `checkout@v4`、`setup-python@v5` 和
+`upload-artifact@v4` 将由 Node 20 强制切换到 Node 24；该平台迁移提示不属于依赖漏洞，
+保留为后续 Actions 供应链维护项。
