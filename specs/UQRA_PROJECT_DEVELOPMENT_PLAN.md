@@ -314,8 +314,9 @@ wheel/sdist、双 clean-install、schema、manifest v2 evidence 和 warning
 M5 的 BUILD/SEC/PATH/CI 基础能力已经完成，`REL-04` 保持 Draft 并按上述条件恢复，
 不再阻塞核心开发。`ARCH-01` 与 `TEST-01` 已分别形成
 `UQRA_ARCH_01_ADAPTIVE_ARCHITECTURE_AUDIT.md` 和
-`UQRA_TEST_01_ADAPTIVE_COVERAGE_MATRIX.md`，当前最小下一目标是完成 `PERF-01`，再依据
-审计结果选择首批 `OPT-01`；`OPT-02/03`
+`UQRA_TEST_01_ADAPTIVE_COVERAGE_MATRIX.md`；`PERF-01` 已形成
+`UQRA_PERF_01_ADAPTIVE_BASELINE.md` 与机器可读 JSON。当前最小下一目标是依据三项证据
+选择首批 `OPT-01`；`OPT-02/03`
 必须单独裁决。M6 的只读审计可以并行但应保持独立提交或 PR；M4 仍由论文仓库的明确
 版本化接口需求触发；M7 保持候选。所有变更继续通过唯一正式 Windows/Python 3.12 gate，
 且不得覆盖既有 tag、Release 附件或冻结证据。

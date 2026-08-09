@@ -92,6 +92,7 @@
 | M5 合并验收 | M5 / P0 | 将 BUILD/SEC/PATH/CI 基础能力合入 master | PR #14 merge `514075341a0bb1c198e3f9656d21a800868ea59c` | ✅ master run `31151712201` 全绿 |
 | ARCH-01 | 工程质量 / P0 | `uqra/adaptive/` 架构、职责与数据流审计 | [`UQRA_ARCH_01_ADAPTIVE_ARCHITECTURE_AUDIT.md`](UQRA_ARCH_01_ADAPTIVE_ARCHITECTURE_AUDIT.md) 定位入口、依赖方向、状态流、公共契约和六项风险边界 | ✅ 完成；未修改生产代码或数学契约 |
 | TEST-01 | 工程质量 / P0 | 关键行为与现有测试覆盖矩阵 | [`UQRA_TEST_01_ADAPTIVE_COVERAGE_MATRIX.md`](UQRA_TEST_01_ADAPTIVE_COVERAGE_MATRIX.md)；补充系数/CV、schema/runtime、artifact tamper、provenance fallback 回归 | ✅ 完成；未修改生产代码或数学契约 |
+| PERF-01 | 工程质量 / P0 | Windows/Python 3.12 性能与内存基线 | [`UQRA_PERF_01_ADAPTIVE_BASELINE.md`](UQRA_PERF_01_ADAPTIVE_BASELINE.md) 与机器可读 JSON；三 reduced benchmark 各 3 个隔离子进程 | ✅ 完成；仅用于软件工程验收，不作论文结论 |
 
 ### 🔄 进行中
 
@@ -107,8 +108,8 @@
 | PKG-04 | M3 / P2 | 清理 Python 3.12 警告 | UQRA 自身 SyntaxWarning/DeprecationWarning 已清理；严格 `compileall` 回归门和 compatibility `61 passed` | ✅ 完成；required run `31062848792` |
 | CI-01 | M3 / P2 | 建立 Windows/Python 3.12 required CI | Windows job 覆盖锁、完整 suite、schema、构建、双 clean-install、manifest v2 和 warning 门 | ✅ 完成；required run `31062848792` |
 
-当前实施优先级转为工程质量工作流：`ARCH-01`、`TEST-01` 已完成，下一步完成
-`PERF-01`，再按证据选择首批 `OPT-01`。`OPT-02/03` 暂不启动。M6 的只读证据审计可并行；
+当前实施优先级转为工程质量工作流：`ARCH-01`、`TEST-01`、`PERF-01` 已完成，下一步按
+证据选择首批 `OPT-01`。`OPT-02/03` 暂不启动。M6 的只读证据审计可并行；
 M4 仍由论文仓库明确需求触发。
 REL-04 不再阻塞核心开发，恢复条件见后续队列。里程碑编号不表示强制串行。
 
@@ -118,7 +119,6 @@ REL-04 不再阻塞核心开发，恢复条件见后续队列。里程碑编号�
 | --- | --- | --- | --- | --- |
 | LEG-01 | U1 / P1 | Legacy Python 3.8/3.9 环境审计 | 无 | 依赖、可运行入口和失败类型形成可审计报告 |
 | REG-01 | U3 / P1 | U3 行为回归结案矩阵 | LEG-01 可并行 | 已验证项与 `unavailable` 项逐项对应证据，无状态歧义 |
-| PERF-01 | 工程质量 / P0 | Windows/Python 3.12 性能与内存基线 | 固定 reduced benchmark | 固定环境、输入、轮次、时间和峰值内存；结果不作为论文性能结论 |
 | OPT-01 | 工程质量 / P1 | 低风险可维护性优化 | ARCH-01、TEST-01 | 职责和重复逻辑改善，数学契约、公共 API 和完整逐轮行为不变 |
 | OPT-02 | 工程质量 / P1 | 低风险性能优化 | PERF-01、TEST-01 | 同环境前后数据证明收益；逐轮回归和正式 gate 通过 |
 | OPT-03 | 工程质量 / P2 | 受控算法路径优化 | OPT-01/02 证据稳定后另行批准 | 单项独立提交；明确 bitwise 或数值容差契约，不以最终 Pf 接近替代逐轮等价 |

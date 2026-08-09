@@ -1,0 +1,817 @@
+{
+  "aggregates": {
+    "four_branch_reduced_v1": {
+      "identity": {
+        "contract_manifest_hash": "141c71fafe61bd8186a629c284136a1904de36b0d48a29cf3b9ded4a66c5000a",
+        "contract_trace_hash": "46d873b0e510b0ff665df2a706e672ff80eccc354f3f3b03550abc88778c88eb",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080501,
+            "sha256": "01ca05dc7f0312570cd13e6514b869683e1f7247b42c4dae72b5a1c05281538a",
+            "shape": [
+              2,
+              192
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080503,
+            "sha256": "96d87567367d58e82dff38f84e05a01a608a1a6b7ba5a3491b012e67d2f5f5db",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080502,
+            "sha256": "2ea6903f46a4e79f8d3844221a6dae21c16a28328b42150046eec3eed8058b42",
+            "shape": [
+              2,
+              256
+            ]
+          }
+        },
+        "model_call_count": 20,
+        "stable_manifest_hash": "a89b0743731bd60044a66f7d7df6a1006bf5deb937d44a1334a5e7f5403da679",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "de397395857f948ca7288f684cc933994aea70ba4281d414985acbd1acdb22e9",
+        "trace_rows": 17
+      },
+      "peak_working_set_bytes": {
+        "max": 156823552,
+        "median": 156557312,
+        "min": 156528640
+      },
+      "peak_working_set_delta_bytes": {
+        "max": 13426688,
+        "median": 13287424,
+        "min": 13283328
+      },
+      "python_traced_peak_bytes": {
+        "max": 10229827,
+        "median": 10226911,
+        "min": 10226546
+      },
+      "stage_cumulative_seconds_median": {
+        "artifact_build": 0.0042229,
+        "controller_run": 0.36396140000000005,
+        "doi": 0.00022070000000000002,
+        "fit": 0.20356110000000002,
+        "inner_loop": 0.2733263,
+        "optimal_design": 0.0799305,
+        "order_design": 0.0007361000000000001,
+        "sparse_pce": 0.20234180000000002
+      },
+      "total_seconds": {
+        "max": 1.6103734,
+        "median": 1.5744812,
+        "min": 1.5623134
+      }
+    },
+    "gayton_reduced_v1": {
+      "identity": {
+        "contract_manifest_hash": "db9801332ba4ee53caa0c98b4f503b542dc9b422b69c953b47f4dadf0de2be02",
+        "contract_trace_hash": "fdf6a793d8e5a1f89b2a10e5e87c682a6d8012b62315dbcf5f9adcbe5a3e0de9",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080701,
+            "sha256": "3a80fce33a0254e332cf4fd85ab758ecb8a370d112e06c89155572128c9da80f",
+            "shape": [
+              2,
+              192
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080703,
+            "sha256": "d12f4e3cdf448c51d49e6194293c164250873cce72ae4609f6d928e397c169f3",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080702,
+            "sha256": "4d202ea093be90c874f460b70762fbec84144174d18634e465b9b83c37e8f629",
+            "shape": [
+              2,
+              256
+            ]
+          }
+        },
+        "model_call_count": 30,
+        "stable_manifest_hash": "4b39b19fe57627b61540aef5b4903b8c88b03d012ec6a860686a83ee5a1c6aa6",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "3b49d8acd346e9b2f687e06393ed0bb6aae3ddf260826453b2f122078c99a3d0",
+        "trace_rows": 25
+      },
+      "peak_working_set_bytes": {
+        "max": 156565504,
+        "median": 156549120,
+        "min": 156278784
+      },
+      "peak_working_set_delta_bytes": {
+        "max": 13303808,
+        "median": 13213696,
+        "min": 13152256
+      },
+      "python_traced_peak_bytes": {
+        "max": 10307177,
+        "median": 10306709,
+        "min": 10304094
+      },
+      "stage_cumulative_seconds_median": {
+        "artifact_build": 0.0046946,
+        "controller_run": 0.6435073,
+        "doi": 0.00043480000000000005,
+        "fit": 0.3021998,
+        "inner_loop": 0.46731940000000005,
+        "optimal_design": 0.13415100000000002,
+        "order_design": 0.0008066000000000001,
+        "sparse_pce": 0.2998642
+      },
+      "total_seconds": {
+        "max": 2.0222061,
+        "median": 1.9889843,
+        "min": 1.9091159
+      }
+    },
+    "ishigami_reduced_v1": {
+      "identity": {
+        "contract_manifest_hash": "37ebf3d45c94534eae6d8c51c366d4c5983aa33eec6eb55752529a93bdcdaad7",
+        "contract_trace_hash": "697fb5aa0a321fa871d59befd11571719cfa614cfc5517c4cfd76ce4d134a91c",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080601,
+            "sha256": "dcd094b440fa280c273ebf12987c045c71095872de3ba21042db923d8c2a4c6a",
+            "shape": [
+              3,
+              256
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080603,
+            "sha256": "2e28f08fc184d407199ff0b98e4804fe38dc217bf066f7a95e09a759f280dff0",
+            "shape": [
+              3,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080602,
+            "sha256": "ee18a46c313537de96e183054a596eb51d8af04729f8123d4422ec0dbb6e93c3",
+            "shape": [
+              3,
+              384
+            ]
+          }
+        },
+        "model_call_count": 70,
+        "stable_manifest_hash": "2a4377784f49fcfb095148caed4477a6f0112af8431c1fe374e50a5e4a6ffb23",
+        "stop_reason": "max_order_reached",
+        "trace_hash": "c2079398eead6db11a825228c5d22adaa0846833afe098fc0d9bcd336641f850",
+        "trace_rows": 37
+      },
+      "peak_working_set_bytes": {
+        "max": 158130176,
+        "median": 158101504,
+        "min": 157941760
+      },
+      "peak_working_set_delta_bytes": {
+        "max": 14979072,
+        "median": 14958592,
+        "min": 14508032
+      },
+      "python_traced_peak_bytes": {
+        "max": 10422068,
+        "median": 10421511,
+        "min": 10419489
+      },
+      "stage_cumulative_seconds_median": {
+        "artifact_build": 0.011804,
+        "controller_run": 2.8446133000000002,
+        "doi": 0.0010731,
+        "fit": 1.7284397,
+        "inner_loop": 2.4180901,
+        "optimal_design": 0.3730334,
+        "order_design": 0.0010287,
+        "sparse_pce": 1.7207544000000001
+      },
+      "total_seconds": {
+        "max": 6.9856521,
+        "median": 6.7263248,
+        "min": 6.7165044
+      }
+    }
+  },
+  "environment": {
+    "lock_path": "requirements/compatibility-py312.txt",
+    "lock_sha256": "36e4f13d56b4e820a93dd7b1a06985cf083966255c50ee6d722b3ffcd108f0e0",
+    "numpy": "1.26.4",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.13",
+    "python_executable": "C:\\Users\\JinsongLiu\\Documents\\UQRA\\.conda\\uqra-py312\\python.exe",
+    "scikit_learn": "1.6.1",
+    "scipy": "1.15.2",
+    "uqra": "0.3.0"
+  },
+  "generated_at_utc": "2026-08-09T23:52:45.978840+00:00",
+  "method": {
+    "process_delta": "peak working set minus working set immediately before timed run",
+    "process_isolation": "fresh child process per benchmark repetition",
+    "process_peak": "Windows GetProcessMemoryInfo PeakWorkingSetSize after timed run",
+    "python_peak": "tracemalloc peak during the timed run",
+    "repetitions": 3,
+    "stage_scope": "second run under cProfile; cumulative/inclusive and non-additive",
+    "timer": "time.perf_counter_ns",
+    "total_scope": "load validated config before timer; run_config inside timer",
+    "warmup": "none"
+  },
+  "paper_production": false,
+  "purpose": "software_engineering_performance_acceptance",
+  "records": [
+    {
+      "benchmark": "four_branch_reduced_v1",
+      "config": "examples/configs/four_branch_reduced_v1.json",
+      "identity": {
+        "contract_manifest_hash": "141c71fafe61bd8186a629c284136a1904de36b0d48a29cf3b9ded4a66c5000a",
+        "contract_trace_hash": "46d873b0e510b0ff665df2a706e672ff80eccc354f3f3b03550abc88778c88eb",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080501,
+            "sha256": "01ca05dc7f0312570cd13e6514b869683e1f7247b42c4dae72b5a1c05281538a",
+            "shape": [
+              2,
+              192
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080503,
+            "sha256": "96d87567367d58e82dff38f84e05a01a608a1a6b7ba5a3491b012e67d2f5f5db",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080502,
+            "sha256": "2ea6903f46a4e79f8d3844221a6dae21c16a28328b42150046eec3eed8058b42",
+            "shape": [
+              2,
+              256
+            ]
+          }
+        },
+        "model_call_count": 20,
+        "stable_manifest_hash": "a89b0743731bd60044a66f7d7df6a1006bf5deb937d44a1334a5e7f5403da679",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "de397395857f948ca7288f684cc933994aea70ba4281d414985acbd1acdb22e9",
+        "trace_rows": 17
+      },
+      "peak_working_set_bytes": 156557312,
+      "peak_working_set_delta_bytes": 13287424,
+      "python_traced_peak_bytes": 10226546,
+      "repetition": 1,
+      "stage_cumulative_seconds": {
+        "artifact_build": 0.005255500000000001,
+        "controller_run": 0.36396140000000005,
+        "doi": 0.00022070000000000002,
+        "fit": 0.20356110000000002,
+        "inner_loop": 0.2733263,
+        "optimal_design": 0.0799305,
+        "order_design": 0.0007361000000000001,
+        "sparse_pce": 0.20234180000000002
+      },
+      "total_seconds": 1.6103734,
+      "working_set_after_bytes": 146624512,
+      "working_set_before_bytes": 143269888
+    },
+    {
+      "benchmark": "four_branch_reduced_v1",
+      "config": "examples/configs/four_branch_reduced_v1.json",
+      "identity": {
+        "contract_manifest_hash": "141c71fafe61bd8186a629c284136a1904de36b0d48a29cf3b9ded4a66c5000a",
+        "contract_trace_hash": "46d873b0e510b0ff665df2a706e672ff80eccc354f3f3b03550abc88778c88eb",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080501,
+            "sha256": "01ca05dc7f0312570cd13e6514b869683e1f7247b42c4dae72b5a1c05281538a",
+            "shape": [
+              2,
+              192
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080503,
+            "sha256": "96d87567367d58e82dff38f84e05a01a608a1a6b7ba5a3491b012e67d2f5f5db",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080502,
+            "sha256": "2ea6903f46a4e79f8d3844221a6dae21c16a28328b42150046eec3eed8058b42",
+            "shape": [
+              2,
+              256
+            ]
+          }
+        },
+        "model_call_count": 20,
+        "stable_manifest_hash": "a89b0743731bd60044a66f7d7df6a1006bf5deb937d44a1334a5e7f5403da679",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "de397395857f948ca7288f684cc933994aea70ba4281d414985acbd1acdb22e9",
+        "trace_rows": 17
+      },
+      "peak_working_set_bytes": 156823552,
+      "peak_working_set_delta_bytes": 13426688,
+      "python_traced_peak_bytes": 10226911,
+      "repetition": 2,
+      "stage_cumulative_seconds": {
+        "artifact_build": 0.0042229,
+        "controller_run": 0.3539387,
+        "doi": 0.00021370000000000002,
+        "fit": 0.1941412,
+        "inner_loop": 0.26732110000000003,
+        "optimal_design": 0.07570840000000001,
+        "order_design": 0.0007136,
+        "sparse_pce": 0.19291460000000002
+      },
+      "total_seconds": 1.5744812,
+      "working_set_after_bytes": 146825216,
+      "working_set_before_bytes": 143396864
+    },
+    {
+      "benchmark": "four_branch_reduced_v1",
+      "config": "examples/configs/four_branch_reduced_v1.json",
+      "identity": {
+        "contract_manifest_hash": "141c71fafe61bd8186a629c284136a1904de36b0d48a29cf3b9ded4a66c5000a",
+        "contract_trace_hash": "46d873b0e510b0ff665df2a706e672ff80eccc354f3f3b03550abc88778c88eb",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080501,
+            "sha256": "01ca05dc7f0312570cd13e6514b869683e1f7247b42c4dae72b5a1c05281538a",
+            "shape": [
+              2,
+              192
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080503,
+            "sha256": "96d87567367d58e82dff38f84e05a01a608a1a6b7ba5a3491b012e67d2f5f5db",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080502,
+            "sha256": "2ea6903f46a4e79f8d3844221a6dae21c16a28328b42150046eec3eed8058b42",
+            "shape": [
+              2,
+              256
+            ]
+          }
+        },
+        "model_call_count": 20,
+        "stable_manifest_hash": "a89b0743731bd60044a66f7d7df6a1006bf5deb937d44a1334a5e7f5403da679",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "de397395857f948ca7288f684cc933994aea70ba4281d414985acbd1acdb22e9",
+        "trace_rows": 17
+      },
+      "peak_working_set_bytes": 156528640,
+      "peak_working_set_delta_bytes": 13283328,
+      "python_traced_peak_bytes": 10229827,
+      "repetition": 3,
+      "stage_cumulative_seconds": {
+        "artifact_build": 0.003873,
+        "controller_run": 0.48343270000000005,
+        "doi": 0.0002702,
+        "fit": 0.254268,
+        "inner_loop": 0.3505648,
+        "optimal_design": 0.10528230000000001,
+        "order_design": 0.0012980000000000001,
+        "sparse_pce": 0.2527217
+      },
+      "total_seconds": 1.5623134,
+      "working_set_after_bytes": 146575360,
+      "working_set_before_bytes": 143245312
+    },
+    {
+      "benchmark": "ishigami_reduced_v1",
+      "config": "examples/configs/ishigami_reduced_v1.json",
+      "identity": {
+        "contract_manifest_hash": "37ebf3d45c94534eae6d8c51c366d4c5983aa33eec6eb55752529a93bdcdaad7",
+        "contract_trace_hash": "697fb5aa0a321fa871d59befd11571719cfa614cfc5517c4cfd76ce4d134a91c",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080601,
+            "sha256": "dcd094b440fa280c273ebf12987c045c71095872de3ba21042db923d8c2a4c6a",
+            "shape": [
+              3,
+              256
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080603,
+            "sha256": "2e28f08fc184d407199ff0b98e4804fe38dc217bf066f7a95e09a759f280dff0",
+            "shape": [
+              3,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080602,
+            "sha256": "ee18a46c313537de96e183054a596eb51d8af04729f8123d4422ec0dbb6e93c3",
+            "shape": [
+              3,
+              384
+            ]
+          }
+        },
+        "model_call_count": 70,
+        "stable_manifest_hash": "2a4377784f49fcfb095148caed4477a6f0112af8431c1fe374e50a5e4a6ffb23",
+        "stop_reason": "max_order_reached",
+        "trace_hash": "c2079398eead6db11a825228c5d22adaa0846833afe098fc0d9bcd336641f850",
+        "trace_rows": 37
+      },
+      "peak_working_set_bytes": 157941760,
+      "peak_working_set_delta_bytes": 14508032,
+      "python_traced_peak_bytes": 10422068,
+      "repetition": 1,
+      "stage_cumulative_seconds": {
+        "artifact_build": 0.010551300000000001,
+        "controller_run": 2.9667268,
+        "doi": 0.00119,
+        "fit": 1.7890584,
+        "inner_loop": 2.5050647,
+        "optimal_design": 0.388303,
+        "order_design": 0.0010287,
+        "sparse_pce": 1.7809254
+      },
+      "total_seconds": 6.9856521,
+      "working_set_after_bytes": 148746240,
+      "working_set_before_bytes": 143433728
+    },
+    {
+      "benchmark": "ishigami_reduced_v1",
+      "config": "examples/configs/ishigami_reduced_v1.json",
+      "identity": {
+        "contract_manifest_hash": "37ebf3d45c94534eae6d8c51c366d4c5983aa33eec6eb55752529a93bdcdaad7",
+        "contract_trace_hash": "697fb5aa0a321fa871d59befd11571719cfa614cfc5517c4cfd76ce4d134a91c",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080601,
+            "sha256": "dcd094b440fa280c273ebf12987c045c71095872de3ba21042db923d8c2a4c6a",
+            "shape": [
+              3,
+              256
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080603,
+            "sha256": "2e28f08fc184d407199ff0b98e4804fe38dc217bf066f7a95e09a759f280dff0",
+            "shape": [
+              3,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080602,
+            "sha256": "ee18a46c313537de96e183054a596eb51d8af04729f8123d4422ec0dbb6e93c3",
+            "shape": [
+              3,
+              384
+            ]
+          }
+        },
+        "model_call_count": 70,
+        "stable_manifest_hash": "2a4377784f49fcfb095148caed4477a6f0112af8431c1fe374e50a5e4a6ffb23",
+        "stop_reason": "max_order_reached",
+        "trace_hash": "c2079398eead6db11a825228c5d22adaa0846833afe098fc0d9bcd336641f850",
+        "trace_rows": 37
+      },
+      "peak_working_set_bytes": 158130176,
+      "peak_working_set_delta_bytes": 14958592,
+      "python_traced_peak_bytes": 10421511,
+      "repetition": 2,
+      "stage_cumulative_seconds": {
+        "artifact_build": 0.013825800000000001,
+        "controller_run": 2.7913832000000003,
+        "doi": 0.0009731000000000001,
+        "fit": 1.6937137000000002,
+        "inner_loop": 2.3207104000000003,
+        "optimal_design": 0.3730334,
+        "order_design": 0.0010311,
+        "sparse_pce": 1.6868192000000002
+      },
+      "total_seconds": 6.7263248,
+      "working_set_after_bytes": 147505152,
+      "working_set_before_bytes": 143171584
+    },
+    {
+      "benchmark": "ishigami_reduced_v1",
+      "config": "examples/configs/ishigami_reduced_v1.json",
+      "identity": {
+        "contract_manifest_hash": "37ebf3d45c94534eae6d8c51c366d4c5983aa33eec6eb55752529a93bdcdaad7",
+        "contract_trace_hash": "697fb5aa0a321fa871d59befd11571719cfa614cfc5517c4cfd76ce4d134a91c",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080601,
+            "sha256": "dcd094b440fa280c273ebf12987c045c71095872de3ba21042db923d8c2a4c6a",
+            "shape": [
+              3,
+              256
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080603,
+            "sha256": "2e28f08fc184d407199ff0b98e4804fe38dc217bf066f7a95e09a759f280dff0",
+            "shape": [
+              3,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080602,
+            "sha256": "ee18a46c313537de96e183054a596eb51d8af04729f8123d4422ec0dbb6e93c3",
+            "shape": [
+              3,
+              384
+            ]
+          }
+        },
+        "model_call_count": 70,
+        "stable_manifest_hash": "2a4377784f49fcfb095148caed4477a6f0112af8431c1fe374e50a5e4a6ffb23",
+        "stop_reason": "max_order_reached",
+        "trace_hash": "c2079398eead6db11a825228c5d22adaa0846833afe098fc0d9bcd336641f850",
+        "trace_rows": 37
+      },
+      "peak_working_set_bytes": 158101504,
+      "peak_working_set_delta_bytes": 14979072,
+      "python_traced_peak_bytes": 10419489,
+      "repetition": 3,
+      "stage_cumulative_seconds": {
+        "artifact_build": 0.011804,
+        "controller_run": 2.8446133000000002,
+        "doi": 0.0010731,
+        "fit": 1.7284397,
+        "inner_loop": 2.4180901,
+        "optimal_design": 0.3725892,
+        "order_design": 0.0010069,
+        "sparse_pce": 1.7207544000000001
+      },
+      "total_seconds": 6.7165044,
+      "working_set_after_bytes": 148660224,
+      "working_set_before_bytes": 143122432
+    },
+    {
+      "benchmark": "gayton_reduced_v1",
+      "config": "examples/configs/gayton_reduced_v1.json",
+      "identity": {
+        "contract_manifest_hash": "db9801332ba4ee53caa0c98b4f503b542dc9b422b69c953b47f4dadf0de2be02",
+        "contract_trace_hash": "fdf6a793d8e5a1f89b2a10e5e87c682a6d8012b62315dbcf5f9adcbe5a3e0de9",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080701,
+            "sha256": "3a80fce33a0254e332cf4fd85ab758ecb8a370d112e06c89155572128c9da80f",
+            "shape": [
+              2,
+              192
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080703,
+            "sha256": "d12f4e3cdf448c51d49e6194293c164250873cce72ae4609f6d928e397c169f3",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080702,
+            "sha256": "4d202ea093be90c874f460b70762fbec84144174d18634e465b9b83c37e8f629",
+            "shape": [
+              2,
+              256
+            ]
+          }
+        },
+        "model_call_count": 30,
+        "stable_manifest_hash": "4b39b19fe57627b61540aef5b4903b8c88b03d012ec6a860686a83ee5a1c6aa6",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "3b49d8acd346e9b2f687e06393ed0bb6aae3ddf260826453b2f122078c99a3d0",
+        "trace_rows": 25
+      },
+      "peak_working_set_bytes": 156278784,
+      "peak_working_set_delta_bytes": 13152256,
+      "python_traced_peak_bytes": 10306709,
+      "repetition": 1,
+      "stage_cumulative_seconds": {
+        "artifact_build": 0.0068779,
+        "controller_run": 0.5033482,
+        "doi": 0.0003711,
+        "fit": 0.2555715,
+        "inner_loop": 0.34655020000000003,
+        "optimal_design": 0.1027435,
+        "order_design": 0.0008066000000000001,
+        "sparse_pce": 0.253074
+      },
+      "total_seconds": 1.9889843,
+      "working_set_after_bytes": 146477056,
+      "working_set_before_bytes": 143126528
+    },
+    {
+      "benchmark": "gayton_reduced_v1",
+      "config": "examples/configs/gayton_reduced_v1.json",
+      "identity": {
+        "contract_manifest_hash": "db9801332ba4ee53caa0c98b4f503b542dc9b422b69c953b47f4dadf0de2be02",
+        "contract_trace_hash": "fdf6a793d8e5a1f89b2a10e5e87c682a6d8012b62315dbcf5f9adcbe5a3e0de9",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080701,
+            "sha256": "3a80fce33a0254e332cf4fd85ab758ecb8a370d112e06c89155572128c9da80f",
+            "shape": [
+              2,
+              192
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080703,
+            "sha256": "d12f4e3cdf448c51d49e6194293c164250873cce72ae4609f6d928e397c169f3",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080702,
+            "sha256": "4d202ea093be90c874f460b70762fbec84144174d18634e465b9b83c37e8f629",
+            "shape": [
+              2,
+              256
+            ]
+          }
+        },
+        "model_call_count": 30,
+        "stable_manifest_hash": "4b39b19fe57627b61540aef5b4903b8c88b03d012ec6a860686a83ee5a1c6aa6",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "3b49d8acd346e9b2f687e06393ed0bb6aae3ddf260826453b2f122078c99a3d0",
+        "trace_rows": 25
+      },
+      "peak_working_set_bytes": 156565504,
+      "peak_working_set_delta_bytes": 13303808,
+      "python_traced_peak_bytes": 10307177,
+      "repetition": 2,
+      "stage_cumulative_seconds": {
+        "artifact_build": 0.0046946,
+        "controller_run": 0.6902431,
+        "doi": 0.00043480000000000005,
+        "fit": 0.32877910000000005,
+        "inner_loop": 0.47887070000000004,
+        "optimal_design": 0.13415100000000002,
+        "order_design": 0.0008523000000000001,
+        "sparse_pce": 0.3260467
+      },
+      "total_seconds": 2.0222061,
+      "working_set_after_bytes": 146751488,
+      "working_set_before_bytes": 143261696
+    },
+    {
+      "benchmark": "gayton_reduced_v1",
+      "config": "examples/configs/gayton_reduced_v1.json",
+      "identity": {
+        "contract_manifest_hash": "db9801332ba4ee53caa0c98b4f503b542dc9b422b69c953b47f4dadf0de2be02",
+        "contract_trace_hash": "fdf6a793d8e5a1f89b2a10e5e87c682a6d8012b62315dbcf5f9adcbe5a3e0de9",
+        "datasets": {
+          "candidate": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "candidate",
+            "seed": 26080701,
+            "sha256": "3a80fce33a0254e332cf4fd85ab758ecb8a370d112e06c89155572128c9da80f",
+            "shape": [
+              2,
+              192
+            ]
+          },
+          "reference": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "reference",
+            "seed": 26080703,
+            "sha256": "d12f4e3cdf448c51d49e6194293c164250873cce72ae4609f6d928e397c169f3",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "test": {
+            "rng": "numpy.random.Generator(PCG64)",
+            "role": "test",
+            "seed": 26080702,
+            "sha256": "4d202ea093be90c874f460b70762fbec84144174d18634e465b9b83c37e8f629",
+            "shape": [
+              2,
+              256
+            ]
+          }
+        },
+        "model_call_count": 30,
+        "stable_manifest_hash": "4b39b19fe57627b61540aef5b4903b8c88b03d012ec6a860686a83ee5a1c6aa6",
+        "stop_reason": "outer_qoi_converged",
+        "trace_hash": "3b49d8acd346e9b2f687e06393ed0bb6aae3ddf260826453b2f122078c99a3d0",
+        "trace_rows": 25
+      },
+      "peak_working_set_bytes": 156549120,
+      "peak_working_set_delta_bytes": 13213696,
+      "python_traced_peak_bytes": 10304094,
+      "repetition": 3,
+      "stage_cumulative_seconds": {
+        "artifact_build": 0.0046619,
+        "controller_run": 0.6435073,
+        "doi": 0.0004596,
+        "fit": 0.3021998,
+        "inner_loop": 0.46731940000000005,
+        "optimal_design": 0.1515197,
+        "order_design": 0.000782,
+        "sparse_pce": 0.2998642
+      },
+      "total_seconds": 1.9091159,
+      "working_set_after_bytes": 146706432,
+      "working_set_before_bytes": 143335424
+    }
+  ],
+  "schema": "uqra.adaptive.performance-baseline/v1",
+  "scientific_reproduction": false,
+  "source": {
+    "branch": "codex/adaptive-performance-baseline",
+    "commit": "7cfb034ceff26c06aadb9843a228d3dfea65e016",
+    "tool_path": "tools/performance/run_adaptive_baseline.py",
+    "tool_sha256": "5b720cebe5fcbf62785426ce79381ebc6da2cba085f3927aa5bd5d4c689cdf18",
+    "worktree_dirty": true
+  }
+}
