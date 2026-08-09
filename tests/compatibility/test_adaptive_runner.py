@@ -8,6 +8,7 @@ from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
 import uqra
+import uqra.adaptive.manifest as manifest_module
 from uqra.adaptive.benchmark_registry import benchmark_names, get_benchmark
 from uqra.adaptive.four_branch_reduced import INPUT_HASHES
 from uqra.adaptive.gayton_reduced import (
@@ -115,6 +116,8 @@ def test_config_v2_schema_rejects_benchmark_scenario_mismatch():
     config = load_config(FOUR_BRANCH_CONFIG)
     config["runner"]["scenarios"] = ["converged"]
     assert list(validators["adaptive-runner-config-v2.schema.json"].iter_errors(config))
+    with pytest.raises(ValueError, match="unsupported scenarios"):
+        validate_config(config)
 
 
 def test_v2_schema_benchmark_enum_matches_static_registry():
@@ -161,6 +164,28 @@ def test_config_driven_smoke_manifest_is_valid_and_repeatable():
     assert first["purpose"] == "software_benchmark"
     assert first["scale"] == "reduced"
     assert set(first["run"]["scenarios"]) == {"converged"}
+
+
+def test_manifest_rejects_tampered_artifact_identity():
+    manifest = run_config(load_config(SMOKE_CONFIG))
+    manifest["artifacts"]["output_summary"]["sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="stable manifest hash"):
+        validate_manifest(manifest)
+
+
+def test_provenance_fails_closed_to_explicit_null_git_identity(monkeypatch, tmp_path):
+    monkeypatch.setattr(manifest_module, "_git", lambda root, *arguments: None)
+    evidence = manifest_module.provenance(
+        tmp_path / "config.json", tmp_path / "manifest.json",
+    )
+    assert evidence["git"] == {
+        "commit": None, "branch": None, "worktree_dirty": None,
+    }
+    assert evidence["source_tree"] == {
+        "algorithm": "sha256", "sha256": None, "tracked_files": None,
+    }
+    assert "config.json" in evidence["reproduce_command"]
+    assert "manifest.json" in evidence["reproduce_command"]
 
 
 def test_distribution_runtime_cli_and_manifest_versions_agree(capsys):
