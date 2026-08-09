@@ -27,6 +27,28 @@ def test_lars_path_is_preserved_separately_from_canonical_columns():
     assert first.canonical_active_ids == sorted(first.selected_active_ids)
 
 
+def test_fixed_lars_fixture_preserves_coefficients_cv_error_and_predictions():
+    x = np.linspace(-1., 1., 18)
+    X = np.column_stack([np.ones_like(x), x, x ** 2, x ** 3])
+    y = 3 * x ** 3 + .2 * x + .01 * np.sin(13 * x)
+    fit = fit_lars_path(X, y, n_splits=6, random_state=19)
+
+    assert fit.active_path == [1, 3]
+    assert fit.selected_active_ids == [1, 3]
+    np.testing.assert_allclose(
+        fit.cv_path, [0.31286719751765585, 6.77146482308449e-05],
+        rtol=1e-13, atol=1e-15,
+    )
+    np.testing.assert_allclose(
+        fit.coefficients, [0.19947234832709165, 2.999731525991687],
+        rtol=1e-13, atol=1e-15,
+    )
+    assert fit.intercept == 0.0
+    assert fit.cv_error == fit.cv_path[-1]
+    np.testing.assert_allclose(fit.predict(X), X[:, [1, 3]] @ fit.coefficients,
+                               rtol=0, atol=0)
+
+
 def test_rrqr_and_greedy_ties_are_deterministic():
     X = np.array([[1., 0.], [0., 1.], [-1., 0.], [0., -1.], [1., 1.]])
     assert rrqr_initial_ids(X, 2) == rrqr_initial_ids(X, 2)
