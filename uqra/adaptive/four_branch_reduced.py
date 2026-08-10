@@ -7,11 +7,11 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import asdict
-import hashlib
 import json
 
 import numpy as np
 
+from ._canonical import canonical_json_hash
 from .controller import AdaptiveSparsePCE
 from .profiles import publication_profile
 from .reduced_fixture import contract_trace_hash
@@ -143,10 +143,6 @@ def run_suite(scenarios=None):
     for scenario in contract_manifest["scenarios"].values():
         scenario.pop("trace", None)
         scenario.pop("trace_hash", None)
-    manifest["contract_manifest_hash"] = hashlib.sha256(
-        json.dumps(contract_manifest, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-    ).hexdigest()
-    manifest["stable_manifest_hash"] = hashlib.sha256(
-        json.dumps(manifest, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-    ).hexdigest()
+    manifest["contract_manifest_hash"] = canonical_json_hash(contract_manifest)
+    manifest["stable_manifest_hash"] = canonical_json_hash(manifest)
     return manifest

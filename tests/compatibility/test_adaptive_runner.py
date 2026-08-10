@@ -246,6 +246,25 @@ def test_m23_reduced_benchmark_contract(path):
     assert scenario["trace_hash"] == second["run"]["scenarios"]["reduced"]["trace_hash"]
 
 
+@pytest.mark.parametrize(
+    ("benchmark", "contract_manifest_hash", "contract_trace_hash"),
+    [
+        (
+            "four_branch_reduced_v1",
+            "141c71fafe61bd8186a629c284136a1904de36b0d48a29cf3b9ded4a66c5000a",
+            "46d873b0e510b0ff665df2a706e672ff80eccc354f3f3b03550abc88778c88eb",
+        ),
+        ("ishigami_reduced_v1", ISHIGAMI_MANIFEST_HASH, ISHIGAMI_TRACE_HASH),
+        ("gayton_reduced_v1", GAYTON_MANIFEST_HASH, GAYTON_TRACE_HASH),
+    ],
+)
+def test_reduced_benchmark_live_contract_and_trace_identities(
+        benchmark, contract_manifest_hash, contract_trace_hash):
+    run = get_benchmark(benchmark).run(["reduced"])
+    assert run["contract_manifest_hash"] == contract_manifest_hash
+    assert run["scenarios"]["reduced"]["contract_trace_hash"] == contract_trace_hash
+
+
 def test_ishigami_nonlinearity_interaction_and_frozen_results():
     xi = [[0.5, 0.5], [0.0, 0.0], [0.0, 1.0]]
     values = ishigami(xi)
