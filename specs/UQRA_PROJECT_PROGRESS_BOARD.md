@@ -1,6 +1,6 @@
 # UQRA 项目进度看板
 
-状态日期：2026-08-07
+状态日期：2026-08-10
 维护范围：UQRA 软件项目  
 主计划：[`UQRA_PROJECT_DEVELOPMENT_PLAN.md`](UQRA_PROJECT_DEVELOPMENT_PLAN.md)  
 历史实施记录：[`ADAPTIVE_PCE_DEVELOPMENT_PLAN.md`](ADAPTIVE_PCE_DEVELOPMENT_PLAN.md)
@@ -28,12 +28,12 @@
 | 项目 | 当前值 | 状态/证据 |
 | --- | --- | --- |
 | 默认分支 | `master` | ✅ `v0.3.0` 已发布 |
-| 当前基线 / 路线校准分支 | `master` / `codex/roadmap-quality-priority` | 🔄 纯文档路线校准；不修改核心代码和冻结证据 |
-| 最近合并 PR | [#14 Complete M5 reproducible release and supply-chain gates](https://github.com/Jinsongl/UQRA/pull/14) | ✅ 已合并；merge `514075341a0bb1c198e3f9656d21a800868ea59c`；master run [31151712201](https://github.com/Jinsongl/UQRA/actions/runs/31151712201) |
+| 当前基线 / closure 分支 | `master` `8cf3b228b8e83e36ee1b3aad19c8d9d4c992ec1e` / `codex/quality-baseline-closure` | 🔄 纯文档 closure；回填 ARCH/TEST/PERF 合并证据和已选 OPT-01，不修改核心代码或冻结证据 |
+| 最近合并 PR | [#19 Establish adaptive performance baseline](https://github.com/Jinsongl/UQRA/pull/19) | ✅ 已合并；merge `8cf3b228b8e83e36ee1b3aad19c8d9d4c992ec1e`；master run [31343613965](https://github.com/Jinsongl/UQRA/actions/runs/31343613965) |
 | 暂缓 PR | [#15 Implement REL-04 controlled release automation](https://github.com/Jinsongl/UQRA/pull/15) | ⏳ 保持 Draft；代码与 required run `31152911246` 已通过，等待真实新版本恢复端到端验证 |
 | Python 3.11 | 允许安装但未持续验证 | ➖ 不作为 M3 完成门；如取消安装支持，另行同步元数据、README、锁和发布说明 |
-| 正式验证环境 | Windows + Python 3.12 | ✅ 唯一正式、持续验证环境；PR #14 合并后 master gate 通过 |
-| Required check | `Adaptive compatibility gate` | ✅ master run [31151712201](https://github.com/Jinsongl/UQRA/actions/runs/31151712201) 通过；Ubuntu job 仅聚合 Windows 结果 |
+| 正式验证环境 | Windows + Python 3.12 | ✅ 唯一正式、持续验证环境；PR #19 合并后 master gate 通过 |
+| Required check | `Adaptive compatibility gate` | ✅ master run [31343613965](https://github.com/Jinsongl/UQRA/actions/runs/31343613965) 通过；Ubuntu job 仅聚合 Windows 结果 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.3.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.3.0) | ✅ annotated tag 指向合并提交 `7c2bb050dc3e02882929811b5dd9c8878d17e7d5`；附件下载哈希和仓库外 Python 3.12 smoke 通过 |
 | 下一版本 | `v0.3.x` 维护线 | 🔄 当前优先核心质量、行为基线和低风险优化；真实新版本出现时恢复 REL-04 |
@@ -90,9 +90,9 @@
 | BUILD-01 / SEC-02 / PATH-01 | M5 / P0 | 可复现构建、blob 绑定和 Windows 特殊路径 | PR #14；错误 hash/构建差异拒绝测试；空格、单引号、非 ASCII 路径通过 | ✅ 完成；required run `31146285191` |
 | SEC-01 / CI-02 | M5 / P1 | 持续安全审计及唯一正式 gate 扩展 | 固定 `pip-audit`；依赖三分类；Windows/Python 3.12 全 gate；本机/CI 包摘要一致 | ✅ 完成；required run `31146285191` |
 | M5 合并验收 | M5 / P0 | 将 BUILD/SEC/PATH/CI 基础能力合入 master | PR #14 merge `514075341a0bb1c198e3f9656d21a800868ea59c` | ✅ master run `31151712201` 全绿 |
-| ARCH-01 | 工程质量 / P0 | `uqra/adaptive/` 架构、职责与数据流审计 | [`UQRA_ARCH_01_ADAPTIVE_ARCHITECTURE_AUDIT.md`](UQRA_ARCH_01_ADAPTIVE_ARCHITECTURE_AUDIT.md) 定位入口、依赖方向、状态流、公共契约和六项风险边界 | ✅ 完成；未修改生产代码或数学契约 |
-| TEST-01 | 工程质量 / P0 | 关键行为与现有测试覆盖矩阵 | [`UQRA_TEST_01_ADAPTIVE_COVERAGE_MATRIX.md`](UQRA_TEST_01_ADAPTIVE_COVERAGE_MATRIX.md)；补充系数/CV、schema/runtime、artifact tamper、provenance fallback 回归 | ✅ 完成；未修改生产代码或数学契约 |
-| PERF-01 | 工程质量 / P0 | Windows/Python 3.12 性能与内存基线 | [`UQRA_PERF_01_ADAPTIVE_BASELINE.md`](UQRA_PERF_01_ADAPTIVE_BASELINE.md) 与机器可读 JSON；三 reduced benchmark 各 3 个隔离子进程 | ✅ 完成；仅用于软件工程验收，不作论文结论 |
+| ARCH-01 | 工程质量 / P0 | `uqra/adaptive/` 架构、职责与数据流审计 | [PR #17](https://github.com/Jinsongl/UQRA/pull/17) merge `2d2be3ac467e1f3701b84c5c01bab203d4f8e40b`；[`UQRA_ARCH_01_ADAPTIVE_ARCHITECTURE_AUDIT.md`](UQRA_ARCH_01_ADAPTIVE_ARCHITECTURE_AUDIT.md) | ✅ 完成；PR run `31342024753`、master run `31342298045` 全绿；未修改生产代码或数学契约 |
+| TEST-01 | 工程质量 / P0 | 关键行为与现有测试覆盖矩阵 | [PR #18](https://github.com/Jinsongl/UQRA/pull/18) merge `7cfb034ceff26c06aadb9843a228d3dfea65e016`；[`UQRA_TEST_01_ADAPTIVE_COVERAGE_MATRIX.md`](UQRA_TEST_01_ADAPTIVE_COVERAGE_MATRIX.md) | ✅ 完成；PR run `31342526075`、master run `31342818592` 全绿；补充四类高价值回归 |
+| PERF-01 | 工程质量 / P0 | Windows/Python 3.12 性能与内存基线 | [PR #19](https://github.com/Jinsongl/UQRA/pull/19) merge `8cf3b228b8e83e36ee1b3aad19c8d9d4c992ec1e`；[`UQRA_PERF_01_ADAPTIVE_BASELINE.md`](UQRA_PERF_01_ADAPTIVE_BASELINE.md) 与机器可读 JSON | ✅ 完成；PR run `31343375325`、master run `31343613965` 全绿；仅用于软件工程验收 |
 
 ### 🔄 进行中
 
@@ -107,9 +107,11 @@
 | PKG-01 | M3 / P2 | 构建并测试 sdist/wheel | 两种包均含五个 schema；两个仓库外 Python 3.12.13 环境完成安装和 [`evidence`](releases/UQRA_M3_PACKAGING_ACCEPTANCE.md) 验收 | ✅ 完成；required run `31062848792` |
 | PKG-04 | M3 / P2 | 清理 Python 3.12 警告 | UQRA 自身 SyntaxWarning/DeprecationWarning 已清理；严格 `compileall` 回归门和 compatibility `61 passed` | ✅ 完成；required run `31062848792` |
 | CI-01 | M3 / P2 | 建立 Windows/Python 3.12 required CI | Windows job 覆盖锁、完整 suite、schema、构建、双 clean-install、manifest v2 和 warning 门 | ✅ 完成；required run `31062848792` |
+| OPT-01 | 工程质量 / P1 | 首批低风险可维护性优化 | 已选定：先补三个 reduced benchmark live contract/trace identity 回归，再统一 `run.py`、`reduced_fixture.py`、`four_branch_reduced.py` 中语义相同的私有 canonical JSON hashing | 公共 API、JSON bytes、hash scope、数学契约和完整逐轮行为不变；正式 Windows/Python 3.12 gate 全绿 |
 
-当前实施优先级转为工程质量工作流：`ARCH-01`、`TEST-01`、`PERF-01` 已完成，下一步按
-证据选择首批 `OPT-01`。`OPT-02/03` 暂不启动。M6 的只读证据审计可并行；
+当前实施优先级转为工程质量工作流：`ARCH-01`、`TEST-01`、`PERF-01` 已完成；首批
+`OPT-01` 已选定为“固定 live benchmark identities 后统一私有 canonical JSON hashing”。
+`OPT-02/03` 暂不启动。M6 的只读证据审计可并行；
 M4 仍由论文仓库明确需求触发。
 REL-04 不再阻塞核心开发，恢复条件见后续队列。里程碑编号不表示强制串行。
 
@@ -119,7 +121,6 @@ REL-04 不再阻塞核心开发，恢复条件见后续队列。里程碑编号�
 | --- | --- | --- | --- | --- |
 | LEG-01 | U1 / P1 | Legacy Python 3.8/3.9 环境审计 | 无 | 依赖、可运行入口和失败类型形成可审计报告 |
 | REG-01 | U3 / P1 | U3 行为回归结案矩阵 | LEG-01 可并行 | 已验证项与 `unavailable` 项逐项对应证据，无状态歧义 |
-| OPT-01 | 工程质量 / P1 | 低风险可维护性优化 | ARCH-01、TEST-01 | 职责和重复逻辑改善，数学契约、公共 API 和完整逐轮行为不变 |
 | OPT-02 | 工程质量 / P1 | 低风险性能优化 | PERF-01、TEST-01 | 同环境前后数据证明收益；逐轮回归和正式 gate 通过 |
 | OPT-03 | 工程质量 / P2 | 受控算法路径优化 | OPT-01/02 证据稳定后另行批准 | 单项独立提交；明确 bitwise 或数值容差契约，不以最终 Pf 接近替代逐轮等价 |
 
@@ -154,7 +155,7 @@ REL-04 暂缓期间保留 Draft PR #15 和 `uqra-release` Environment，但不�
 
 ### 🔄 当前优先：工程质量工作流
 
-本工作流不新增 M8，也不改变 M4--M7 的名称、编号和边界。先用 `ARCH-01`、`TEST-01`、`PERF-01` 建立结构、行为与性能基线，再按证据推进 `OPT-01--03`。所有优化继续受 `uqra/adaptive/` 核心算法边界和既有数学契约约束；三个 reduced benchmark 始终保持 `software_benchmark` / `reduced`，不得声明为历史 replay、论文生产或 scientific reproduction。
+本工作流不新增 M8，也不改变 M4--M7 的名称、编号和边界。`ARCH-01`、`TEST-01`、`PERF-01` 已建立结构、行为与性能基线；首批 `OPT-01` 先固定三个 reduced benchmark 的 live contract/trace identities，再统一私有 canonical JSON hashing。所有优化继续受 `uqra/adaptive/` 核心算法边界和既有数学契约约束；三个 reduced benchmark 始终保持 `software_benchmark` / `reduced`，不得声明为历史 replay、论文生产或 scientific reproduction。`OPT-02/03` 暂不启动。
 
 ### ⛔ 阻塞：历史资产
 
