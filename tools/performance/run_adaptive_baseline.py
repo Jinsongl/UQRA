@@ -58,6 +58,11 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def canonical_text_sha256(path: Path) -> str:
+    payload = path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def process_memory() -> dict[str, int]:
     if platform.system() != "Windows":
         raise RuntimeError("PERF-01 process memory evidence requires Windows")
@@ -217,7 +222,7 @@ def run_parent(configs: list[Path], repetitions: int, output: Path) -> dict:
             "branch": git("branch", "--show-current"),
             "worktree_dirty": bool(git("status", "--porcelain")),
             "tool_path": tool_path.relative_to(ROOT).as_posix(),
-            "tool_sha256": sha256(tool_path),
+            "tool_canonical_sha256": canonical_text_sha256(tool_path),
         },
         "environment": {
             "platform": platform.platform(),

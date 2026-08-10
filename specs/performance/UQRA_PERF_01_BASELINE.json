@@ -811,7 +811,7 @@
     "branch": "codex/adaptive-performance-baseline",
     "commit": "7cfb034ceff26c06aadb9843a228d3dfea65e016",
     "tool_path": "tools/performance/run_adaptive_baseline.py",
-    "tool_sha256": "5b720cebe5fcbf62785426ce79381ebc6da2cba085f3927aa5bd5d4c689cdf18",
+    "tool_canonical_sha256": "6715d5a324aa277e019ffd4110d3fc60f0b5ccc935881551a8d0e5232f31ffc6",
     "worktree_dirty": true
   }
 }

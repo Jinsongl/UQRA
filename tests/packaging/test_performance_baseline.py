@@ -16,6 +16,11 @@ def sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def canonical_text_sha256(path):
+    payload = path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def test_perf01_evidence_is_bound_to_method_inputs_and_behavior_identity():
     evidence = json.loads(EVIDENCE.read_text(encoding="utf-8"))
     assert evidence["schema"] == "uqra.adaptive.performance-baseline/v1"
@@ -24,7 +29,7 @@ def test_perf01_evidence_is_bound_to_method_inputs_and_behavior_identity():
     assert evidence["scientific_reproduction"] is False
     assert evidence["environment"]["python"].startswith("3.12.")
     assert evidence["environment"]["lock_sha256"] == sha256(LOCK)
-    assert evidence["source"]["tool_sha256"] == sha256(TOOL)
+    assert evidence["source"]["tool_canonical_sha256"] == canonical_text_sha256(TOOL)
     assert evidence["method"]["repetitions"] == 3
     assert set(evidence["aggregates"]) == BENCHMARKS
     assert len(evidence["records"]) == 3 * len(BENCHMARKS)

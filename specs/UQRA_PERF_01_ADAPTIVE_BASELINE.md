@@ -45,7 +45,8 @@ inner loop、optimal design、DoI、sparse-PCE 和 artifact build 的累计时�
 **包含式 cumulative time，彼此重叠且不可相加**；总耗时来自不启用 profiler 的第一次运行。
 
 工具会拒绝非 Windows/Python 3.12、少于 3 次重复，以及重复间行为 identity 变化。证据绑定
-工具 SHA-256 和依赖锁 SHA-256。
+工具 UTF-8 文本规范化为 LF 后的 canonical SHA-256 和依赖锁 SHA-256，避免 Windows
+checkout 的 CRLF 展开改变同一 Git 文本内容的身份。
 
 ## 4. 正式基线结果
 
