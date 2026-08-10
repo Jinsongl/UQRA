@@ -1,7 +1,7 @@
 # UQRA-compatible 自适应稀疏 PCE 项目开发计划
 
 状态：执行中  
-版本：2026-08-07 split-plan v5
+版本：2026-08-10 split-plan v6
 项目仓库：`https://github.com/Jinsongl/UQRA`  
 当前发布基线：`v0.3.0`（2026-08-06 发布）
 
@@ -315,8 +315,10 @@ M5 的 BUILD/SEC/PATH/CI 基础能力已经完成，`REL-04` 保持 Draft 并按
 不再阻塞核心开发。`ARCH-01` 与 `TEST-01` 已分别形成
 `UQRA_ARCH_01_ADAPTIVE_ARCHITECTURE_AUDIT.md` 和
 `UQRA_TEST_01_ADAPTIVE_COVERAGE_MATRIX.md`；`PERF-01` 已形成
-`UQRA_PERF_01_ADAPTIVE_BASELINE.md` 与机器可读 JSON。当前最小下一目标是依据三项证据
-选择首批 `OPT-01`；`OPT-02/03`
+`UQRA_PERF_01_ADAPTIVE_BASELINE.md` 与机器可读 JSON。首批 `OPT-01` 已选定：先补三个
+reduced benchmark 的 live contract/trace identity 回归，再统一 `run.py`、
+`reduced_fixture.py` 和 `four_branch_reduced.py` 中语义相同的私有 canonical JSON hashing；
+不得改变公共 API、JSON bytes、hash scope、数学契约或完整逐轮行为。`OPT-02/03`
 必须单独裁决。M6 的只读审计可以并行但应保持独立提交或 PR；M4 仍由论文仓库的明确
 版本化接口需求触发；M7 保持候选。所有变更继续通过唯一正式 Windows/Python 3.12 gate，
 且不得覆盖既有 tag、Release 附件或冻结证据。
