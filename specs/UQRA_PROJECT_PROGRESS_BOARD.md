@@ -28,12 +28,12 @@
 | 项目 | 当前值 | 状态/证据 |
 | --- | --- | --- |
 | 默认分支 | `master` | ✅ `v0.3.0` 已发布 |
-| 当前基线 / closure 分支 | `master` `8cf3b228b8e83e36ee1b3aad19c8d9d4c992ec1e` / `codex/quality-baseline-closure` | 🔄 纯文档 closure；回填 ARCH/TEST/PERF 合并证据和已选 OPT-01，不修改核心代码或冻结证据 |
-| 最近合并 PR | [#19 Establish adaptive performance baseline](https://github.com/Jinsongl/UQRA/pull/19) | ✅ 已合并；merge `8cf3b228b8e83e36ee1b3aad19c8d9d4c992ec1e`；master run [31343613965](https://github.com/Jinsongl/UQRA/actions/runs/31343613965) |
+| 当前基线 / 文档分支 | `master` `693b1d2c3ba8da2608966d1840f36ee20d65a94a` / `codex/local-first-development-policy` | 🔄 回填治理 closure 并确立“本地开发优先、候选就绪后才触发 CI”的执行策略 |
+| 最近合并 PR | [#21 Enforce mandatory task closure governance](https://github.com/Jinsongl/UQRA/pull/21) | ✅ 已合并；merge `693b1d2c3ba8da2608966d1840f36ee20d65a94a`；master compatibility run [31346375232](https://github.com/Jinsongl/UQRA/actions/runs/31346375232) 与 governance run [31346375225](https://github.com/Jinsongl/UQRA/actions/runs/31346375225) 全绿 |
 | 暂缓 PR | [#15 Implement REL-04 controlled release automation](https://github.com/Jinsongl/UQRA/pull/15) | ⏳ 保持 Draft；代码与 required run `31152911246` 已通过，等待真实新版本恢复端到端验证 |
 | Python 3.11 | 允许安装但未持续验证 | ➖ 不作为 M3 完成门；如取消安装支持，另行同步元数据、README、锁和发布说明 |
-| 正式验证环境 | Windows + Python 3.12 | ✅ 唯一正式、持续验证环境；PR #19 合并后 master gate 通过 |
-| Required check | `Adaptive compatibility gate` | ✅ master run [31343613965](https://github.com/Jinsongl/UQRA/actions/runs/31343613965) 通过；Ubuntu job 仅聚合 Windows 结果 |
+| 正式验证环境 | Windows + Python 3.12 | ✅ 唯一正式、持续验证环境；日常开发优先使用本地定向与完整测试，远端 CI 只在候选 PR/closure 阶段运行 |
+| Required checks | `Adaptive compatibility gate`；`Task closure governance` | ✅ 两项已纳入 `master` branch protection；PR #21 合并后 master runs `31346375232`、`31346375225` 全绿 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.3.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.3.0) | ✅ annotated tag 指向合并提交 `7c2bb050dc3e02882929811b5dd9c8878d17e7d5`；附件下载哈希和仓库外 Python 3.12 smoke 通过 |
 | 下一版本 | `v0.3.x` 维护线 | 🔄 当前优先核心质量、行为基线和低风险优化；真实新版本出现时恢复 REL-04 |
@@ -93,6 +93,7 @@
 | ARCH-01 | 工程质量 / P0 | `uqra/adaptive/` 架构、职责与数据流审计 | [PR #17](https://github.com/Jinsongl/UQRA/pull/17) merge `2d2be3ac467e1f3701b84c5c01bab203d4f8e40b`；[`UQRA_ARCH_01_ADAPTIVE_ARCHITECTURE_AUDIT.md`](UQRA_ARCH_01_ADAPTIVE_ARCHITECTURE_AUDIT.md) | ✅ 完成；PR run `31342024753`、master run `31342298045` 全绿；未修改生产代码或数学契约 |
 | TEST-01 | 工程质量 / P0 | 关键行为与现有测试覆盖矩阵 | [PR #18](https://github.com/Jinsongl/UQRA/pull/18) merge `7cfb034ceff26c06aadb9843a228d3dfea65e016`；[`UQRA_TEST_01_ADAPTIVE_COVERAGE_MATRIX.md`](UQRA_TEST_01_ADAPTIVE_COVERAGE_MATRIX.md) | ✅ 完成；PR run `31342526075`、master run `31342818592` 全绿；补充四类高价值回归 |
 | PERF-01 | 工程质量 / P0 | Windows/Python 3.12 性能与内存基线 | [PR #19](https://github.com/Jinsongl/UQRA/pull/19) merge `8cf3b228b8e83e36ee1b3aad19c8d9d4c992ec1e`；[`UQRA_PERF_01_ADAPTIVE_BASELINE.md`](UQRA_PERF_01_ADAPTIVE_BASELINE.md) 与机器可读 JSON | ✅ 完成；PR run `31343375325`、master run `31343613965` 全绿；仅用于软件工程验收 |
+| 治理 closure | U0 / P0 | 强制任务 closure、PR 声明与确定性 CI 检查 | [PR #21](https://github.com/Jinsongl/UQRA/pull/21) merge `693b1d2c3ba8da2608966d1840f36ee20d65a94a`；master runs `31346375232`、`31346375225` | ✅ 生效；两项检查均已加入 `master` required checks |
 
 ### 🔄 进行中
 
@@ -111,6 +112,9 @@
 
 当前实施优先级转为工程质量工作流：`ARCH-01`、`TEST-01`、`PERF-01` 已完成；首批
 `OPT-01` 已选定为“固定 live benchmark identities 后统一私有 canonical JSON hashing”。
+`OPT-01` 采用本地开发优先：在本地完成实现、定向回归、完整 compatibility suite、
+文档和 `git diff --check` 后才首次推送并创建候选 PR；不为中间提交、探索性试验或
+未就绪状态反复触发远端 CI。required checks 和合并后 closure 完成门保持不变。
 `OPT-02/03` 暂不启动。M6 的只读证据审计可并行；
 M4 仍由论文仓库明确需求触发。
 REL-04 不再阻塞核心开发，恢复条件见后续队列。里程碑编号不表示强制串行。
@@ -188,6 +192,11 @@ REL-04 暂缓期间保留 Draft PR #15 和 `uqra-release` Environment，但不�
 6. 更新顶部状态日期、U0--U6 总览和当前焦点；
 7. 若任务改变项目范围或算法契约，先更新主计划或兼容性裁决，再更新看板；
 8. 同步更新相关 evidence、summary 和 release 文档，不在看板复制大段实验结果。
+
+为减少 CI/CD 消耗，稳定任务默认采用单一本地开发周期：允许多个本地小提交和反复测试，
+但只在交付物及本地验收证据完整后推送候选分支。除修复远端环境特有失败外，不通过连续
+推送把 CI 当作开发调试器。任务 PR 与合并后 closure 仍各自执行 required checks；可合并的
+治理 closure 与路线更新应合并为同一个纯文档 PR，避免无意义的额外流水线。
 
 ## 9. 不进入本看板的工作
 
