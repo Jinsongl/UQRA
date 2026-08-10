@@ -1,0 +1,29 @@
+name: Task closure governance
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  task-closure-governance:
+    name: Task closure governance
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check deterministic closure rules
+        shell: pwsh
+        run: |
+          python tools/governance/check_task_closure.py `
+            --base "${{ github.event.pull_request.base.sha || github.event.before }}" `
+            --head "${{ github.event.pull_request.head.sha || github.sha }}" `
+            --event-path "${{ github.event_path }}"
