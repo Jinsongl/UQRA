@@ -1,7 +1,7 @@
 # UQRA-compatible 自适应稀疏 PCE 项目开发计划
 
 状态：执行中  
-版本：2026-08-10 split-plan v6
+版本：2026-08-10 split-plan v7
 项目仓库：`https://github.com/Jinsongl/UQRA`  
 当前发布基线：`v0.3.0`（2026-08-06 发布）
 
@@ -259,6 +259,19 @@ M5 不扩展 Ubuntu 或 Python 3.11 正式支持声明。Release 自动化不得
 转化为论文统计结论或 scientific reproduction 声明。三个 reduced benchmark 始终保持
 `software_benchmark` / `reduced` 及相应禁止声明。
 
+#### 本地开发优先与 CI 使用原则
+
+工程任务先在最新、干净的 `master` 分支基线上完成本地实现和验证，再创建远端候选 PR。
+本地阶段应完成定向回归、适用的完整 compatibility suite、产物身份复核、文档更新和
+`git diff --check`；允许用多个本地小提交迭代，但不为探索性试验、中间状态或尚未形成
+审查单元的改动反复推送。远端 CI 是候选交付的正式验收门，不作为日常调试循环。
+
+每个稳定任务原则上只触发一个任务 PR；合并且 master required checks 全绿后，再以一个
+小型纯文档 closure PR 固化 merge commit、master run、最终状态和下一动作。可以安全合并的
+治理 closure 与路线/优先级文档更新应放入同一个 closure PR。此策略减少不必要的 CI/CD
+运行，但不取消 Windows/Python 3.12 compatibility gate、task closure governance、冻结证据
+保护或两阶段完成门。
+
 ### M6 任务边界
 
 - `LEG-01`：完成 Legacy Python 3.8/3.9 环境、依赖、入口和失败类型审计；
@@ -322,6 +335,9 @@ reduced benchmark 的 live contract/trace identity 回归，再统一 `run.py`�
 必须单独裁决。M6 的只读审计可以并行但应保持独立提交或 PR；M4 仍由论文仓库的明确
 版本化接口需求触发；M7 保持候选。所有变更继续通过唯一正式 Windows/Python 3.12 gate，
 且不得覆盖既有 tag、Release 附件或冻结证据。
+
+从 `OPT-01` 起执行本地开发优先策略：完成全部本地实现和验收后才创建任务 PR；除远端
+环境特有失败的必要修复外，不以增量推送反复触发 CI。`OPT-02/03` 继续暂不启动。
 
 ## 7. 历史文档关系
 
