@@ -123,7 +123,7 @@ REL-04 不再阻塞核心开发，恢复条件见后续队列。里程碑编号�
 
 | ID | 归属 / 优先级 | 任务 | 前置条件 | 完成门 |
 | --- | --- | --- | --- | --- |
-| LEG-01 | U1 / P1 | Legacy Python 3.8/3.9 环境审计 | 🔄 本地候选：分支 `codex/leg-01-legacy-environment-audit`；两环境历史锁、导入、入口和测试失败已复核；形成 [`审计报告`](UQRA_LEG_01_LEGACY_ENVIRONMENT_AUDIT.md) | 等待本地证据复核后创建单一任务 PR；任务合并及 master required gates 全绿后再以 closure PR 标记完成 |
+| LEG-01 | U1 / P1 | Legacy Python 3.8/3.9 环境审计 | 🔄 PR 验收中：分支 `codex/leg-01-legacy-environment-audit`；PR #25；两环境历史锁、导入、入口和测试失败已复核；形成 [`审计报告`](UQRA_LEG_01_LEGACY_ENVIRONMENT_AUDIT.md) | 等待 PR review 与 required CI；任务合并及 master required gates 全绿后再以 closure PR 标记完成 |
 | REG-01 | U3 / P1 | U3 行为回归结案矩阵 | LEG-01 可并行 | 已验证项与 `unavailable` 项逐项对应证据，无状态歧义 |
 | OPT-02 | 工程质量 / P1 | 低风险性能优化 | PERF-01、TEST-01 | 同环境前后数据证明收益；逐轮回归和正式 gate 通过 |
 | OPT-03 | 工程质量 / P2 | 受控算法路径优化 | OPT-01/02 证据稳定后另行批准 | 单项独立提交；明确 bitwise 或数值容差契约，不以最终 Pf 接近替代逐轮等价 |
