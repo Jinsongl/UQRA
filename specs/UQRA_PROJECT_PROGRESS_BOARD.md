@@ -55,7 +55,7 @@
 | M3 包装、契约一致性与跨环境质量 | ✅ 已完成 | U6 | PKG-01--04、CI-01、SCHEMA-01/02、MANIFEST-01/02 | 全部任务完成；Windows/Python 3.12 required CI、双 clean-install 和冻结证据通过 |
 | M4 受控论文生产接口与下游交付契约 | ⏳ 待开始 | U5、U6 | PROD-*、DATA-*、CV-*、PROV-*、REL-* | 由论文仓库明确接口需求触发；不在 UQRA 管理论文参数、表图或统计结论 |
 | M5 可复现发布与供应链自动化 | 🔄 基础能力完成；发布闭环暂缓 | U6 | BUILD-01、SEC-01/02、PATH-01、CI-02、REL-04 | BUILD/SEC/PATH/CI 已完成；REL-04 代码在 Draft PR #15，等待真实新版本执行端到端验收 |
-| M6 Legacy 与行为回归证据结案 | 🔄 永久状态结案中 | U1、U3 | LEG-01/02、REG-01/02 | LEG-01、REG-01 已完成；LEG-02 正式裁决永久 `unavailable`，closure 后顺序启动 REG-02 |
+| M6 Legacy 与行为回归证据结案 | 🔄 LEG-02 完成；REG-02 待启动 | U1、U3 | LEG-01/02、REG-01/02 | 缺失历史资产已永久裁决为 `unavailable`；下一步由 REG-02 继承并关闭完整历史逐轮 trace 等价状态 |
 | M7 可选软件 Benchmark 扩展 | ⏳ 候选 | U4 | BENCH-05 及后续 BENCH-* | 仅在证明独立软件验收价值后启动；继续禁止历史 replay 和论文生产声明 |
 
 `LEG-01/02` 与 `REG-01/02` 是 U1/U3 的证据闭环任务，不属于 M2，也不因 M2 完成
@@ -66,7 +66,7 @@
 | 阶段 | 状态 | 当前结论 | 下一动作 |
 | --- | --- | --- | --- |
 | U0 治理冻结与证据清单 | ✅ 已完成 | 项目/论文边界、主计划、历史计划和交接接口已固化 | 随新裁决持续维护证据清单 |
-| U1 Legacy 基准恢复 | 🔄 永久状态结案中 | LEG-01 已完成；历史候选池、测试集、逐轮输出和 RNG/CV 状态仍缺失 | 完成 LEG-02 永久 `unavailable` 裁决及两阶段 closure |
+| U1 Legacy 基准恢复 | ✅ 已完成（现有来源范围） | LEG-02 已将缺失候选池、测试集、逐轮输出和 RNG/CV 状态永久裁决为 `unavailable` | 仅在发现满足来源、身份和完整性门的新资产时通过新稳定任务重开 |
 | U2 Modern 核心实现 | ✅ 已完成 | 核心算法完成，当前发布基线为 `v0.3.0` | 核心变更继续遵守裁决和回归门 |
 | U3 内核与逐轮行为回归 | ✅ 已完成（可获得证据范围） | REG-01 统一结案矩阵已形成；历史 FourBranch trace 不可用 | LEG-02 closure 后启动 REG-02，继承永久 `unavailable`；不得以最终 Pf 接近替代逐轮等价 |
 | U4 通用软件 benchmark | ✅ 已完成（M2 范围） | M2.1--M2.3 已随 `v0.3.0` 发布；BENCH-05 保留为可选扩展 | 在 `v0.3.x` 维护契约与回归证据 |
@@ -96,6 +96,7 @@
 | 治理 closure | U0 / P0 | 强制任务 closure、PR 声明与确定性 CI 检查 | [PR #21](https://github.com/Jinsongl/UQRA/pull/21) merge `693b1d2c3ba8da2608966d1840f36ee20d65a94a`；master runs `31346375232`、`31346375225` | ✅ 生效；两项检查均已加入 `master` required checks |
 | OPT-01 | 工程质量 / P1 | 首批低风险可维护性优化 | ✅ 完成：PR #23；merge `17fe310474a2e93f79e3e43046aa8bc6b110c41c`；PR compatibility run `31447921046`、governance rerun `31449154193`；master compatibility run `31449264976`、governance run `31449264993` 全绿；Windows/Python 3.12 本地 `tests/packaging tests/compatibility` 为 `78 passed` | 三个 reduced benchmark live contract/trace identity 已固定，共享私有 canonical JSON hashing 已实现；公共 API、JSON bytes、hash scope、数学契约和完整逐轮行为不变；下一动作是另行裁决下一稳定任务，`OPT-02/03` 不自动启动 |
 | LEG-01 | U1 / P1 | Legacy Python 3.8/3.9 环境审计 | [`审计报告`](UQRA_LEG_01_LEGACY_ENVIRONMENT_AUDIT.md)；PR #25；merge `e4fbaea3b547efcd920f4ad00430eb2cdc1bddc5`；PR runs `31453494954`、`31453495251`；master runs `31453863515`、`31453863513` | ✅ 完成；两环境历史锁、导入、入口和测试失败已复核，缺失 canonical 资产阻塞已确认 |
+| LEG-02 | U1 / P1 | Canonical FourBranch 历史资产永久 `unavailable` 裁决 | [`裁决记录`](UQRA_LEG_02_PERMANENT_UNAVAILABLE_DECISION.md)；PR #30；merge `64ae16464c7760a17d0b1b257ebe1efc356b9120`；PR compatibility run `31462305915`、governance run `31462305895`；master compatibility run `31462719281`、governance run `31462719205` | ✅ 完成；下一动作是启动 REG-02 并继承永久 `unavailable`，不得以最终 Pf 接近替代逐轮等价 |
 | REG-01 | U3 / P1 | U3 行为回归结案矩阵 | [`结案矩阵`](UQRA_REG_01_BEHAVIOR_CLOSURE_MATRIX.md)；PR #27；merge `ae8dbcd8601c968f97f74eca47e49c86d7737de9`；PR runs `31455267392`、`31455267410`；master runs `31455594050`、`31455594027` | ✅ 完成；verified、expected-difference、recovered-related 与 unavailable 状态已统一，完整 suite `78 passed` |
 
 `ARCH-01`、`TEST-01`、`PERF-01`、`OPT-01`、`LEG-01` 和 `REG-01` 均已闭环。
@@ -103,12 +104,6 @@
 完整逐轮 trace 等价状态永久结案为 `unavailable`。`OPT-02/03` 暂不启动；M4 仍由
 论文仓库明确需求触发；REL-04 等待真实新版本。required checks 和本地开发优先策略
 保持不变。
-
-### 🔄 进行中
-
-| ID | 归属 / 优先级 | 任务 | 当前证据 | 完成门 |
-| --- | --- | --- | --- | --- |
-| LEG-02 | U1 / P1 | Canonical FourBranch 历史资产永久 `unavailable` 裁决 | 分支 `codex/leg-02-permanent-unavailable`；[`裁决记录`](UQRA_LEG_02_PERMANENT_UNAVAILABLE_DECISION.md)；Phase 9 inventory、LEG-01 与 REG-01 形成一致证据链 | 候选 PR 合并且 master required gates 全绿后，以纯文档 closure PR 标记完成；随后启动 REG-02 |
 
 ### ⏳ 候选（未批准启动）
 
@@ -150,11 +145,11 @@ REL-04 暂缓期间保留 Draft PR #15 和 `uqra-release` Environment，但不�
 
 本工作流不新增 M8，也不改变 M4--M7 的名称、编号和边界。`ARCH-01`、`TEST-01`、`PERF-01` 已建立结构、行为与性能基线；首批 `OPT-01` 先固定三个 reduced benchmark 的 live contract/trace identities，再统一私有 canonical JSON hashing。所有优化继续受 `uqra/adaptive/` 核心算法边界和既有数学契约约束；三个 reduced benchmark 始终保持 `software_benchmark` / `reduced`，不得声明为历史 replay、论文生产或 scientific reproduction。`OPT-02/03` 暂不启动。
 
-### ⛔ 等待 LEG-02 closure
+### ⏳ 下一稳定任务
 
 | ID | 阻塞项 | 已有证据 | 解除或关闭条件 |
 | --- | --- | --- | --- |
-| REG-02 | 完整历史逐轮 trace 等价 | U3 可获得证据范围、REG-01 矩阵与 LEG-02 裁决候选 | LEG-02 正式 closure 后启动并继承永久 `unavailable`；不得以最终 Pf 接近替代 |
+| REG-02 | 完整历史逐轮 trace 等价 | U3 可获得证据范围、REG-01 矩阵与已完成的 LEG-02 裁决 | 启动任务 PR，继承永久 `unavailable` 并关闭状态；不得以最终 Pf 接近替代 |
 
 ## 7. 已完成里程碑
 
