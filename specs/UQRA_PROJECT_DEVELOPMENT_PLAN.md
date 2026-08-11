@@ -1,7 +1,7 @@
 # UQRA-compatible 自适应稀疏 PCE 项目开发计划
 
 状态：执行中  
-版本：2026-08-10 split-plan v7
+版本：2026-08-11 split-plan v8
 项目仓库：`https://github.com/Jinsongl/UQRA`  
 当前发布基线：`v0.3.0`（2026-08-06 发布）
 
@@ -59,6 +59,12 @@ canonical 文件只读。核心算法限定在 `uqra/adaptive/`；为支持现�
 完成门：成功得到可追踪 legacy 基准，或形成经证据支持的
 `blocked by missing historical assets` 正式结论。后者已经满足；除非发现具有可验证
 来源的新历史资产，不再重新打开 canonical replay。
+
+基于阶段 9 inventory、LEG-01 环境审计和 REG-01 结案矩阵，项目批准顺序执行
+`LEG-02 → REG-02`。`LEG-02` 将上述缺失集合裁决为永久 `unavailable`；这里的永久
+表示当前可审计来源链内恢复工作终局，不表示资产从未存在。只有发现具有可验证来源、
+身份和完整性的新资产时，才能通过新的稳定任务重新打开。`REG-02` 在 `LEG-02` 正式
+closure 后启动，并继承该状态关闭完整历史逐轮 trace 等价问题。
 
 ### U2——Modern UQRA-compatible 核心实现
 
@@ -178,7 +184,7 @@ Python 3.12.13 完整兼容性套件亦为 `42 passed`。交付证据见
 | M3 包装、契约一致性与跨环境质量 | 已完成 | `PKG-*`、`CI-*`、`SCHEMA-*`、`MANIFEST-*` | wheel/sdist、版本源、运行时与发布 schema 一致、标准 schema 校验、完整来源/环境身份和 Windows/Python 3.12 required CI 达到发布门 |
 | M4 受控论文生产接口与下游交付契约 | 待开始 | `PROD-*`、`DATA-*`、`CV-*`、`PROV-*`、`REL-*` | 论文仓库可通过版本化配置和冻结外部数据调用唯一 UQRA runner，并获得通过正式 schema 校验的 manifest、trace、来源环境身份和输入/输出哈希 |
 | M5 可复现发布与供应链自动化 | 基础能力完成；发布闭环暂缓 | `BUILD-*`、`SEC-*`、`PATH-*`、`CI-*`、`REL-*` | BUILD/SEC/PATH/CI 已进入正式 Windows/Python 3.12 gate；REL-04 保留 Draft 实现，在真实新版本出现时完成端到端验收 |
-| M6 Legacy 与行为回归证据结案 | 只读审计可启动 | `LEG-*`、`REG-*` | 可恢复证据完成审计；不可恢复项以带依据的 `unavailable` 正式关闭；统一结案矩阵不存在状态歧义 |
+| M6 Legacy 与行为回归证据结案 | 永久状态结案中 | `LEG-*`、`REG-*` | LEG-01、REG-01 已完成；批准 LEG-02 将缺失资产永久标记 `unavailable`，随后由 REG-02 继承并关闭完整历史逐轮 trace 等价状态 |
 | M7 可选软件 Benchmark 扩展 | 候选 | `BENCH-*` | 仅在具有独立软件验收价值时增加 reduced benchmark，并完整进入 registry、schema、manifest、身份和 compatibility gate |
 
 `LEG-*` 和 `REG-*` 属于 U1/U3 的证据闭环任务，不并入 M2 benchmark 交付，也不
@@ -280,6 +286,8 @@ M5 不扩展 Ubuntu 或 Python 3.11 正式支持声明。Release 自动化不得
 - `REG-02`：不得以最终 Pf 接近替代完整历史逐轮 trace 等价；缺失证据必须显式继承 `LEG-02` 状态。
 
 M6 是证据治理结案，不以 reduced benchmark 冒充历史 replay，也不恢复论文正式算例。
+执行顺序已经裁决为 `LEG-02 → REG-02`；两项继续分别遵守任务 PR、master gates 和纯
+文档 closure PR 的两阶段完成门。
 
 ### M7 任务边界
 
@@ -338,6 +346,7 @@ reduced benchmark 的 live contract/trace identity 回归，再统一 `run.py`�
 
 从 `OPT-01` 起执行本地开发优先策略：完成全部本地实现和验收后才创建任务 PR；除远端
 环境特有失败的必要修复外，不以增量推送反复触发 CI。`OPT-02/03` 继续暂不启动。
+M6 当前按已批准的 `LEG-02 → REG-02` 顺序完成永久 `unavailable` 状态结案。
 
 ## 7. 历史文档关系
 
