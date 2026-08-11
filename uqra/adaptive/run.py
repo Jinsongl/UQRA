@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import argparse
 import copy
-import hashlib
 import json
 from pathlib import Path
 import sys
 
 from uqra._version import __version__
 
+from ._canonical import canonical_json_hash
 from .benchmark_registry import get_benchmark
 from .manifest import build_artifacts, provenance, write_artifacts
 
@@ -21,12 +21,6 @@ MANIFEST_SCHEMA = "uqra.adaptive.runner-manifest/v2"
 TRACE_SCHEMA = "uqra.adaptive.trace/v1"
 RUNNER_KIND = "deterministic_benchmark"
 V1_BENCHMARK = "phase8_two_dimensional_hermite"
-
-
-def _canonical_hash(payload) -> str:
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"),
-                         allow_nan=False).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def validate_config(config):
@@ -93,7 +87,7 @@ def validate_manifest(manifest):
         raise ValueError("runner manifest uses an unsupported schema")
     if manifest["purpose"] != "software_benchmark" or manifest["scale"] != "reduced":
         raise ValueError("runner manifest has an invalid purpose or scale")
-    if manifest["config_hash"] != _canonical_hash(manifest["config"]):
+    if manifest["config_hash"] != canonical_json_hash(manifest["config"]):
         raise ValueError("runner manifest config hash is invalid")
     run = manifest["run"]
     if not isinstance(run, dict):
@@ -116,7 +110,7 @@ def validate_manifest(manifest):
     expected = stable.pop("stable_manifest_hash")
     stable.pop("provenance", None)
     stable.get("run", {}).pop("git", None)
-    if expected != _canonical_hash(stable):
+    if expected != canonical_json_hash(stable):
         raise ValueError("runner stable manifest hash is invalid")
     return True
 
@@ -131,7 +125,7 @@ def _run_config_bundle(config, *, config_path="<in-memory-config>", output_path=
         "trace_schema": TRACE_SCHEMA,
         "purpose": config["purpose"],
         "scale": config["scale"],
-        "config_hash": _canonical_hash(config),
+        "config_hash": canonical_json_hash(config),
         "config": config,
         "run": benchmark_manifest,
     }
@@ -140,7 +134,7 @@ def _run_config_bundle(config, *, config_path="<in-memory-config>", output_path=
     stable = copy.deepcopy(manifest)
     stable.pop("provenance", None)
     stable.get("run", {}).pop("git", None)
-    manifest["stable_manifest_hash"] = _canonical_hash(stable)
+    manifest["stable_manifest_hash"] = canonical_json_hash(stable)
     validate_manifest(manifest)
     return manifest, files
 

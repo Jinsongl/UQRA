@@ -3,20 +3,14 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import asdict
-import hashlib
 import json
 
 import numpy as np
 
+from ._canonical import canonical_json_hash
 from .controller import AdaptiveSparsePCE
 from .profiles import publication_profile
 from .state import array_hash
-
-
-def _canonical_hash(payload):
-    return hashlib.sha256(
-        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-    ).hexdigest()
 
 
 def contract_trace_hash(trace):
@@ -27,7 +21,7 @@ def contract_trace_hash(trace):
         item.pop("cv_path", None)
         item.pop("qoi", None)
         payload.append(item)
-    return _canonical_hash(payload)
+    return canonical_json_hash(payload)
 
 
 def dataset_identity(arrays, seeds):
@@ -85,6 +79,6 @@ def run_reduced_fixture(*, name, arrays, seeds, cv_seed, model, vandermonde,
     for item in contract_manifest["scenarios"].values():
         item.pop("trace", None)
         item.pop("trace_hash", None)
-    manifest["contract_manifest_hash"] = _canonical_hash(contract_manifest)
-    manifest["stable_manifest_hash"] = _canonical_hash(manifest)
+    manifest["contract_manifest_hash"] = canonical_json_hash(contract_manifest)
+    manifest["stable_manifest_hash"] = canonical_json_hash(manifest)
     return manifest
