@@ -108,7 +108,7 @@
 | PKG-01 | M3 / P2 | 构建并测试 sdist/wheel | 两种包均含五个 schema；两个仓库外 Python 3.12.13 环境完成安装和 [`evidence`](releases/UQRA_M3_PACKAGING_ACCEPTANCE.md) 验收 | ✅ 完成；required run `31062848792` |
 | PKG-04 | M3 / P2 | 清理 Python 3.12 警告 | UQRA 自身 SyntaxWarning/DeprecationWarning 已清理；严格 `compileall` 回归门和 compatibility `61 passed` | ✅ 完成；required run `31062848792` |
 | CI-01 | M3 / P2 | 建立 Windows/Python 3.12 required CI | Windows job 覆盖锁、完整 suite、schema、构建、双 clean-install、manifest v2 和 warning 门 | ✅ 完成；required run `31062848792` |
-| OPT-01 | 工程质量 / P1 | 首批低风险可维护性优化 | 🔄 PR 验收中：分支 `codex/opt-01-canonical-json-hashing`；PR #23；三个 reduced benchmark live contract/trace identity 已固定，共享私有 canonical JSON hashing 已实现；Windows/Python 3.12 本地 `tests/packaging tests/compatibility` 为 `78 passed` | 等待 PR review 与 required CI；合并并确认 master required gates 全绿后，通过纯文档 closure PR 写入最终证据；公共 API、JSON bytes、hash scope、数学契约和完整逐轮行为不变 |
+| OPT-01 | 工程质量 / P1 | 首批低风险可维护性优化 | ✅ 完成：PR #23；merge `17fe310474a2e93f79e3e43046aa8bc6b110c41c`；PR compatibility run `31447921046`、governance rerun `31449154193`；master compatibility run `31449264976`、governance run `31449264993` 全绿；Windows/Python 3.12 本地 `tests/packaging tests/compatibility` 为 `78 passed` | 三个 reduced benchmark live contract/trace identity 已固定，共享私有 canonical JSON hashing 已实现；公共 API、JSON bytes、hash scope、数学契约和完整逐轮行为不变；下一动作是另行裁决下一稳定任务，`OPT-02/03` 不自动启动 |
 
 当前实施优先级转为工程质量工作流：`ARCH-01`、`TEST-01`、`PERF-01` 已完成；首批
 `OPT-01` 已选定为“固定 live benchmark identities 后统一私有 canonical JSON hashing”。
