@@ -30,6 +30,7 @@
 - [UQRA_LEG_01_LEGACY_ENVIRONMENT_AUDIT.md](UQRA_LEG_01_LEGACY_ENVIRONMENT_AUDIT.md)：记录 Windows/Python 3.8/3.9 历史依赖、入口、测试失败分类及 canonical FourBranch 的正式阻塞结论。
 - [UQRA_LEG_02_PERMANENT_UNAVAILABLE_DECISION.md](UQRA_LEG_02_PERMANENT_UNAVAILABLE_DECISION.md)：将缺失的 canonical FourBranch 候选池、测试集、逐轮输出及 RNG/CV 状态正式裁决为永久 unavailable，并规定禁止替代和重开条件。
 - [UQRA_REG_01_BEHAVIOR_CLOSURE_MATRIX.md](UQRA_REG_01_BEHAVIOR_CLOSURE_MATRIX.md)：统一记录 U3 已验证行为、比较口径、预期差异、相关恢复材料和 unavailable 历史项的证据状态。
+- [UQRA_REG_02_HISTORICAL_TRACE_STATUS.md](UQRA_REG_02_HISTORICAL_TRACE_STATUS.md)：继承 LEG-02 永久 unavailable 裁决，关闭 canonical FourBranch 完整历史逐轮 trace 等价状态和允许声明边界。
 - [ADAPTIVE_PCE_PHASE10_ENVIRONMENT_CI_SUMMARY.md](ADAPTIVE_PCE_PHASE10_ENVIRONMENT_CI_SUMMARY.md)：记录 pyDOE2 移除、依赖锁、干净 Python 3.11 验证、Python 3.12 CI 和合并门槛。
 - [ADAPTIVE_PCE_PHASE11_PUBLICATION_RELEASE_SUMMARY.md](ADAPTIVE_PCE_PHASE11_PUBLICATION_RELEASE_SUMMARY.md)：记录冻结投稿协议、敏感性分析、三类实现边界、最终代码审查和合并准备。
 - [ADAPTIVE_PCE_PHASE11_FROZEN_MANIFEST.json](ADAPTIVE_PCE_PHASE11_FROZEN_MANIFEST.json)：保存投稿协议、输入/源码哈希、现代与 portable 逐案例结果及独立 overfit 统计。
