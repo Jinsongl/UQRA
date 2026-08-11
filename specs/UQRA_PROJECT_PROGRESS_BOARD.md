@@ -36,7 +36,7 @@
 | Required checks | `Adaptive compatibility gate`；`Task closure governance` | ✅ 两项已纳入 `master` branch protection；最近 master runs `31456417724`、`31456417746` 全绿 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.3.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.3.0) | ✅ annotated tag 指向合并提交 `7c2bb050dc3e02882929811b5dd9c8878d17e7d5`；附件下载哈希和仓库外 Python 3.12 smoke 通过 |
-| 下一版本 | `v0.3.x` 维护线 | 🔄 已批准顺序执行 LEG-02 → REG-02；真实新版本出现时恢复 REL-04 |
+| 下一版本 | `v0.3.x` 维护线 | 🔄 M6 已完成；下一稳定任务未裁决，OPT-02/03 不自动启动；真实新版本出现时恢复 REL-04 |
 
 ## 3. 编号体系与里程碑路线
 
@@ -55,7 +55,7 @@
 | M3 包装、契约一致性与跨环境质量 | ✅ 已完成 | U6 | PKG-01--04、CI-01、SCHEMA-01/02、MANIFEST-01/02 | 全部任务完成；Windows/Python 3.12 required CI、双 clean-install 和冻结证据通过 |
 | M4 受控论文生产接口与下游交付契约 | ⏳ 待开始 | U5、U6 | PROD-*、DATA-*、CV-*、PROV-*、REL-* | 由论文仓库明确接口需求触发；不在 UQRA 管理论文参数、表图或统计结论 |
 | M5 可复现发布与供应链自动化 | 🔄 基础能力完成；发布闭环暂缓 | U6 | BUILD-01、SEC-01/02、PATH-01、CI-02、REL-04 | BUILD/SEC/PATH/CI 已完成；REL-04 代码在 Draft PR #15，等待真实新版本执行端到端验收 |
-| M6 Legacy 与行为回归证据结案 | 🔄 REG-02 结案中 | U1、U3 | LEG-01/02、REG-01/02 | 缺失历史资产已永久裁决为 `unavailable`；REG-02 正在继承并关闭完整历史逐轮 trace 等价状态 |
+| M6 Legacy 与行为回归证据结案 | ✅ 已完成（现有来源范围） | U1、U3 | LEG-01/02、REG-01/02 | 缺失历史资产及完整历史逐轮 trace 等价均永久结案为 `unavailable`；重开必须满足 LEG-02 来源、身份、历史角色和完整性门 |
 | M7 可选软件 Benchmark 扩展 | ⏳ 候选 | U4 | BENCH-05 及后续 BENCH-* | 仅在证明独立软件验收价值后启动；继续禁止历史 replay 和论文生产声明 |
 
 `LEG-01/02` 与 `REG-01/02` 是 U1/U3 的证据闭环任务，不属于 M2，也不因 M2 完成
@@ -68,7 +68,7 @@
 | U0 治理冻结与证据清单 | ✅ 已完成 | 项目/论文边界、主计划、历史计划和交接接口已固化 | 随新裁决持续维护证据清单 |
 | U1 Legacy 基准恢复 | ✅ 已完成（现有来源范围） | LEG-02 已将缺失候选池、测试集、逐轮输出和 RNG/CV 状态永久裁决为 `unavailable` | 仅在发现满足来源、身份和完整性门的新资产时通过新稳定任务重开 |
 | U2 Modern 核心实现 | ✅ 已完成 | 核心算法完成，当前发布基线为 `v0.3.0` | 核心变更继续遵守裁决和回归门 |
-| U3 内核与逐轮行为回归 | 🔄 永久状态结案中 | REG-01 统一结案矩阵已形成；LEG-02 已将历史资产永久裁决为 `unavailable` | 完成 REG-02 两阶段 closure；不得以最终 Pf 接近替代逐轮等价 |
+| U3 内核与逐轮行为回归 | ✅ 已完成（现有来源范围） | REG-01 已固定可获得行为证据；REG-02 已继承 LEG-02 并将完整历史逐轮 trace 等价永久结案为 `unavailable` | 仅在新资产满足 LEG-02 重开门时通过新稳定任务重开；不得以最终 Pf 接近替代逐轮等价 |
 | U4 通用软件 benchmark | ✅ 已完成（M2 范围） | M2.1--M2.3 已随 `v0.3.0` 发布；BENCH-05 保留为可选扩展 | 在 `v0.3.x` 维护契约与回归证据 |
 | U5 Runner 发布门 | ✅ 已完成 | M1 schema、CLI、示例、evidence、PR #4 和 `v0.2.0` 发布均完成 | 按版本化流程维护后续交付 |
 | U6 版本化维护 | 🔄 进行中 | `v0.3.0` 已发布；M5 BUILD/SEC/PATH/CI 基础能力已建立，REL-04 保持 Draft | 维护现有 gate；真实新版本出现时恢复发布闭环，不阻塞核心质量优化 |
@@ -98,18 +98,14 @@
 | LEG-01 | U1 / P1 | Legacy Python 3.8/3.9 环境审计 | [`审计报告`](UQRA_LEG_01_LEGACY_ENVIRONMENT_AUDIT.md)；PR #25；merge `e4fbaea3b547efcd920f4ad00430eb2cdc1bddc5`；PR runs `31453494954`、`31453495251`；master runs `31453863515`、`31453863513` | ✅ 完成；两环境历史锁、导入、入口和测试失败已复核，缺失 canonical 资产阻塞已确认 |
 | LEG-02 | U1 / P1 | Canonical FourBranch 历史资产永久 `unavailable` 裁决 | [`裁决记录`](UQRA_LEG_02_PERMANENT_UNAVAILABLE_DECISION.md)；PR #30；merge `64ae16464c7760a17d0b1b257ebe1efc356b9120`；PR compatibility run `31462305915`、governance run `31462305895`；master compatibility run `31462719281`、governance run `31462719205` | ✅ 完成；下一动作是启动 REG-02 并继承永久 `unavailable`，不得以最终 Pf 接近替代逐轮等价 |
 | REG-01 | U3 / P1 | U3 行为回归结案矩阵 | [`结案矩阵`](UQRA_REG_01_BEHAVIOR_CLOSURE_MATRIX.md)；PR #27；merge `ae8dbcd8601c968f97f74eca47e49c86d7737de9`；PR runs `31455267392`、`31455267410`；master runs `31455594050`、`31455594027` | ✅ 完成；verified、expected-difference、recovered-related 与 unavailable 状态已统一，完整 suite `78 passed` |
+| REG-02 | U3 / P1 | Canonical FourBranch 完整历史逐轮 trace 等价状态结案 | [`状态记录`](UQRA_REG_02_HISTORICAL_TRACE_STATUS.md)；PR #32；merge `de51b5eea95b51263abda36fd2172f733935ef46`；PR compatibility run `31464417653`、governance run `31464417689`；master compatibility run `31464812718`、governance run `31464812675`；本地完整 suite `78 passed` | ✅ 完成；M6 在现有来源范围内闭环；下一稳定任务未裁决，OPT-02/03 不自动启动 |
 
 `ARCH-01`、`TEST-01`、`PERF-01`、`OPT-01`、`LEG-01` 和 `REG-01` 均已闭环。
-基于现有恢复、环境和回归证据，已批准按 `LEG-02 → REG-02` 顺序将缺失历史资产及
-完整逐轮 trace 等价状态永久结案为 `unavailable`。`OPT-02/03` 暂不启动；M4 仍由
-论文仓库明确需求触发；REL-04 等待真实新版本。required checks 和本地开发优先策略
-保持不变。
-
-### 🔄 进行中
-
-| ID | 归属 / 优先级 | 任务 | 当前证据 | 完成门 |
-| --- | --- | --- | --- | --- |
-| REG-02 | U3 / P1 | Canonical FourBranch 完整历史逐轮 trace 等价状态结案 | 分支 `codex/reg-02-historical-trace-closure`；[`状态记录`](UQRA_REG_02_HISTORICAL_TRACE_STATUS.md) 继承 LEG-02 永久 `unavailable` 并逐项区分 fixture/reduced 证据与 historical reference；Windows/Python 3.12 完整 suite `78 passed` | 完成文档质量门；候选 PR 合并且 master required gates 全绿后，以纯文档 closure PR 标记完成 |
+`LEG-02 → REG-02` 已完成，缺失历史资产及完整逐轮 trace 等价状态永久结案为
+`unavailable`，M6 在现有来源范围内闭环。只有新资产满足 LEG-02 的来源、内容身份、
+历史角色匹配和完整性门时才能通过新稳定任务重开。当前下一稳定任务未裁决；
+`OPT-02/03` 不自动启动；M4 仍由论文仓库明确需求触发；REL-04 等待真实新版本。
+required checks 和本地开发优先策略保持不变。
 
 ### ⏳ 候选（未批准启动）
 

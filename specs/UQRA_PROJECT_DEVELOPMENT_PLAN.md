@@ -1,7 +1,7 @@
 # UQRA-compatible 自适应稀疏 PCE 项目开发计划
 
 状态：执行中  
-版本：2026-08-11 split-plan v8
+版本：2026-08-11 split-plan v9
 项目仓库：`https://github.com/Jinsongl/UQRA`  
 当前发布基线：`v0.3.0`（2026-08-06 发布）
 
@@ -184,7 +184,7 @@ Python 3.12.13 完整兼容性套件亦为 `42 passed`。交付证据见
 | M3 包装、契约一致性与跨环境质量 | 已完成 | `PKG-*`、`CI-*`、`SCHEMA-*`、`MANIFEST-*` | wheel/sdist、版本源、运行时与发布 schema 一致、标准 schema 校验、完整来源/环境身份和 Windows/Python 3.12 required CI 达到发布门 |
 | M4 受控论文生产接口与下游交付契约 | 待开始 | `PROD-*`、`DATA-*`、`CV-*`、`PROV-*`、`REL-*` | 论文仓库可通过版本化配置和冻结外部数据调用唯一 UQRA runner，并获得通过正式 schema 校验的 manifest、trace、来源环境身份和输入/输出哈希 |
 | M5 可复现发布与供应链自动化 | 基础能力完成；发布闭环暂缓 | `BUILD-*`、`SEC-*`、`PATH-*`、`CI-*`、`REL-*` | BUILD/SEC/PATH/CI 已进入正式 Windows/Python 3.12 gate；REL-04 保留 Draft 实现，在真实新版本出现时完成端到端验收 |
-| M6 Legacy 与行为回归证据结案 | 永久状态结案中 | `LEG-*`、`REG-*` | LEG-01、REG-01 已完成；批准 LEG-02 将缺失资产永久标记 `unavailable`，随后由 REG-02 继承并关闭完整历史逐轮 trace 等价状态 |
+| M6 Legacy 与行为回归证据结案 | 已完成（现有来源范围） | `LEG-*`、`REG-*` | LEG-01/02、REG-01/02 全部完成；缺失资产及完整历史逐轮 trace 等价永久标记为 `unavailable`，且重开条件、禁止替代和允许声明已固定 |
 | M7 可选软件 Benchmark 扩展 | 候选 | `BENCH-*` | 仅在具有独立软件验收价值时增加 reduced benchmark，并完整进入 registry、schema、manifest、身份和 compatibility gate |
 
 `LEG-*` 和 `REG-*` 属于 U1/U3 的证据闭环任务，不并入 M2 benchmark 交付，也不
@@ -340,13 +340,15 @@ M5 的 BUILD/SEC/PATH/CI 基础能力已经完成，`REL-04` 保持 Draft 并按
 reduced benchmark 的 live contract/trace identity 回归，再统一 `run.py`、
 `reduced_fixture.py` 和 `four_branch_reduced.py` 中语义相同的私有 canonical JSON hashing；
 不得改变公共 API、JSON bytes、hash scope、数学契约或完整逐轮行为。`OPT-02/03`
-必须单独裁决。M6 的只读审计可以并行但应保持独立提交或 PR；M4 仍由论文仓库的明确
+必须单独裁决。M6 的只读审计及状态结案已通过独立任务和 closure PR 完成；M4 仍由论文仓库的明确
 版本化接口需求触发；M7 保持候选。所有变更继续通过唯一正式 Windows/Python 3.12 gate，
 且不得覆盖既有 tag、Release 附件或冻结证据。
 
 从 `OPT-01` 起执行本地开发优先策略：完成全部本地实现和验收后才创建任务 PR；除远端
 环境特有失败的必要修复外，不以增量推送反复触发 CI。`OPT-02/03` 继续暂不启动。
-M6 当前按已批准的 `LEG-02 → REG-02` 顺序完成永久 `unavailable` 状态结案。
+M6 已按 `LEG-02 → REG-02` 顺序完成永久 `unavailable` 状态结案。只有新资产同时
+满足 LEG-02 规定的来源、内容身份、历史角色匹配和完整性条件时，才能通过新的稳定
+任务重新打开。当前下一稳定任务未裁决，`OPT-02/03` 不自动启动。
 
 ## 7. 历史文档关系
 
