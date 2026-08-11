@@ -36,7 +36,7 @@
 | Required checks | `Adaptive compatibility gate`；`Task closure governance` | ✅ 两项已纳入 `master` branch protection；最近 master runs `31456417724`、`31456417746` 全绿 |
 | 全新克隆验收 | Python 3.11.15，`42 passed`，smoke/full manifest 有效 | ✅ [`UQRA_V0.1.0_EVIDENCE.md`](releases/UQRA_V0.1.0_EVIDENCE.md) |
 | 当前 Release | [`v0.3.0`](https://github.com/Jinsongl/UQRA/releases/tag/v0.3.0) | ✅ annotated tag 指向合并提交 `7c2bb050dc3e02882929811b5dd9c8878d17e7d5`；附件下载哈希和仓库外 Python 3.12 smoke 通过 |
-| 下一版本 | `v0.3.x` 维护线 | 🔄 当前无已批准稳定任务；LEG-02/REG-02 等待正式裁决，真实新版本出现时恢复 REL-04 |
+| 下一版本 | `v0.3.x` 维护线 | 🔄 已批准顺序执行 LEG-02 → REG-02；真实新版本出现时恢复 REL-04 |
 
 ## 3. 编号体系与里程碑路线
 
@@ -55,7 +55,7 @@
 | M3 包装、契约一致性与跨环境质量 | ✅ 已完成 | U6 | PKG-01--04、CI-01、SCHEMA-01/02、MANIFEST-01/02 | 全部任务完成；Windows/Python 3.12 required CI、双 clean-install 和冻结证据通过 |
 | M4 受控论文生产接口与下游交付契约 | ⏳ 待开始 | U5、U6 | PROD-*、DATA-*、CV-*、PROV-*、REL-* | 由论文仓库明确接口需求触发；不在 UQRA 管理论文参数、表图或统计结论 |
 | M5 可复现发布与供应链自动化 | 🔄 基础能力完成；发布闭环暂缓 | U6 | BUILD-01、SEC-01/02、PATH-01、CI-02、REL-04 | BUILD/SEC/PATH/CI 已完成；REL-04 代码在 Draft PR #15，等待真实新版本执行端到端验收 |
-| M6 Legacy 与行为回归证据结案 | 🔄 可获得证据已结案；永久状态待裁决 | U1、U3 | LEG-01/02、REG-01/02 | LEG-01、REG-01 已完成；LEG-02/REG-02 等待永久 `unavailable` 裁决或新历史资产 |
+| M6 Legacy 与行为回归证据结案 | 🔄 永久状态结案中 | U1、U3 | LEG-01/02、REG-01/02 | LEG-01、REG-01 已完成；LEG-02 正式裁决永久 `unavailable`，closure 后顺序启动 REG-02 |
 | M7 可选软件 Benchmark 扩展 | ⏳ 候选 | U4 | BENCH-05 及后续 BENCH-* | 仅在证明独立软件验收价值后启动；继续禁止历史 replay 和论文生产声明 |
 
 `LEG-01/02` 与 `REG-01/02` 是 U1/U3 的证据闭环任务，不属于 M2，也不因 M2 完成
@@ -66,9 +66,9 @@
 | 阶段 | 状态 | 当前结论 | 下一动作 |
 | --- | --- | --- | --- |
 | U0 治理冻结与证据清单 | ✅ 已完成 | 项目/论文边界、主计划、历史计划和交接接口已固化 | 随新裁决持续维护证据清单 |
-| U1 Legacy 基准恢复 | ⛔ 阻塞 | LEG-01 已完成；历史候选池、测试集、逐轮输出和 RNG/CV 状态仍缺失 | 正式裁决 LEG-02 是否以永久 `unavailable` 结案 |
+| U1 Legacy 基准恢复 | 🔄 永久状态结案中 | LEG-01 已完成；历史候选池、测试集、逐轮输出和 RNG/CV 状态仍缺失 | 完成 LEG-02 永久 `unavailable` 裁决及两阶段 closure |
 | U2 Modern 核心实现 | ✅ 已完成 | 核心算法完成，当前发布基线为 `v0.3.0` | 核心变更继续遵守裁决和回归门 |
-| U3 内核与逐轮行为回归 | ✅ 已完成（可获得证据范围） | REG-01 统一结案矩阵已形成；历史 FourBranch trace 不可用 | REG-02 等待并继承 LEG-02 裁决；不得以最终 Pf 接近替代逐轮等价 |
+| U3 内核与逐轮行为回归 | ✅ 已完成（可获得证据范围） | REG-01 统一结案矩阵已形成；历史 FourBranch trace 不可用 | LEG-02 closure 后启动 REG-02，继承永久 `unavailable`；不得以最终 Pf 接近替代逐轮等价 |
 | U4 通用软件 benchmark | ✅ 已完成（M2 范围） | M2.1--M2.3 已随 `v0.3.0` 发布；BENCH-05 保留为可选扩展 | 在 `v0.3.x` 维护契约与回归证据 |
 | U5 Runner 发布门 | ✅ 已完成 | M1 schema、CLI、示例、evidence、PR #4 和 `v0.2.0` 发布均完成 | 按版本化流程维护后续交付 |
 | U6 版本化维护 | 🔄 进行中 | `v0.3.0` 已发布；M5 BUILD/SEC/PATH/CI 基础能力已建立，REL-04 保持 Draft | 维护现有 gate；真实新版本出现时恢复发布闭环，不阻塞核心质量优化 |
@@ -98,10 +98,17 @@
 | LEG-01 | U1 / P1 | Legacy Python 3.8/3.9 环境审计 | [`审计报告`](UQRA_LEG_01_LEGACY_ENVIRONMENT_AUDIT.md)；PR #25；merge `e4fbaea3b547efcd920f4ad00430eb2cdc1bddc5`；PR runs `31453494954`、`31453495251`；master runs `31453863515`、`31453863513` | ✅ 完成；两环境历史锁、导入、入口和测试失败已复核，缺失 canonical 资产阻塞已确认 |
 | REG-01 | U3 / P1 | U3 行为回归结案矩阵 | [`结案矩阵`](UQRA_REG_01_BEHAVIOR_CLOSURE_MATRIX.md)；PR #27；merge `ae8dbcd8601c968f97f74eca47e49c86d7737de9`；PR runs `31455267392`、`31455267410`；master runs `31455594050`、`31455594027` | ✅ 完成；verified、expected-difference、recovered-related 与 unavailable 状态已统一，完整 suite `78 passed` |
 
-当前没有已批准、正在实施的稳定任务。`ARCH-01`、`TEST-01`、`PERF-01`、`OPT-01`、
-`LEG-01` 和 `REG-01` 均已闭环。下一决策点是是否以永久 `unavailable` 启动
-`LEG-02`，并由 `REG-02` 继承该结论。`OPT-02/03` 暂不启动；M4 仍由论文仓库明确
-需求触发；REL-04 等待真实新版本。required checks 和本地开发优先策略保持不变。
+`ARCH-01`、`TEST-01`、`PERF-01`、`OPT-01`、`LEG-01` 和 `REG-01` 均已闭环。
+基于现有恢复、环境和回归证据，已批准按 `LEG-02 → REG-02` 顺序将缺失历史资产及
+完整逐轮 trace 等价状态永久结案为 `unavailable`。`OPT-02/03` 暂不启动；M4 仍由
+论文仓库明确需求触发；REL-04 等待真实新版本。required checks 和本地开发优先策略
+保持不变。
+
+### 🔄 进行中
+
+| ID | 归属 / 优先级 | 任务 | 当前证据 | 完成门 |
+| --- | --- | --- | --- | --- |
+| LEG-02 | U1 / P1 | Canonical FourBranch 历史资产永久 `unavailable` 裁决 | 分支 `codex/leg-02-permanent-unavailable`；[`裁决记录`](UQRA_LEG_02_PERMANENT_UNAVAILABLE_DECISION.md)；Phase 9 inventory、LEG-01 与 REG-01 形成一致证据链 | 候选 PR 合并且 master required gates 全绿后，以纯文档 closure PR 标记完成；随后启动 REG-02 |
 
 ### ⏳ 候选（未批准启动）
 
@@ -143,12 +150,11 @@ REL-04 暂缓期间保留 Draft PR #15 和 `uqra-release` Environment，但不�
 
 本工作流不新增 M8，也不改变 M4--M7 的名称、编号和边界。`ARCH-01`、`TEST-01`、`PERF-01` 已建立结构、行为与性能基线；首批 `OPT-01` 先固定三个 reduced benchmark 的 live contract/trace identities，再统一私有 canonical JSON hashing。所有优化继续受 `uqra/adaptive/` 核心算法边界和既有数学契约约束；三个 reduced benchmark 始终保持 `software_benchmark` / `reduced`，不得声明为历史 replay、论文生产或 scientific reproduction。`OPT-02/03` 暂不启动。
 
-### ⛔ 阻塞：历史资产
+### ⛔ 等待 LEG-02 closure
 
 | ID | 阻塞项 | 已有证据 | 解除或关闭条件 |
 | --- | --- | --- | --- |
-| LEG-02 | 完整历史 FourBranch replay | Phase 9 inventory 与 IDX-01/IDX-02 诊断 | 找回原候选池、测试集、逐轮输出和 RNG/CV 状态，或正式结案为永久 `unavailable` |
-| REG-02 | 完整历史逐轮 trace 等价 | U3 可获得证据范围已完成 | 依赖 LEG-02；不得以最终 Pf 接近替代 |
+| REG-02 | 完整历史逐轮 trace 等价 | U3 可获得证据范围、REG-01 矩阵与 LEG-02 裁决候选 | LEG-02 正式 closure 后启动并继承永久 `unavailable`；不得以最终 Pf 接近替代 |
 
 ## 7. 已完成里程碑
 
